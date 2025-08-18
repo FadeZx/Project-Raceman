@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Project-Raceman\\ProjectRaceman\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{626805A4-0615-42EE-BF8E-D3D4049D31E6}|Setup\\Setup.vcxproj|D:\\Project-Raceman\\ProjectRaceman\\Setup\\Setup.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{626805A4-0615-42EE-BF8E-D3D4049D31E6}|Setup\\Setup.vcxproj|solutionrelative:Setup\\Setup.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Setup.cpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\Setup\\Setup.cpp",
+              "RelativeDocumentMoniker": "Setup\\Setup.cpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\Setup\\Setup.cpp",
+              "RelativeToolTip": "Setup\\Setup.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-08-18T12:14:03.304Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
