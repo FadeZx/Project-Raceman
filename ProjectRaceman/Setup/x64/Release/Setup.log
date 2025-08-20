@@ -1,0 +1,199 @@
+﻿  Setup.cpp
+  Note: including file: D:\Project-Raceman\ProjectRaceman\include\SDL2/SDL.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_main.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_stdinc.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_config.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_platform.h
+  Note: including file:      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\shared\winapifamily.h
+  Note: including file:       C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\shared\winpackagefamily.h
+  Note: including file:      D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:      D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:    C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\stdio.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt.h
+  Note: including file:      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\vcruntime.h
+  Note: including file:       C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\sal.h
+  Note: including file:        C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\concurrencysal.h
+  Note: including file:       C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\vadefs.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wstdio.h
+  Note: including file:      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_stdio_config.h
+  Note: including file:    C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\stdlib.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_malloc.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_search.h
+  Note: including file:      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\stddef.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wstdlib.h
+  Note: including file:     C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\limits.h
+  Note: including file:    C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\stdarg.h
+  Note: including file:    C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\string.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_memory.h
+  Note: including file:      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_memcpy_s.h
+  Note: including file:       C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\errno.h
+  Note: including file:       C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\vcruntime_string.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wstring.h
+  Note: including file:    C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\wchar.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wconio.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wctype.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wdirect.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wio.h
+  Note: including file:      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_share.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wprocess.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wtime.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\sys/stat.h
+  Note: including file:      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\sys/types.h
+  Note: including file:    C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\stdint.h
+  Note: including file:    C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\ctype.h
+  Note: including file:    C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\math.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_math.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_math_defines.h
+  Note: including file:    C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\malloc.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_assert.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_atomic.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_audio.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_error.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_endian.h
+  Note: including file:    C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\intrin.h
+  Note: including file:     C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\intrin0.inl.h
+  Note: including file:     C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\setjmp.h
+  Note: including file:     C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\immintrin.h
+  Note: including file:      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\wmmintrin.h
+  Note: including file:       C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\nmmintrin.h
+  Note: including file:        C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\smmintrin.h
+  Note: including file:         C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\tmmintrin.h
+  Note: including file:          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\pmmintrin.h
+  Note: including file:           C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\emmintrin.h
+  Note: including file:            C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\xmmintrin.h
+  Note: including file:             C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\mmintrin.h
+  Note: including file:      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\zmmintrin.h
+  Note: including file:     C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\ammintrin.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_mutex.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_thread.h
+  Note: including file:    C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\process.h
+  Note: including file:     C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_startup.h
+  Note: including file:      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\math.h
+  Note: including file:      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\include\vcruntime_startup.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_rwops.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_clipboard.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_cpuinfo.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_events.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_video.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_pixels.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_rect.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_surface.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_blendmode.h
+  Note: including file:      D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:      D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_keyboard.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_keycode.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_scancode.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_mouse.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_joystick.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_guid.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_gamecontroller.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_sensor.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_quit.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_gesture.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_touch.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:     D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:    D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_filesystem.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_haptic.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_hidapi.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_hints.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_loadso.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_log.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_messagebox.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_metal.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_power.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_render.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_shape.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_system.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_timer.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_version.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_locale.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\SDL_misc.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:   D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\begin_code.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\SDL2\close_code.h
+  Note: including file: D:\Project-Raceman\ProjectRaceman\include\imgui/imgui.h
+  Note: including file:  D:\Project-Raceman\ProjectRaceman\include\imgui\imconfig.h
+  Note: including file:  C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\float.h
+  Note: including file:  C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\assert.h
+D:\Project-Raceman\ProjectRaceman\Setup\Setup.cpp(3,10): error C1083: Cannot open include file: 'imgui/backends/imgui_impl_sdl2.h': No such file or directory
