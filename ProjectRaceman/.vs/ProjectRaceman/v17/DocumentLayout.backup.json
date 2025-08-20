@@ -3,8 +3,16 @@
   "WorkspaceRootPath": "D:\\Project-Raceman\\ProjectRaceman\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{626805A4-0615-42EE-BF8E-D3D4049D31E6}|Setup\\Setup.vcxproj|D:\\Project-Raceman\\ProjectRaceman\\Setup\\Setup.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{626805A4-0615-42EE-BF8E-D3D4049D31E6}|Setup\\Setup.vcxproj|solutionrelative:Setup\\Setup.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{626805A4-0615-42EE-BF8E-D3D4049D31E6}|Setup\\Setup.vcxproj|D:\\Project-Raceman\\ProjectRaceman\\Setup\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{626805A4-0615-42EE-BF8E-D3D4049D31E6}|Setup\\Setup.vcxproj|solutionrelative:Setup\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\include\\imgui\\backends\\imgui_impl_sdl2.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:include\\imgui\\backends\\imgui_impl_sdl2.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\include\\imgui\\backends\\imgui_impl_opengl3.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:include\\imgui\\backends\\imgui_impl_opengl3.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -14,17 +22,41 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "imgui_impl_sdl2.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\include\\imgui\\backends\\imgui_impl_sdl2.h",
+              "RelativeDocumentMoniker": "include\\imgui\\backends\\imgui_impl_sdl2.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\include\\imgui\\backends\\imgui_impl_sdl2.h",
+              "RelativeToolTip": "include\\imgui\\backends\\imgui_impl_sdl2.h",
+              "ViewState": "AgIAAAQAAAAAAAAAAAAuwBUAAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-08-20T04:02:04.314Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "imgui_impl_opengl3.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\include\\imgui\\backends\\imgui_impl_opengl3.h",
+              "RelativeDocumentMoniker": "include\\imgui\\backends\\imgui_impl_opengl3.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\include\\imgui\\backends\\imgui_impl_opengl3.h",
+              "RelativeToolTip": "include\\imgui\\backends\\imgui_impl_opengl3.h",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAuwBoAAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-08-20T04:01:49.323Z"
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "Setup.cpp",
-              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\Setup\\Setup.cpp",
-              "RelativeDocumentMoniker": "Setup\\Setup.cpp",
-              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\Setup\\Setup.cpp",
-              "RelativeToolTip": "Setup\\Setup.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Title": "main.cpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\Setup\\main.cpp",
+              "RelativeDocumentMoniker": "Setup\\main.cpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\Setup\\main.cpp",
+              "RelativeToolTip": "Setup\\main.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-08-18T12:14:03.304Z",
               "EditorCaption": ""
