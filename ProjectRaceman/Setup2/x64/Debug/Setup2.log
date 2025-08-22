@@ -1,0 +1,40 @@
+﻿Setup2.obj : error LNK2019: unresolved external symbol SDL_GetError referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_CreateWindow referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_GetWindowID referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_DestroyWindow referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_GL_GetProcAddress referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_GL_SetAttribute referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_GL_CreateContext referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_GL_MakeCurrent referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_GL_GetDrawableSize referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_GL_SetSwapInterval referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_GL_SwapWindow referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_GL_DeleteContext referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_GetKeyboardState referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_PollEvent referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_Init referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol SDL_Quit referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "struct ImGuiContext * __cdecl ImGui::CreateContext(struct ImFontAtlas *)" (?CreateContext@ImGui@@YAPEAUImGuiContext@@PEAUImFontAtlas@@@Z) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui::DestroyContext(struct ImGuiContext *)" (?DestroyContext@ImGui@@YAXPEAUImGuiContext@@@Z) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "struct ImGuiIO & __cdecl ImGui::GetIO(void)" (?GetIO@ImGui@@YAAEAUImGuiIO@@XZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui::NewFrame(void)" (?NewFrame@ImGui@@YAXXZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui::Render(void)" (?Render@ImGui@@YAXXZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "struct ImDrawData * __cdecl ImGui::GetDrawData(void)" (?GetDrawData@ImGui@@YAPEAUImDrawData@@XZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui::StyleColorsDark(struct ImGuiStyle *)" (?StyleColorsDark@ImGui@@YAXPEAUImGuiStyle@@@Z) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "bool __cdecl ImGui::Begin(char const *,bool *,int)" (?Begin@ImGui@@YA_NPEBDPEA_NH@Z) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui::End(void)" (?End@ImGui@@YAXXZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui::Separator(void)" (?Separator@ImGui@@YAXXZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui::TextUnformatted(char const *,char const *)" (?TextUnformatted@ImGui@@YAXPEBD0@Z) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui::Text(char const *,...)" (?Text@ImGui@@YAXPEBDZZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "bool __cdecl ImGui::SliderFloat(char const *,float *,float,float,char const *,int)" (?SliderFloat@ImGui@@YA_NPEBDPEAMMM0H@Z) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "bool __cdecl ImGui::DebugCheckVersionAndDataLayout(char const *,unsigned __int64,unsigned __int64,unsigned __int64,unsigned __int64,unsigned __int64,unsigned __int64)" (?DebugCheckVersionAndDataLayout@ImGui@@YA_NPEBD_K11111@Z) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "bool __cdecl ImGui_ImplSDL2_InitForOpenGL(struct SDL_Window *,void *)" (?ImGui_ImplSDL2_InitForOpenGL@@YA_NPEAUSDL_Window@@PEAX@Z) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui_ImplSDL2_Shutdown(void)" (?ImGui_ImplSDL2_Shutdown@@YAXXZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui_ImplSDL2_NewFrame(void)" (?ImGui_ImplSDL2_NewFrame@@YAXXZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "bool __cdecl ImGui_ImplSDL2_ProcessEvent(union SDL_Event const *)" (?ImGui_ImplSDL2_ProcessEvent@@YA_NPEBTSDL_Event@@@Z) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "bool __cdecl ImGui_ImplOpenGL3_Init(char const *)" (?ImGui_ImplOpenGL3_Init@@YA_NPEBD@Z) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui_ImplOpenGL3_Shutdown(void)" (?ImGui_ImplOpenGL3_Shutdown@@YAXXZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui_ImplOpenGL3_NewFrame(void)" (?ImGui_ImplOpenGL3_NewFrame@@YAXXZ) referenced in function SDL_main
+Setup2.obj : error LNK2019: unresolved external symbol "void __cdecl ImGui_ImplOpenGL3_RenderDrawData(struct ImDrawData *)" (?ImGui_ImplOpenGL3_RenderDrawData@@YAXPEAUImDrawData@@@Z) referenced in function SDL_main
+MSVCRTD.lib(exe_main.obj) : error LNK2019: unresolved external symbol main referenced in function "int __cdecl invoke_main(void)" (?invoke_main@@YAHXZ)
+C:\Capt\Project-Raceman\ProjectRaceman\x64\Debug\Setup2.exe : fatal error LNK1120: 39 unresolved externals
