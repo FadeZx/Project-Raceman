@@ -1,2 +1,0 @@
-﻿  Setup.cpp
-D:\Project-Raceman\ProjectRaceman\Setup\Setup.cpp(1,10): error C1083: Cannot open include file: 'SDL2/SDL.h': No such file or directory

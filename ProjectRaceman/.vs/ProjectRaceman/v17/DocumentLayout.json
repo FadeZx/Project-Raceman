@@ -5,6 +5,10 @@
     {
       "AbsoluteMoniker": "D:0:0:{7ED776EF-2D54-435D-807C-4B53323868C8}|Setup2\\Setup2.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\Setup2\\Setup2.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{7ED776EF-2D54-435D-807C-4B53323868C8}|Setup2\\Setup2.vcxproj|solutionrelative:Setup2\\Setup2.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7ED776EF-2D54-435D-807C-4B53323868C8}|Setup2\\Setup2.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\Setup2\\imgui_tables.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{7ED776EF-2D54-435D-807C-4B53323868C8}|Setup2\\Setup2.vcxproj|solutionrelative:Setup2\\imgui_tables.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -14,8 +18,21 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "imgui_tables.cpp",
+              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\Setup2\\imgui_tables.cpp",
+              "RelativeDocumentMoniker": "Setup2\\imgui_tables.cpp",
+              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\Setup2\\imgui_tables.cpp",
+              "RelativeToolTip": "Setup2\\imgui_tables.cpp",
+              "ViewState": "AgIAAAQBAAAAAAAAAAAAAEwBAABBAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-08-26T05:42:33.149Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
@@ -24,7 +41,7 @@
               "RelativeDocumentMoniker": "Setup2\\Setup2.cpp",
               "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\Setup2\\Setup2.cpp",
               "RelativeToolTip": "Setup2\\Setup2.cpp",
-              "ViewState": "AgIAACMAAAAAAAAAAAAuwAcAAAAWAAAAAAAAAA==",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAqwA0AAAAiAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-08-22T07:19:39.679Z",
               "EditorCaption": ""

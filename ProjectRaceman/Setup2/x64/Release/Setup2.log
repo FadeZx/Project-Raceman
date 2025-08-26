@@ -1,1 +1,14 @@
-﻿LINK : fatal error LNK1181: cannot open input file 'SDL3.lib'
+﻿  imgui.cpp
+\imgui.cpp(1,1): error C1083: Cannot open source file: 'imgui.cpp': No such file or directory
+  (compiling source file '/imgui.cpp')
+  
+  imgui_draw.cpp
+C:\Capt\Project-Raceman\ProjectRaceman\Setup2\imgui_draw.cpp(133,10): error C1083: Cannot open include file: 'imstb_rectpack.h': No such file or directory
+  imgui_tables.cpp
+C:\Capt\Project-Raceman\ProjectRaceman\Setup2\imgui_tables.cpp(198,10): error C1083: Cannot open include file: 'imgui.h': No such file or directory
+  imgui_widgets.cpp
+\imgui_widgets.cpp(1,1): error C1083: Cannot open source file: 'imgui_widgets.cpp': No such file or directory
+  (compiling source file '/imgui_widgets.cpp')
+  
+  Setup2.cpp
+C:\Capt\Project-Raceman\ProjectRaceman\Setup2\Setup2.cpp(71,22): warning C4566: character represented by universal-character-name '\U0001F389' cannot be represented in the current code page (1252)
