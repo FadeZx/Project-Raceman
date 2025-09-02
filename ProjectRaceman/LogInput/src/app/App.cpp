@@ -16,17 +16,12 @@
 #include <imgui/backends/imgui_impl_sdl3.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
 
+#include <Shader.h>
+
+#include <camera.h>
+
 #include <filesystem>
 namespace fs = std::filesystem;
-
-static std::string ResolveShader(const char* rel)
-{
-    const char* base = SDL_GetBasePath();            // allocated by SDL
-    std::string root = base ? base : "";
-    if (base) SDL_free((void*)base);                 // free exactly once
-
-    return (fs::path(root) / rel).string();          // never touch `base` again
-}
 
 
 int App::Run() {
@@ -57,18 +52,26 @@ int App::Run() {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_FRAMEBUFFER_SRGB);
 
-    // --- Renderer setup ---
-    Render::Shader shader;
-    const std::string vsPath = ResolveShader("shaders/basic.vert");
-    const std::string fsPath = ResolveShader("shaders/basic.frag");
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_FRAMEBUFFER_SRGB);
 
-    std::string slog;
-    if (!shader.loadFromFiles(vsPath, fsPath, &slog)) {
-        Core::Log::Error("Shader error: " + slog);
-        Core::Log::Error("Tried VS: " + vsPath);
-        Core::Log::Error("Tried FS: " + fsPath);
+    // --- Renderer setup (use your Shader class) ---
+    const std::string vsPath = "src/shaders/basic.vs";
+    const std::string fsPath = "src/shaders/basic.fs";
+
+    Core::Log::Info("VS path: " + vsPath);
+    Core::Log::Info("FS path: " + fsPath);
+
+    std::error_code ec;
+    bool vsExists = std::filesystem::exists(vsPath, ec);
+    bool fsExists = std::filesystem::exists(fsPath, ec);
+    if (!vsExists || !fsExists) {
+        Core::Log::Error(std::string("Shader missing. VS? ") + (vsExists ? "yes" : "no") +
+            " FS? " + (fsExists ? "yes" : "no"));
         return -1;
     }
+    Shader shader(vsPath.c_str(), fsPath.c_str()); // constructor compiles/links
+
 
     GLuint gridVao = Render::SimpleMesh::makeGrid(20, 1.0f);
     GLuint cubeVao = Render::SimpleMesh::makeCube();
@@ -99,7 +102,7 @@ int App::Run() {
         SDL_GetWindowSizeInPixels(window, &w, &h);
         glViewport(0, 0, w, h);
         glClearColor(0.1f, 0.1f, 0.1f, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // include depth
 
 
         Input::Update();
@@ -110,17 +113,17 @@ int App::Run() {
 
         // --- draw grid + cube ---
         shader.use();
-        shader.setMat4("uView", &cam.view()[0][0]);
-        shader.setMat4("uProj", &cam.proj()[0][0]);
+        shader.setMat4("uView", cam.view());
+        shader.setMat4("uProj", cam.proj());
 
         glm::mat4 model(1.0f);
-        shader.setMat4("uModel", &model[0][0]);
+        shader.setMat4("uModel", model);
         shader.setVec3("uColor", 0.4f, 0.4f, 0.45f);
         glBindVertexArray(gridVao);
         glDrawArrays(GL_LINES, 0, Render::SimpleMesh::gridVertexCount(20, 1.0f));
 
         model = glm::translate(glm::mat4(1), glm::vec3(0.0f, 0.5f, 0.0f));
-        shader.setMat4("uModel", &model[0][0]);
+        shader.setMat4("uModel", model);
         shader.setVec3("uColor", 0.9f, 0.2f, 0.2f);
         glBindVertexArray(cubeVao);
         glDrawArrays(GL_TRIANGLES, 0, 36);

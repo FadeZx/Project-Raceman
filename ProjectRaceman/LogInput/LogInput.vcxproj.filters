@@ -88,7 +88,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\shaders\basic.vert" />
-    <None Include="src\shaders\basic.frag" />
+    <None Include="src\shaders\basic.vs" />
+    <None Include="src\shaders\basic.fs" />
   </ItemGroup>
 </Project>
