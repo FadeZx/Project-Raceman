@@ -14,4 +14,4 @@ namespace Render {
         glm::mat4 m_proj{ 1.0f };
         glm::mat4 m_view{ 1.0f };
     };
-}
+} 
