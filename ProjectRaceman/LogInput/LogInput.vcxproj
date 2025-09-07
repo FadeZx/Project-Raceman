@@ -24,6 +24,7 @@
     <ClInclude Include="src\core\Log.h" />
     <ClInclude Include="src\input\Input.h" />
     <ClInclude Include="src\Physics\Physics.h" />
+    <ClInclude Include="src\Physics\Powertrain.h" />
     <ClInclude Include="src\render\Camera.h" />
     <ClInclude Include="src\render\Shader.h" />
     <ClInclude Include="src\render\SimpleMesh.h" />
@@ -43,6 +44,7 @@
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\input\Input.cpp" />
     <ClCompile Include="src\Physics\Physics.cpp" />
+    <ClCompile Include="src\Physics\Powertrain.cpp" />
     <ClCompile Include="src\render\Camera.cpp" />
     <ClCompile Include="src\render\Shader.cpp" />
     <ClCompile Include="src\render\SimpleMesh.cpp" />

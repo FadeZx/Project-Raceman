@@ -1,0 +1,9 @@
+{
+  "SteerLeft": 4,
+  "SteerRight": 7,
+  "Throttle": 26,
+  "Brake": 22,
+  "GearUp": 8,
+  "GearDown": 20,
+  "Handbrake": 44
+}

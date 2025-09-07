@@ -15,8 +15,10 @@ namespace Physics {
         float ClA = 0.0f;
         float rho = 1.225f;
         float g = 9.81f;
-        float Fx_max = 8000.0f;
-        float Fb_max = 12000.0f;
+        float Fx_max = 9000.0f;     // small bump for snappier launch
+        float Fb_max = 14000.0f;
+        float Crr = 0.015f;      // rolling resistance coeff
+        float wheelRadius = 0.32f;  // for later powertrain work
     };
 
     struct VehicleState {
@@ -29,10 +31,10 @@ namespace Physics {
 
     struct Controls { float steer = 0, throttle = 0, brake = 0; };
 
-    extern Params P;          // DECLARATIONS (no storage here)
+    extern Params P;
     extern VehicleState gCar;
 
     void Init();
-    void Update(double dt,const Controls& c);
+    void Update(double dt, const Controls& c);
 
 } // namespace Physics
