@@ -1,13 +1,4 @@
-﻿  Physics.cpp
-  Powertrain.cpp
-  App.cpp
-D:\Project-Raceman\ProjectRaceman\LogInput\src\app\App.cpp(63,34): warning C4305: 'initializing': truncation from 'double' to 'float'
-D:\Project-Raceman\ProjectRaceman\LogInput\src\app\App.cpp(64,32): warning C4305: 'initializing': truncation from 'double' to 'float'
-D:\Project-Raceman\ProjectRaceman\LogInput\src\app\App.cpp(153,17): warning C4804: '<': unsafe use of type 'bool' in operation
-D:\Project-Raceman\ProjectRaceman\LogInput\src\app\App.cpp(468,25): warning C4566: character represented by universal-character-name '\u03B1' cannot be represented in the current code page (1252)
-  Generating code
-  4 of 3853 functions ( 0.1%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    41 functions had inline decision re-evaluated but remain unchanged
-  Finished generating code
-  LogInput.vcxproj -> D:\Project-Raceman\ProjectRaceman\x64\Release\LogInput.exe
+﻿  Mesh.cpp
+x64\Release\DriveShaft.obj : warning LNK4042: object specified more than once; extras ignored
+Axle.obj : error LNK2001: unresolved external symbol "public: void __cdecl Vehicle::DriveShaft::draw(struct glm::mat<4,4,float,0> const &,unsigned int,struct glm::vec<3,float,0> const &)const " (?draw@DriveShaft@Vehicle@@QEBAXAEBU?$mat@$03$03M$0A@@glm@@IAEBU?$vec@$02M$0A@@4@@Z)
+D:\Capt\Project-Raceman\ProjectRaceman\x64\Release\LogInput.exe : fatal error LNK1120: 1 unresolved externals

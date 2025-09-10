@@ -28,7 +28,9 @@ namespace Powertrain {
     // Start the shift cut — do NOT use dt here
     static inline void StartShiftCut() {
         S.shift_cut_t = P.shift_cut_sec;
+        S.shift_rel_t = P.shift_rel_sec;      // <— start slip window too
     }
+
 
     // Optional: one place to compute RPM-dependent engine drag
     static inline float EngineDragNm(float rpm) {
@@ -86,13 +88,17 @@ namespace Powertrain {
         return base * limiter;
     }
 
+
     float ComputeWheelForce(float speed_mps, float throttle, float dt)
     {
+
         throttle = clamp01(throttle);
 
         // timers (use dt here — cast to float to avoid float/double mismatch)
         S.since_left_neutral_s += (float)dt;
         S.shift_cut_t = std::max(0.0f, S.shift_cut_t - (float)dt);
+        S.shift_rel_t = std::max(0.0f, S.shift_rel_t - (float)dt);
+
 
         // Shift-cut scale (1 at end of cut, P.shift_cut_min_scale at start)
         float cut_phase = (P.shift_cut_sec > 1e-4f)
@@ -146,35 +152,67 @@ namespace Powertrain {
         float clutch_frac = 0.0f;
         const float engage = std::clamp(S.since_left_neutral_s / 0.15f, 0.0f, 1.0f);
 
-        // --- LAUNCH REGION ---
-        if (speed_mps < 1.0f) {
-            const float target_locked = locked_rpm; // don't clamp to idle
+        auto predictNextLockedRpm = [&](int nextGear)->float {
+            const bool rev = (nextGear < 0);
+            const float ratio_n = rev ? P.reverse_ratio : P.gears[nextGear - 1];
+            const float gtot_n = ratio_n * P.final_drive;
+            return wheel_omega * gtot_n * 60.0f / (2.0f * (float)M_PI);
+            };
 
-            // how far above idle we are (0..1)
+        // Throttle-aware minimum acceptable RPM after the shift (avoid lugging)
+        auto minPostShiftRpm = [&](float th)->float {
+            // cruise (~2200) … hard push (~4000)
+            return 2200.0f + 1800.0f * th;
+            };
+
+        auto slipPhase = [&]() {
+            if (P.shift_rel_sec <= 1e-4f) return 0.0f;
+            float t = 1.0f - (S.shift_rel_t / P.shift_rel_sec);
+            return 1.0f - smoothstep01(t); // starts ~1, eases to 0
+            };
+
+        // --- LAUNCH REGION ---
+       // --- LAUNCH REGION ---
+        if (speed_mps < 1.0f) {
+            const float target_locked = locked_rpm;
+
             const float rpm_excess = std::clamp((S.rpm - P.idle_rpm) / (P.idle_rpm * 0.5f), 0.0f, 1.0f);
 
-            // 1) TORQUE PATH: do NOT scale by 'engage' — give wheels real torque immediately
-            float clutch_torque_frac = std::clamp(0.40f + 0.45f * throttle + 0.35f * rpm_excess, 0.0f, 0.95f);
+            // Deadband for "foot off the gas"
+            const bool throttle_dead = (throttle < 0.02f);
 
-            // Launch assist floor in 1st
-            if (S.gear == 1 && throttle > 0.7f) {
-                clutch_torque_frac = std::max(clutch_torque_frac, 0.55f);
+            // (A) TORQUE PATH: near-zero baseline, scale with throttle (no surprise creep)
+            float clutch_torque_frac;
+            if (throttle_dead) {
+                // choose 0.00f for *no* creep, or small (e.g. 0.05f) if you want mild AT-like creep
+                clutch_torque_frac = 0.00f;
+            }
+            else {
+                clutch_torque_frac = std::clamp(0.10f + 0.70f * throttle + 0.30f * rpm_excess, 0.0f, 0.95f);
             }
 
-            // 2) RPM PATH: blend engine toward wheel more gently; here we DO use 'engage'
-            float rpm_diff = std::max(0.0f, S.rpm - target_locked);
+            // Launch assist floor only when actually pressing the pedal
+            if (!throttle_dead && S.gear == 1 && throttle > 0.30f) {
+                clutch_torque_frac = std::max(clutch_torque_frac, 0.45f);
+            }
+
+            // (B) RPM PATH: allow a little flare only when you’re on throttle
+            const float launch_headroom = throttle_dead ? 0.0f : (600.0f * throttle);
+            const float target_locked_plus = target_locked + launch_headroom;
+
+            float rpm_diff = std::max(0.0f, S.rpm - target_locked_plus);
             float rpm_blend_scale = 1.0f - std::clamp(rpm_diff / 3000.0f, 0.0f, 0.8f);
-            float clutch_rpm_frac = (clutch_torque_frac * 0.9f) * rpm_blend_scale;
 
-            // ramp the RPM coupling only
+            float clutch_rpm_frac = (clutch_torque_frac * 0.6f) * rpm_blend_scale;
+            const float engage = std::clamp(S.since_left_neutral_s / 0.15f, 0.0f, 1.0f);
             clutch_rpm_frac *= engage;
-            clutch_rpm_frac = std::max(clutch_rpm_frac, 0.05f * engage);
+            clutch_rpm_frac = std::max(clutch_rpm_frac, 0.04f * engage);
 
-            // Update engine rpm (no hard idle clamp here; just a soft buffer)
-            S.rpm = (1.0f - clutch_rpm_frac) * free_rpm + clutch_rpm_frac * target_locked;
+            // Update engine rpm
+            S.rpm = (1.0f - clutch_rpm_frac) * free_rpm + clutch_rpm_frac * target_locked_plus;
             S.rpm = std::max(S.rpm, P.idle_rpm - 100.0f);
 
-            // Torque to wheels
+            // Export clutch for UI/logic
             clutch_frac = clutch_torque_frac;
         }
 
@@ -186,69 +224,103 @@ namespace Powertrain {
 
             alpha *= engage;
             clutch_frac = alpha;
-
+            S.clutch_alpha = clutch_frac;
             const float target_locked = std::max(locked_rpm, P.idle_rpm);
             S.rpm = (1.0f - alpha) * free_rpm + alpha * target_locked;
             S.rpm = std::clamp(S.rpm, P.stall_rpm, P.redline_rpm);
         }
 
-        // --- track time in current gear (local static) ---
+
+        // --- track time in current gear ---
         static int   prev_gear = -999;
         static float time_in_gear_s = 0.0f;
         if (S.gear != prev_gear) { prev_gear = S.gear; time_in_gear_s = 0.0f; }
         else { time_in_gear_s += (float)dt; }
 
+        // These are the ONLY latch vars
+        static int  last_gear = -1;
+        static bool above_up = false;
+        static bool below_dn = false;
+
+        // reset latches when gear changes or right after a shift
+        if (S.gear != last_gear || time_in_gear_s < 0.02f) {
+            above_up = false;
+            below_dn = false;
+            last_gear = (int)S.gear;
+        }
+
         // --- Auto-shift (forward only) ---
         if (S.auto_shift && S.gear > 0 && (int)S.gear < (int)P.gears.size()) {
             const float engine_rpm = S.rpm;
 
-            // Relax gates a bit so we don’t stall on mid gears
-            const float up_hi = 6400.0f, up_lo = 6000.0f;   // hysteresis
+            // a touch earlier in lower gears, later in higher gears
+            float up_hi, up_lo;
+            if (S.gear <= 2) {             // 1st–2nd: eager
+                up_hi = P.limiter_rpm - 200.0f;
+                up_lo = P.limiter_rpm - 500.0f;
+            }
+            else if (S.gear == 3) {      // 3rd: moderate
+                up_hi = P.limiter_rpm - 300.0f;
+                up_lo = P.limiter_rpm - 600.0f;
+            }
+            else {                       // 4th+: be conservative
+                up_hi = P.limiter_rpm - 450.0f;
+                up_lo = P.limiter_rpm - 700.0f;
+            }
             const float dn_lo = 1900.0f, dn_hi = 2200.0f;
 
-            // require some forward motion and a reasonably engaged clutch
-            if (speed_mps > 3.0f && /* ~11 km/h */
-                clutch_frac > 0.60f) {
+            // (NEW) must spend a minimum time in gear to avoid chatter
+            const bool min_time_ok = (time_in_gear_s > 0.18f);
 
-                static bool above_up = false, below_dn = false;
+            // (TWEAK) a slightly looser upshift clutch gate in low gears
+            const float clutch_gate_up = (S.gear <= 2) ? 0.50f : 0.60f;
+
+            // require some forward motion and an engaged clutch (but a bit looser for early gears)
+            if (speed_mps > 3.0f && clutch_frac > clutch_gate_up && min_time_ok) {
+
+                // *** USE THE OUTER LATCHES — do NOT redeclare here ***
                 if (engine_rpm > up_hi) above_up = true;
                 if (engine_rpm < up_lo) above_up = false;
                 if (engine_rpm < dn_lo) below_dn = true;
                 if (engine_rpm > dn_hi) below_dn = false;
 
                 if (above_up) {
-                    ++S.gear;                      // shift up
-                    StartShiftCut();
-                    above_up = false;
-                    time_in_gear_s = 0.0f;
-                }
-                else if (below_dn && S.gear > 1) {
-                    --S.gear;                      // shift down
-                    StartShiftCut();
-                    below_dn = false;
-                    time_in_gear_s = 0.0f;
+                    const int next = S.gear + 1;
+                    const float r_next = predictNextLockedRpm(next);
+                    const float r_min = minPostShiftRpm(throttle);
+
+                    // Optional: also require a small minimum speed for 4→5
+                    const bool speed_ok_45 = (S.gear == 4) ? (speed_mps > 22.0f) /* ~79 km/h */ : true;
+
+                    if (r_next >= r_min && speed_ok_45) {
+                        ++S.gear;
+                        StartShiftCut();
+                        above_up = false;
+                        time_in_gear_s = 0.0f;
+                        last_gear = (int)S.gear;
+                    }
+
+                    else if (below_dn && S.gear > 1) {
+                        --S.gear;                      // shift down
+                        StartShiftCut();
+                        below_dn = false;
+                        time_in_gear_s = 0.0f;
+                        last_gear = (int)S.gear;
+                    }
                 }
             }
 
-            // --- failsafe: if we're hugging the limiter and haven't shifted, force an upshift
+            // --- failsafe: near limiter -> force upshift (not blocked by speed/clutch gates)
             const bool near_limiter = (engine_rpm > (P.limiter_rpm - 50.0f));
-            if (near_limiter && time_in_gear_s > 0.40f && S.gear < (int)P.gears.size()) {
+            if (near_limiter && time_in_gear_s > 0.30f && S.gear < (int)P.gears.size()) {
                 ++S.gear;
+                if (S.gear > (int)P.gears.size()) S.gear = (int)P.gears.size();
                 StartShiftCut();
                 time_in_gear_s = 0.0f;
+                above_up = below_dn = false;  // reset latches after shift
+                last_gear = (int)S.gear;
             }
         }
 
-
-
-        // Apply shift cut to POSITIVE drive torque only
-        float Te_wheels = Te_now;
-        if (Te_wheels > 0.0f) Te_wheels *= shift_cut_scale;
-
-        // Wheel force
-        const float Tw = Te_wheels * gtot * P.driveline_eff * clutch_frac;
-        const float Fx = (P.wheel_radius > 0.0f) ? ((reverse ? -Tw : Tw) / P.wheel_radius) : 0.0f;
-        return Fx;
-}
-
+    }
 } // namespace Powertrain

@@ -42,6 +42,33 @@
     <ClInclude Include="src\Physics\Powertrain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\render\ChaseCam.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\Model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\parts\Wheel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\parts\Axle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\parts\WheelSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scenes\IScene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scenes\SceneGarage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scenes\SceneSim.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\app\main.cpp">
@@ -98,9 +125,38 @@
     <ClCompile Include="src\Physics\Powertrain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\render\ChaseCam.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\parts\Wheel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\parts\DriveShaft.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\parts\DriveShaft.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\parts\Axle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\parts\WheelSystems.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scenes\SceneSim.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\Mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scenes\SceneGarage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\shaders\basic.vs" />
     <None Include="src\shaders\basic.fs" />
+    <None Include="imgui.ini" />
+    <None Include="bindings.json" />
   </ItemGroup>
 </Project>

@@ -25,6 +25,7 @@ namespace Powertrain {
         float limiter_soft_width = 200.f;   // how early to start tapering (e.g. 6700→7000)
 
         // Shift cut (torque dip) for smoother gear changes
+        float shift_rel_sec = 0.18f;
         float shift_cut_sec = 0.08f;  // 100 ms
         float shift_cut_min_scale = 0.60f;  // keep a little torque instead of 0
         float shift_reapply_ms = 90.f;   // optional extra smoothing when torque comes back
@@ -39,6 +40,7 @@ namespace Powertrain {
         float rpm = 0.0f;
         bool  auto_shift = true;
         float clutch_alpha = 0.0f;
+        float shift_rel_t = 0.0f;
 
         // Already in your newer builds, but keep if missing:
         float since_left_neutral_s = 0.0f;
