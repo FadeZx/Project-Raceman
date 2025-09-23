@@ -15,6 +15,7 @@ namespace Render {
         bool  loadFromFiles(const std::string& vsPath, const std::string& fsPath, std::string* logOut);
         void  use() const { glUseProgram(m_program); }
         GLuint id() const { return m_program; }
+        const std::string& lastLog() const { return lastLog_; }
 
         // Uniform helpers
         void setMat4(const char* name, const glm::mat4& m) const;
@@ -23,6 +24,7 @@ namespace Render {
 
     private:
         GLuint m_program = 0;
+        std::string lastLog_;
     };
 
 } // namespace Render

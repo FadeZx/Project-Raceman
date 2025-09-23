@@ -2,13 +2,13 @@
 #include "Mesh.h"
 #include <vector>
 #include <string>
+#include <glm/glm.hpp>
 
 namespace Render {
 
-    // Very small wrapper if you want multiple sub-meshes per model.
-    // For now, single-mesh convenience still works.
     class Model {
     public:
+        // Load a single-mesh OBJ
         bool loadOBJ(const std::string& path, std::string* errOut = nullptr) {
             Mesh m;
             if (!m.loadOBJ(path, errOut)) return false;
@@ -17,15 +17,20 @@ namespace Render {
             return true;
         }
 
+        // Draw all sub-meshes
         void draw() const {
-            for (auto& m : meshes_) m.draw();
+            for (const auto& m : meshes_) m.draw();
         }
 
-        inline bool valid() const { return !meshes_.empty() && meshes_[0].valid(); }
+        bool valid() const { return !meshes_.empty() && meshes_[0].valid(); }
+
+        // --- NEW: optional per-model local transform (defaults to identity) ---
+        void setLocal(const glm::mat4& m) { local_ = m; }
+        const glm::mat4& local() const { return local_; }
 
     private:
         std::vector<Mesh> meshes_;
-
+        glm::mat4 local_{ 1.0f };  // identity by default
     };
 
 } // namespace Render

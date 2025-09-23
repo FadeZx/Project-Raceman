@@ -1,4 +1,8 @@
-﻿  Mesh.cpp
+﻿  OrbitCam.cpp
 x64\Release\DriveShaft.obj : warning LNK4042: object specified more than once; extras ignored
-Axle.obj : error LNK2001: unresolved external symbol "public: void __cdecl Vehicle::DriveShaft::draw(struct glm::mat<4,4,float,0> const &,unsigned int,struct glm::vec<3,float,0> const &)const " (?draw@DriveShaft@Vehicle@@QEBAXAEBU?$mat@$03$03M$0A@@glm@@IAEBU?$vec@$02M$0A@@4@@Z)
-D:\Capt\Project-Raceman\ProjectRaceman\x64\Release\LogInput.exe : fatal error LNK1120: 1 unresolved externals
+  Generating code
+  4 of 3503 functions ( 0.1%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    36 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  LogInput.vcxproj -> C:\Capt\Project-Raceman\ProjectRaceman\x64\Release\LogInput.exe

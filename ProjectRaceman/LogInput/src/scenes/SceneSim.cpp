@@ -15,7 +15,7 @@ float SceneSim::Slew(float current, float target, float risePerS, float fallPerS
 bool SceneSim::Init(const SceneContext& ctx) {
     winW_ = ctx.winW; winH_ = ctx.winH; dtFixed_ = ctx.dtFixed;
 
-    shader_ = Render::Shader("src/shaders/basic.vs", "src/shaders/basic.fs");
+    shader_ = Render::Shader("../src/shaders/basic.vs", "../src/shaders/basic.fs");
     gridVao_ = Render::SimpleMesh::makeGrid(200, 1.0f);
     cubeVao_ = Render::SimpleMesh::makeCube();
 

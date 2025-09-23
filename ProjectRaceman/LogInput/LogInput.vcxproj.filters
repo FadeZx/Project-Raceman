@@ -27,7 +27,7 @@
     <ClInclude Include="src\input\Input.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Camera.h">
+    <ClInclude Include="src\render\camera\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\render\Shader.h">
@@ -42,7 +42,7 @@
     <ClInclude Include="src\Physics\Powertrain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\ChaseCam.h">
+    <ClInclude Include="src\render\camera\ChaseCam.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\render\Model.h">
@@ -67,6 +67,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\render\Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\camera\OrbitCam.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -116,7 +119,7 @@
     <ClCompile Include="src\render\SimpleMesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Camera.cpp">
+    <ClCompile Include="src\render\camera\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Physics\Physics.cpp">
@@ -125,7 +128,7 @@
     <ClCompile Include="src\Physics\Powertrain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\ChaseCam.cpp">
+    <ClCompile Include="src\render\camera\ChaseCam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\parts\Wheel.cpp">
@@ -150,6 +153,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\scenes\SceneGarage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\camera\OrbitCam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

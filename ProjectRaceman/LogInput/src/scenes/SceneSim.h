@@ -2,8 +2,8 @@
 #pragma once
 #include "IScene.h"
 #include <glad/glad.h>
-#include "../render/Camera.h"
-#include "../render/ChaseCam.h"
+#include "../render/camera/Camera.h"
+#include "../render/camera/ChaseCam.h"
 #include "../render/Shader.h"
 #include "../render/SimpleMesh.h"
 

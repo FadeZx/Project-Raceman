@@ -3,12 +3,13 @@
 #include <vector>
 
 namespace Render {
+    struct SimpleMesh {
+        static GLuint makeGrid(int halfCount, float spacing);         // you already have
+        static int    gridVertexCount(int halfCount, float spacing);  // you already have
+		static GLuint makeCube();                                     // you already have
 
-    // Very small helper to draw a grid and a unit cube
-    class SimpleMesh {
-    public:
-        static GLuint makeGrid(int halfExtent = 10, float step = 1.0f); // returns VAO, lines
-        static GLuint makeCube();                                       // returns VAO, triangles
-        static int    gridVertexCount(int halfExtent, float step);      // for glDrawArrays
+        static GLuint makeAxes(float axisLen = 1.5f, float shaft = 0.015f);
+        static int    axesVertexCount(); // returns number of vertices for GL_LINES
     };
 }
+

@@ -29,7 +29,7 @@ namespace Vehicle {
         glm::vec4 A4 = vehicleXform * glm::vec4(localA, 1);
         glm::vec4 B4 = vehicleXform * glm::vec4(localB, 1);
         glm::mat4 M = lineTransform(glm::vec3(A4), glm::vec3(B4));
-        M = M * model.local;
+        M = M * model.local();
 
         glUseProgram(shader);
         GLint locM = glGetUniformLocation(shader, "uModel");
