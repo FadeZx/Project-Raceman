@@ -1,4 +1,5 @@
 #include "DriveShaft.h"
+#include "../core/GlmCompat.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glad/glad.h>

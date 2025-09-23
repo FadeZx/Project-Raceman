@@ -1,6 +1,7 @@
 #pragma once
 // Mesh.h – simple OpenGL mesh (VAO/VBO/EBO) + tiny .obj loader (triangles only)
 
+#include "../core/GlmCompat.h"
 #include <vector>
 #include <string>
 #include <cstdint>
