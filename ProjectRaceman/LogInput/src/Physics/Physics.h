@@ -1,4 +1,5 @@
-﻿#pragma once
+#pragma once
+#include "../core/GlmCompat.h"
 #include <glm/glm.hpp>
 
 namespace Physics {

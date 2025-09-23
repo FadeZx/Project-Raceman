@@ -1,5 +1,6 @@
 // scenes/SceneSim.cpp
 #include "SceneSim.h"
+#include "../core/GlmCompat.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <imgui/imgui.h>
 

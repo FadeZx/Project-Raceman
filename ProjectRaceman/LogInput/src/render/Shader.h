@@ -1,4 +1,5 @@
 #pragma once
+#include "../core/GlmCompat.h"
 #include <string>
 #include <glm/mat4x4.hpp>
 #include <glad/glad.h>

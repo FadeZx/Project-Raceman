@@ -1,4 +1,5 @@
 #include "Shader.h"
+#include "../core/GlmCompat.h"
 #include <fstream>
 #include <sstream>
 #include <glm/gtc/type_ptr.hpp>  // glm::value_ptr
