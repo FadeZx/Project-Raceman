@@ -17,6 +17,8 @@ namespace Render {
         GLuint id() const { return m_program; }
         const std::string& lastLog() const { return lastLog_; }
 
+		void setBool(const char* name, bool v) const;
+		void setInt(const char* name, int v) const;
         // Uniform helpers
         void setMat4(const char* name, const glm::mat4& m) const;
         void setMat4(const char* name, const float* m) const;   // raw pointer variant

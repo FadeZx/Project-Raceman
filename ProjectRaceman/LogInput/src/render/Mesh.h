@@ -1,12 +1,11 @@
+// Mesh.h (additions)
 #pragma once
-// Mesh.h – simple OpenGL mesh (VAO/VBO/EBO) + tiny .obj loader (triangles only)
-
-#include "../core/GlmCompat.h"
 #include <vector>
 #include <string>
 #include <cstdint>
-#include <glm/glm.hpp>
 #include <glad/glad.h>
+#include <glm/glm.hpp>
+
 
 namespace Render {
 
@@ -21,40 +20,41 @@ namespace Render {
         Mesh() = default;
         ~Mesh() { destroy(); }
 
-        Mesh(const Mesh&) = delete;
-        Mesh& operator=(const Mesh&) = delete;
+        bool build(const std::vector<Vertex>& vertices,
+            const std::vector<uint32_t>& indices);
 
+        // Loads OBJ and (optionally) its MTL; will set a diffuse texture if map_Kd found
+        bool loadOBJ(const std::string& path, std::string* errOut = nullptr);
+
+        void draw() const;
+        void destroy();
+
+        bool valid() const { return vao_ != 0 && indexCount_ > 0; }
+
+        // Texture accessors (0 if none)
+        GLuint texture() const { return tex_; }
+        const std::string& texturePath() const { return texPath_; }
         Mesh(Mesh&& rhs) noexcept { moveFrom(std::move(rhs)); }
         Mesh& operator=(Mesh&& rhs) noexcept {
             if (this != &rhs) { destroy(); moveFrom(std::move(rhs)); }
             return *this;
         }
 
-        // Build from CPU-side arrays and upload to GPU
-        bool build(const std::vector<Vertex>& vertices,
-            const std::vector<uint32_t>& indices);
-
-        // Convenience: load very basic .obj (v/vt/vn/f with triangles) into this mesh
-        // Returns false on failure; 'errOut' holds a message.
-        bool loadOBJ(const std::string& path, std::string* errOut = nullptr);
-
-        void draw() const;      // glDrawElements
-        void destroy();
-
-        inline bool valid() const { return vao_ != 0; }
-        inline size_t indexCount() const { return indexCount_; }
-
     private:
-        void moveFrom(Mesh&& rhs) noexcept {
-            vao_ = rhs.vao_; vbo_ = rhs.vbo_; ebo_ = rhs.ebo_;
-            indexCount_ = rhs.indexCount_;
-            rhs.vao_ = rhs.vbo_ = rhs.ebo_ = 0; rhs.indexCount_ = 0;
+        void moveFrom(Mesh&& r) noexcept {
+            vao_ = r.vao_;   r.vao_ = 0;
+            vbo_ = r.vbo_;   r.vbo_ = 0;
+            ebo_ = r.ebo_;   r.ebo_ = 0;
+            indexCount_ = r.indexCount_; r.indexCount_ = 0;
+            tex_ = r.tex_;   r.tex_ = 0;
+            texPath_ = std::move(r.texPath_);
         }
 
-        GLuint vao_ = 0;
-        GLuint vbo_ = 0;
-        GLuint ebo_ = 0;
+        // your fields:
+        GLuint vao_ = 0, vbo_ = 0, ebo_ = 0;
         size_t indexCount_ = 0;
+        GLuint tex_ = 0;
+        std::string texPath_;
     };
 
 } // namespace Render

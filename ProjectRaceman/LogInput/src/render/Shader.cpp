@@ -77,7 +77,15 @@ namespace Render {
         m_program = prog;
         return true;
     }
+    void Shader::setBool(const char* name, bool v) const {
+        GLint loc = glGetUniformLocation(m_program, name);
+        if (loc >= 0) glUniform1i(loc, v ? 1 : 0);
+	}
 
+    void Shader::setInt(const char* name, int v) const {
+        GLint loc = glGetUniformLocation(m_program, name);
+        if (loc >= 0) glUniform1i(loc, v);
+	}
     void Shader::setMat4(const char* name, const glm::mat4& m) const {
         GLint loc = glGetUniformLocation(m_program, name);
         if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(m));

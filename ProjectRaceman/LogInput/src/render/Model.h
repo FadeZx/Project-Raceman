@@ -17,6 +17,12 @@ namespace Render {
             return true;
         }
 
+        GLuint texture() const { return meshes_.empty() ? 0u : meshes_[0].texture(); }
+        const std::string& texturePath() const {
+            static std::string empty;
+            return meshes_.empty() ? empty : meshes_[0].texturePath();
+        }
+
         // Draw all sub-meshes
         void draw() const {
             for (const auto& m : meshes_) m.draw();
