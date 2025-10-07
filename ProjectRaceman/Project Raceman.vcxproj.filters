@@ -48,6 +48,9 @@
     <ClInclude Include="..\includes\imgui\backends\imgui_impl_opengl3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\includes\imgui\backends\imgui_impl_opengl3_loader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\includes\imgui\imconfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>

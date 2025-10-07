@@ -15,6 +15,32 @@
 
 #include <vector>
 
+namespace {
+
+glm::mat4 ConvertAssimpMatrix(const aiMatrix4x4& matrix)
+{
+    glm::mat4 result{1.0f};
+    result[0][0] = matrix.a1;
+    result[0][1] = matrix.a2;
+    result[0][2] = matrix.a3;
+    result[0][3] = matrix.a4;
+    result[1][0] = matrix.b1;
+    result[1][1] = matrix.b2;
+    result[1][2] = matrix.b3;
+    result[1][3] = matrix.b4;
+    result[2][0] = matrix.c1;
+    result[2][1] = matrix.c2;
+    result[2][2] = matrix.c3;
+    result[2][3] = matrix.c4;
+    result[3][0] = matrix.d1;
+    result[3][1] = matrix.d2;
+    result[3][2] = matrix.d3;
+    result[3][3] = matrix.d4;
+    return result;
+}
+
+} // namespace
+
 namespace raceman {
 
 GarageScene::GarageScene(std::shared_ptr<Renderer> renderer)
@@ -92,7 +118,7 @@ void GarageScene::LoadAssets() {
 }
 
 void GarageScene::ProcessAssimpNode(const aiScene* scene, const aiNode* node, const glm::mat4& parentTransform) {
-    glm::mat4 transform = parentTransform * glm::transpose(glm::make_mat4(&node->mTransformation.a1));
+    glm::mat4 transform = parentTransform * ConvertAssimpMatrix(node->mTransformation);
 
     for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
         const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
