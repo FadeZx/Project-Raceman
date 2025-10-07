@@ -1,1 +1,22 @@
-﻿
+﻿  imgui_impl_glfw.cpp
+D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+  (compiling source file '../includes/imgui/backends/imgui_impl_glfw.cpp')
+      D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+D:\Project-Raceman\includes\GLFW\glfw3native.h(96,1): error C1189: #error:  "No context API specified"
+  (compiling source file '../includes/imgui/backends/imgui_impl_glfw.cpp')
+  
+  imgui_impl_opengl3.cpp
+D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+  (compiling source file '../includes/imgui/backends/imgui_impl_opengl3.cpp')
+      D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+  imgui_widgets.cpp
+D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+  (compiling source file '../includes/imgui/imgui_widgets.cpp')
+      D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+  Generating Code...

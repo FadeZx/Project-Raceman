@@ -9,6 +9,13 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
+#ifndef GLFW_TRUE
+#define GLFW_TRUE 1
+#endif
+#ifndef GLFW_FALSE
+#define GLFW_FALSE 0
+#endif
+
 #include <chrono>
 #include <stdexcept>
 
@@ -95,6 +102,7 @@ void Application::InitializeGlfw() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     window_ = glfwCreateWindow(config_.width, config_.height, config_.windowTitle.c_str(), nullptr, nullptr);
