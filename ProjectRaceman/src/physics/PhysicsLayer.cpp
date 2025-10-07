@@ -3,9 +3,13 @@
 namespace raceman {
 
 void PhysicsLayer::ForEachBody(const BodyVisitor& visitor) const {
-    // Placeholder physics integration. In a full implementation this would iterate over
-    // simulated rigid bodies and invoke the visitor with up-to-date transforms.
-    (void)visitor;
+    for (const auto& body : bodies_) {
+        visitor(body);
+    }
+}
+
+void PhysicsLayer::SetBodies(std::vector<RigidBodyState> bodies) {
+    bodies_ = std::move(bodies);
 }
 
 } // namespace raceman

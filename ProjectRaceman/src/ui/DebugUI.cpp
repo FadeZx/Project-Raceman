@@ -1,6 +1,7 @@
 #include "DebugUI.h"
 
 #include "scenes/Scene.h"
+#include "rendering/Renderer.h"
 
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
@@ -78,6 +79,30 @@ void DebugUI::RenderSceneSwitcher(const std::vector<std::shared_ptr<Scene>>& sce
                 switchSceneCallback(i);
             }
         }
+    }
+    ImGui::End();
+}
+
+void DebugUI::RenderAppMetrics(float deltaTime, Renderer& renderer) {
+    if (!enabled_) {
+        return;
+    }
+
+    const float frameTimeMs = deltaTime * 1000.0f;
+    const float fps = deltaTime > 0.0f ? 1.0f / deltaTime : 0.0f;
+
+    auto& settings = renderer.GetSettings();
+
+    if (ImGui::Begin("Renderer")) {
+        ImGui::Text("Frame time: %.2f ms", frameTimeMs);
+        ImGui::Text("FPS: %.1f", fps);
+        ImGui::Separator();
+
+        ImGui::SliderFloat("Exposure", &settings.exposure, 0.1f, 5.0f, "%.2f");
+        ImGui::SliderFloat("Gamma", &settings.gamma, 1.0f, 3.0f, "%.2f");
+        ImGui::ColorEdit3("Clear Color", &settings.clearColor.x);
+        ImGui::Checkbox("Enable Shadows", &settings.enableShadows);
+        ImGui::Checkbox("Show Env Debug", &settings.showEnvironmentDebugView);
     }
     ImGui::End();
 }

@@ -1,6 +1,7 @@
 #include "GarageScene.h"
 
 #include "rendering/Renderer.h"
+#include "ui/DebugUI.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -8,8 +9,10 @@
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <imgui.h>
 
-#include <stdexcept>
+#include <cmath>
+
 #include <vector>
 
 namespace raceman {
@@ -24,10 +27,22 @@ void GarageScene::OnSceneActivated() {
 
     renderer_->SetupEnvironment("assets/environments/garage.hdr");
     renderer_->CreateShadowMaps(2048);
+
+    if (!meshes_.empty()) {
+        baseDisplayTransform_ = meshes_.front().transform;
+        baseTransformCaptured_ = true;
+    }
 }
 
-void GarageScene::Update(float) {
-    // Static scene; nothing to update for now.
+void GarageScene::Update(float deltaTime) {
+    if (!meshes_.empty() && rotateDisplayVehicle_) {
+        accumulatedRotation_ += rotationSpeed_ * deltaTime;
+        accumulatedRotation_ = std::fmod(accumulatedRotation_, 360.0f);
+        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(accumulatedRotation_), glm::vec3(0.0f, 1.0f, 0.0f));
+        meshes_.front().transform = baseDisplayTransform_ * rotation;
+    } else if (!meshes_.empty() && baseTransformCaptured_) {
+        meshes_.front().transform = baseDisplayTransform_;
+    }
 }
 
 void GarageScene::Render(Renderer& renderer) {
@@ -42,8 +57,20 @@ void GarageScene::Render(Renderer& renderer) {
     renderer.Flush();
 }
 
-void GarageScene::RenderDebugUi(DebugUI& ui) {
-    Scene::RenderDebugUi(ui);
+void GarageScene::RenderDebugUi(DebugUI&) {
+    if (ImGui::Begin("Garage Lighting")) {
+        ImGui::ColorEdit3("Ambient", &ambientLight_.x);
+        ImGui::ColorEdit3("Directional", &directionalLightColor_.x);
+        ImGui::SliderFloat3("Light Dir", &directionalLightDir_.x, -1.0f, 1.0f);
+        ImGui::Checkbox("Rotate Display", &rotateDisplayVehicle_);
+        ImGui::SliderFloat("Rotation Speed", &rotationSpeed_, 1.0f, 45.0f, "%.1f deg/s");
+
+        auto& rendererSettings = renderer_->GetSettings();
+        ImGui::Separator();
+        ImGui::Text("Renderer Overrides");
+        ImGui::Checkbox("Show Env Debug", &rendererSettings.showEnvironmentDebugView);
+    }
+    ImGui::End();
 }
 
 void GarageScene::LoadAssets() {
@@ -53,10 +80,15 @@ void GarageScene::LoadAssets() {
                                                  aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
 
     if (!scene || !scene->mRootNode) {
-        throw std::runtime_error("Failed to load garage assets");
+        CreateFallbackMesh();
+        return;
     }
 
     ProcessAssimpNode(scene, scene->mRootNode, glm::mat4(1.0f));
+
+    if (meshes_.empty()) {
+        CreateFallbackMesh();
+    }
 }
 
 void GarageScene::ProcessAssimpNode(const aiScene* scene, const aiNode* node, const glm::mat4& parentTransform) {
@@ -127,6 +159,13 @@ MeshResource GarageScene::UploadMesh(const aiMesh* mesh, const glm::mat4& transf
     glBindVertexArray(0);
 
     return resource;
+}
+
+void GarageScene::CreateFallbackMesh() {
+    meshes_.clear();
+    meshes_.push_back(CreateUnitCubeMesh(2.0f));
+    baseDisplayTransform_ = meshes_.front().transform;
+    baseTransformCaptured_ = true;
 }
 
 } // namespace raceman

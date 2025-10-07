@@ -12,4 +12,6 @@ struct MeshResource {
     glm::mat4 transform{1.0f};
 };
 
+MeshResource CreateUnitCubeMesh(float scale = 1.0f);
+
 } // namespace raceman

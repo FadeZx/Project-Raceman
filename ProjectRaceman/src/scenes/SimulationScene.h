@@ -6,6 +6,7 @@
 #include "physics/PhysicsLayer.h"
 
 #include <unordered_map>
+#include <vector>
 
 namespace raceman {
 
@@ -23,6 +24,11 @@ public:
 private:
     std::shared_ptr<PhysicsLayer> physics_;
     std::unordered_map<std::string, MeshResource> cachedMeshes_;
+    std::vector<RigidBodyState> visibleBodies_;
+    bool drawWireframe_{false};
+    float debugVehicleScale_{1.0f};
+
+    MeshResource CreatePlaceholderVehicleMesh(const std::string& meshId);
 };
 
 } // namespace raceman

@@ -10,6 +10,7 @@ struct GLFWwindow;
 namespace raceman {
 
 class Scene;
+class Renderer;
 
 class DebugUI {
 public:
@@ -26,6 +27,8 @@ public:
     void RenderSceneSwitcher(const std::vector<std::shared_ptr<Scene>>& scenes,
                              std::size_t activeScene,
                              const std::function<void(std::size_t)>& switchSceneCallback);
+
+    void RenderAppMetrics(float deltaTime, Renderer& renderer);
 
     bool IsEnabled() const { return enabled_; }
 

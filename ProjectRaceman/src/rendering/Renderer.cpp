@@ -41,6 +41,7 @@ Renderer::~Renderer() {
 void Renderer::BeginFrame() {
     glViewport(0, 0, config_.width, config_.height);
     glEnable(GL_DEPTH_TEST);
+    glClearColor(settings_.clearColor.r, settings_.clearColor.g, settings_.clearColor.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
@@ -81,6 +82,14 @@ void Renderer::BakeBrdfLut() {
 }
 
 void Renderer::CreateShadowMaps(int resolution) {
+    if (!settings_.enableShadows) {
+        if (!shadowMaps_.empty()) {
+            glDeleteTextures(static_cast<GLsizei>(shadowMaps_.size()), shadowMaps_.data());
+            shadowMaps_.clear();
+        }
+        return;
+    }
+
     unsigned int shadowMap = 0;
     glGenTextures(1, &shadowMap);
     glBindTexture(GL_TEXTURE_2D, shadowMap);

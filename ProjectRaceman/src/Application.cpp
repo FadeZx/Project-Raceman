@@ -23,7 +23,7 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
     InitializeGlfw();
     InitializeGlad();
 
-    renderer_ = std::make_unique<Renderer>(RendererConfig{config.width, config.height});
+    renderer_ = std::make_shared<Renderer>(RendererConfig{config.width, config.height});
     if (!inputManager_) {
         inputManager_ = std::make_unique<InputManager>();
         inputManager_->AttachToWindow(window_);
@@ -48,6 +48,7 @@ Application::~Application() {
     if (config_.enableImGui) {
         ShutdownImGui();
     }
+    scenes_.clear();
     renderer_.reset();
     debugUi_.reset();
     inputManager_.reset();
@@ -68,6 +69,7 @@ void Application::Run() {
 }
 
 Renderer& Application::GetRenderer() { return *renderer_; }
+std::shared_ptr<Renderer> Application::GetRendererPtr() { return renderer_; }
 InputManager& Application::GetInputManager() { return *inputManager_; }
 DebugUI& Application::GetDebugUI() { return *debugUi_; }
 
@@ -145,6 +147,7 @@ void Application::Update(float deltaTime) {
 
     if (config_.enableImGui) {
         debugUi_->BeginFrame();
+        debugUi_->RenderAppMetrics(deltaTime, *renderer_);
         scene->RenderDebugUi(*debugUi_);
         debugUi_->RenderSceneSwitcher(scenes_, activeScene_, [this](std::size_t index) { SwitchScene(index); });
         debugUi_->EndFrame();

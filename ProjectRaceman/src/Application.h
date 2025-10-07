@@ -30,6 +30,7 @@ public:
     void Run();
 
     Renderer& GetRenderer();
+    std::shared_ptr<Renderer> GetRendererPtr();
     InputManager& GetInputManager();
     DebugUI& GetDebugUI();
 
@@ -49,7 +50,7 @@ private:
     ApplicationConfig config_{};
     GLFWwindow* window_{nullptr};
 
-    std::unique_ptr<Renderer> renderer_;
+    std::shared_ptr<Renderer> renderer_;
     std::unique_ptr<InputManager> inputManager_;
     std::unique_ptr<DebugUI> debugUi_;
 
