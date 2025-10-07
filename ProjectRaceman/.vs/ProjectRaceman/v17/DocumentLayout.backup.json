@@ -1,186 +1,104 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\",
+  "WorkspaceRootPath": "D:\\Project-Raceman\\ProjectRaceman\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\OrbitCam.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\camera\\OrbitCam.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\include\\assimp\\material.inl||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:include\\assimp\\material.inl||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\OrbitCam.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\camera\\OrbitCam.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\AdvanceCG\\AdvanceCG\\Project7(RayCastCollision)-RacingGame2\\Project7(RayCastCollision)-RacingGame2.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\scenes\\SceneGarage.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\scenes\\SceneGarage.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\SimpleMesh.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\camera\\Camera.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\camera\\Camera.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\ChaseCam.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\camera\\ChaseCam.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Shader.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\Shader.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Mesh.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\Mesh.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Model.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\Model.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\ChaseCam.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\camera\\ChaseCam.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneSim.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\scenes\\SceneSim.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneSim.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\scenes\\SceneSim.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\SimpleMesh.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\App.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\app\\App.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Parts\\Axle.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\Parts\\Axle.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\IScene.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\scenes\\IScene.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\norm.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\norm.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:include\\glm\\gtx\\norm.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Parts\\DriveShaft.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\Parts\\DriveShaft.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Parts\\DriveShaft.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\Parts\\DriveShaft.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Mesh.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\Mesh.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Parts\\WheelSystem.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\Parts\\WheelSystem.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Parts\\Wheel.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\Parts\\Wheel.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Parts\\Wheel.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\Parts\\Wheel.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Parts\\WheelSystems.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\Parts\\WheelSystems.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.fs||{3B902123-F8A7-4915-9F01-361F908088D0}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\shaders\\basic.fs||{3B902123-F8A7-4915-9F01-361F908088D0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.vs||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\shaders\\basic.vs||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Shader.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\render\\Shader.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Parts\\Axle.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\Parts\\Axle.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\App.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\app\\App.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\app\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Physics\\Physics.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\Physics\\Physics.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\nlohmann\\json.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:include\\nlohmann\\json.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\input\\Input.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\input\\Input.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\input\\Input.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\input\\Input.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Config.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\core\\Config.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.fs||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\shaders\\basic.fs||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Config.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\core\\Config.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Log.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\core\\Log.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Log.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{93B85374-2EB7-48C3-91C5-424D62914D63}|LogInput\\LogInput.vcxproj|solutionrelative:LogInput\\src\\core\\Log.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\nlohman\\json.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:include\\nlohman\\json.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\json\\json.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:include\\json\\json.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\compatibility.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\compatibility.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:include\\glm\\gtx\\compatibility.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\quaternion.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:include\\glm\\gtx\\quaternion.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\scenes\\SceneGarage.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\scenes\\SceneGarage.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Mesh.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\render\\Mesh.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\app\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\include\\memory||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\render\\SimpleMesh.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\App.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\app\\App.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.fs||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\shaders\\basic.fs||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Model.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\render\\Model.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\include\\stb_image.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:include\\stb_image.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Shader.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\render\\Shader.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\render\\camera\\Camera.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\render\\SimpleMesh.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\OrbitCam.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\render\\camera\\OrbitCam.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.vs||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\shaders\\basic.vs||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\render\\camera\\Camera.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\WheelSystems.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\parts\\WheelSystems.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\WheelSystem.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\parts\\WheelSystem.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\Wheel.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\parts\\Wheel.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Physics\\Physics.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\Physics\\Physics.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Config.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LogInput\\src\\core\\Config.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -190,349 +108,267 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 13,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "SceneGarage.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.cpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.cpp",
               "RelativeDocumentMoniker": "LogInput\\src\\scenes\\SceneGarage.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.cpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.cpp",
               "RelativeToolTip": "LogInput\\src\\scenes\\SceneGarage.cpp",
-              "ViewState": "AgIAAGEAAAAAAAAAAAAQwIQAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAEgAAAAAAAAAAAAAAFkAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-09-10T09:33:51.728Z",
-              "IsPinned": true,
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "OrbitCam.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\OrbitCam.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\camera\\OrbitCam.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\OrbitCam.h",
-              "RelativeToolTip": "LogInput\\src\\render\\camera\\OrbitCam.h",
-              "ViewState": "AgIAABAAAAAAAAAAAAAQwBgAAAAvAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-23T04:43:08.185Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 8,
-              "Title": "Shader.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Shader.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\Shader.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Shader.h",
-              "RelativeToolTip": "LogInput\\src\\render\\Shader.h",
-              "ViewState": "AgIAAAMAAAAAAAAAAAA5wAkAAAALAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-08-29T07:24:21.905Z",
-              "EditorCaption": ""
+              "IsPinned": true
             },
             {
               "$type": "Document",
               "DocumentIndex": 5,
-              "Title": "Camera.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\camera\\Camera.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.h",
-              "RelativeToolTip": "LogInput\\src\\render\\camera\\Camera.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAABNAAAAAAAAAA==",
+              "Title": "SceneGarage.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.h",
+              "RelativeDocumentMoniker": "LogInput\\src\\scenes\\SceneGarage.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.h",
+              "RelativeToolTip": "LogInput\\src\\scenes\\SceneGarage.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB0AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-08-29T07:22:45.426Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-10T08:51:51.928Z",
+              "IsPinned": true
             },
             {
               "$type": "Document",
               "DocumentIndex": 6,
-              "Title": "Camera.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\camera\\Camera.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.cpp",
-              "RelativeToolTip": "LogInput\\src\\render\\camera\\Camera.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAQAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-09-05T05:59:11.612Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "ChaseCam.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\ChaseCam.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\camera\\ChaseCam.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\ChaseCam.cpp",
-              "RelativeToolTip": "LogInput\\src\\render\\camera\\ChaseCam.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACIAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-09-10T07:08:57.615Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 14,
-              "Title": "SimpleMesh.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\SimpleMesh.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.h",
-              "RelativeToolTip": "LogInput\\src\\render\\SimpleMesh.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAABTAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-08-29T07:26:04.746Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "SimpleMesh.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\SimpleMesh.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.cpp",
-              "RelativeToolTip": "LogInput\\src\\render\\SimpleMesh.cpp",
-              "ViewState": "AgIAAC0AAAAAAAAAAAAgwE4AAAA/AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-08-29T07:25:21.526Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "SceneGarage.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\scenes\\SceneGarage.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneGarage.h",
-              "RelativeToolTip": "LogInput\\src\\scenes\\SceneGarage.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-10T08:51:51.928Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 13,
-              "Title": "SceneSim.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneSim.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\scenes\\SceneSim.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneSim.cpp",
-              "RelativeToolTip": "LogInput\\src\\scenes\\SceneSim.cpp",
-              "ViewState": "AgIAAAMAAAAAAAAAAAAiwAsAAAAXAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-09-10T08:54:50.77Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 12,
-              "Title": "SceneSim.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneSim.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\scenes\\SceneSim.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\SceneSim.h",
-              "RelativeToolTip": "LogInput\\src\\scenes\\SceneSim.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAmAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-10T08:54:41.85Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "Model.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Model.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\Model.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Model.h",
-              "RelativeToolTip": "LogInput\\src\\render\\Model.h",
-              "ViewState": "AgIAAAEAAAAAAAAAAAAiwB4AAAAMAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-10T08:44:44.144Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 9,
               "Title": "Mesh.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Mesh.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Mesh.h",
               "RelativeDocumentMoniker": "LogInput\\src\\render\\Mesh.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Mesh.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Mesh.h",
               "RelativeToolTip": "LogInput\\src\\render\\Mesh.h",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAzwDsAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAKMAAAAAAAAAAAAAAK4AAAAnAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
               "WhenOpened": "2025-09-10T09:02:42.193Z",
-              "EditorCaption": ""
+              "IsPinned": true
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "OrbitCam.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\OrbitCam.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\camera\\OrbitCam.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\OrbitCam.cpp",
-              "RelativeToolTip": "LogInput\\src\\render\\camera\\OrbitCam.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAAAAAASAAAAAAAAAA==",
+              "Title": "material.inl",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\include\\assimp\\material.inl",
+              "RelativeDocumentMoniker": "include\\assimp\\material.inl",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\include\\assimp\\material.inl",
+              "RelativeToolTip": "include\\assimp\\material.inl",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
+              "WhenOpened": "2025-10-07T05:22:43.126Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "main.cpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\main.cpp",
+              "RelativeDocumentMoniker": "LogInput\\src\\app\\main.cpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\main.cpp",
+              "RelativeToolTip": "LogInput\\src\\app\\main.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-09-23T04:44:33.646Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T05:22:13.903Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "memory",
+              "DocumentMoniker": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\include\\memory",
+              "ToolTip": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\include\\memory",
+              "ViewState": "AgIAACAOAAAAAAAAAADwvy0OAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-10-07T05:18:22.204Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "SimpleMesh.cpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.cpp",
+              "RelativeDocumentMoniker": "LogInput\\src\\render\\SimpleMesh.cpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.cpp",
+              "RelativeToolTip": "LogInput\\src\\render\\SimpleMesh.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-10-07T05:06:54.155Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "App.cpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\App.cpp",
+              "RelativeDocumentMoniker": "LogInput\\src\\app\\App.cpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\App.cpp",
+              "RelativeToolTip": "LogInput\\src\\app\\App.cpp",
+              "ViewState": "AgIAAFoAAAAAAAAAAAAAAEsAAAAyAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-10-07T05:03:19.379Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 11,
-              "Title": "ChaseCam.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\ChaseCam.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\camera\\ChaseCam.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\ChaseCam.h",
-              "RelativeToolTip": "LogInput\\src\\render\\camera\\ChaseCam.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAEAAAAJAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-10T07:08:47.488Z",
-              "EditorCaption": ""
+              "Title": "basic.fs",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.fs",
+              "RelativeDocumentMoniker": "LogInput\\src\\shaders\\basic.fs",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.fs",
+              "RelativeToolTip": "LogInput\\src\\shaders\\basic.fs",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-10-07T03:15:25.312Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
-              "Title": "DriveShaft.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\DriveShaft.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\parts\\DriveShaft.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\DriveShaft.h",
-              "RelativeToolTip": "LogInput\\src\\parts\\DriveShaft.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAVAAAAAAAAAA==",
+              "DocumentIndex": 12,
+              "Title": "Model.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Model.h",
+              "RelativeDocumentMoniker": "LogInput\\src\\render\\Model.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Model.h",
+              "RelativeToolTip": "LogInput\\src\\render\\Model.h",
+              "ViewState": "AgIAAMoAAAAAAAAAAAAAANgAAAAkAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-10T08:46:13.106Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-06T10:08:39.692Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
-              "Title": "DriveShaft.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\DriveShaft.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\parts\\DriveShaft.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\DriveShaft.cpp",
-              "RelativeToolTip": "LogInput\\src\\parts\\DriveShaft.cpp",
-              "ViewState": "AgIAAA4AAAAAAAAAAAApwB4AAABCAAAAAAAAAA==",
+              "DocumentIndex": 13,
+              "Title": "stb_image.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\include\\stb_image.h",
+              "RelativeDocumentMoniker": "include\\stb_image.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\include\\stb_image.h",
+              "RelativeToolTip": "include\\stb_image.h",
+              "ViewState": "AgIAAMoCAAAAAAAAAAAWwNsCAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-10-06T09:48:56.614Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "Shader.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Shader.h",
+              "RelativeDocumentMoniker": "LogInput\\src\\render\\Shader.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Shader.h",
+              "RelativeToolTip": "LogInput\\src\\render\\Shader.h",
+              "ViewState": "AgIAAJ4AAAAAAAAAAAAAAK8AAAAGAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-10-06T09:31:12.551Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Project7(RayCastCollision)-RacingGame2.cpp",
+              "DocumentMoniker": "D:\\AdvanceCG\\AdvanceCG\\Project7(RayCastCollision)-RacingGame2\\Project7(RayCastCollision)-RacingGame2.cpp",
+              "RelativeDocumentMoniker": "..\\..\\AdvanceCG\\AdvanceCG\\Project7(RayCastCollision)-RacingGame2\\Project7(RayCastCollision)-RacingGame2.cpp",
+              "ToolTip": "D:\\AdvanceCG\\AdvanceCG\\Project7(RayCastCollision)-RacingGame2\\Project7(RayCastCollision)-RacingGame2.cpp",
+              "RelativeToolTip": "..\\..\\AdvanceCG\\AdvanceCG\\Project7(RayCastCollision)-RacingGame2\\Project7(RayCastCollision)-RacingGame2.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAPAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-09-10T08:46:55.28Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 16,
-              "Title": "Axle.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\Axle.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\parts\\Axle.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\Axle.h",
-              "RelativeToolTip": "LogInput\\src\\parts\\Axle.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-10T08:47:16.86Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 29,
-              "Title": "Axle.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\Axle.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\parts\\Axle.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\Axle.cpp",
-              "RelativeToolTip": "LogInput\\src\\parts\\Axle.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB8AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-09-10T08:47:27.106Z"
+              "WhenOpened": "2025-10-06T08:58:23.181Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 15,
-              "Title": "App.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\App.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\app\\App.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\App.cpp",
-              "RelativeToolTip": "LogInput\\src\\app\\App.cpp",
-              "ViewState": "AgIAAA8AAAAAAAAAAAAkwB8AAABKAAAAAAAAAA==",
+              "Title": "Camera.cpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.cpp",
+              "RelativeDocumentMoniker": "LogInput\\src\\render\\camera\\Camera.cpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.cpp",
+              "RelativeToolTip": "LogInput\\src\\render\\camera\\Camera.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-09-10T08:44:27.856Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-05T05:59:11.612Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "SimpleMesh.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.h",
+              "RelativeDocumentMoniker": "LogInput\\src\\render\\SimpleMesh.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\SimpleMesh.h",
+              "RelativeToolTip": "LogInput\\src\\render\\SimpleMesh.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAABTAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-08-29T07:26:04.746Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 17,
-              "Title": "IScene.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\IScene.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\scenes\\IScene.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\scenes\\IScene.h",
-              "RelativeToolTip": "LogInput\\src\\scenes\\IScene.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAAAAAAAAAAAA==",
+              "Title": "OrbitCam.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\OrbitCam.h",
+              "RelativeDocumentMoniker": "LogInput\\src\\render\\camera\\OrbitCam.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\OrbitCam.h",
+              "RelativeToolTip": "LogInput\\src\\render\\camera\\OrbitCam.h",
+              "ViewState": "AgIAABAAAAAAAAAAAAAQwBgAAAAvAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-10T08:51:29.356Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-23T04:43:08.185Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 18,
+              "Title": "basic.vs",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.vs",
+              "RelativeDocumentMoniker": "LogInput\\src\\shaders\\basic.vs",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.vs",
+              "RelativeToolTip": "LogInput\\src\\shaders\\basic.vs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-08-29T07:28:00.256Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "Camera.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.h",
+              "RelativeDocumentMoniker": "LogInput\\src\\render\\camera\\Camera.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\camera\\Camera.h",
+              "RelativeToolTip": "LogInput\\src\\render\\camera\\Camera.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAGAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-08-29T07:22:45.426Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
               "Title": "WheelSystems.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\WheelSystems.cpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\WheelSystems.cpp",
               "RelativeDocumentMoniker": "LogInput\\src\\parts\\WheelSystems.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\WheelSystems.cpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\WheelSystems.cpp",
               "RelativeToolTip": "LogInput\\src\\parts\\WheelSystems.cpp",
-              "ViewState": "AgIAADcAAAAAAAAAAAAAAEsAAAAFAAAAAAAAAA==",
+              "ViewState": "AgIAADMAAAAAAAAAAADwv0AAAAAdAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-09-10T08:47:50.424Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 21,
               "Title": "WheelSystem.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\WheelSystem.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\WheelSystem.h",
               "RelativeDocumentMoniker": "LogInput\\src\\parts\\WheelSystem.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\WheelSystem.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\WheelSystem.h",
               "RelativeToolTip": "LogInput\\src\\parts\\WheelSystem.h",
-              "ViewState": "AgIAABQAAAAAAAAAAAAAACQAAABZAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
               "WhenOpened": "2025-09-10T08:48:03.995Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 2,
               "Title": "norm.hpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\norm.hpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\norm.hpp",
               "RelativeDocumentMoniker": "include\\glm\\gtx\\norm.hpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\norm.hpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\norm.hpp",
               "RelativeToolTip": "include\\glm\\gtx\\norm.hpp",
               "ViewState": "AgIAAAMAAAAAAAAAAAArwBAAAAAbAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-10T08:57:13.038Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-10T08:57:13.038Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
-              "Title": "Mesh.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Mesh.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\Mesh.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Mesh.cpp",
-              "RelativeToolTip": "LogInput\\src\\render\\Mesh.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAPAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-09-10T09:07:53.052Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 44,
-              "Title": "quaternion.hpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\quaternion.hpp",
-              "RelativeDocumentMoniker": "include\\glm\\gtx\\quaternion.hpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\quaternion.hpp",
-              "RelativeToolTip": "include\\glm\\gtx\\quaternion.hpp",
-              "ViewState": "AgIAAAoAAAAAAAAAAAAjwBcAAAACAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-23T03:55:11.646Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 22,
               "Title": "Wheel.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\Wheel.cpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\Wheel.cpp",
               "RelativeDocumentMoniker": "LogInput\\src\\parts\\Wheel.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\Wheel.cpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\parts\\Wheel.cpp",
               "RelativeToolTip": "LogInput\\src\\parts\\Wheel.cpp",
               "ViewState": "AgIAAAYAAAAAAAAAAAAAABcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
@@ -540,23 +376,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
-              "Title": "Wheel.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Parts\\Wheel.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\Parts\\Wheel.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Parts\\Wheel.h",
-              "RelativeToolTip": "LogInput\\src\\Parts\\Wheel.h",
-              "ViewState": "AgIAAAAAAAAAFXCdZeUjwBAAAAAtAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-09-10T08:45:31.36Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 43,
+              "DocumentIndex": 3,
               "Title": "compatibility.hpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\compatibility.hpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\compatibility.hpp",
               "RelativeDocumentMoniker": "include\\glm\\gtx\\compatibility.hpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\compatibility.hpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\include\\glm\\gtx\\compatibility.hpp",
               "RelativeToolTip": "include\\glm\\gtx\\compatibility.hpp",
               "ViewState": "AgIAAAYAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
@@ -564,11 +388,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 32,
+              "DocumentIndex": 23,
               "Title": "Physics.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Physics\\Physics.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Physics\\Physics.h",
               "RelativeDocumentMoniker": "LogInput\\src\\Physics\\Physics.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Physics\\Physics.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\Physics\\Physics.h",
               "RelativeToolTip": "LogInput\\src\\Physics\\Physics.h",
               "ViewState": "AgIAAAEAAAAAAAAAAAAswB4AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
@@ -576,183 +400,15 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
-              "Title": "Shader.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Shader.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\render\\Shader.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\render\\Shader.cpp",
-              "RelativeToolTip": "LogInput\\src\\render\\Shader.cpp",
-              "ViewState": "AgIAAD0AAAAAAAAAAAAswFYAAAA+AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-08-29T07:24:30.42Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 31,
-              "Title": "main.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\main.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\app\\main.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\main.cpp",
-              "RelativeToolTip": "LogInput\\src\\app\\main.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-08-29T06:41:35.742Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 36,
-              "Title": "Config.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Config.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\core\\Config.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Config.cpp",
-              "RelativeToolTip": "LogInput\\src\\core\\Config.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-08-29T06:38:58.979Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 30,
-              "Title": "App.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\App.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\app\\App.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\app\\App.h",
-              "RelativeToolTip": "LogInput\\src\\app\\App.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-08-29T06:40:57.416Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 27,
-              "Title": "basic.vs",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.vs",
-              "RelativeDocumentMoniker": "LogInput\\src\\shaders\\basic.vs",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.vs",
-              "RelativeToolTip": "LogInput\\src\\shaders\\basic.vs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-08-29T07:28:00.256Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 37,
-              "Title": "basic.fs",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.fs",
-              "RelativeDocumentMoniker": "LogInput\\src\\shaders\\basic.fs",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.fs",
-              "RelativeToolTip": "LogInput\\src\\shaders\\basic.fs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-08-29T07:29:12.864Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 26,
-              "Title": "basic.fs",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.fs",
-              "RelativeDocumentMoniker": "LogInput\\src\\shaders\\basic.fs",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\shaders\\basic.fs",
-              "RelativeToolTip": "LogInput\\src\\shaders\\basic.fs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-09-02T05:10:05.085Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 35,
-              "Title": "Input.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\input\\Input.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\input\\Input.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\input\\Input.cpp",
-              "RelativeToolTip": "LogInput\\src\\input\\Input.cpp",
-              "ViewState": "AgIAAD0AAAAAAAAAAAAvwFAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-08-29T07:00:58.811Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 34,
-              "Title": "Input.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\input\\Input.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\input\\Input.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\input\\Input.h",
-              "RelativeToolTip": "LogInput\\src\\input\\Input.h",
-              "ViewState": "AgIAAA0AAAAAAAAAAAAswCQAAAAeAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-08-29T07:00:41.297Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 38,
+              "DocumentIndex": 24,
               "Title": "Config.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Config.h",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Config.h",
               "RelativeDocumentMoniker": "LogInput\\src\\core\\Config.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Config.h",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Config.h",
               "RelativeToolTip": "LogInput\\src\\core\\Config.h",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAXAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
               "WhenOpened": "2025-08-29T06:38:38.953Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 39,
-              "Title": "Log.h",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Log.h",
-              "RelativeDocumentMoniker": "LogInput\\src\\core\\Log.h",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Log.h",
-              "RelativeToolTip": "LogInput\\src\\core\\Log.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-08-29T07:50:50.548Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 40,
-              "Title": "Log.cpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Log.cpp",
-              "RelativeDocumentMoniker": "LogInput\\src\\core\\Log.cpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\LogInput\\src\\core\\Log.cpp",
-              "RelativeToolTip": "LogInput\\src\\core\\Log.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-08-29T07:45:27.558Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 33,
-              "Title": "json.hpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\nlohmann\\json.hpp",
-              "RelativeDocumentMoniker": "include\\nlohmann\\json.hpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\nlohmann\\json.hpp",
-              "RelativeToolTip": "include\\nlohmann\\json.hpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-08-29T06:40:25.81Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 41,
-              "Title": "json.hpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\nlohman\\json.hpp",
-              "RelativeDocumentMoniker": "include\\nlohman\\json.hpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\nlohman\\json.hpp",
-              "RelativeToolTip": "include\\nlohman\\json.hpp",
-              "ViewState": "AgIAAB0AAAAAAAAAAAAAACEAAAAhAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-08-29T06:40:03.948Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 42,
-              "Title": "json.hpp",
-              "DocumentMoniker": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\json\\json.hpp",
-              "RelativeDocumentMoniker": "include\\json\\json.hpp",
-              "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\include\\json\\json.hpp",
-              "RelativeToolTip": "include\\json\\json.hpp",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-08-29T06:39:15.561Z"
             }
           ]
         }
