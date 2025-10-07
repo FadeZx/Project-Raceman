@@ -1,7 +1,7 @@
 #include "GarageScene.h"
 
-#include "rendering/Renderer.h"
-#include "ui/DebugUI.h"
+#include "../rendering/Renderer.h"
+#include "../ui/DebugUI.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
