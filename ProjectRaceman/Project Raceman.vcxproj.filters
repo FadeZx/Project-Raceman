@@ -13,64 +13,34 @@
       <UniqueIdentifier>{53B5B65A-8071-4B1A-AF1D-09B83175E98F}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\\input">
-      <UniqueIdentifier>{1C9F0AF2-02EE-46EC-8F3C-8F766BE502F3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\\physics">
-      <UniqueIdentifier>{C2BE6E0E-91F2-49E3-917C-78A05B74DDB9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\\rendering">
-      <UniqueIdentifier>{7F59D0E0-33EF-4C14-81B9-7C1284DC0D9E}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\\scenes">
-      <UniqueIdentifier>{E9C7BF7D-62C7-4C15-8ED2-1E583FC7F4CA}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\\ui">
-      <UniqueIdentifier>{CE492BD3-063D-44F1-BBC7-41A5DE971494}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\\input">
-      <UniqueIdentifier>{25B81A9C-969E-4E53-AB24-2259CA175C8C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\\physics">
-      <UniqueIdentifier>{6FFAB893-FA68-4C47-8AA0-311F83F8EAA8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\\rendering">
-      <UniqueIdentifier>{A35855AC-FF71-4FF2-9CE4-25874510276A}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\\scenes">
-      <UniqueIdentifier>{31CD50B2-6034-4D7F-8630-C9A1D3F47BEA}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\\ui">
-      <UniqueIdentifier>{4D9C8D41-6E88-4B0A-B541-17800831384F}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\input\InputManager.h">
-      <Filter>Header Files\input</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\PhysicsLayer.h">
-      <Filter>Header Files\physics</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\rendering\Renderer.h">
-      <Filter>Header Files\rendering</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\scenes\GarageScene.h">
-      <Filter>Header Files\scenes</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\scenes\MeshResource.h">
-      <Filter>Header Files\scenes</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\scenes\Scene.h">
-      <Filter>Header Files\scenes</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\scenes\SimulationScene.h">
-      <Filter>Header Files\scenes</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ui\DebugUI.h">
-      <Filter>Header Files\ui</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -81,28 +51,28 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\input\InputManager.cpp">
-      <Filter>Source Files\input</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\PhysicsLayer.cpp">
-      <Filter>Source Files\physics</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\rendering\Renderer.cpp">
-      <Filter>Source Files\rendering</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\scenes\GarageScene.cpp">
-      <Filter>Source Files\scenes</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\scenes\MeshResource.cpp">
-      <Filter>Source Files\scenes</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\scenes\Scene.cpp">
-      <Filter>Source Files\scenes</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\scenes\SimulationScene.cpp">
-      <Filter>Source Files\scenes</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ui\DebugUI.cpp">
-      <Filter>Source Files\ui</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

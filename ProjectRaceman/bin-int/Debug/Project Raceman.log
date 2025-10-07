@@ -1,0 +1,39 @@
+﻿  Application.cpp
+D:\Project-Raceman\ProjectRaceman\src\Application.h(7,10): error C1083: Cannot open include file: 'glm/glm.hpp': No such file or directory
+  (compiling source file 'src/Application.cpp')
+  
+  Main.cpp
+D:\Project-Raceman\ProjectRaceman\src\Application.h(7,10): error C1083: Cannot open include file: 'glm/glm.hpp': No such file or directory
+  (compiling source file 'src/Main.cpp')
+  
+  InputManager.cpp
+D:\Project-Raceman\ProjectRaceman\src\input\InputManager.cpp(3,10): error C1083: Cannot open include file: 'GLFW/glfw3.h': No such file or directory
+  PhysicsLayer.cpp
+D:\Project-Raceman\ProjectRaceman\src\physics\PhysicsLayer.h(3,10): error C1083: Cannot open include file: 'glm/glm.hpp': No such file or directory
+  (compiling source file 'src/physics/PhysicsLayer.cpp')
+  
+  Renderer.cpp
+D:\Project-Raceman\ProjectRaceman\src\rendering\Renderer.h(3,10): error C1083: Cannot open include file: 'glm/glm.hpp': No such file or directory
+  (compiling source file 'src/rendering/Renderer.cpp')
+  
+  GarageScene.cpp
+D:\Project-Raceman\ProjectRaceman\src\scenes\MeshResource.h(3,10): error C1083: Cannot open include file: 'glm/glm.hpp': No such file or directory
+  (compiling source file 'src/scenes/GarageScene.cpp')
+  
+  MeshResource.cpp
+D:\Project-Raceman\ProjectRaceman\src\scenes\MeshResource.h(3,10): error C1083: Cannot open include file: 'glm/glm.hpp': No such file or directory
+  (compiling source file 'src/scenes/MeshResource.cpp')
+  
+  Scene.cpp
+D:\Project-Raceman\ProjectRaceman\src\rendering\Renderer.h(3,10): error C1083: Cannot open include file: 'glm/glm.hpp': No such file or directory
+  (compiling source file 'src/scenes/Scene.cpp')
+  
+  SimulationScene.cpp
+D:\Project-Raceman\ProjectRaceman\src\scenes\MeshResource.h(3,10): error C1083: Cannot open include file: 'glm/glm.hpp': No such file or directory
+  (compiling source file 'src/scenes/SimulationScene.cpp')
+  
+  DebugUI.cpp
+D:\Project-Raceman\ProjectRaceman\src\rendering\Renderer.h(3,10): error C1083: Cannot open include file: 'glm/glm.hpp': No such file or directory
+  (compiling source file 'src/ui/DebugUI.cpp')
+  
+  Generating Code...
