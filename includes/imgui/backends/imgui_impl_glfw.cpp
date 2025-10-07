@@ -110,6 +110,7 @@
 #define GLFW_HAS_GAMEPAD_API            (GLFW_VERSION_COMBINED >= 3300) // 3.3+ glfwGetGamepadState() new api
 #define GLFW_HAS_GETKEYNAME             (GLFW_VERSION_COMBINED >= 3200) // 3.2+ glfwGetKeyName()
 #define GLFW_HAS_GETERROR               (GLFW_VERSION_COMBINED >= 3300) // 3.3+ glfwGetError()
+#define GLFW_HAS_MOUSE_CUSTOM_CURSORS   (GLFW_VERSION_COMBINED >= 3100) // 3.1+ glfwCreateStandardCursor(), glfwSetCursor()
 
 // GLFW data
 enum GlfwClientApi
@@ -125,7 +126,9 @@ struct ImGui_ImplGlfw_Data
     GlfwClientApi           ClientApi;
     double                  Time;
     GLFWwindow*             MouseWindow;
+#if GLFW_HAS_MOUSE_CUSTOM_CURSORS
     GLFWcursor*             MouseCursors[ImGuiMouseCursor_COUNT];
+#endif
     ImVec2                  LastValidMousePos;
     bool                    InstalledCallbacks;
     bool                    CallbacksChainForAllWindows;
@@ -561,7 +564,9 @@ static bool ImGui_ImplGlfw_Init(GLFWwindow* window, bool install_callbacks, Glfw
     ImGui_ImplGlfw_Data* bd = IM_NEW(ImGui_ImplGlfw_Data)();
     io.BackendPlatformUserData = (void*)bd;
     io.BackendPlatformName = "imgui_impl_glfw";
+#if GLFW_HAS_MOUSE_CUSTOM_CURSORS
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;         // We can honor GetMouseCursor() values (optional)
+#endif
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;          // We can honor io.WantSetMousePos requests (optional, rarely used)
 
     bd->Window = window;
@@ -575,6 +580,7 @@ static bool ImGui_ImplGlfw_Init(GLFWwindow* window, bool install_callbacks, Glfw
     // (By design, on X11 cursors are user configurable and some cursors may be missing. When a cursor doesn't exist,
     // GLFW will emit an error which will often be printed by the app, so we temporarily disable error reporting.
     // Missing cursors will return nullptr and our _UpdateMouseCursor() function will use the Arrow cursor instead.)
+#if GLFW_HAS_MOUSE_CUSTOM_CURSORS
     GLFWerrorfun prev_error_callback = glfwSetErrorCallback(nullptr);
     bd->MouseCursors[ImGuiMouseCursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
     bd->MouseCursors[ImGuiMouseCursor_TextInput] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
@@ -595,6 +601,7 @@ static bool ImGui_ImplGlfw_Init(GLFWwindow* window, bool install_callbacks, Glfw
     glfwSetErrorCallback(prev_error_callback);
 #if GLFW_HAS_GETERROR && !defined(__EMSCRIPTEN__) // Eat errors (see #5908)
     (void)glfwGetError(nullptr);
+#endif
 #endif
 
     // Chain GLFW callbacks: our callbacks will call the user's previously installed callbacks, if any.
@@ -655,8 +662,10 @@ void ImGui_ImplGlfw_Shutdown()
     emscripten_set_wheel_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, nullptr, false, nullptr);
 #endif
 
+#if GLFW_HAS_MOUSE_CUSTOM_CURSORS
     for (ImGuiMouseCursor cursor_n = 0; cursor_n < ImGuiMouseCursor_COUNT; cursor_n++)
         glfwDestroyCursor(bd->MouseCursors[cursor_n]);
+#endif
 
     // Windows: register a WndProc hook so we can intercept some messages.
 #ifdef _WIN32
@@ -705,6 +714,7 @@ static void ImGui_ImplGlfw_UpdateMouseData()
 static void ImGui_ImplGlfw_UpdateMouseCursor()
 {
     ImGuiIO& io = ImGui::GetIO();
+#if GLFW_HAS_MOUSE_CUSTOM_CURSORS
     ImGui_ImplGlfw_Data* bd = ImGui_ImplGlfw_GetBackendData();
     if ((io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) || glfwGetInputMode(bd->Window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
         return;
@@ -726,6 +736,18 @@ static void ImGui_ImplGlfw_UpdateMouseCursor()
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
     }
+#else
+    ImGui_ImplGlfw_Data* bd = ImGui_ImplGlfw_GetBackendData();
+    if ((io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) || glfwGetInputMode(bd->Window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
+        return;
+
+    ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
+    GLFWwindow* window = bd->Window;
+    if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor)
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    else
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+#endif
 }
 
 // Update gamepad inputs
