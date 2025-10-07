@@ -3,12 +3,16 @@
   "WorkspaceRootPath": "D:\\Project-Raceman\\ProjectRaceman\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|D:\\Project-Raceman\\ProjectRaceman\\src\\scenes\\GarageScene.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|solutionrelative:src\\scenes\\GarageScene.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|D:\\Project-Raceman\\ProjectRaceman\\src\\input\\InputManager.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|solutionrelative:src\\input\\InputManager.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|D:\\Project-Raceman\\ProjectRaceman\\src\\Application.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|solutionrelative:src\\Application.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|D:\\Project-Raceman\\ProjectRaceman\\src\\scenes\\GarageScene.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|solutionrelative:src\\scenes\\GarageScene.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|D:\\Project-Raceman\\ProjectRaceman\\src\\Main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
@@ -35,19 +39,32 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "InputManager.cpp",
+              "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\src\\input\\InputManager.cpp",
+              "RelativeDocumentMoniker": "src\\input\\InputManager.cpp",
+              "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\src\\input\\InputManager.cpp",
+              "RelativeToolTip": "src\\input\\InputManager.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-10-07T08:36:39.056Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "GarageScene.cpp",
               "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\src\\scenes\\GarageScene.cpp",
               "RelativeDocumentMoniker": "src\\scenes\\GarageScene.cpp",
               "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\src\\scenes\\GarageScene.cpp",
               "RelativeToolTip": "src\\scenes\\GarageScene.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGEAAAAsAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-10-07T07:43:34.482Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Application.h",
               "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\src\\Application.h",
               "RelativeDocumentMoniker": "src\\Application.h",
@@ -55,8 +72,7 @@
               "RelativeToolTip": "src\\Application.h",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-07T07:43:14.955Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T07:43:14.955Z"
             },
             {
               "$type": "Document",
@@ -66,27 +82,26 @@
               "RelativeDocumentMoniker": "src\\Application.cpp",
               "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\src\\Application.cpp",
               "RelativeToolTip": "src\\Application.cpp",
-              "ViewState": "AgIAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAFIAAAAAAAAAAAAiwGAAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-10-07T07:43:14.247Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "Main.cpp",
               "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\src\\Main.cpp",
               "RelativeDocumentMoniker": "src\\Main.cpp",
               "ToolTip": "D:\\Project-Raceman\\ProjectRaceman\\src\\Main.cpp",
               "RelativeToolTip": "src\\Main.cpp",
-              "ViewState": "AgIAAAkAAAAAAAAAAAAAABcAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-07T07:43:04.178Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T07:43:04.178Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "Renderer.h",
               "DocumentMoniker": "D:\\Project-Raceman\\ProjectRaceman\\src\\rendering\\Renderer.h",
               "RelativeDocumentMoniker": "src\\rendering\\Renderer.h",
@@ -94,8 +109,7 @@
               "RelativeToolTip": "src\\rendering\\Renderer.h",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-07T07:40:08.007Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T07:40:08.007Z"
             }
           ]
         }
