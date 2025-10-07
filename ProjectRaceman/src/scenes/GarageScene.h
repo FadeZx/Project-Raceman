@@ -10,6 +10,7 @@
 
 struct aiScene;
 struct aiMesh;
+struct aiNode;
 
 namespace raceman {
 
@@ -24,7 +25,7 @@ public:
 
 private:
     void LoadAssets();
-    void ProcessAssimpNode(const aiScene* scene, const struct aiNode* node, const glm::mat4& parentTransform);
+    void ProcessAssimpNode(const aiScene* scene, const aiNode* node, const glm::mat4& parentTransform);
     MeshResource UploadMesh(const aiMesh* mesh, const glm::mat4& transform);
     void CreateFallbackMesh();
 
