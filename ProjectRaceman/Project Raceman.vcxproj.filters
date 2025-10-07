@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4C5E2899-6FA3-4FBC-988C-0D3F93E59C2D}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{09F4CEEA-0F65-4B84-9039-625F59BB9856}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{53B5B65A-8071-4B1A-AF1D-09B83175E98F}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\\input">
+      <UniqueIdentifier>{1C9F0AF2-02EE-46EC-8F3C-8F766BE502F3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\\physics">
+      <UniqueIdentifier>{C2BE6E0E-91F2-49E3-917C-78A05B74DDB9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\\rendering">
+      <UniqueIdentifier>{7F59D0E0-33EF-4C14-81B9-7C1284DC0D9E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\\scenes">
+      <UniqueIdentifier>{E9C7BF7D-62C7-4C15-8ED2-1E583FC7F4CA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\\ui">
+      <UniqueIdentifier>{CE492BD3-063D-44F1-BBC7-41A5DE971494}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\\input">
+      <UniqueIdentifier>{25B81A9C-969E-4E53-AB24-2259CA175C8C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\\physics">
+      <UniqueIdentifier>{6FFAB893-FA68-4C47-8AA0-311F83F8EAA8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\\rendering">
+      <UniqueIdentifier>{A35855AC-FF71-4FF2-9CE4-25874510276A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\\scenes">
+      <UniqueIdentifier>{31CD50B2-6034-4D7F-8630-C9A1D3F47BEA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\\ui">
+      <UniqueIdentifier>{4D9C8D41-6E88-4B0A-B541-17800831384F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\\vendor">
+      <UniqueIdentifier>{A49D0BE2-85D0-4BF7-9F17-1AF76CD4D52E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\\vendor\\imgui">
+      <UniqueIdentifier>{067C74B7-29F8-4F7C-A5D2-9F0BD0E72C51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\\vendor">
+      <UniqueIdentifier>{2E6058BB-6C38-4CEB-953B-5A9C91A78E72}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\\vendor\\imgui">
+      <UniqueIdentifier>{0B7B6E24-6155-42F7-A392-61A72BF33C5A}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="vendor\imgui\backends\imgui_impl_glfw.h">
+      <Filter>Header Files\vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\backends\imgui_impl_opengl3.h">
+      <Filter>Header Files\vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\backends\imgui_impl_opengl3_loader.h">
+      <Filter>Header Files\vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imconfig.h">
+      <Filter>Header Files\vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imgui.h">
+      <Filter>Header Files\vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imgui_internal.h">
+      <Filter>Header Files\vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imstb_rectpack.h">
+      <Filter>Header Files\vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imstb_textedit.h">
+      <Filter>Header Files\vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imstb_truetype.h">
+      <Filter>Header Files\vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Application.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\input\InputManager.h">
+      <Filter>Header Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\PhysicsLayer.h">
+      <Filter>Header Files\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\Renderer.h">
+      <Filter>Header Files\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scenes\GarageScene.h">
+      <Filter>Header Files\scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scenes\MeshResource.h">
+      <Filter>Header Files\scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scenes\Scene.h">
+      <Filter>Header Files\scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scenes\SimulationScene.h">
+      <Filter>Header Files\scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\DebugUI.h">
+      <Filter>Header Files\ui</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="vendor\imgui\backends\imgui_impl_glfw.cpp">
+      <Filter>Source Files\vendor\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\backends\imgui_impl_opengl3.cpp">
+      <Filter>Source Files\vendor\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui.cpp">
+      <Filter>Source Files\vendor\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_demo.cpp">
+      <Filter>Source Files\vendor\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_draw.cpp">
+      <Filter>Source Files\vendor\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_tables.cpp">
+      <Filter>Source Files\vendor\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_widgets.cpp">
+      <Filter>Source Files\vendor\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Application.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input\InputManager.cpp">
+      <Filter>Source Files\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\PhysicsLayer.cpp">
+      <Filter>Source Files\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\Renderer.cpp">
+      <Filter>Source Files\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scenes\GarageScene.cpp">
+      <Filter>Source Files\scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scenes\MeshResource.cpp">
+      <Filter>Source Files\scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scenes\Scene.cpp">
+      <Filter>Source Files\scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scenes\SimulationScene.cpp">
+      <Filter>Source Files\scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\DebugUI.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
