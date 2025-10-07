@@ -1,0 +1,120 @@
+{
+  "name": "Terra Rally",
+  "chassis": {
+    "mass": 1350.0,
+    "yawInertia": 2450.0,
+    "rollInertia": 1320.0,
+    "pitchInertia": 1600.0,
+    "centerOfMassOffset": [0.0, 0.0, -0.28]
+  },
+  "frontSuspension": {
+    "restLength": 0.38,
+    "springRate": 39000.0,
+    "bumpStopRate": 90000.0,
+    "compressionDamping": 3200.0,
+    "reboundDamping": 2800.0,
+    "antiRollStiffness": 4200.0
+  },
+  "rearSuspension": {
+    "restLength": 0.40,
+    "springRate": 41000.0,
+    "bumpStopRate": 94000.0,
+    "compressionDamping": 3400.0,
+    "reboundDamping": 2950.0,
+    "antiRollStiffness": 4000.0
+  },
+  "differential": {
+    "torqueSplit": 0.50,
+    "lockingCoefficient": 0.22,
+    "limitedSlip": true
+  },
+  "engine": {
+    "idleRPM": 950.0,
+    "redlineRPM": 7200.0,
+    "stallRPM": 650.0,
+    "inertia": 0.32,
+    "torqueCurve": [
+      {"rpm": 1200.0, "torque": 280.0},
+      {"rpm": 2500.0, "torque": 340.0},
+      {"rpm": 3800.0, "torque": 380.0},
+      {"rpm": 5200.0, "torque": 400.0},
+      {"rpm": 6600.0, "torque": 385.0}
+    ]
+  },
+  "transmission": {
+    "gearRatios": [3.15, 2.10, 1.55, 1.24, 1.02, 0.89],
+    "finalDriveRatio": 4.10,
+    "reverseRatio": -3.10,
+    "shiftTime": 0.26
+  },
+  "wheels": [
+    {
+      "name": "front_left",
+      "mountPosition": [-0.82, 1.50, -0.02],
+      "radius": 0.35,
+      "width": 0.25,
+      "mass": 18.5,
+      "inertia": 1.35,
+      "maxSteerAngle": 0.65,
+      "camber": -0.7,
+      "toe": 0.04,
+      "gripFactor": 1.10,
+      "longitudinalStiffness": 10000.0,
+      "lateralStiffness": 9300.0,
+      "maxBrakingTorque": 3600.0,
+      "driven": true,
+      "hasBrake": true
+    },
+    {
+      "name": "front_right",
+      "mountPosition": [0.82, 1.50, -0.02],
+      "radius": 0.35,
+      "width": 0.25,
+      "mass": 18.5,
+      "inertia": 1.35,
+      "maxSteerAngle": 0.65,
+      "camber": -0.7,
+      "toe": -0.04,
+      "gripFactor": 1.10,
+      "longitudinalStiffness": 10000.0,
+      "lateralStiffness": 9300.0,
+      "maxBrakingTorque": 3600.0,
+      "driven": true,
+      "hasBrake": true
+    },
+    {
+      "name": "rear_left",
+      "mountPosition": [-0.84, -1.48, -0.02],
+      "radius": 0.35,
+      "width": 0.27,
+      "mass": 19.5,
+      "inertia": 1.40,
+      "maxSteerAngle": 0.0,
+      "camber": -1.0,
+      "toe": 0.06,
+      "gripFactor": 1.18,
+      "longitudinalStiffness": 10500.0,
+      "lateralStiffness": 9500.0,
+      "maxBrakingTorque": 3400.0,
+      "driven": true,
+      "hasBrake": true
+    },
+    {
+      "name": "rear_right",
+      "mountPosition": [0.84, -1.48, -0.02],
+      "radius": 0.35,
+      "width": 0.27,
+      "mass": 19.5,
+      "inertia": 1.40,
+      "maxSteerAngle": 0.0,
+      "camber": -1.0,
+      "toe": -0.06,
+      "gripFactor": 1.18,
+      "longitudinalStiffness": 10500.0,
+      "lateralStiffness": 9500.0,
+      "maxBrakingTorque": 3400.0,
+      "driven": true,
+      "hasBrake": true
+    }
+  ]
+}
