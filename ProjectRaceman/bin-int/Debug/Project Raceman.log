@@ -1,15 +1,60 @@
-﻿  imgui_impl_glfw.cpp
+﻿  Application.cpp
+  Main.cpp
+  InputManager.cpp
+  PhysicsLayer.cpp
+  Renderer.cpp
+  GarageScene.cpp
+D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+  (compiling source file 'src/scenes/GarageScene.cpp')
+      D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+  MeshResource.cpp
+  Scene.cpp
+  SimulationScene.cpp
+D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+  (compiling source file 'src/scenes/SimulationScene.cpp')
+      D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+  DebugUI.cpp
+D:\Project-Raceman\ProjectRaceman\src\ui\DebugUI.cpp(6,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+      D:\Project-Raceman\ProjectRaceman\src\ui\DebugUI.cpp(6,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+  imgui_impl_glfw.cpp
 D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
   (compiling source file '../includes/imgui/backends/imgui_impl_glfw.cpp')
       D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
       'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
   
-D:\Project-Raceman\includes\GLFW\glfw3native.h(96,1): error C1189: #error:  "No context API specified"
-  (compiling source file '../includes/imgui/backends/imgui_impl_glfw.cpp')
-  
   imgui_impl_opengl3.cpp
 D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
   (compiling source file '../includes/imgui/backends/imgui_impl_opengl3.cpp')
+      D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+  imgui.cpp
+D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+  (compiling source file '../includes/imgui/imgui.cpp')
+      D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+  imgui_demo.cpp
+D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+  (compiling source file '../includes/imgui/imgui_demo.cpp')
+      D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+  imgui_draw.cpp
+D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+  (compiling source file '../includes/imgui/imgui_draw.cpp')
+      D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+  imgui_tables.cpp
+D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+  (compiling source file '../includes/imgui/imgui_tables.cpp')
       D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
       'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
   
@@ -20,3 +65,57 @@ D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_O
       'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
   
   Generating Code...
+glfw3.lib(init.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(init.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(window.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(window.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(input.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(input.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(context.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(monitor.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(monitor.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_window.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_window.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_init.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_init.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_monitor.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_monitor.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_time.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_time.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_thread.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_thread.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(vulkan.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(vulkan.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(win32_joystick.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(win32_joystick.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(wgl_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(wgl_context.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(egl_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(egl_context.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+glfw3.lib(osmesa_context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(osmesa_context.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+Application.obj : error LNK2019: unresolved external symbol gladLoadGLLoader referenced in function "private: void __cdecl raceman::Application::InitializeGlad(void)" (?InitializeGlad@Application@raceman@@AEAAXXZ)
+Renderer.obj : error LNK2001: unresolved external symbol glad_glTexParameterfv
+Renderer.obj : error LNK2001: unresolved external symbol glad_glTexParameteri
+Renderer.obj : error LNK2001: unresolved external symbol glad_glTexImage2D
+Renderer.obj : error LNK2001: unresolved external symbol glad_glClear
+Renderer.obj : error LNK2001: unresolved external symbol glad_glClearColor
+Renderer.obj : error LNK2001: unresolved external symbol glad_glEnable
+Renderer.obj : error LNK2001: unresolved external symbol glad_glViewport
+Renderer.obj : error LNK2001: unresolved external symbol glad_glDrawElements
+Renderer.obj : error LNK2001: unresolved external symbol glad_glBindTexture
+Renderer.obj : error LNK2001: unresolved external symbol glad_glDeleteTextures
+Renderer.obj : error LNK2001: unresolved external symbol glad_glGenTextures
+Renderer.obj : error LNK2001: unresolved external symbol glad_glBindRenderbuffer
+Renderer.obj : error LNK2001: unresolved external symbol glad_glDeleteRenderbuffers
+Renderer.obj : error LNK2001: unresolved external symbol glad_glGenRenderbuffers
+Renderer.obj : error LNK2001: unresolved external symbol glad_glRenderbufferStorage
+Renderer.obj : error LNK2001: unresolved external symbol glad_glBindFramebuffer
+Renderer.obj : error LNK2001: unresolved external symbol glad_glDeleteFramebuffers
+Renderer.obj : error LNK2001: unresolved external symbol glad_glGenFramebuffers
+Renderer.obj : error LNK2001: unresolved external symbol glad_glFramebufferRenderbuffer
+Renderer.obj : error LNK2001: unresolved external symbol glad_glBindVertexArray
+GarageScene.obj : error LNK2001: unresolved external symbol glad_glBindVertexArray
+MeshResource.obj : error LNK2001: unresolved external symbol glad_glBindVertexArray
+Renderer.obj : error LNK2001: unresolved external symbol glad_glDeleteVertexArrays
+Renderer.obj : error LNK2001: unresolved external symbol glad_glGenVertexArrays
+GarageScene.obj : error LNK2001: unresolved external symbol glad_glGenVertexArrays
+MeshResource.obj : error LNK2001: unresolved external symbol glad_glGenVertexArrays
+GarageScene.obj : error LNK2001: unresolved external symbol glad_glBindBuffer
+MeshResource.obj : error LNK2001: unresolved external symbol glad_glBindBuffer
+GarageScene.obj : error LNK2001: unresolved external symbol glad_glGenBuffers
+MeshResource.obj : error LNK2001: unresolved external symbol glad_glGenBuffers
+GarageScene.obj : error LNK2001: unresolved external symbol glad_glBufferData
+MeshResource.obj : error LNK2001: unresolved external symbol glad_glBufferData
+GarageScene.obj : error LNK2001: unresolved external symbol glad_glEnableVertexAttribArray
+MeshResource.obj : error LNK2001: unresolved external symbol glad_glEnableVertexAttribArray
+GarageScene.obj : error LNK2001: unresolved external symbol glad_glVertexAttribPointer
+MeshResource.obj : error LNK2001: unresolved external symbol glad_glVertexAttribPointer
+SimulationScene.obj : error LNK2001: unresolved external symbol glad_glPolygonMode
+D:\Project-Raceman\ProjectRaceman\bin\Debug\ProjectRaceman.exe : fatal error LNK1120: 29 unresolved externals
