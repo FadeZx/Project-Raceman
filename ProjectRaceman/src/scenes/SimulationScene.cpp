@@ -1,6 +1,8 @@
 #include "SimulationScene.h"
 
 #include "../rendering/Renderer.h"
+#include "../rendering/Skybox.h"
+#include "../rendering/shader.h"
 #include "../ui/DebugUI.h"
 
 #include <glad/glad.h>
@@ -8,6 +10,19 @@
 #include <imgui.h>
 
 #include <cmath>
+#include <string>
+#include <vector>
+
+namespace {
+
+std::vector<std::string> BuildRacetrackSkyboxFaces()
+{
+    const std::string basePath = "assets/skybox/racetrack/";
+    return {basePath + "px.jpg", basePath + "nx.jpg", basePath + "py.jpg", basePath + "ny.jpg", basePath + "pz.jpg",
+            basePath + "nz.jpg"};
+}
+
+} // namespace
 
 namespace raceman {
 
@@ -19,8 +34,24 @@ void SimulationScene::SetPhysicsLayer(std::shared_ptr<PhysicsLayer> physics) {
 }
 
 void SimulationScene::OnSceneActivated() {
+    if (!skyboxShader_) {
+        skyboxShader_ = std::make_unique<Shader>("src/shaders/skybox/skybox.vs", "src/shaders/skybox/skybox.fs");
+        skyboxShader_->use();
+        skyboxShader_->setInt("skybox", 0);
+    }
+
+    if (!skybox_) {
+        skybox_ = std::make_unique<Skybox>(BuildRacetrackSkyboxFaces(), skyboxShader_->getID());
+    }
+
     renderer_->SetupEnvironment("assets/environments/track_day.hdr");
     renderer_->CreateShadowMaps(4096);
+
+    const auto& rendererConfig = renderer_->GetConfig();
+    projectionMatrix_ = glm::perspective(glm::radians(60.0f),
+                                         static_cast<float>(rendererConfig.width) / static_cast<float>(rendererConfig.height),
+                                         0.1f,
+                                         150.0f);
 }
 
 void SimulationScene::Update(float) {
@@ -42,6 +73,8 @@ void SimulationScene::Render(Renderer& renderer) {
     if (!physics_) {
         return;
     }
+
+    const glm::mat4 view = glm::lookAt(cameraPosition_, cameraTarget_, cameraUp_);
 
     if (drawWireframe_) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -65,6 +98,10 @@ void SimulationScene::Render(Renderer& renderer) {
 
     if (drawWireframe_) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+
+    if (skybox_) {
+        skybox_->draw(view, projectionMatrix_);
     }
 }
 
