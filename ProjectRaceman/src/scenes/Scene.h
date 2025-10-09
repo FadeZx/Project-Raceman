@@ -13,9 +13,10 @@ public:
     explicit Scene(std::string name, std::shared_ptr<Renderer> renderer);
     virtual ~Scene() = default;
 
-    virtual void OnSceneActivated();
+    virtual void Init();
     virtual void Update(float deltaTime) = 0;
     virtual void Render(Renderer& renderer) = 0;
+	virtual void Clean() {}
     virtual void RenderDebugUi(DebugUI& ui);
 
     const std::string& GetName() const { return name_; }

@@ -4,6 +4,9 @@
 #include "rendering/Renderer.h"
 #include "scenes/Scene.h"
 #include "ui/DebugUI.h"
+#include "ui/MenuController.h"
+#include "scenes/GarageScene.h"
+#include "scenes/SimulationScene.h"
 
 #include <glad/glad.h>
 #define GLFW_INCLUDE_NONE
@@ -37,6 +40,7 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         inputManager_->AttachToWindow(window_);
     }
     debugUi_ = std::make_unique<DebugUI>(config.enableImGui);
+    menuController_ = std::make_unique<MenuController>();
 
     if (config.enableImGui) {
         InitializeImGui();
@@ -88,7 +92,7 @@ void Application::RegisterScene(const std::shared_ptr<Scene>& scene) {
 void Application::SwitchScene(std::size_t index) {
     if (index < scenes_.size()) {
         activeScene_ = index;
-        scenes_[activeScene_]->OnSceneActivated();
+        scenes_[activeScene_]->Init();
     }
 }
 
@@ -156,9 +160,28 @@ void Application::Update(float deltaTime) {
 
     if (config_.enableImGui) {
         debugUi_->BeginFrame();
-        debugUi_->RenderAppMetrics(deltaTime, *renderer_);
+
+        // Old renderer panel removed
+        // Old per-scene skybox panels are removed from scenes
+
+        // Keep scene-specific debug (non-skybox)
         scene->RenderDebugUi(*debugUi_);
         debugUi_->RenderSceneSwitcher(scenes_, activeScene_, [this](std::size_t index) { SwitchScene(index); });
+
+        // Centralized menu (no renderer panel duplication; skybox selection only if wired)
+        menuController_->Render(*debugUi_, *renderer_, scenes_, activeScene_,
+            [this](std::size_t index) { SwitchScene(index); },
+            [this](std::size_t targetScene, const std::array<std::string,6>& faces) {
+                if (targetScene < scenes_.size()) {
+                    auto scene = scenes_[targetScene];
+                    if (auto gs = std::dynamic_pointer_cast<GarageScene>(scene)) {
+                        gs->SetSkyboxFaces(faces);
+                    } else if (auto ss = std::dynamic_pointer_cast<SimulationScene>(scene)) {
+                        ss->SetSkyboxFaces(faces);
+                    }
+                }
+            });
+
         debugUi_->EndFrame();
     }
 }

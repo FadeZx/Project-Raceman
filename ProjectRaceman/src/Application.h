@@ -14,6 +14,7 @@ class Scene;
 class Renderer;
 class InputManager;
 class DebugUI;
+class MenuController;
 
 struct ApplicationConfig {
     std::string windowTitle{"Project Raceman"};
@@ -53,6 +54,7 @@ private:
     std::shared_ptr<Renderer> renderer_;
     std::unique_ptr<InputManager> inputManager_;
     std::unique_ptr<DebugUI> debugUi_;
+    std::unique_ptr<MenuController> menuController_;
 
     std::vector<std::shared_ptr<Scene>> scenes_;
     std::size_t activeScene_{0};

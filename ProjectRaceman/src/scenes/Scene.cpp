@@ -1,15 +1,11 @@
+ // Scene.cpp
 #include "Scene.h"
-
-#include "../rendering/Renderer.h"
-#include "../ui/DebugUI.h"
-
 namespace raceman {
+    Scene::Scene(std::string name, std::shared_ptr<Renderer> renderer)
+        : name_(std::move(name)), renderer_(std::move(renderer)) {
+    }
 
-Scene::Scene(std::string name, std::shared_ptr<Renderer> renderer)
-    : renderer_(std::move(renderer)), name_(std::move(name)) {}
+    void Scene::Init() {}
 
-void Scene::OnSceneActivated() {}
-
-void Scene::RenderDebugUi(DebugUI&) {}
-
-} // namespace raceman
+    void Scene::RenderDebugUi(DebugUI&) {}
+}

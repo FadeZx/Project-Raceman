@@ -3,26 +3,22 @@
 #include "../rendering/Renderer.h"
 #include "../rendering/Skybox.h"
 #include "../rendering/shader.h"
+
+
 #include "../ui/DebugUI.h"
 
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <imgui.h>
+#include <fstream>
+#include <filesystem>
+
 
 #include <cmath>
 #include <string>
 #include <vector>
 
-namespace {
 
-std::vector<std::string> BuildRacetrackSkyboxFaces()
-{
-    const std::string basePath = "assets/skybox/racetrack/";
-    return {basePath + "px.jpg", basePath + "nx.jpg", basePath + "py.jpg", basePath + "ny.jpg", basePath + "pz.jpg",
-            basePath + "nz.jpg"};
-}
 
-} // namespace
 
 namespace raceman {
 
@@ -33,120 +29,79 @@ void SimulationScene::SetPhysicsLayer(std::shared_ptr<PhysicsLayer> physics) {
     physics_ = std::move(physics);
 }
 
-void SimulationScene::OnSceneActivated() {
-    if (!skyboxShader_) {
-        skyboxShader_ = std::make_unique<Shader>("src/shaders/skybox/skybox.vs", "src/shaders/skybox/skybox.fs");
-        skyboxShader_->use();
-        skyboxShader_->setInt("skybox", 0);
-    }
 
-    if (!skybox_) {
-        skybox_ = std::make_unique<Skybox>(BuildRacetrackSkyboxFaces(), skyboxShader_->getID());
-    }
-
-    renderer_->SetupEnvironment("assets/environments/track_day.hdr");
-    renderer_->CreateShadowMaps(4096);
-
-    const auto& rendererConfig = renderer_->GetConfig();
-    projectionMatrix_ = glm::perspective(glm::radians(60.0f),
-                                         static_cast<float>(rendererConfig.width) / static_cast<float>(rendererConfig.height),
-                                         0.1f,
-                                         150.0f);
+void SimulationScene::Init() {
+    LoadSkyboxConfig();
+    EnsureSkyboxReady();
 }
 
 void SimulationScene::Update(float) {
-    visibleBodies_.clear();
-
-    if (!physics_) {
-        return;
-    }
-
-    physics_->ForEachBody([this](const RigidBodyState& state) {
-        visibleBodies_.push_back(state);
-        if (cachedMeshes_.find(state.meshId) == cachedMeshes_.end()) {
-            cachedMeshes_.emplace(state.meshId, CreatePlaceholderVehicleMesh(state.meshId));
-        }
-    });
+   
 }
 
 void SimulationScene::Render(Renderer& renderer) {
-    if (!physics_) {
-        return;
-    }
-
-    const glm::mat4 view = glm::lookAt(cameraPosition_, cameraTarget_, cameraUp_);
-
-    if (drawWireframe_) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    }
-
-    for (const auto& state : visibleBodies_) {
-        auto it = cachedMeshes_.find(state.meshId);
-        if (it == cachedMeshes_.end()) {
-            continue;
-        }
-
-        MeshDrawCommand cmd{};
-        cmd.vao = it->second.vao;
-        cmd.indexCount = it->second.indexCount;
-        cmd.modelMatrix = state.transform * glm::scale(glm::mat4(1.0f), glm::vec3(debugVehicleScale_));
-        cmd.materialId = state.meshId;
-        renderer.SubmitMesh(cmd);
-    }
-
-    renderer.Flush();
-
-    if (drawWireframe_) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    }
-
     if (skybox_) {
-        skybox_->draw(view, projectionMatrix_);
+        const auto& cfg = renderer.GetConfig();
+        float aspect = cfg.height != 0 ? (float)cfg.width / (float)cfg.height : 16.0f/9.0f;
+        glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
+                                     glm::vec3(0.0f, 0.0f, 0.0f),
+                                     glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 100.0f);
+        skybox_->draw(view, proj);
     }
 }
 
 void SimulationScene::RenderDebugUi(DebugUI&) {
-    if (ImGui::Begin("Simulation")) {
-        ImGui::Checkbox("Wireframe", &drawWireframe_);
-        ImGui::SliderFloat("Vehicle Scale", &debugVehicleScale_, 0.25f, 3.0f, "%.2fx");
+  
+}
 
-        ImGui::Separator();
-        ImGui::Text("Active Bodies: %zu", visibleBodies_.size());
 
-        if (ImGui::BeginTable("Bodies", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
-            ImGui::TableSetupColumn("Mesh");
-            ImGui::TableSetupColumn("Position");
-            ImGui::TableSetupColumn("Rotation Y (deg)");
-            ImGui::TableSetupColumn("Scale");
-            ImGui::TableHeadersRow();
+void SimulationScene::Clean() {}
 
-            for (const auto& body : visibleBodies_) {
-                const glm::vec3 position = glm::vec3(body.transform[3]);
-                const float rotationY = glm::degrees(std::atan2(body.transform[0][2], body.transform[0][0]));
 
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(body.meshId.c_str());
+    void SimulationScene::EnsureSkyboxReady() {
+        namespace fs = std::filesystem;
+        bool anyEmpty = false;
+        for (const auto& f : skyboxFaces_) { if (f.empty()) { anyEmpty = true; break; } }
+        if (anyEmpty) {
+            fs::path base("assets/skybox/racetrack");
+            skyboxFaces_[0] = (base / "px.jpg").string();
+            skyboxFaces_[1] = (base / "nx.jpg").string();
+            skyboxFaces_[2] = (base / "py.jpg").string();
+            skyboxFaces_[3] = (base / "ny.jpg").string();
+            skyboxFaces_[4] = (base / "pz.jpg").string();
+            skyboxFaces_[5] = (base / "nz.jpg").string();
+        }
 
-                ImGui::TableNextColumn();
-                ImGui::Text("%.2f, %.2f, %.2f", position.x, position.y, position.z);
+        if (!skyboxShader_) {
+            skyboxShader_ = std::make_unique<Shader>("src/shaders/skybox/skybox.vs", "src/shaders/skybox/skybox.fs");
+        }
+        std::vector<std::string> facesVec(skyboxFaces_.begin(), skyboxFaces_.end());
+        skybox_ = std::make_unique<Skybox>(facesVec, skyboxShader_->getID());
+    }
 
-                ImGui::TableNextColumn();
-                ImGui::Text("%.1f", rotationY);
-
-                ImGui::TableNextColumn();
-                ImGui::Text("%.2f", debugVehicleScale_);
-            }
-
-            ImGui::EndTable();
+    void SimulationScene::LoadSkyboxConfig() {
+        namespace fs = std::filesystem;
+        fs::path path("config/scenes/SimulationScene.txt");
+        if (!fs::exists(path)) return;
+        std::ifstream in(path);
+        if (!in.good()) return;
+        for (int i = 0; i < 6 && in; ++i) {
+            std::getline(in, skyboxFaces_[i]);
         }
     }
-    ImGui::End();
-}
 
-MeshResource SimulationScene::CreatePlaceholderVehicleMesh(const std::string& meshId) {
-    (void)meshId;
-    return CreateUnitCubeMesh();
-}
+    void SimulationScene::SaveSkyboxConfig() const {
+        namespace fs = std::filesystem;
+        fs::create_directories("config/scenes");
+        std::ofstream out("config/scenes/SimulationScene.txt", std::ios::trunc);
+        if (!out.good()) return;
+        for (int i = 0; i < 6; ++i) out << skyboxFaces_[i] << "\n";
+    }
 
+    void SimulationScene::SetSkyboxFaces(const std::array<std::string,6>& faces) {
+        skyboxFaces_ = faces;
+        SaveSkyboxConfig();
+        EnsureSkyboxReady();
+    }
 } // namespace raceman

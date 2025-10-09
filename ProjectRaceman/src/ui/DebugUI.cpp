@@ -4,9 +4,9 @@
 #include "../rendering/Renderer.h"
 
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
-#include <imgui.h>
-#include <backends/imgui_impl_glfw.h>
-#include <backends/imgui_impl_opengl3.h>
+#include <imgui/imgui.h>
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_opengl3.h>
 
 #include <GLFW/glfw3.h>
 
@@ -25,6 +25,10 @@ void DebugUI::Initialize(GLFWwindow* window) {
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
 
+    // Persist window positions/sizes to config/imgui.ini
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = "config/imgui.ini"; // ImGui will auto-load/save this
+
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 450");
 }
@@ -33,6 +37,9 @@ void DebugUI::Shutdown() {
     if (!enabled_) {
         return;
     }
+
+    // Ensure settings are flushed to disk
+    ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename ? ImGui::GetIO().IniFilename : "imgui.ini");
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

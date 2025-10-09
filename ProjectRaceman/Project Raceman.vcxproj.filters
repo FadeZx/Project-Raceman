@@ -27,9 +27,6 @@
     <ClInclude Include="src\scenes\GarageScene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\scenes\MeshResource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\scenes\Scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -66,6 +63,15 @@
     <ClInclude Include="src\rendering\shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\rendering\Skybox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\SkyboxController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\MenuController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp">
@@ -81,12 +87,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\scenes\GarageScene.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\scenes\MeshResource.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\scenes\Scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\scenes\SimulationScene.cpp">
@@ -128,10 +128,26 @@
     <ClCompile Include="src\rendering\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\rendering\Skybox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scenes\Scene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\SkyboxController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\MenuController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\assimp-vc140-mt.dll" />
     <None Include="src\ikpMP3.dll" />
     <None Include="src\irrKlang.dll" />
+    <None Include="ikpMP3.dll" />
+    <None Include="imgui.ini" />
+    <None Include="assimp-vc140-mt.dll" />
+    <None Include="irrKlang.dll" />
   </ItemGroup>
 </Project>
