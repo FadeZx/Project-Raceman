@@ -52,6 +52,7 @@ public:
     const EnvironmentMaps& GetEnvironmentMaps() const { return environmentMaps_; }
     RendererSettings& GetSettings() { return settings_; }
     const RendererSettings& GetSettings() const { return settings_; }
+    const RendererConfig& GetConfig() const;
 
 private:
     void InitializePipelines();

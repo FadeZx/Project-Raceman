@@ -1,6 +1,8 @@
 #include "GarageScene.h"
 
 #include "../rendering/Renderer.h"
+#include "../rendering/Skybox.h"
+#include "../rendering/shader.h"
 #include "../ui/DebugUI.h"
 
 #include <assimp/Importer.hpp>
@@ -13,6 +15,7 @@
 
 #include <cmath>
 
+#include <string>
 #include <vector>
 
 namespace {
@@ -39,6 +42,13 @@ glm::mat4 ConvertAssimpMatrix(const aiMatrix4x4& matrix)
     return result;
 }
 
+std::vector<std::string> BuildRacetrackSkyboxFaces()
+{
+    const std::string basePath = "assets/skybox/racetrack/";
+    return {basePath + "px.jpg", basePath + "nx.jpg", basePath + "py.jpg", basePath + "ny.jpg", basePath + "pz.jpg",
+            basePath + "nz.jpg"};
+}
+
 } // namespace
 
 namespace raceman {
@@ -51,27 +61,67 @@ void GarageScene::OnSceneActivated() {
         LoadAssets();
     }
 
+    if (!skyboxShader_) {
+        skyboxShader_ = std::make_unique<Shader>("src/shaders/skybox/skybox.vs", "src/shaders/skybox/skybox.fs");
+        skyboxShader_->use();
+        skyboxShader_->setInt("skybox", 0);
+    }
+
+    if (!skybox_) {
+        skybox_ = std::make_unique<Skybox>(BuildRacetrackSkyboxFaces(), skyboxShader_->getID());
+    }
+
     renderer_->SetupEnvironment("assets/environments/garage.hdr");
     renderer_->CreateShadowMaps(2048);
 
-    if (!meshes_.empty()) {
-        baseDisplayTransform_ = meshes_.front().transform;
-        baseTransformCaptured_ = true;
+    const auto& rendererConfig = renderer_->GetConfig();
+    projectionMatrix_ = glm::perspective(glm::radians(60.0f),
+                                         static_cast<float>(rendererConfig.width) / static_cast<float>(rendererConfig.height),
+                                         0.1f,
+                                         100.0f);
+
+    baseDisplayTransforms_.clear();
+    for (std::size_t index : displayMeshIndices_) {
+        if (index < meshes_.size()) {
+            baseDisplayTransforms_.push_back(meshes_[index].transform);
+        }
     }
+    baseTransformCaptured_ = !baseDisplayTransforms_.empty();
+    if (baseTransformCaptured_) {
+        baseDisplayTransform_ = baseDisplayTransforms_.front();
+    }
+    accumulatedRotation_ = 0.0f;
 }
 
 void GarageScene::Update(float deltaTime) {
-    if (!meshes_.empty() && rotateDisplayVehicle_) {
+    if (displayMeshIndices_.empty() || baseDisplayTransforms_.size() != displayMeshIndices_.size()) {
+        return;
+    }
+
+    if (rotateDisplayVehicle_) {
         accumulatedRotation_ += rotationSpeed_ * deltaTime;
         accumulatedRotation_ = std::fmod(accumulatedRotation_, 360.0f);
-        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(accumulatedRotation_), glm::vec3(0.0f, 1.0f, 0.0f));
-        meshes_.front().transform = baseDisplayTransform_ * rotation;
-    } else if (!meshes_.empty() && baseTransformCaptured_) {
-        meshes_.front().transform = baseDisplayTransform_;
+        const glm::mat4 rotation =
+            glm::rotate(glm::mat4(1.0f), glm::radians(accumulatedRotation_), glm::vec3(0.0f, 1.0f, 0.0f));
+        for (std::size_t i = 0; i < displayMeshIndices_.size(); ++i) {
+            const std::size_t meshIndex = displayMeshIndices_[i];
+            if (meshIndex < meshes_.size()) {
+                meshes_[meshIndex].transform = baseDisplayTransforms_[i] * rotation;
+            }
+        }
+    } else if (baseTransformCaptured_) {
+        for (std::size_t i = 0; i < displayMeshIndices_.size(); ++i) {
+            const std::size_t meshIndex = displayMeshIndices_[i];
+            if (meshIndex < meshes_.size()) {
+                meshes_[meshIndex].transform = baseDisplayTransforms_[i];
+            }
+        }
     }
 }
 
 void GarageScene::Render(Renderer& renderer) {
+    const glm::mat4 view = glm::lookAt(cameraPosition_, cameraTarget_, cameraUp_);
+
     for (const auto& mesh : meshes_) {
         MeshDrawCommand cmd{};
         cmd.vao = mesh.vao;
@@ -81,6 +131,10 @@ void GarageScene::Render(Renderer& renderer) {
         renderer.SubmitMesh(cmd);
     }
     renderer.Flush();
+
+    if (skybox_) {
+        skybox_->draw(view, projectionMatrix_);
+    }
 }
 
 void GarageScene::RenderDebugUi(DebugUI&) {
@@ -100,21 +154,41 @@ void GarageScene::RenderDebugUi(DebugUI&) {
 }
 
 void GarageScene::LoadAssets() {
-    Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile("assets/garage/garage.fbx",
-                                             aiProcess_Triangulate | aiProcess_GenSmoothNormals |
-                                                 aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+    meshes_.clear();
+    displayMeshIndices_.clear();
+    baseDisplayTransforms_.clear();
+    baseTransformCaptured_ = false;
 
-    if (!scene || !scene->mRootNode) {
-        CreateFallbackMesh();
-        return;
+    const std::size_t wheelStart = meshes_.size();
+    if (LoadModelFromFile("assets/car/Chevrolet-nascar-FLWheel.obj", glm::mat4(1.0f))) {
+        const std::size_t wheelEnd = meshes_.size();
+        for (std::size_t i = wheelStart; i < wheelEnd; ++i) {
+            displayMeshIndices_.push_back(i);
+        }
     }
 
-    ProcessAssimpNode(scene, scene->mRootNode, glm::mat4(1.0f));
+    LoadModelFromFile("assets/garage/garage.fbx", glm::mat4(1.0f));
 
     if (meshes_.empty()) {
         CreateFallbackMesh();
+    } else if (displayMeshIndices_.empty()) {
+        displayMeshIndices_.push_back(0);
     }
+}
+
+bool GarageScene::LoadModelFromFile(const std::string& path, const glm::mat4& rootTransform)
+{
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(
+        path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+
+    if (!scene || !scene->mRootNode) {
+        return false;
+    }
+
+    const std::size_t previousCount = meshes_.size();
+    ProcessAssimpNode(scene, scene->mRootNode, rootTransform);
+    return meshes_.size() > previousCount;
 }
 
 void GarageScene::ProcessAssimpNode(const aiScene* scene, const aiNode* node, const glm::mat4& parentTransform) {
@@ -189,7 +263,11 @@ MeshResource GarageScene::UploadMesh(const aiMesh* mesh, const glm::mat4& transf
 
 void GarageScene::CreateFallbackMesh() {
     meshes_.clear();
+    displayMeshIndices_.clear();
+    baseDisplayTransforms_.clear();
     meshes_.push_back(CreateUnitCubeMesh(2.0f));
+    displayMeshIndices_.push_back(0);
+    baseDisplayTransforms_.push_back(meshes_.front().transform);
     baseDisplayTransform_ = meshes_.front().transform;
     baseTransformCaptured_ = true;
 }

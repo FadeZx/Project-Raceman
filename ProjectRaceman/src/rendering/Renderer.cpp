@@ -115,6 +115,8 @@ void Renderer::Flush() {
     drawList_.clear();
 }
 
+const RendererConfig& Renderer::GetConfig() const { return config_; }
+
 void Renderer::InitializePipelines() {
     // Initialize shader programs, samplers, and render states required for PBR.
     // These are placeholders; actual shader compilation is left to the integration layer.
