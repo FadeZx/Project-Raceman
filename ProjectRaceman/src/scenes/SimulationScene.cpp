@@ -1,7 +1,7 @@
 #include "SimulationScene.h"
 
-#include "rendering/Renderer.h"
-#include "ui/DebugUI.h"
+#include "../rendering/Renderer.h"
+#include "../ui/DebugUI.h"
 
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>

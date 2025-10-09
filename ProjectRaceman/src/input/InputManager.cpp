@@ -47,4 +47,4 @@ void InputManager::KeyCallback(GLFWwindow* window, int key, int, int action, int
     }
 }
 
-} // namespace raceman
+} 

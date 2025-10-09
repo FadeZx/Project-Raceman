@@ -3,7 +3,7 @@
 #include "MeshResource.h"
 #include "Scene.h"
 
-#include "physics/PhysicsLayer.h"
+#include "../physics/PhysicsLayer.h"
 
 #include <unordered_map>
 #include <vector>

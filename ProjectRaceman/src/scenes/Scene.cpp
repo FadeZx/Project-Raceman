@@ -1,7 +1,7 @@
 #include "Scene.h"
 
-#include "rendering/Renderer.h"
-#include "ui/DebugUI.h"
+#include "../rendering/Renderer.h"
+#include "../ui/DebugUI.h"
 
 namespace raceman {
 

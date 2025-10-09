@@ -1,7 +1,7 @@
 #include "DebugUI.h"
 
-#include "scenes/Scene.h"
-#include "rendering/Renderer.h"
+#include "../scenes/Scene.h"
+#include "../rendering/Renderer.h"
 
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
 #include <imgui.h>

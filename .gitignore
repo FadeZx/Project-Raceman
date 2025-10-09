@@ -34,6 +34,3 @@
 *.ipch
 *.vsidx
 
-# vcpkg artifacts
-vcpkg_installed/
-.vcpkg-root
