@@ -110,46 +110,6 @@ public:
     }
 
 private:
-    Value parse_value()
-    {
-        skip_whitespace();
-        if (eof())
-        {
-            throw ParseError("Unexpected end of input");
-        }
-
-        char c = peek();
-        if (c == '{')
-        {
-            return parse_object();
-        }
-        if (c == '[')
-        {
-            return parse_array();
-        }
-        if (c == '"')
-        {
-            return Value{parse_string()};
-        }
-        if (c == '-' || std::isdigit(static_cast<unsigned char>(c)))
-        {
-            return Value{parse_number()};
-        }
-        if (match("true"))
-        {
-            return Value{true};
-        }
-        if (match("false"))
-        {
-            return Value{false};
-        }
-        if (match("null"))
-        {
-            return Value{nullptr};
-        }
-
-        throw ParseError("Unexpected character: " + std::string(1, c));
-    }
 
     Object parse_object()
     {
@@ -180,6 +140,29 @@ private:
         }
         return object;
     }
+    Value parse_value()
+    {
+        skip_whitespace();
+        if (eof()) throw ParseError("Unexpected end of input");
+
+        char c = peek();
+        if (c == '{')
+            return Value{ parse_object() };   // <-- wrap
+        if (c == '[')
+            return Value{ parse_array() };    // <-- wrap
+        if (c == '"')
+            return Value{ parse_string() };
+        if (c == '-' || std::isdigit(static_cast<unsigned char>(c)))
+            return Value{ parse_number() };
+        if (match("true"))  return Value{ true };
+        if (match("false")) return Value{ false };
+        if (match("null"))  return Value{ nullptr };
+
+        throw ParseError(std::string("Unexpected character: ") + c);
+    }
+
+
+   
 
     Array parse_array()
     {

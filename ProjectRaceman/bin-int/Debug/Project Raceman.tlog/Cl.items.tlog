@@ -3,6 +3,8 @@ D:\Project-Raceman\ProjectRaceman\src\glad.c;D:\Project-Raceman\ProjectRaceman\b
 D:\Project-Raceman\ProjectRaceman\src\Main.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\Main.obj
 D:\Project-Raceman\ProjectRaceman\src\input\InputManager.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\InputManager.obj
 D:\Project-Raceman\ProjectRaceman\src\physics\PhysicsLayer.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\PhysicsLayer.obj
+D:\Project-Raceman\ProjectRaceman\src\physics\VehicleConfig.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\VehicleConfig.obj
+D:\Project-Raceman\ProjectRaceman\src\physics\VehiclePhysics.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\VehiclePhysics.obj
 D:\Project-Raceman\ProjectRaceman\src\rendering\Renderer.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\Renderer.obj
 D:\Project-Raceman\ProjectRaceman\src\scenes\GarageScene.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\GarageScene.obj
 D:\Project-Raceman\ProjectRaceman\src\scenes\MeshResource.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\MeshResource.obj

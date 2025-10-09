@@ -99,7 +99,10 @@
     <ClInclude Include="src\physics\SimpleJson.h" />
     <ClInclude Include="src\physics\VehicleConfig.h" />
     <ClInclude Include="src\physics\VehiclePhysics.h" />
+    <ClInclude Include="src\rendering\mesh.h" />
+    <ClInclude Include="src\rendering\model.h" />
     <ClInclude Include="src\rendering\Renderer.h" />
+    <ClInclude Include="src\rendering\shader.h" />
     <ClInclude Include="src\scenes\GarageScene.h" />
     <ClInclude Include="src\scenes\MeshResource.h" />
     <ClInclude Include="src\scenes\Scene.h" />

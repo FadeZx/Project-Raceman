@@ -1,4 +1,14 @@
-﻿glfw3.lib(init.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(init.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
+﻿  VehicleConfig.cpp
+  VehiclePhysics.cpp
+  imgui_widgets.cpp
+D:\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
+  (compiling source file '../includes/imgui/imgui_widgets.cpp')
+      D:\Project-Raceman\includes\imgui\imconfig.h(17,9):
+      'IMGUI_IMPL_OPENGL_LOADER_GLAD' previously declared on the command line
+  
+  Generating Code...
+  glad.c
+glfw3.lib(init.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(init.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
 glfw3.lib(window.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(window.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
 glfw3.lib(input.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(input.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
 glfw3.lib(context.obj) : warning LNK4099: PDB 'glfw.pdb' was not found with 'glfw3.lib(context.obj)' or at 'D:\Project-Raceman\ProjectRaceman\bin\Debug\glfw.pdb'; linking object as if no debug info
