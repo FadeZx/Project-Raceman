@@ -21,12 +21,15 @@ void MenuController::Render(DebugUI& ui,
                             const std::vector<std::shared_ptr<Scene>>& scenes,
                             std::size_t activeScene,
                             const std::function<void(std::size_t)>& switchScene,
-                            const std::function<void(std::size_t, const SkyboxFaces&)>& onSkyboxChosen) {
+                            const std::function<void(std::size_t, const SkyboxFaces&)>& onSkyboxChosen,
+                            bool vsyncEnabled,
+                            const std::function<void(bool)>& setVSync,
+                            const std::function<void()>& onAddMeshPlane) {
     (void)ui; // We call ui-specific panels below
     (void)renderer;
 
-    // Draw top-level compact menu
-    RenderMainMenu();
+    // Draw top-level compact menu (now includes Scenes list and Add menu)
+    RenderMainMenu(scenes, activeScene, switchScene, onAddMeshPlane);
 
     // Rendering panel: reuse existing DebugUI metrics by just showing a small window that calls them
     if (showRendering_) {
@@ -40,26 +43,55 @@ void MenuController::Render(DebugUI& ui,
         ImGui::ColorEdit3("Clear Color", &settings.clearColor.x);
         ImGui::Checkbox("Enable Shadows", &settings.enableShadows);
         ImGui::Checkbox("Show Env Debug", &settings.showEnvironmentDebugView);
+
+        bool vs = vsyncEnabled;
+        if (ImGui::Checkbox("VSync", &vs)) {
+            if (setVSync) setVSync(vs);
+        }
         ImGui::End();
     }
 
-    if (showScenes_) {
-        RenderScenesPanel(scenes, activeScene, switchScene);
-    }
+    // Scenes panel is handled by DebugUI::RenderSceneSwitcher; avoid duplication here.
 
     if (showSkybox_) {
         RenderSkyboxPanel(activeScene, onSkyboxChosen);
     }
 }
 
-void MenuController::RenderMainMenu() {
+void MenuController::RenderMainMenu(const std::vector<std::shared_ptr<Scene>>& scenes,
+                                    std::size_t activeScene,
+                                    const std::function<void(std::size_t)>& switchScene,
+                                    const std::function<void()>& onAddMeshPlane) {
     if (ImGui::Begin("Menu")) {
-        bool prevR = showRendering_, prevS = showScenes_, prevB = showSkybox_;
+        bool prevR = showRendering_, prevB = showSkybox_;
         ImGui::Checkbox("Rendering", &showRendering_);
-        ImGui::Checkbox("Scenes", &showScenes_);
         ImGui::Checkbox("Skybox", &showSkybox_);
-        if (prevR != showRendering_ || prevS != showScenes_ || prevB != showSkybox_) {
+        if (prevR != showRendering_ || prevB != showSkybox_) {
             SaveState();
+        }
+
+        ImGui::Separator();
+        // Add button + popup: Mesh -> Plane
+        if (ImGui::Button("Add")) {
+            ImGui::OpenPopup("add_popup");
+        }
+        if (ImGui::BeginPopup("add_popup")) {
+            if (ImGui::BeginMenu("Mesh")) {
+                if (ImGui::MenuItem("Plane")) {
+                    if (onAddMeshPlane) onAddMeshPlane();
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndPopup();
+        }
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("Scenes");
+        for (std::size_t i = 0; i < scenes.size(); ++i) {
+            const bool isActive = (i == activeScene);
+            if (ImGui::Selectable(scenes[i]->GetName().c_str(), isActive)) {
+                if (switchScene) switchScene(i);
+            }
         }
     }
     ImGui::End();

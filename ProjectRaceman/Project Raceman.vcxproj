@@ -79,19 +79,21 @@
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;IMGUI_IMPL_OPENGL_LOADER_GLAD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NRELEASE;_CONSOLE;IMGUI_IMPL_OPENGL_LOADER_GLAD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)../includes;$(ProjectDir)../includes/imgui;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)../includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Debug\STB_IMAGE.lib;Debug\GLAD.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)../lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="assets\mesh\plane.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\input\InputManager.h" />
     <ClInclude Include="src\physics\MathTypes.h" />
@@ -111,6 +113,7 @@
     <ClInclude Include="src\ui\DebugUI.h" />
     <ClInclude Include="..\includes\imgui\backends\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="src\ui\MenuController.h" />
+    <ClInclude Include="src\ui\SceneEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -135,6 +138,7 @@
     <ClCompile Include="..\includes\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\includes\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\ui\MenuController.cpp" />
+    <ClCompile Include="src\ui\SceneEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assimp-vc140-mt.dll" />
@@ -144,6 +148,28 @@
     <None Include="src\assimp-vc140-mt.dll" />
     <None Include="src\ikpMP3.dll" />
     <None Include="src\irrKlang.dll" />
+    <None Include="src\shaders\diffuse lighting\lighting_shader.fs" />
+    <None Include="src\shaders\diffuse lighting\lighting_shader.vs" />
+    <None Include="src\shaders\diffuse lighting\light_cube.fs" />
+    <None Include="src\shaders\diffuse lighting\light_cube.vs" />
+    <None Include="src\shaders\model\model_loading.fs" />
+    <None Include="src\shaders\model\model_loading.vs" />
+    <None Include="src\shaders\PBR\background.fs" />
+    <None Include="src\shaders\PBR\background.vs" />
+    <None Include="src\shaders\PBR\brdf.fs" />
+    <None Include="src\shaders\PBR\brdf.vs" />
+    <None Include="src\shaders\PBR\cubemap.vs" />
+    <None Include="src\shaders\PBR\equirectangular_to_cubemap.fs" />
+    <None Include="src\shaders\PBR\irradiance_convolution.fs" />
+    <None Include="src\shaders\PBR\pbr.fs" />
+    <None Include="src\shaders\PBR\pbr.vs" />
+    <None Include="src\shaders\PBR\prefilter.fs" />
+    <None Include="src\shaders\shadow\shadow_dept.fs" />
+    <None Include="src\shaders\shadow\shadow_dept.vs" />
+    <None Include="src\shaders\text.fs" />
+    <None Include="src\shaders\text.vs" />
+    <None Include="src\shaders\UIShader.fs" />
+    <None Include="src\shaders\UIShader.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

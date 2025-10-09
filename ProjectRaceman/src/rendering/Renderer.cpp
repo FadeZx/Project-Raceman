@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "shader.h"
 
 #include <glad/glad.h>
 
@@ -108,18 +109,51 @@ void Renderer::CreateShadowMaps(int resolution) {
 void Renderer::SubmitMesh(const MeshDrawCommand& cmd) { drawList_.push_back(cmd); }
 
 void Renderer::Flush() {
+    if (!simpleShader_) {
+        // Fallback: create simple shader once
+        simpleShader_ = std::make_unique<Shader>("src/shaders/simple/simple.vs", "src/shaders/simple/simple.fs");
+    }
+
+    // Force a safe, visible state for editor draws
+    GLboolean depthEnabled = glIsEnabled(GL_DEPTH_TEST);
+    GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
+
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+
+    simpleShader_->use();
     for (const auto& cmd : drawList_) {
+        // MVP = proj * view * model
+        glm::mat4 mvp = proj_ * view_ * cmd.modelMatrix;
+        simpleShader_->setMat4("uMVP", mvp);
+        // Bright color for visibility
+        simpleShader_->setVec4("uColor", glm::vec4(1.0f, 0.2f, 0.2f, 1.0f));
+
         glBindVertexArray(cmd.vao);
         glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, nullptr);
     }
+    glBindVertexArray(0);
     drawList_.clear();
+
+    // Restore previous state
+    if (depthEnabled) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+    if (cullEnabled) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
 }
 
 const RendererConfig& Renderer::GetConfig() const { return config_; }
 
+void Renderer::SetCamera(const glm::mat4& view, const glm::mat4& proj) {
+    view_ = view;
+    proj_ = proj;
+}
+
 void Renderer::InitializePipelines() {
     // Initialize shader programs, samplers, and render states required for PBR.
     // These are placeholders; actual shader compilation is left to the integration layer.
+    // Prepare simple shader eagerly to avoid hiccup on first draw.
+    if (!simpleShader_) {
+        simpleShader_ = std::make_unique<Shader>("src/shaders/simple/simple.vs", "src/shaders/simple/simple.fs");
+    }
 }
 
 void Renderer::InitializeQuad() {

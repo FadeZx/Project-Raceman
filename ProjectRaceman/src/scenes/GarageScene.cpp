@@ -20,6 +20,8 @@
 
 #include <string>
 #include <vector>
+#include <array>
+#include <iterator>
 
 #include <iostream>
 
@@ -34,6 +36,7 @@ namespace raceman {
         // Load persisted faces and ensure skybox is created
         LoadSkyboxConfig();
         EnsureSkyboxReady();
+        BuildSkyboxIfNeeded();
     }
 
     void GarageScene::Update(float deltaTime) {
@@ -41,6 +44,7 @@ namespace raceman {
     }
 
     void GarageScene::Render(Renderer& renderer) {
+        BuildSkyboxIfNeeded();
         // Draw skybox if available (basic camera for now)
         if (skybox_) {
             const auto& cfg = renderer.GetConfig();
@@ -66,19 +70,12 @@ namespace raceman {
             skyboxFaces_[3] = (base / "ny.jpg").string();
             skyboxFaces_[4] = (base / "pz.jpg").string();
             skyboxFaces_[5] = (base / "nz.jpg").string();
+            skyboxDirty_ = true;
         }
-
     }
 
     void GarageScene::RenderDebugUi(DebugUI&) {
-
-       
-
-        if (!skyboxShader_) {
-            skyboxShader_ = std::make_unique<Shader>("src/shaders/skybox/skybox.vs", "src/shaders/skybox/skybox.fs");
-        }
-        std::vector<std::string> facesVec(skyboxFaces_.begin(), skyboxFaces_.end());
-        skybox_ = std::make_unique<Skybox>(facesVec, skyboxShader_->getID());
+        // No per-frame skybox rebuild here.
     }
 
 
@@ -103,8 +100,19 @@ namespace raceman {
 
     void GarageScene::SetSkyboxFaces(const std::array<std::string,6>& faces) {
         skyboxFaces_ = faces;
+        skyboxDirty_ = true;
         SaveSkyboxConfig();
-        EnsureSkyboxReady();
+    }
+
+    void GarageScene::BuildSkyboxIfNeeded() {
+        if (!skyboxShader_) {
+            skyboxShader_ = std::make_unique<Shader>("src/shaders/skybox/skybox.vs", "src/shaders/skybox/skybox.fs");
+        }
+        if (skyboxDirty_) {
+            std::vector<std::string> facesVec(skyboxFaces_.begin(), skyboxFaces_.end());
+            skybox_ = std::make_unique<Skybox>(facesVec, skyboxShader_->getID());
+            skyboxDirty_ = false;
+        }
     }
 }
 

@@ -5,6 +5,8 @@
 #include "scenes/Scene.h"
 #include "ui/DebugUI.h"
 #include "ui/MenuController.h"
+#include "ui/SceneEditor.h"
+#include "ui/Console.h"
 #include "scenes/GarageScene.h"
 #include "scenes/SimulationScene.h"
 
@@ -44,6 +46,7 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
 
     if (config.enableImGui) {
         InitializeImGui();
+        sceneEditor_ = std::make_unique<SceneEditor>();
     }
 
     inputManager_->RegisterKeyCallback([this](int key) {
@@ -54,6 +57,7 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
     });
 
     lastFrameTime_ = glfwGetTime();
+    baseTitle_ = config_.windowTitle;
 }
 
 Application::~Application() {
@@ -74,6 +78,17 @@ void Application::Run() {
         double currentTime = glfwGetTime();
         float deltaTime = static_cast<float>(currentTime - lastFrameTime_);
         lastFrameTime_ = currentTime;
+
+        // FPS accumulation and window title update (once per second)
+        fpsAccum_ += deltaTime;
+        ++fpsFrames_;
+        if (fpsAccum_ >= 1.0) {
+            double fps = static_cast<double>(fpsFrames_) / fpsAccum_;
+            std::string title = baseTitle_ + " - FPS: " + std::to_string(static_cast<int>(fps + 0.5));
+            glfwSetWindowTitle(window_, title.c_str());
+            fpsAccum_ = 0.0;
+            fpsFrames_ = 0;
+        }
 
         Update(deltaTime);
         Render();
@@ -116,7 +131,7 @@ void Application::InitializeGlfw() {
     }
 
     glfwMakeContextCurrent(window_);
-    glfwSwapInterval(1);
+    glfwSwapInterval(vsyncEnabled_ ? 1 : 0);
 
     if (!inputManager_) {
         inputManager_ = std::make_unique<InputManager>();
@@ -135,6 +150,12 @@ void Application::InitializeImGui() {
 }
 
 void Application::ShutdownImGui() { debugUi_->Shutdown(); }
+
+void Application::SetVSync(bool enabled) {
+    vsyncEnabled_ = enabled;
+    // Apply immediately if context is current
+    glfwSwapInterval(vsyncEnabled_ ? 1 : 0);
+}
 
 void Application::ShutdownGlfw() {
     glfwDestroyWindow(window_);
@@ -166,7 +187,12 @@ void Application::Update(float deltaTime) {
 
         // Keep scene-specific debug (non-skybox)
         scene->RenderDebugUi(*debugUi_);
-        debugUi_->RenderSceneSwitcher(scenes_, activeScene_, [this](std::size_t index) { SwitchScene(index); });
+
+        // Unity-like Scene Editor panels (Scene hierarchy + Inspector)
+        if (sceneEditor_) {
+            sceneEditor_->RenderUI(deltaTime);
+        }
+
 
         // Centralized menu (no renderer panel duplication; skybox selection only if wired)
         menuController_->Render(*debugUi_, *renderer_, scenes_, activeScene_,
@@ -180,7 +206,10 @@ void Application::Update(float deltaTime) {
                         ss->SetSkyboxFaces(faces);
                     }
                 }
-            });
+            },
+            vsyncEnabled_,
+            [this](bool enabled){ SetVSync(enabled); },
+            [this](){ if (sceneEditor_) sceneEditor_->AddMeshPlane(); });
 
         debugUi_->EndFrame();
     }
@@ -194,6 +223,12 @@ void Application::Render() {
     auto& scene = scenes_[activeScene_];
     renderer_->BeginFrame();
     scene->Render(*renderer_);
+
+    // Submit editor meshes (PBR default material) before finalizing the frame
+    if (sceneEditor_) {
+        sceneEditor_->SubmitDraws(*renderer_);
+    }
+
     renderer_->EndFrame();
 
     if (config_.enableImGui) {

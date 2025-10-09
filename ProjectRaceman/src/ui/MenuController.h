@@ -27,11 +27,17 @@ public:
                 const std::vector<std::shared_ptr<Scene>>& scenes,
                 std::size_t activeScene,
                 const std::function<void(std::size_t)>& switchScene,
-                const std::function<void(std::size_t, const SkyboxFaces&)>& onSkyboxChosen = {});
+                const std::function<void(std::size_t, const SkyboxFaces&)>& onSkyboxChosen = {},
+                bool vsyncEnabled = true,
+                const std::function<void(bool)>& setVSync = std::function<void(bool)>(),
+                const std::function<void()>& onAddMeshPlane = std::function<void()>());
 
 private:
     // Panels
-    void RenderMainMenu();
+    void RenderMainMenu(const std::vector<std::shared_ptr<Scene>>& scenes,
+                        std::size_t activeScene,
+                        const std::function<void(std::size_t)>& switchScene,
+                        const std::function<void()>& onAddMeshPlane);
     void RenderRenderingPanel(DebugUI& ui, Renderer& renderer, float deltaTime);
     void RenderScenesPanel(const std::vector<std::shared_ptr<Scene>>& scenes,
                            std::size_t activeScene,

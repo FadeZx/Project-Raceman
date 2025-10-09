@@ -72,6 +72,12 @@
     <ClInclude Include="src\ui\MenuController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\ui\SceneEditor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="assets\mesh\plane.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp">
@@ -140,6 +146,9 @@
     <ClCompile Include="src\ui\MenuController.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\SceneEditor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\assimp-vc140-mt.dll" />
@@ -149,5 +158,27 @@
     <None Include="imgui.ini" />
     <None Include="assimp-vc140-mt.dll" />
     <None Include="irrKlang.dll" />
+    <None Include="src\shaders\text.fs" />
+    <None Include="src\shaders\text.vs" />
+    <None Include="src\shaders\UIShader.fs" />
+    <None Include="src\shaders\UIShader.vs" />
+    <None Include="src\shaders\shadow\shadow_dept.vs" />
+    <None Include="src\shaders\shadow\shadow_dept.fs" />
+    <None Include="src\shaders\PBR\background.fs" />
+    <None Include="src\shaders\PBR\background.vs" />
+    <None Include="src\shaders\PBR\brdf.fs" />
+    <None Include="src\shaders\PBR\brdf.vs" />
+    <None Include="src\shaders\PBR\cubemap.vs" />
+    <None Include="src\shaders\PBR\equirectangular_to_cubemap.fs" />
+    <None Include="src\shaders\PBR\irradiance_convolution.fs" />
+    <None Include="src\shaders\PBR\pbr.fs" />
+    <None Include="src\shaders\PBR\pbr.vs" />
+    <None Include="src\shaders\PBR\prefilter.fs" />
+    <None Include="src\shaders\model\model_loading.fs" />
+    <None Include="src\shaders\model\model_loading.vs" />
+    <None Include="src\shaders\diffuse lighting\light_cube.fs" />
+    <None Include="src\shaders\diffuse lighting\light_cube.vs" />
+    <None Include="src\shaders\diffuse lighting\lighting_shader.fs" />
+    <None Include="src\shaders\diffuse lighting\lighting_shader.vs" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,6 @@
+assets\skybox\sunset\px.jpg
+assets\skybox\sunset\nx.jpg
+assets\skybox\sunset\py.jpg
+assets\skybox\sunset\ny.jpg
+assets\skybox\sunset\pz.jpg
+assets\skybox\sunset\nz.jpg

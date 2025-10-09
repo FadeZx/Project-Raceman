@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+class Shader;
+
 namespace raceman {
 
 struct RendererConfig {
@@ -49,6 +51,9 @@ public:
     void SubmitMesh(const MeshDrawCommand& cmd);
     void Flush();
 
+    // Fallback camera setup used by simple pipeline; later swap to scene camera
+    void SetCamera(const glm::mat4& view, const glm::mat4& proj);
+
     const EnvironmentMaps& GetEnvironmentMaps() const { return environmentMaps_; }
     RendererSettings& GetSettings() { return settings_; }
     const RendererSettings& GetSettings() const { return settings_; }
@@ -66,6 +71,11 @@ private:
     unsigned int captureRbo_{0};
     unsigned int fullscreenQuad_{0};
     std::vector<unsigned int> shadowMaps_;
+
+    // Simple fallback pipeline state
+    std::unique_ptr<Shader> simpleShader_;
+    glm::mat4 view_{1.0f};
+    glm::mat4 proj_{1.0f};
 };
 
 } // namespace raceman

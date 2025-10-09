@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <array>
 
 class Skybox;
 class Shader;
@@ -33,8 +34,10 @@ private:
     std::unique_ptr<Skybox> skybox_;
     std::unique_ptr<Shader> skyboxShader_;
     std::array<std::string, 6> skyboxFaces_{};
+    bool skyboxDirty_{true};
 
     void EnsureSkyboxReady();
+    void BuildSkyboxIfNeeded();
     void LoadSkyboxConfig();
     void SaveSkyboxConfig() const;
 public:
