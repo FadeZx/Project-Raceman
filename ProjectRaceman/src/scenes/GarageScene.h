@@ -28,6 +28,7 @@ public:
     void Update(float deltaTime) override;
     void Render(Renderer& renderer) override;
     void RenderDebugUi(DebugUI& ui) override;
+    void Save() override;
 
 private:
     // Per-scene skybox

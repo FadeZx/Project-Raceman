@@ -28,6 +28,7 @@ struct MeshDrawCommand {
     unsigned int indexCount{0};
     glm::mat4 modelMatrix{1.0f};
     std::string materialId;
+    glm::vec4 color{1.0f, 0.2f, 0.2f, 1.0f};
 };
 
 struct EnvironmentMaps {
@@ -53,6 +54,8 @@ public:
 
     // Fallback camera setup used by simple pipeline; later swap to scene camera
     void SetCamera(const glm::mat4& view, const glm::mat4& proj);
+    const glm::mat4& GetView() const { return view_; }
+    const glm::mat4& GetProj() const { return proj_; }
 
     const EnvironmentMaps& GetEnvironmentMaps() const { return environmentMaps_; }
     RendererSettings& GetSettings() { return settings_; }

@@ -47,14 +47,58 @@ void MenuController::Render(Renderer& renderer,
         if (ImGui::Checkbox("VSync", &vs)) {
             if (setVSync) setVSync(vs);
         }
+
+        ImGui::Separator();
+        // Collapsible Skybox section inside Rendering panel
+        // Use showSkybox_ only as default open hint
+        if (showSkybox_) { ImGui::SetNextItemOpen(true, ImGuiCond_Once); }
+        if (ImGui::CollapsingHeader("Skybox")) {
+            if (skyboxFolders_.empty()) {
+                RefreshSkyboxSets();
+            }
+
+            ImGui::TextUnformatted("Pick a skybox folder (auto-detects px/nx/py/ny/pz/nz or posx/negx/...)");
+            if (ImGui::BeginListBox("##skybox-folders", ImVec2(0, 200))) {
+                for (int i = 0; i < static_cast<int>(skyboxFolders_.size()); ++i) {
+                    bool selected = (i == selectedFolder_);
+                    if (ImGui::Selectable(skyboxFolders_[i].c_str(), selected)) {
+                        selectedFolder_ = i;
+                        // Precompute current faces for this scene
+                        if (selectedFolder_ >= 0) {
+                            perSceneFaces_[activeScene] = BuildFacesFromFolder(skyboxFolders_[selectedFolder_]);
+                        }
+                    }
+                }
+                ImGui::EndListBox();
+            }
+
+            auto it = perSceneFaces_.find(activeScene);
+            if (it != perSceneFaces_.end()) {
+                const auto& faces = it->second;
+                const char* labels[6] = {"+X","-X","+Y","-Y","+Z","-Z"};
+                for (int i = 0; i < 6; ++i) {
+                    std::vector<char> buf(faces[i].begin(), faces[i].end());
+                    buf.push_back('\0');
+                    ImGui::InputText(labels[i], buf.data(), buf.size(), ImGuiInputTextFlags_ReadOnly);
+                }
+                if (onSkyboxChosen) {
+                    if (ImGui::Button("Apply To Scene")) {
+                        onSkyboxChosen(activeScene, faces);
+                    }
+                } else {
+                    ImGui::TextDisabled("Apply callback not wired; selection is stored only.");
+                }
+            } else {
+                ImGui::TextDisabled("No skybox selected for this scene.");
+            }
+        }
+
         ImGui::End();
     }
 
     // Scenes panel is handled by DebugUI::RenderSceneSwitcher; avoid duplication here.
 
-    if (showSkybox_) {
-        RenderSkyboxPanel(activeScene, onSkyboxChosen);
-    }
+    // Skybox controls are now inside the Rendering panel's collapsible section.
     // Render Console panel if enabled and available
     if (showConsole_ && console) {
         console->RenderPanel("Console");
@@ -66,11 +110,10 @@ void MenuController::RenderMainMenu(const std::vector<std::shared_ptr<Scene>>& s
                                     const std::function<void(std::size_t)>& switchScene,
                                     const std::function<void()>& onAddMeshPlane) {
     if (ImGui::Begin("Menu")) {
-        bool prevR = showRendering_, prevB = showSkybox_, prevC = showConsole_;
+        bool prevR = showRendering_, prevC = showConsole_;
         ImGui::Checkbox("Rendering", &showRendering_);
-        ImGui::Checkbox("Skybox", &showSkybox_);
         ImGui::Checkbox("Console", &showConsole_);
-        if (prevR != showRendering_ || prevB != showSkybox_ || prevC != showConsole_) {
+        if (prevR != showRendering_ || prevC != showConsole_) {
             SaveState();
         }
 

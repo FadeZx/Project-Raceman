@@ -7,8 +7,9 @@
       "transform": {
         "position": [0, 0, 0],
         "rotationEuler": [0, 0, 0],
-        "scale": [10, 1, 10]
-      }
+        "scale": [38.5, 0.6, 57]
+      },
+      "color": [0, 0.396078, 0.239216, 1]
     }
   ]
 }

@@ -45,15 +45,12 @@ namespace raceman {
 
     void GarageScene::Render(Renderer& renderer) {
         BuildSkyboxIfNeeded();
-        // Draw skybox if available (basic camera for now)
+        // Draw skybox using current camera (remove translation so it surrounds the camera)
         if (skybox_) {
-            const auto& cfg = renderer.GetConfig();
-            float aspect = cfg.height != 0 ? (float)cfg.width / (float)cfg.height : 16.0f/9.0f;
-            glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
-                                         glm::vec3(0.0f, 0.0f, 0.0f),
-                                         glm::vec3(0.0f, 1.0f, 0.0f));
-            glm::mat4 proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 100.0f);
-            skybox_->draw(view, proj);
+            glm::mat4 view = renderer.GetView();
+            glm::mat4 proj = renderer.GetProj();
+            glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(view));
+            skybox_->draw(viewNoTranslation, proj);
         }
     }
 
@@ -76,6 +73,11 @@ namespace raceman {
 
     void GarageScene::RenderDebugUi(DebugUI&) {
         // No per-frame skybox rebuild here.
+    }
+
+    void GarageScene::Save() {
+        // Persist current skybox configuration
+        SaveSkyboxConfig();
     }
 
 

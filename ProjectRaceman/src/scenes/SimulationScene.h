@@ -26,6 +26,7 @@ public:
     void Render(Renderer& renderer) override;
 	void Clean() override;
     void RenderDebugUi(DebugUI& ui) override;
+    void Save() override;
 
 public:
     void SetSkyboxFaces(const std::array<std::string,6>& faces);

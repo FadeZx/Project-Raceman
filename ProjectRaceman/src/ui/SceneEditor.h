@@ -24,6 +24,9 @@ struct SceneObject {
     std::string type;  // e.g., "Plane", "Mesh"
     Transform transform;
 
+    // Visuals
+    glm::vec4 color{1.0f, 1.0f, 1.0f, 1.0f};
+
     // Render data (if renderable)
     unsigned int vao{0};
     unsigned int indexCount{0};
@@ -40,7 +43,6 @@ public:
 
     // Quick action: add a plane via external UI (Menu)
     void AddMeshPlane();
-
     // Programmatic access (future use)
     const std::vector<SceneObject>& GetObjects() const { return objects_; }
 
@@ -55,6 +57,7 @@ private:
 
     // Actions
     void AddPlane();
+
     void Select(int index);
     void Save(const std::string& path);
     void Load(const std::string& path);

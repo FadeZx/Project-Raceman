@@ -126,8 +126,8 @@ void Renderer::Flush() {
         // MVP = proj * view * model
         glm::mat4 mvp = proj_ * view_ * cmd.modelMatrix;
         simpleShader_->setMat4("uMVP", mvp);
-        // Bright color for visibility
-        simpleShader_->setVec4("uColor", glm::vec4(1.0f, 0.2f, 0.2f, 1.0f));
+        // Per-object color
+        simpleShader_->setVec4("uColor", cmd.color);
 
         glBindVertexArray(cmd.vao);
         glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, nullptr);
