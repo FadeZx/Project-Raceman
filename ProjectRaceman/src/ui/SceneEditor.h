@@ -10,6 +10,7 @@ namespace raceman {
 
 class Renderer;
 class PrimitivePlane;
+class Console;
 
 struct Transform {
     glm::vec3 position{0.0f, 0.0f, 0.0f};
@@ -45,6 +46,7 @@ public:
 
     // Submit renderables for drawing via Renderer (PBR pipeline)
     void SubmitDraws(Renderer& renderer);
+    void SetConsole(Console* console) { console_ = console; }
 
 private:
     // UI panels
@@ -69,6 +71,7 @@ private:
 
     // shared primitives
     std::unique_ptr<PrimitivePlane> planePrim_;
+    Console* console_{nullptr};
 };
 
 } // namespace raceman

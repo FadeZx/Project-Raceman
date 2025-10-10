@@ -9,9 +9,9 @@
 
 namespace raceman {
 
-class DebugUI;
 class Renderer;
 class Scene;
+class Console;
 
 using SkyboxFaces = std::array<std::string, 6>; // +X, -X, +Y, -Y, +Z, -Z
 
@@ -22,15 +22,15 @@ public:
 
     // Render the main menu and panels. switchScene is invoked when a new scene is selected.
     // onSkyboxChosen is invoked when user clicks Apply in the Skybox panel (you can wire it later).
-    void Render(DebugUI& ui,
-                Renderer& renderer,
+    void Render(Renderer& renderer,
                 const std::vector<std::shared_ptr<Scene>>& scenes,
                 std::size_t activeScene,
                 const std::function<void(std::size_t)>& switchScene,
                 const std::function<void(std::size_t, const SkyboxFaces&)>& onSkyboxChosen = {},
                 bool vsyncEnabled = true,
                 const std::function<void(bool)>& setVSync = std::function<void(bool)>(),
-                const std::function<void()>& onAddMeshPlane = std::function<void()>());
+                const std::function<void()>& onAddMeshPlane = std::function<void()>(),
+                Console* console = nullptr);
 
 private:
     // Panels
@@ -38,7 +38,7 @@ private:
                         std::size_t activeScene,
                         const std::function<void(std::size_t)>& switchScene,
                         const std::function<void()>& onAddMeshPlane);
-    void RenderRenderingPanel(DebugUI& ui, Renderer& renderer, float deltaTime);
+
     void RenderScenesPanel(const std::vector<std::shared_ptr<Scene>>& scenes,
                            std::size_t activeScene,
                            const std::function<void(std::size_t)>& switchScene);
@@ -59,6 +59,7 @@ private:
     bool showRendering_{false};
     bool showScenes_{false};
     bool showSkybox_{false};
+    bool showConsole_{false};
 
     // Cached skybox folders under assets/skybox
     std::vector<std::string> skyboxFolders_;

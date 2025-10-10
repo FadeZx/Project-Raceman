@@ -103,6 +103,7 @@
     <ClInclude Include="src\physics\VehiclePhysics.h" />
     <ClInclude Include="src\rendering\mesh.h" />
     <ClInclude Include="src\rendering\model.h" />
+    <ClInclude Include="src\rendering\PrimitivePlane.h" />
     <ClInclude Include="src\rendering\Renderer.h" />
     <ClInclude Include="src\rendering\shader.h" />
     <ClInclude Include="src\rendering\Skybox.h" />
@@ -110,6 +111,7 @@
     <ClInclude Include="src\scenes\GarageScene.h" />
     <ClInclude Include="src\scenes\Scene.h" />
     <ClInclude Include="src\scenes\SimulationScene.h" />
+    <ClInclude Include="src\ui\Console.h" />
     <ClInclude Include="src\ui\DebugUI.h" />
     <ClInclude Include="..\includes\imgui\backends\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="src\ui\MenuController.h" />
@@ -129,6 +131,7 @@
     <ClCompile Include="src\scenes\GarageScene.cpp" />
     <ClCompile Include="src\scenes\Scene.cpp" />
     <ClCompile Include="src\scenes\SimulationScene.cpp" />
+    <ClCompile Include="src\ui\Console.cpp" />
     <ClCompile Include="src\ui\DebugUI.cpp" />
     <ClCompile Include="..\includes\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="..\includes\imgui\backends\imgui_impl_opengl3.cpp" />

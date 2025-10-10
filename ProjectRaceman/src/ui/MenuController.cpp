@@ -1,8 +1,8 @@
 #include "MenuController.h"
 
-#include "../ui/DebugUI.h"
 #include "../rendering/Renderer.h"
 #include "../scenes/Scene.h"
+#include "Console.h"
 
 #include <imgui/imgui.h>
 #include <filesystem>
@@ -16,16 +16,15 @@ namespace raceman {
 MenuController::MenuController() { LoadState(); }
 MenuController::~MenuController() { SaveState(); }
 
-void MenuController::Render(DebugUI& ui,
-                            Renderer& renderer,
+void MenuController::Render(Renderer& renderer,
                             const std::vector<std::shared_ptr<Scene>>& scenes,
                             std::size_t activeScene,
                             const std::function<void(std::size_t)>& switchScene,
                             const std::function<void(std::size_t, const SkyboxFaces&)>& onSkyboxChosen,
                             bool vsyncEnabled,
                             const std::function<void(bool)>& setVSync,
-                            const std::function<void()>& onAddMeshPlane) {
-    (void)ui; // We call ui-specific panels below
+                            const std::function<void()>& onAddMeshPlane,
+                            Console* console) {
     (void)renderer;
 
     // Draw top-level compact menu (now includes Scenes list and Add menu)
@@ -56,6 +55,10 @@ void MenuController::Render(DebugUI& ui,
     if (showSkybox_) {
         RenderSkyboxPanel(activeScene, onSkyboxChosen);
     }
+    // Render Console panel if enabled and available
+    if (showConsole_ && console) {
+        console->RenderPanel("Console");
+    }
 }
 
 void MenuController::RenderMainMenu(const std::vector<std::shared_ptr<Scene>>& scenes,
@@ -63,10 +66,11 @@ void MenuController::RenderMainMenu(const std::vector<std::shared_ptr<Scene>>& s
                                     const std::function<void(std::size_t)>& switchScene,
                                     const std::function<void()>& onAddMeshPlane) {
     if (ImGui::Begin("Menu")) {
-        bool prevR = showRendering_, prevB = showSkybox_;
+        bool prevR = showRendering_, prevB = showSkybox_, prevC = showConsole_;
         ImGui::Checkbox("Rendering", &showRendering_);
         ImGui::Checkbox("Skybox", &showSkybox_);
-        if (prevR != showRendering_ || prevB != showSkybox_) {
+        ImGui::Checkbox("Console", &showConsole_);
+        if (prevR != showRendering_ || prevB != showSkybox_ || prevC != showConsole_) {
             SaveState();
         }
 
@@ -214,7 +218,9 @@ void MenuController::RenderSkyboxPanel(std::size_t activeScene,
             const auto& faces = it->second;
             const char* labels[6] = {"+X","-X","+Y","-Y","+Z","-Z"};
             for (int i = 0; i < 6; ++i) {
-                ImGui::InputText(labels[i], const_cast<char*>(faces[i].c_str()), faces[i].size()+1, ImGuiInputTextFlags_ReadOnly);
+                std::vector<char> buf(faces[i].begin(), faces[i].end());
+                buf.push_back('\0');
+                ImGui::InputText(labels[i], buf.data(), buf.size(), ImGuiInputTextFlags_ReadOnly);
             }
             if (onSkyboxChosen) {
                 if (ImGui::Button("Apply To Scene")) {
@@ -243,6 +249,7 @@ void MenuController::LoadState() {
         if (key == "showRendering") showRendering_ = (val == "1");
         else if (key == "showScenes") showScenes_ = (val == "1");
         else if (key == "showSkybox") showSkybox_ = (val == "1");
+        else if (key == "showConsole") showConsole_ = (val == "1");
         else if (key == "selectedFolder") selectedFolder_ = std::stoi(val);
     }
 }
@@ -257,6 +264,7 @@ void MenuController::SaveState() const {
     out << "showRendering=" << (showRendering_ ? "1" : "0") << "\n";
     out << "showScenes=" << (showScenes_ ? "1" : "0") << "\n";
     out << "showSkybox=" << (showSkybox_ ? "1" : "0") << "\n";
+    out << "showConsole=" << (showConsole_ ? "1" : "0") << "\n";
     out << "selectedFolder=" << selectedFolder_ << "\n";
 }
 

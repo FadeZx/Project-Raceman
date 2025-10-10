@@ -42,6 +42,9 @@ void InputManager::KeyCallback(GLFWwindow* window, int key, int, int action, int
         for (auto& callback : manager->keyCallbacks_) {
             callback(key);
         }
+    } else if (action == GLFW_REPEAT) {
+        // Keep key down state on repeat (useful for modifiers like Ctrl)
+        manager->keyState_[key] = true;
     } else if (action == GLFW_RELEASE) {
         manager->keyState_[key] = false;
     }

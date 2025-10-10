@@ -27,13 +27,17 @@ public:
 private:
     void Add(MessageType type, const std::string& msg);
 
+    enum class Tab { Log = 0, Warning = 1, Error = 2 };
+
     std::vector<ConsoleEntry> entries_;
+    // legacy toggles kept for compatibility, but UI now uses tabs
     bool showLog_{true};
     bool showWarning_{true};
     bool showError_{true};
     bool autoScroll_{true};
     std::string input_;
     std::mutex mtx_;
+    Tab currentTab_{Tab::Log};
 };
 
 } // namespace raceman

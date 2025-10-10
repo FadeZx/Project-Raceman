@@ -13,6 +13,8 @@
 #include <glad/glad.h>
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #ifndef GLFW_TRUE
 #define GLFW_TRUE 1
@@ -43,6 +45,7 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
     }
     debugUi_ = std::make_unique<DebugUI>(config.enableImGui);
     menuController_ = std::make_unique<MenuController>();
+    console_ = std::make_unique<Console>();
 
     if (config.enableImGui) {
         InitializeImGui();
@@ -84,7 +87,12 @@ void Application::Run() {
         ++fpsFrames_;
         if (fpsAccum_ >= 1.0) {
             double fps = static_cast<double>(fpsFrames_) / fpsAccum_;
-            std::string title = baseTitle_ + " - FPS: " + std::to_string(static_cast<int>(fps + 0.5));
+            std::string sceneName = (!scenes_.empty() ? scenes_[activeScene_]->GetName() : "");
+            bool dirty = (!scenes_.empty() ? scenes_[activeScene_]->IsDirty() : false);
+            std::string title = std::string("Project Race man") +
+                                (sceneName.empty() ? "" : " - " + sceneName) +
+                                (dirty ? " *" : "") +
+                                " - FPS:" + std::to_string(static_cast<int>(fps + 0.5));
             glfwSetWindowTitle(window_, title.c_str());
             fpsAccum_ = 0.0;
             fpsFrames_ = 0;
@@ -108,6 +116,8 @@ void Application::SwitchScene(std::size_t index) {
     if (index < scenes_.size()) {
         activeScene_ = index;
         scenes_[activeScene_]->Init();
+        // Reset dirty flag when switching scenes
+        scenes_[activeScene_]->MarkClean();
     }
 }
 
@@ -164,14 +174,100 @@ void Application::ShutdownGlfw() {
 
 void Application::PollEvents() {
     glfwPollEvents();
-    inputManager_->Update();
 
     if (inputManager_->WasKeyPressed(GLFW_KEY_ESCAPE)) {
         running_ = false;
     }
+
+    // Ctrl+S: Save active scene if dirty
+    bool ctrlDown = inputManager_ && (inputManager_->IsKeyDown(GLFW_KEY_LEFT_CONTROL) || inputManager_->IsKeyDown(GLFW_KEY_RIGHT_CONTROL));
+    if (ctrlDown && inputManager_ && inputManager_->WasKeyPressed(GLFW_KEY_S)) {
+        if (!scenes_.empty()) {
+            auto& scene = scenes_[activeScene_];
+            if (scene->IsDirty()) {
+                scene->Save();
+                scene->MarkClean();
+                if (console_) {
+                    console_->AddLog(std::string("Scene '") + scene->GetName() + "' saved");
+                }
+            } else {
+                if (console_) {
+                    console_->AddLog(std::string("No changes to save for scene '") + scene->GetName() + "'");
+                }
+            }
+        }
+    }
+
+    // Reset per-frame pressed flags after handling
+    inputManager_->Update();
 }
 
 void Application::Update(float deltaTime) {
+    // Update input
+    // (PollEvents already called; here we process per-frame states)
+    // Editor camera controls (Unity-like)
+    {
+        bool wantCaptureMouse = false;
+
+        // RMB hold toggles free look with cursor disabled
+        int rmb = glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_RIGHT);
+        if (rmb == GLFW_PRESS && !rmbHeld_) {
+            rmbHeld_ = true;
+            firstMouse_ = true;
+            glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        } else if (rmb == GLFW_RELEASE && rmbHeld_) {
+            rmbHeld_ = false;
+            glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+
+        if (rmbHeld_) {
+            // Mouse look
+            double mx, my;
+            glfwGetCursorPos(window_, &mx, &my);
+            if (firstMouse_) {
+                lastMouseX_ = mx; lastMouseY_ = my; firstMouse_ = false;
+            }
+            double dx = mx - lastMouseX_;
+            double dy = my - lastMouseY_;
+            lastMouseX_ = mx; lastMouseY_ = my;
+
+            camYaw_   = camYaw_   + static_cast<float>(dx) * mouseSensitivity_;
+            camPitch_ = camPitch_ - static_cast<float>(dy) * mouseSensitivity_;
+            if (camPitch_ > 89.0f) camPitch_ = 89.0f;
+            if (camPitch_ < -89.0f) camPitch_ = -89.0f;
+
+            wantCaptureMouse = true;
+        }
+
+        // Keyboard move
+        float speed = camBaseSpeed_;
+        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_LEFT_SHIFT))  speed *= camFastMultiplier_;
+        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_LEFT_CONTROL)) speed *= camSlowMultiplier_;
+        float dist = speed * deltaTime;
+
+        // Compute basis from yaw/pitch
+        float yawRad = glm::radians(camYaw_);
+        float pitchRad = glm::radians(camPitch_);
+        glm::vec3 front{
+            cosf(yawRad) * cosf(pitchRad),
+            sinf(pitchRad),
+            sinf(yawRad) * cosf(pitchRad)
+        };
+        front = glm::normalize(front);
+        glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
+        glm::vec3 right = glm::normalize(glm::cross(front, worldUp));
+        glm::vec3 up = glm::normalize(glm::cross(right, front));
+
+        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_W)) { camPosX_ += front.x * dist; camPosY_ += front.y * dist; camPosZ_ += front.z * dist; }
+        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_S)) { camPosX_ -= front.x * dist; camPosY_ -= front.y * dist; camPosZ_ -= front.z * dist; }
+        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_A)) { camPosX_ -= right.x * dist; camPosY_ -= right.y * dist; camPosZ_ -= right.z * dist; }
+        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_D)) { camPosX_ += right.x * dist; camPosY_ += right.y * dist; camPosZ_ += right.z * dist; }
+        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_Q)) { camPosX_ -= up.x * dist;    camPosY_ -= up.y * dist;    camPosZ_ -= up.z * dist; }
+        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_E)) { camPosX_ += up.x * dist;    camPosY_ += up.y * dist;    camPosZ_ += up.z * dist; }
+
+        (void)wantCaptureMouse; // reserved for future UI focus logic
+    }
+
     if (scenes_.empty()) {
         return;
     }
@@ -195,7 +291,7 @@ void Application::Update(float deltaTime) {
 
 
         // Centralized menu (no renderer panel duplication; skybox selection only if wired)
-        menuController_->Render(*debugUi_, *renderer_, scenes_, activeScene_,
+        menuController_->Render(*renderer_, scenes_, activeScene_,
             [this](std::size_t index) { SwitchScene(index); },
             [this](std::size_t targetScene, const std::array<std::string,6>& faces) {
                 if (targetScene < scenes_.size()) {
@@ -205,11 +301,18 @@ void Application::Update(float deltaTime) {
                     } else if (auto ss = std::dynamic_pointer_cast<SimulationScene>(scene)) {
                         ss->SetSkyboxFaces(faces);
                     }
+                    // Mark scene dirty after applying skybox
+                    scene->MarkDirty();
                 }
             },
             vsyncEnabled_,
             [this](bool enabled){ SetVSync(enabled); },
-            [this](){ if (sceneEditor_) sceneEditor_->AddMeshPlane(); });
+            [this](){
+                if (sceneEditor_) sceneEditor_->AddMeshPlane();
+                // Mark active scene dirty after adding a mesh
+                if (!scenes_.empty()) { scenes_[activeScene_]->MarkDirty(); }
+            },
+            console_.get());
 
         debugUi_->EndFrame();
     }
@@ -222,6 +325,29 @@ void Application::Render() {
 
     auto& scene = scenes_[activeScene_];
     renderer_->BeginFrame();
+
+    // Set editor camera (Unity-like free fly)
+    {
+        const auto& cfg = renderer_->GetConfig();
+        float aspect = (cfg.height != 0) ? (static_cast<float>(cfg.width) / static_cast<float>(cfg.height)) : 1.0f;
+
+        float yawRad = glm::radians(camYaw_);
+        float pitchRad = glm::radians(camPitch_);
+        glm::vec3 front{
+            cosf(yawRad) * cosf(pitchRad),
+            sinf(pitchRad),
+            sinf(yawRad) * cosf(pitchRad)
+        };
+        front = glm::normalize(front);
+        glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
+        glm::vec3 right = glm::normalize(glm::cross(front, worldUp));
+        glm::vec3 up = glm::normalize(glm::cross(right, front));
+
+        glm::vec3 camPos(camPosX_, camPosY_, camPosZ_);
+        glm::mat4 view = glm::lookAt(camPos, camPos + front, up);
+        glm::mat4 proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 500.0f);
+        renderer_->SetCamera(view, proj);
+    }
     scene->Render(*renderer_);
 
     // Submit editor meshes (PBR default material) before finalizing the frame

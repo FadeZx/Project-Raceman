@@ -19,7 +19,7 @@ DebugUI::~DebugUI() = default;
 void DebugUI::Initialize(GLFWwindow* window) {
     if (!enabled_) {
         return;
-    }
+    }  
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
