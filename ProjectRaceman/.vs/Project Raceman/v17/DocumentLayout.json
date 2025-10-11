@@ -7,10 +7,8 @@
       "RelativeMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|solutionrelative:src\\ui\\SceneEditor.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|D:\\CAPT\\PROJECT-RACEMAN\\INCLUDES\\ASSIMP\\MATERIAL.INL||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|D:\\CAPT\\PROJECT-RACEMAN\\INCLUDES\\ASSIMP\\MATERIAL.H||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|D:\\CAPT\\PROJECT-RACEMAN\\PROJECTRACEMAN\\SRC\\UI\\OBJIMPORT.H||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|solutionrelative:SRC\\UI\\OBJIMPORT.H||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\ui\\MenuController.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
@@ -137,6 +135,9 @@
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Project-Raceman\\includes\\imgui\\backends\\imgui_impl_opengl3.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Capt\\Project-Raceman\\includes\\assimp\\material.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -158,7 +159,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
+              "Title": "ObjImport.h",
+              "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\ui\\ObjImport.h",
+              "RelativeDocumentMoniker": "src\\ui\\ObjImport.h",
+              "ToolTip": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\ui\\ObjImport.h",
+              "RelativeToolTip": "src\\ui\\ObjImport.h",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAABIAAAA4AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-10-11T06:40:23.813Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 36,
               "Title": "material.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\includes\\assimp\\material.h",
               "RelativeDocumentMoniker": "..\\includes\\assimp\\material.h",
@@ -166,25 +180,11 @@
               "RelativeToolTip": "..\\includes\\assimp\\material.h",
               "ViewState": "AQIAAHIGAAAAAAAAAAAowH0GAAAnAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-10T19:36:12.582Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-10T19:36:12.582Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "material.inl",
-              "DocumentMoniker": "D:\\Capt\\Project-Raceman\\includes\\assimp\\material.inl",
-              "RelativeDocumentMoniker": "..\\includes\\assimp\\material.inl",
-              "ToolTip": "D:\\Capt\\Project-Raceman\\includes\\assimp\\material.inl",
-              "RelativeToolTip": "..\\includes\\assimp\\material.inl",
-              "ViewState": "AQIAAIEBAAAAAAAAAAAcwJIBAAAAAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
-              "WhenOpened": "2025-10-10T19:32:29.724Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 5,
               "Title": "SceneEditor.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\ui\\SceneEditor.h",
               "RelativeDocumentMoniker": "src\\ui\\SceneEditor.h",
@@ -192,8 +192,7 @@
               "RelativeToolTip": "src\\ui\\SceneEditor.h",
               "ViewState": "AQIAACUAAAAAAAAAAAAowDsAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-10T19:24:10.99Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-10T19:24:10.99Z"
             },
             {
               "$type": "Document",
@@ -203,14 +202,14 @@
               "RelativeDocumentMoniker": "src\\ui\\SceneEditor.cpp",
               "ToolTip": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\ui\\SceneEditor.cpp",
               "RelativeToolTip": "src\\ui\\SceneEditor.cpp",
-              "ViewState": "AQIAADcBAAAAAAAAAAAowFMBAAAwAAAA",
+              "ViewState": "AQIAAP8AAAAAAAAAAAApwAsBAAAIAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-10-10T19:04:34.73Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 6,
               "Title": "mesh.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\rendering\\mesh.h",
               "RelativeDocumentMoniker": "src\\rendering\\mesh.h",
@@ -218,12 +217,11 @@
               "RelativeToolTip": "src\\rendering\\mesh.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAgAAAATAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T09:08:57.235Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T09:08:57.235Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 4,
               "Title": "DebugUI.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\ui\\DebugUI.cpp",
               "RelativeDocumentMoniker": "src\\ui\\DebugUI.cpp",
@@ -231,12 +229,11 @@
               "RelativeToolTip": "src\\ui\\DebugUI.cpp",
               "ViewState": "AQIAAAsAAAAAAAAAAAAMwB0AAAAiAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-09T07:59:06.494Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T07:59:06.494Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 3,
               "Title": "Console.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\ui\\Console.cpp",
               "RelativeDocumentMoniker": "src\\ui\\Console.cpp",
@@ -244,12 +241,11 @@
               "RelativeToolTip": "src\\ui\\Console.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAqwAEAAAAVAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-10T05:26:52.722Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-10T05:26:52.722Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 2,
               "Title": "MenuController.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\ui\\MenuController.cpp",
               "RelativeDocumentMoniker": "src\\ui\\MenuController.cpp",
@@ -257,12 +253,11 @@
               "RelativeToolTip": "src\\ui\\MenuController.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAqwAYAAAAVAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-09T16:29:07.643Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T16:29:07.643Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 8,
               "Title": "PhysicsLayer.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\physics\\PhysicsLayer.h",
               "RelativeDocumentMoniker": "src\\physics\\PhysicsLayer.h",
@@ -270,12 +265,11 @@
               "RelativeToolTip": "src\\physics\\PhysicsLayer.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-10T19:09:48.79Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-10T19:09:48.79Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 11,
               "Title": "GarageScene.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\scenes\\GarageScene.h",
               "RelativeDocumentMoniker": "src\\scenes\\GarageScene.h",
@@ -283,12 +277,11 @@
               "RelativeToolTip": "src\\scenes\\GarageScene.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T09:39:49.605Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T09:39:49.605Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 10,
               "Title": "GarageScene.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\scenes\\GarageScene.cpp",
               "RelativeDocumentMoniker": "src\\scenes\\GarageScene.cpp",
@@ -296,12 +289,11 @@
               "RelativeToolTip": "src\\scenes\\GarageScene.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-07T07:43:34.482Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T07:43:34.482Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 14,
               "Title": "Main.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\Main.cpp",
               "RelativeDocumentMoniker": "src\\Main.cpp",
@@ -309,12 +301,11 @@
               "RelativeToolTip": "src\\Main.cpp",
               "ViewState": "AQIAAAkAAAAAAAAAAAAqwBQAAAAXAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-07T07:43:04.178Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T07:43:04.178Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 7,
               "Title": "SimpleJson.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\physics\\SimpleJson.h",
               "RelativeDocumentMoniker": "src\\physics\\SimpleJson.h",
@@ -322,12 +313,11 @@
               "RelativeToolTip": "src\\physics\\SimpleJson.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T08:20:42.685Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T08:20:42.685Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 13,
               "Title": "imgui_impl_glfw.h",
               "DocumentMoniker": "D:\\Project-Raceman\\includes\\imgui\\backends\\imgui_impl_glfw.h",
               "RelativeDocumentMoniker": "..\\..\\..\\Project-Raceman\\includes\\imgui\\backends\\imgui_impl_glfw.h",
@@ -338,7 +328,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 9,
               "Title": "Application.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\Application.cpp",
               "RelativeDocumentMoniker": "src\\Application.cpp",
@@ -346,12 +336,11 @@
               "RelativeToolTip": "src\\Application.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-07T07:43:14.247Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T07:43:14.247Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 12,
               "Title": "Renderer.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\rendering\\Renderer.cpp",
               "RelativeDocumentMoniker": "src\\rendering\\Renderer.cpp",
@@ -359,12 +348,11 @@
               "RelativeToolTip": "src\\rendering\\Renderer.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-09T17:01:27.911Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T17:01:27.911Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 30,
+              "DocumentIndex": 29,
               "Title": "imgui_impl_opengl3.h",
               "DocumentMoniker": "D:\\Project-Raceman\\includes\\imgui\\backends\\imgui_impl_opengl3.h",
               "RelativeDocumentMoniker": "..\\..\\..\\Project-Raceman\\includes\\imgui\\backends\\imgui_impl_opengl3.h",
@@ -375,7 +363,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 29,
+              "DocumentIndex": 28,
               "Title": "memory",
               "DocumentMoniker": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\include\\memory",
               "ToolTip": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\include\\memory",
@@ -384,7 +372,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 17,
               "Title": "Scene.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\scenes\\Scene.cpp",
               "RelativeDocumentMoniker": "src\\scenes\\Scene.cpp",
@@ -392,12 +380,11 @@
               "RelativeToolTip": "src\\scenes\\Scene.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-09T10:31:08.74Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T10:31:08.74Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
+              "DocumentIndex": 27,
               "Title": "atomic",
               "DocumentMoniker": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\include\\atomic",
               "ToolTip": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\include\\atomic",
@@ -406,7 +393,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 19,
               "Title": "SkyboxController.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\rendering\\SkyboxController.h",
               "RelativeDocumentMoniker": "src\\rendering\\SkyboxController.h",
@@ -414,12 +401,11 @@
               "RelativeToolTip": "src\\rendering\\SkyboxController.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T10:57:54.117Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T10:57:54.117Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 18,
               "Title": "SkyboxController.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\rendering\\SkyboxController.cpp",
               "RelativeDocumentMoniker": "src\\rendering\\SkyboxController.cpp",
@@ -427,12 +413,11 @@
               "RelativeToolTip": "src\\rendering\\SkyboxController.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-09T11:03:14.695Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T11:03:14.695Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 35,
+              "DocumentIndex": 34,
               "Title": "imgui_impl_glfw.cpp",
               "DocumentMoniker": "D:\\Project-Raceman\\includes\\imgui\\backends\\imgui_impl_glfw.cpp",
               "RelativeDocumentMoniker": "..\\..\\..\\Project-Raceman\\includes\\imgui\\backends\\imgui_impl_glfw.cpp",
@@ -443,7 +428,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 36,
+              "DocumentIndex": 35,
               "Title": "imgui_impl_opengl3.cpp",
               "DocumentMoniker": "D:\\Project-Raceman\\includes\\imgui\\backends\\imgui_impl_opengl3.cpp",
               "RelativeDocumentMoniker": "..\\..\\..\\Project-Raceman\\includes\\imgui\\backends\\imgui_impl_opengl3.cpp",
@@ -454,7 +439,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 31,
+              "DocumentIndex": 30,
               "Title": "defs.h",
               "DocumentMoniker": "D:\\Project-Raceman\\includes\\assimp\\defs.h",
               "RelativeDocumentMoniker": "..\\..\\..\\Project-Raceman\\includes\\assimp\\defs.h",
@@ -465,7 +450,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 32,
+              "DocumentIndex": 31,
               "Title": "matrix4x4.h",
               "DocumentMoniker": "D:\\Project-Raceman\\includes\\assimp\\matrix4x4.h",
               "RelativeDocumentMoniker": "..\\..\\..\\Project-Raceman\\includes\\assimp\\matrix4x4.h",
@@ -476,7 +461,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 33,
+              "DocumentIndex": 32,
               "Title": "material.h",
               "DocumentMoniker": "D:\\Project-Raceman\\includes\\assimp\\material.h",
               "RelativeDocumentMoniker": "..\\..\\..\\Project-Raceman\\includes\\assimp\\material.h",
@@ -487,7 +472,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 23,
               "Title": "Skybox.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\rendering\\Skybox.h",
               "RelativeDocumentMoniker": "src\\rendering\\Skybox.h",
@@ -495,12 +480,11 @@
               "RelativeToolTip": "src\\rendering\\Skybox.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T09:47:55.623Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T09:47:55.623Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 21,
               "Title": "Skybox.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\rendering\\Skybox.cpp",
               "RelativeDocumentMoniker": "src\\rendering\\Skybox.cpp",
@@ -508,12 +492,11 @@
               "RelativeToolTip": "src\\rendering\\Skybox.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-09T09:47:59.428Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T09:47:59.428Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 34,
+              "DocumentIndex": 33,
               "Title": "material.inl",
               "DocumentMoniker": "D:\\Project-Raceman\\includes\\assimp\\material.inl",
               "RelativeDocumentMoniker": "..\\..\\..\\Project-Raceman\\includes\\assimp\\material.inl",
@@ -524,7 +507,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 16,
               "Title": "Scene.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\scenes\\Scene.h",
               "RelativeDocumentMoniker": "src\\scenes\\Scene.h",
@@ -532,12 +515,11 @@
               "RelativeToolTip": "src\\scenes\\Scene.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T09:39:07.245Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T09:39:07.245Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 25,
               "Title": "shader.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\rendering\\shader.h",
               "RelativeDocumentMoniker": "src\\rendering\\shader.h",
@@ -545,12 +527,11 @@
               "RelativeToolTip": "src\\rendering\\shader.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T09:09:03.841Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T09:09:03.841Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 24,
               "Title": "model.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\rendering\\model.h",
               "RelativeDocumentMoniker": "src\\rendering\\model.h",
@@ -558,12 +539,11 @@
               "RelativeToolTip": "src\\rendering\\model.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T09:08:57.621Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T09:08:57.621Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 20,
               "Title": "SimulationScene.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\scenes\\SimulationScene.cpp",
               "RelativeDocumentMoniker": "src\\scenes\\SimulationScene.cpp",
@@ -571,12 +551,11 @@
               "RelativeToolTip": "src\\scenes\\SimulationScene.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-09T07:59:36.964Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T07:59:36.964Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 15,
               "Title": "SimulationScene.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\scenes\\SimulationScene.h",
               "RelativeDocumentMoniker": "src\\scenes\\SimulationScene.h",
@@ -584,12 +563,11 @@
               "RelativeToolTip": "src\\scenes\\SimulationScene.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T07:59:23.75Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T07:59:23.75Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 26,
               "Title": "InputManager.cpp",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\input\\InputManager.cpp",
               "RelativeDocumentMoniker": "src\\input\\InputManager.cpp",
@@ -597,12 +575,11 @@
               "RelativeToolTip": "src\\input\\InputManager.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-07T08:36:39.056Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T08:36:39.056Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 22,
               "Title": "Application.h",
               "DocumentMoniker": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\Application.h",
               "RelativeDocumentMoniker": "src\\Application.h",
@@ -610,8 +587,7 @@
               "RelativeToolTip": "src\\Application.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-07T07:43:14.955Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T07:43:14.955Z"
             }
           ]
         }

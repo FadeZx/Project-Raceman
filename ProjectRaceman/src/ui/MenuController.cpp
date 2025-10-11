@@ -117,20 +117,6 @@ void MenuController::RenderMainMenu(const std::vector<std::shared_ptr<Scene>>& s
             SaveState();
         }
 
-        ImGui::Separator();
-        // Add button + popup: Mesh -> Plane
-        if (ImGui::Button("Add")) {
-            ImGui::OpenPopup("add_popup");
-        }
-        if (ImGui::BeginPopup("add_popup")) {
-            if (ImGui::BeginMenu("Mesh")) {
-                if (ImGui::MenuItem("Plane")) {
-                    if (onAddMeshPlane) onAddMeshPlane();
-                }
-                ImGui::EndMenu();
-            }
-            ImGui::EndPopup();
-        }
 
         ImGui::Separator();
         ImGui::TextUnformatted("Scenes");

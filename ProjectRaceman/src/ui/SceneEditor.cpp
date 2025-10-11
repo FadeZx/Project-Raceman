@@ -1,6 +1,8 @@
 #include "SceneEditor.h"
 #include "../rendering/Renderer.h"
 #include "../rendering/PrimitivePlane.h"
+#include "./ObjImport.h"
+#include "Console.h"
 
 #include <imgui/imgui.h>
 #include <filesystem>
@@ -47,20 +49,72 @@ void SceneEditor::RenderUI(float /*deltaTime*/) {
 }
 
 void SceneEditor::RenderScenePanel() {
-    if (ImGui::Begin("Scene")) {
-        // Add button with dropdown
+    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar)) {
+        // Add button with dropdown (Scene panel)
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("Add")) {
                 if (ImGui::BeginMenu("Mesh")) {
                     if (ImGui::MenuItem("Plane")) {
                         AddPlane();
                     }
-
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Model")) {
+                    if (ImGui::MenuItem(".obj")) {
+                        importPath_[0] = '\0';
+                        objScanDir_ = "assets/mesh";
+                        ScanObjDir(objScanDir_);
+                        objSelectIndex_ = objFiles_.empty() ? -1 : 0;
+                        showImportObjPopup_ = true;
+                    }
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
+        }
+
+
+
+
+
+
+        // Trigger popup if requested
+        if (showImportObjPopup_) { ImGui::OpenPopup("Import OBJ"); showImportObjPopup_ = false; }
+        // Import OBJ popup
+        if (ImGui::BeginPopupModal("Import OBJ", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted("Select a .obj file to import");
+            ImGui::InputText("Directory", importPath_, sizeof(importPath_));
+            ImGui::SameLine();
+            if (ImGui::Button("Use")) {
+                objScanDir_ = std::string(importPath_[0] ? importPath_ : objScanDir_.c_str());
+                ScanObjDir(objScanDir_);
+                objSelectIndex_ = objFiles_.empty() ? -1 : 0;
+            }
+            ImGui::Separator();
+            const float listHeight = 200.0f;
+            if (ImGui::BeginListBox("##objlist", ImVec2(500.0f, listHeight))) {
+                for (int i = 0; i < static_cast<int>(objFiles_.size()); ++i) {
+                    const bool selected = (i == objSelectIndex_);
+                    if (ImGui::Selectable(objFiles_[i].c_str(), selected)) {
+                        objSelectIndex_ = i;
+                    }
+                }
+                ImGui::EndListBox();
+            }
+            ImGui::Separator();
+            if (ImGui::Button("Import Selected")) {
+                if (objSelectIndex_ >= 0 && objSelectIndex_ < static_cast<int>(objFiles_.size())) {
+                    const std::string fullPath = (std::filesystem::path(objScanDir_) / objFiles_[objSelectIndex_]).string();
+                    ImportObj(fullPath);
+                }
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
         }
 
         // List of objects
@@ -135,6 +189,61 @@ void SceneEditor::RenderInspectorPanel() {
     ImGui::End();
 }
 
+void SceneEditor::ImportObj(const std::string& path) {
+    namespace fs = std::filesystem;
+    if (path.empty()) return;
+    try {
+        auto model = raceman::LoadModelFromFile(path);
+        std::string baseName;
+        try { baseName = fs::path(path).stem().string(); } catch (...) { baseName = "Mesh"; }
+
+        const auto infos = raceman::GetMeshInfos(model);
+        for (size_t i = 0; i < infos.size(); ++i) {
+            const auto& info = infos[i];
+            SceneObject o;
+            o.id = MakeId("mesh");
+            o.name = baseName + (infos.size() > 1 ? ("_" + std::to_string(i)) : "");
+            o.type = "Mesh";
+            o.transform.position = {0.0f, 0.0f, 0.0f};
+            o.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
+            o.transform.scale = {1.0f, 1.0f, 1.0f};
+            o.color = {1.0f, 1.0f, 1.0f, 1.0f};
+            o.vao = info.vao;
+            o.indexCount = info.indexCount;
+            o.materialId = "pbr_default";
+            o.modelRef = model;
+            objects_.push_back(std::move(o));
+        }
+
+        if (!objects_.empty()) {
+            Select(static_cast<int>(objects_.size()) - 1);
+            if (console_) {
+                console_->AddLog("Imported OBJ: " + path + " (" + std::to_string(infos.size()) + " mesh" + (infos.size() != 1 ? "es" : "") + ")");
+            }
+        }
+    } catch (const std::exception&) {
+        // ignore
+    }
+}
+
+void SceneEditor::ScanObjDir(const std::string& dir) {
+    objFiles_.clear();
+    try {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
+            if (!entry.is_regular_file()) continue;
+            auto ext = entry.path().extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+            if (ext == ".obj") {
+                std::filesystem::path p = entry.path();
+                objFiles_.push_back(p.lexically_relative(dir).string());
+            }
+        }
+        std::sort(objFiles_.begin(), objFiles_.end());
+    } catch (...) {
+        // ignore
+    }
+}
+
 void SceneEditor::AddPlane() {
     if (!planePrim_) {
         planePrim_ = std::make_unique<PrimitivePlane>();
@@ -155,6 +264,9 @@ void SceneEditor::AddPlane() {
 
     objects_.push_back(o);
     Select(static_cast<int>(objects_.size() - 1));
+    if (console_) {
+        console_->AddLog(std::string("Added Plane: ") + o.id + " (" + o.name + ")");
+    }
 }
 
 
@@ -205,7 +317,7 @@ void SceneEditor::Load(const std::string& path) {
     buffer << in.rdbuf();
     const std::string src = buffer.str();
 
-  
+    try {
         Value root = parse(src);
         if (!root.is_object()) return;
         const auto& obj = root.as_object();
@@ -315,18 +427,21 @@ void SceneEditor::Load(const std::string& path) {
                 }
                 so.vao = planePrim_->vao();
                 so.indexCount = planePrim_->indexCount();
-                so.materialId = "pbr_default";
-
-
-                objects_.push_back(std::move(so));
+                if (so.materialId.empty()) {
+                    so.materialId = "pbr_default";
+                }
             }
 
-            // Select first object if available
-            if (!objects_.empty()) {
-                Select(0);
-            }
+            objects_.push_back(std::move(so));
         }
-       
+
+        // Select first object if available
+        if (!objects_.empty()) {
+            Select(0);
+        }
+    } catch (const std::exception&) {
+        // Silently ignore malformed files
+    }
     
 }
 

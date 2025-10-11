@@ -84,6 +84,9 @@
     <ClInclude Include="src\rendering\PrimitivePlane.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\ui\ObjImport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp">
@@ -158,6 +161,9 @@
     <ClCompile Include="src\ui\Console.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\ObjImport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\assimp-vc140-mt.dll" />
@@ -189,5 +195,8 @@
     <None Include="src\shaders\diffuse lighting\light_cube.vs" />
     <None Include="src\shaders\diffuse lighting\lighting_shader.fs" />
     <None Include="src\shaders\diffuse lighting\lighting_shader.vs" />
+    <None Include="src\dlls\assimp-vc143-mt.dll" />
+    <None Include="src\dlls\ikpMP3.dll" />
+    <None Include="src\dlls\irrKlang.dll" />
   </ItemGroup>
 </Project>

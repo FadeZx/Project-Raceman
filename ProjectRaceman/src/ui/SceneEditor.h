@@ -6,6 +6,8 @@
 
 #include <glm/glm.hpp>
 
+class Model;
+
 namespace raceman {
 
 class Renderer;
@@ -31,6 +33,7 @@ struct SceneObject {
     unsigned int vao{0};
     unsigned int indexCount{0};
     std::string materialId; // e.g., "pbr_default"
+    std::shared_ptr<::Model> modelRef; // keep model alive for VAO/VBO lifetime (global Model)
 };
 
 class SceneEditor {
@@ -49,6 +52,8 @@ public:
     // Submit renderables for drawing via Renderer (PBR pipeline)
     void SubmitDraws(Renderer& renderer);
     void SetConsole(Console* console) { console_ = console; }
+    void ImportObj(const std::string& path);
+    void ScanObjDir(const std::string& dir);
 
 private:
     // UI panels
@@ -75,6 +80,13 @@ private:
     // shared primitives
     std::unique_ptr<PrimitivePlane> planePrim_;
     Console* console_{nullptr};
+
+    // Import dialog state
+    bool showImportObjPopup_{false};
+    char importPath_[512]{};
+    std::string objScanDir_{"assets/mesh"};
+    std::vector<std::string> objFiles_;
+    int objSelectIndex_{-1};
 };
 
 } // namespace raceman

@@ -115,6 +115,7 @@
     <ClInclude Include="src\ui\DebugUI.h" />
     <ClInclude Include="..\includes\imgui\backends\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="src\ui\MenuController.h" />
+    <ClInclude Include="src\ui\ObjImport.h" />
     <ClInclude Include="src\ui\SceneEditor.h" />
   </ItemGroup>
   <ItemGroup>
@@ -141,6 +142,7 @@
     <ClCompile Include="..\includes\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\includes\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\ui\MenuController.cpp" />
+    <ClCompile Include="src\ui\ObjImport.cpp" />
     <ClCompile Include="src\ui\SceneEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -149,6 +151,9 @@
     <None Include="imgui.ini" />
     <None Include="irrKlang.dll" />
     <None Include="src\assimp-vc140-mt.dll" />
+    <None Include="src\dlls\assimp-vc143-mt.dll" />
+    <None Include="src\dlls\ikpMP3.dll" />
+    <None Include="src\dlls\irrKlang.dll" />
     <None Include="src\ikpMP3.dll" />
     <None Include="src\irrKlang.dll" />
     <None Include="src\shaders\diffuse lighting\lighting_shader.fs" />
