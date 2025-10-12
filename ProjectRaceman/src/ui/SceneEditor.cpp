@@ -13,10 +13,37 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "../physics/SimpleJson.h"
 
+// Native Windows file dialog for .obj (Windows only)
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <commdlg.h>
+#endif
+
 
 namespace fs = std::filesystem;
 
 namespace raceman {
+
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+static std::string OpenObjFileDialogWin32() {
+    char fileBuffer[MAX_PATH] = {0};
+    OPENFILENAMEA ofn{};
+    ofn.lStructSize = sizeof(OPENFILENAMEA);
+    ofn.hwndOwner = nullptr;
+    ofn.lpstrFile = fileBuffer;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFilter = "Wavefront OBJ (*.obj)\0*.obj\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+    if (GetOpenFileNameA(&ofn) == TRUE) {
+        return std::string(fileBuffer);
+    }
+    return std::string();
+}
+#endif
 
 // Simple material options for editor preview
 static const char* kMaterials[] = { "pbr_default", "pbr_metal", "pbr_rough" };
@@ -61,11 +88,20 @@ void SceneEditor::RenderScenePanel() {
                 }
                 if (ImGui::BeginMenu("Model")) {
                     if (ImGui::MenuItem(".obj")) {
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+                        // Use native Windows file dialog
+                        std::string selected = OpenObjFileDialogWin32();
+                        if (!selected.empty()) {
+                            ImportObj(selected);
+                        }
+#else
+                        // Fallback: existing ImGui-based directory scanner
                         importPath_[0] = '\0';
                         objScanDir_ = "assets/mesh";
                         ScanObjDir(objScanDir_);
                         objSelectIndex_ = objFiles_.empty() ? -1 : 0;
                         showImportObjPopup_ = true;
+#endif
                     }
                     ImGui::EndMenu();
                 }

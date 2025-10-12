@@ -11,6 +11,18 @@
       },
       "color": [0, 0.396078, 0.239216, 1],
       "materialId": "pbr_default"
+    },
+    {
+      "id": "mesh_2",
+      "name": "Wheel1",
+      "type": "Mesh",
+      "transform": {
+        "position": [-0.7, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "color": [1, 1, 1, 1],
+      "materialId": "pbr_default"
     }
   ]
 }
