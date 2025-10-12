@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <glm/glm.hpp>
+#include "../rendering/Material.h"
 
 class Model;
 
@@ -80,6 +81,9 @@ private:
     // shared primitives
     std::unique_ptr<PrimitivePlane> planePrim_;
     Console* console_{nullptr};
+
+    // Materials
+    MaterialManager materialManager_;
 
     // Import dialog state
     bool showImportObjPopup_{false};

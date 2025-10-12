@@ -5,6 +5,7 @@ D:\Project-Raceman\ProjectRaceman\src\input\InputManager.cpp;D:\Project-Raceman\
 D:\Project-Raceman\ProjectRaceman\src\physics\PhysicsLayer.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\PhysicsLayer.obj
 D:\Project-Raceman\ProjectRaceman\src\physics\VehicleConfig.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\VehicleConfig.obj
 D:\Project-Raceman\ProjectRaceman\src\physics\VehiclePhysics.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\VehiclePhysics.obj
+D:\Project-Raceman\ProjectRaceman\src\rendering\Material.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\Material.obj
 D:\Project-Raceman\ProjectRaceman\src\rendering\Renderer.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\Renderer.obj
 D:\Project-Raceman\ProjectRaceman\src\rendering\Skybox.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\Skybox.obj
 D:\Project-Raceman\ProjectRaceman\src\rendering\SkyboxController.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\SkyboxController.obj

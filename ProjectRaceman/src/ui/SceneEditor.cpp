@@ -3,6 +3,7 @@
 #include "../rendering/PrimitivePlane.h"
 #include "./ObjImport.h"
 #include "Console.h"
+#include "../rendering/Material.h"
 
 #include <imgui/imgui.h>
 #include <filesystem>
@@ -55,6 +56,8 @@ static bool IsCtrlSPressed() {
 }
 
 SceneEditor::SceneEditor() {
+    // Load materials at startup
+    materialManager_.LoadAll();
     // Optionally load previous scene
     Load(savePath_);
 }
@@ -197,13 +200,83 @@ void SceneEditor::RenderInspectorPanel() {
             ImGui::TextUnformatted("Appearance");
             ImGui::ColorEdit4("Color", &obj.color.x);
 
-            // Material
-            int matIndex = 0;
-            for (int i = 0; i < kMaterialCount; ++i) {
-                if (obj.materialId == kMaterials[i]) { matIndex = i; break; }
+            // Materials (from assets/materials)
+            ImGui::Separator();
+            ImGui::TextUnformatted("Material");
+            auto ids = materialManager_.ListMaterialIds();
+            // Ensure current id is present or provide default
+            if (!obj.materialId.empty() && std::find(ids.begin(), ids.end(), obj.materialId) == ids.end()) {
+                // Create a default material backing if not found
+                materialManager_.CreateDefault(obj.materialId, true);
+                ids = materialManager_.ListMaterialIds();
             }
-            if (ImGui::Combo("Material", &matIndex, kMaterials, kMaterialCount)) {
-                obj.materialId = kMaterials[matIndex];
+            int matIndex = 0;
+            if (!ids.empty()) {
+                for (int i = 0; i < (int)ids.size(); ++i) {
+                    if (ids[i] == obj.materialId) { matIndex = i; break; }
+                }
+                // Build items string for ImGui::Combo
+                std::string items;
+                for (size_t i = 0; i < ids.size(); ++i) {
+                    items += ids[i];
+                    items.push_back('\0');
+                }
+                if (ImGui::Combo("Material", &matIndex, items.c_str())) {
+                    obj.materialId = ids[matIndex];
+                }
+            } else {
+                ImGui::TextDisabled("No materials found. Use 'New' to create one.");
+            }
+
+            // Edit current material (if any)
+            if (!obj.materialId.empty()) {
+                if (Material* mat = materialManager_.Get(obj.materialId)) {
+                    ImGui::InputText("Name", (char*)mat->name.c_str(), (int)mat->name.size()+1, ImGuiInputTextFlags_ReadOnly);
+                    ImGui::ColorEdit4("Albedo Color", mat->albedoColor);
+                    ImGui::SliderFloat("Metallic", &mat->metallic, 0.0f, 1.0f);
+                    ImGui::SliderFloat("Roughness", &mat->roughness, 0.0f, 1.0f);
+                    ImGui::ColorEdit3("Emissive Color", mat->emissiveColor);
+                    ImGui::DragFloat2("UV Tiling", mat->uvTiling, 0.01f, 0.01f, 10.0f);
+                    ImGui::DragFloat2("UV Offset", mat->uvOffset, 0.01f, -10.0f, 10.0f);
+
+                    // Texture paths (simple text fields for now)
+                    static char albedoBuf[512], normalBuf[512], metalBuf[512], roughBuf[512], aoBuf[512];
+                    std::snprintf(albedoBuf, sizeof(albedoBuf), "%s", mat->texAlbedo.c_str());
+                    std::snprintf(normalBuf, sizeof(normalBuf), "%s", mat->texNormal.c_str());
+                    std::snprintf(metalBuf,  sizeof(metalBuf),  "%s", mat->texMetallic.c_str());
+                    std::snprintf(roughBuf,  sizeof(roughBuf),  "%s", mat->texRoughness.c_str());
+                    std::snprintf(aoBuf,     sizeof(aoBuf),     "%s", mat->texAo.c_str());
+
+                    ImGui::InputText("Albedo Tex", albedoBuf, IM_ARRAYSIZE(albedoBuf));
+                    ImGui::InputText("Normal Tex", normalBuf, IM_ARRAYSIZE(normalBuf));
+                    ImGui::InputText("Metallic Tex", metalBuf, IM_ARRAYSIZE(metalBuf));
+                    ImGui::InputText("Roughness Tex", roughBuf, IM_ARRAYSIZE(roughBuf));
+                    ImGui::InputText("AO Tex", aoBuf, IM_ARRAYSIZE(aoBuf));
+
+                    // Apply edits to strings on Save button
+                    if (ImGui::Button("Save Material")) {
+                        mat->texAlbedo = albedoBuf;
+                        mat->texNormal = normalBuf;
+                        mat->texMetallic = metalBuf;
+                        mat->texRoughness = roughBuf;
+                        mat->texAo = aoBuf;
+                        materialManager_.Save(obj.materialId, *mat);
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("New Material")) {
+                        // Create a unique id
+                        std::string base = "material";
+                        int i = 1;
+                        std::string newId = base + "_" + std::to_string(i);
+                        auto ids2 = materialManager_.ListMaterialIds();
+                        while (std::find(ids2.begin(), ids2.end(), newId) != ids2.end()) {
+                            ++i; newId = base + "_" + std::to_string(i);
+                        }
+                        Material& nm = materialManager_.CreateDefault(newId, true);
+                        nm.name = newId;
+                        obj.materialId = newId;
+                    }
+                }
             }
 
             ImGui::Separator();
