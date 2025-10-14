@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 
 #include <glm/glm.hpp>
 #include "../rendering/Material.h"
@@ -35,6 +36,10 @@ struct SceneObject {
     unsigned int indexCount{0};
     std::string materialId; // e.g., "pbr_default"
     std::shared_ptr<::Model> modelRef; // keep model alive for VAO/VBO lifetime (global Model)
+
+    // Persistence for Mesh types
+    std::string sourcePath; // original .obj path
+    int meshIndex{0};       // submesh index within the model
 };
 
 class SceneEditor {
@@ -53,6 +58,15 @@ public:
     // Submit renderables for drawing via Renderer (PBR pipeline)
     void SubmitDraws(Renderer& renderer);
     void SetConsole(Console* console) { console_ = console; }
+
+    // Notify app when editor content changes
+    void SetOnDirty(std::function<void()> cb) { onDirty_ = std::move(cb); }
+
+    // Control persistence location and access from Application
+    void SetSavePath(const std::string& path);
+    void Save(const std::string& path);
+    void Load(const std::string& path);
+
     void ImportObj(const std::string& path);
     void ScanObjDir(const std::string& dir);
 
@@ -65,8 +79,6 @@ private:
     void AddPlane();
 
     void Select(int index);
-    void Save(const std::string& path);
-    void Load(const std::string& path);
 
     // Utils
     static std::string MakeId(const std::string& base);
@@ -91,6 +103,8 @@ private:
     std::string objScanDir_{"assets/mesh"};
     std::vector<std::string> objFiles_;
     int objSelectIndex_{-1};
+
+    std::function<void()> onDirty_{};
 };
 
 } // namespace raceman

@@ -182,6 +182,7 @@ void SceneEditor::RenderInspectorPanel() {
             std::snprintf(nameBuf, sizeof(nameBuf), "%s", obj.name.c_str());
             if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf))) {
                 obj.name = nameBuf;
+                if (onDirty_) onDirty_();
             }
 
             // Type (read-only)
@@ -191,14 +192,14 @@ void SceneEditor::RenderInspectorPanel() {
             ImGui::Separator();
             ImGui::TextUnformatted("Transform");
 
-            ImGui::DragFloat3("Position", &obj.transform.position.x, 0.1f);
-            ImGui::DragFloat3("Rotation (deg)", &obj.transform.rotationEuler.x, 0.5f);
-            ImGui::DragFloat3("Scale", &obj.transform.scale.x, 0.1f);
+            if (ImGui::DragFloat3("Position", &obj.transform.position.x, 0.1f)) { if (onDirty_) onDirty_(); }
+            if (ImGui::DragFloat3("Rotation (deg)", &obj.transform.rotationEuler.x, 0.5f)) { if (onDirty_) onDirty_(); }
+            if (ImGui::DragFloat3("Scale", &obj.transform.scale.x, 0.1f)) { if (onDirty_) onDirty_(); }
 
             // Appearance
             ImGui::Separator();
             ImGui::TextUnformatted("Appearance");
-            ImGui::ColorEdit4("Color", &obj.color.x);
+            if (ImGui::ColorEdit4("Color", &obj.color.x)) { if (onDirty_) onDirty_(); }
 
             // Materials (from assets/materials)
             ImGui::Separator();
@@ -223,6 +224,7 @@ void SceneEditor::RenderInspectorPanel() {
                 }
                 if (ImGui::Combo("Material", &matIndex, items.c_str())) {
                     obj.materialId = ids[matIndex];
+                    if (onDirty_) onDirty_();
                 }
             } else {
                 ImGui::TextDisabled("No materials found. Use 'New' to create one.");
@@ -283,6 +285,7 @@ void SceneEditor::RenderInspectorPanel() {
             if (ImGui::Button("Delete")) {
                 // Remove selected object and update selection
                 objects_.erase(objects_.begin() + selectedIndex_);
+                if (onDirty_) onDirty_();
                 if (objects_.empty()) {
                     selectedIndex_ = -1;
                 } else {
@@ -329,6 +332,7 @@ void SceneEditor::ImportObj(const std::string& path) {
             if (console_) {
                 console_->AddLog("Imported OBJ: " + path + " (" + std::to_string(infos.size()) + " mesh" + (infos.size() != 1 ? "es" : "") + ")");
             }
+            if (onDirty_) onDirty_();
         }
     } catch (const std::exception&) {
         // ignore
@@ -376,6 +380,7 @@ void SceneEditor::AddPlane() {
     if (console_) {
         console_->AddLog(std::string("Added Plane: ") + o.id + " (" + o.name + ")");
     }
+    if (onDirty_) onDirty_();
 }
 
 
@@ -581,6 +586,10 @@ void SceneEditor::SubmitDraws(Renderer& renderer) {
 
         renderer.SubmitMesh(cmd);
     }
+}
+
+void SceneEditor::SetSavePath(const std::string& path) {
+    savePath_ = path;
 }
 
 } // namespace raceman

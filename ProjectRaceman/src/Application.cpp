@@ -50,6 +50,10 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
     if (config.enableImGui) {
         InitializeImGui();
         sceneEditor_ = std::make_unique<SceneEditor>();
+        sceneEditor_->SetConsole(console_.get());
+        sceneEditor_->SetOnDirty([this](){
+            if (!scenes_.empty()) { scenes_[activeScene_]->MarkDirty(); }
+        });
     }
 
     inputManager_->RegisterKeyCallback([this](int key) {
@@ -116,6 +120,12 @@ void Application::SwitchScene(std::size_t index) {
     if (index < scenes_.size()) {
         activeScene_ = index;
         scenes_[activeScene_]->Init();
+        // Set editor file path per scene and load it
+        if (sceneEditor_) {
+            std::string path = std::string("config/scenes/") + scenes_[activeScene_]->GetName() + ".json";
+            sceneEditor_->SetSavePath(path);
+            sceneEditor_->Load(path);
+        }
         // Reset dirty flag when switching scenes
         scenes_[activeScene_]->MarkClean();
     }
@@ -184,6 +194,13 @@ void Application::PollEvents() {
     if (ctrlDown && inputManager_ && inputManager_->WasKeyPressed(GLFW_KEY_S)) {
         if (!scenes_.empty()) {
             auto& scene = scenes_[activeScene_];
+            // Save editor scene file
+            if (sceneEditor_) {
+                std::string path = std::string("config/scenes/") + scene->GetName() + ".json";
+                sceneEditor_->SetSavePath(path);
+                sceneEditor_->Save(path);
+            }
+            // Also call scene->Save() if overridden
             if (scene->IsDirty()) {
                 scene->Save();
                 scene->MarkClean();
