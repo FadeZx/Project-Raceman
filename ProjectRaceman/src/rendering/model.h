@@ -14,11 +14,14 @@
 #include "shader.h"
 
 #include <string>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <cctype>
 #include <map>
 #include <vector>
+#include <algorithm>
 using namespace std;
 
 unsigned int TextureFromFile(const char* path, const string& directory, bool gamma = false);
@@ -51,6 +54,41 @@ public:
     }
 
 private:
+    string findFirstMtlDiffuseTexture() const
+    {
+        try {
+            const std::filesystem::path dir(directory);
+            if (!std::filesystem::exists(dir)) {
+                return "";
+            }
+
+            for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+                if (!entry.is_regular_file() || entry.path().extension() != ".mtl") {
+                    continue;
+                }
+
+                std::ifstream in(entry.path());
+                std::string line;
+                while (std::getline(in, line)) {
+                    auto first = std::find_if_not(line.begin(), line.end(), [](unsigned char ch) { return std::isspace(ch); });
+                    line.erase(line.begin(), first);
+                    if (line.rfind("map_Kd ", 0) == 0) {
+                        std::string value = line.substr(7);
+                        auto last = std::find_if_not(value.rbegin(), value.rend(), [](unsigned char ch) { return std::isspace(ch); }).base();
+                        value.erase(last, value.end());
+                        if (!value.empty()) {
+                            return value;
+                        }
+                    }
+                }
+            }
+        } catch (...) {
+            return "";
+        }
+
+        return "";
+    }
+
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
     void loadModel(string const& path)
     {
@@ -64,7 +102,7 @@ private:
             return;
         }
         // retrieve the directory path of the filepath
-        directory = path.substr(0, path.find_last_of('/'));
+        directory = std::filesystem::path(path).parent_path().string();
 
         // process ASSIMP's root node recursively
         processNode(scene->mRootNode, scene);
@@ -149,6 +187,11 @@ private:
         }
         // process materials
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+        aiString matName;
+        std::string materialName;
+        if (material && material->Get(AI_MATKEY_NAME, matName) == AI_SUCCESS) {
+            materialName = matName.C_Str();
+        }
         // we assume a convention for sampler names in the shaders. Each diffuse texture should be named
         // as 'texture_diffuseN' where N is a sequential number ranging from 1 to MAX_SAMPLER_NUMBER. 
         // Same applies to other texture as the following list summarizes:
@@ -185,7 +228,7 @@ private:
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
 
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures);
+        return Mesh(vertices, indices, textures, materialName);
 
     }
 
@@ -193,35 +236,53 @@ private:
     // the required info is returned as a Texture struct.
     vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, string typeName) {
         vector<Texture> textures;
+        if (!mat) {
+            return textures;
+        }
+
         for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
             aiString str;
-            mat->GetTexture(type, i, &str);
+            if (mat->GetTexture(type, i, &str) != AI_SUCCESS) {
+                continue;
+            }
+
+            std::string texturePath = str.C_Str();
+            if (texturePath.empty() && type == aiTextureType_DIFFUSE) {
+                texturePath = findFirstMtlDiffuseTexture();
+            }
+            if (texturePath.empty()) {
+                std::cout << "Skipping empty texture path for type: " << typeName << std::endl;
+                continue;
+            }
 
             // Debugging: Output the texture type and path
-            std::cout << "Checking texture: " << str.C_Str() << " for type: " << typeName << std::endl;
+            std::cout << "Checking texture: " << texturePath << " for type: " << typeName << std::endl;
 
             bool skip = false;
             for (unsigned int j = 0; j < textures_loaded.size(); j++) {
-                if (std::strcmp(textures_loaded[j].path.data(), str.C_Str()) == 0) {
+                if (textures_loaded[j].path == texturePath) {
                     textures.push_back(textures_loaded[j]);
                     skip = true;
 
                     // Debugging: Notify that this texture was skipped because it was already loaded
-                    std::cout << "Skipping texture (already loaded): " << str.C_Str() << std::endl;
+                    std::cout << "Skipping texture (already loaded): " << texturePath << std::endl;
                     break;
                 }
             }
             if (!skip) {
                 // If texture hasn't been loaded already, load it
                 Texture texture;
-                texture.id = TextureFromFile(str.C_Str(), this->directory);  // Assuming TextureFromFile is your custom function
+                texture.id = TextureFromFile(texturePath.c_str(), this->directory);  // Assuming TextureFromFile is your custom function
+                if (texture.id == 0) {
+                    continue;
+                }
                 texture.type = typeName;
-                texture.path = str.C_Str();
+                texture.path = texturePath;
                 textures.push_back(texture);
                 textures_loaded.push_back(texture);
 
                 // Debugging: Notify that this texture was successfully loaded
-                std::cout << "Loaded texture: " << str.C_Str() << " as type: " << typeName << std::endl;
+                std::cout << "Loaded texture: " << texturePath << " as type: " << typeName << std::endl;
             }
         }
         return textures;
@@ -231,8 +292,12 @@ private:
 
 unsigned int TextureFromFile(const char* path, const string& directory, bool gamma)
 {
-    string filename = string(path);
-    filename = directory + '/' + filename;
+    (void)gamma;
+    std::filesystem::path texturePath(path);
+    if (texturePath.is_relative()) {
+        texturePath = std::filesystem::path(directory) / texturePath;
+    }
+    string filename = texturePath.lexically_normal().string();
 
     unsigned int textureID;
     glGenTextures(1, &textureID);
@@ -241,13 +306,19 @@ unsigned int TextureFromFile(const char* path, const string& directory, bool gam
     unsigned char* data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
     if (data)
     {
-        GLenum format;
+        GLenum format = GL_RGB;
         if (nrComponents == 1)
             format = GL_RED;
         else if (nrComponents == 3)
             format = GL_RGB;
         else if (nrComponents == 4)
             format = GL_RGBA;
+        else {
+            std::cout << "Unsupported texture component count at path: " << filename << std::endl;
+            stbi_image_free(data);
+            glDeleteTextures(1, &textureID);
+            return 0;
+        }
 
         glBindTexture(GL_TEXTURE_2D, textureID);
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
@@ -262,7 +333,9 @@ unsigned int TextureFromFile(const char* path, const string& directory, bool gam
     }
     else
     {
-        std::cout << "Texture failed to load at path: " << path << std::endl;
+        std::cout << "Texture failed to load at path: " << filename << std::endl;
+        glDeleteTextures(1, &textureID);
+        textureID = 0;
         stbi_image_free(data);
     }
 

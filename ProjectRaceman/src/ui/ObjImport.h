@@ -11,6 +11,10 @@ namespace raceman {
 struct ImportedMeshInfo {
     unsigned int vao;
     unsigned int indexCount;
+    unsigned int diffuseTextureId;
+    unsigned int meshIndex;
+    std::string materialName;
+    std::string diffuseTexturePath;
 };
 
 // Loads a model using Assimp in a separate translation unit to avoid UI macro conflicts

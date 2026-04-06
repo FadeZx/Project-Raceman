@@ -24,8 +24,20 @@ std::vector<ImportedMeshInfo> GetMeshInfos(const std::shared_ptr<::Model>& model
     std::vector<ImportedMeshInfo> out;
     if (!model) return out;
     out.reserve(model->meshes.size());
-    for (const ::Mesh& m : model->meshes) {
-        ImportedMeshInfo info{ m.VAO, static_cast<unsigned int>(m.indices.size()) };
+    for (std::size_t i = 0; i < model->meshes.size(); ++i) {
+        const ::Mesh& m = model->meshes[i];
+        ImportedMeshInfo info{};
+        info.vao = m.VAO;
+        info.indexCount = static_cast<unsigned int>(m.indices.size());
+        info.meshIndex = static_cast<unsigned int>(i);
+        info.materialName = m.materialName;
+        for (const ::Texture& texture : m.textures) {
+            if (texture.type == "texture_albedo") {
+                info.diffuseTextureId = texture.id;
+                info.diffuseTexturePath = texture.path;
+                break;
+            }
+        }
         out.push_back(info);
     }
     return out;

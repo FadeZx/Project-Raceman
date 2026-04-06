@@ -17,6 +17,12 @@ Renderer::~Renderer() {
     if (fullscreenQuad_ != 0) {
         glDeleteVertexArrays(1, &fullscreenQuad_);
     }
+    if (lineVbo_ != 0) {
+        glDeleteBuffers(1, &lineVbo_);
+    }
+    if (lineVao_ != 0) {
+        glDeleteVertexArrays(1, &lineVao_);
+    }
     if (captureFbo_ != 0) {
         glDeleteFramebuffers(1, &captureFbo_);
     }
@@ -108,26 +114,48 @@ void Renderer::CreateShadowMaps(int resolution) {
 
 void Renderer::SubmitMesh(const MeshDrawCommand& cmd) { drawList_.push_back(cmd); }
 
+void Renderer::SubmitLine(const DebugLineCommand& cmd) { lineDrawList_.push_back(cmd); }
+
 void Renderer::Flush() {
     if (!simpleShader_) {
         // Fallback: create simple shader once
         simpleShader_ = std::make_unique<Shader>("src/shaders/simple/simple.vs", "src/shaders/simple/simple.fs");
     }
 
-    // Force a safe, visible state for editor draws
+    // Draw editor meshes as real scene geometry, while preserving caller GL state.
     GLboolean depthEnabled = glIsEnabled(GL_DEPTH_TEST);
     GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
+    GLboolean depthWriteMask = GL_TRUE;
+    GLint depthFunc = GL_LESS;
+    GLint cullFaceMode = GL_BACK;
+    GLint frontFaceMode = GL_CCW;
+    GLfloat lineWidth = 1.0f;
+    glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWriteMask);
+    glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
+    glGetIntegerv(GL_CULL_FACE_MODE, &cullFaceMode);
+    glGetIntegerv(GL_FRONT_FACE, &frontFaceMode);
+    glGetFloatv(GL_LINE_WIDTH, &lineWidth);
 
-    glDisable(GL_CULL_FACE);
-    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
 
     simpleShader_->use();
+    simpleShader_->setInt("uDiffuseTexture", 0);
     for (const auto& cmd : drawList_) {
         // MVP = proj * view * model
         glm::mat4 mvp = proj_ * view_ * cmd.modelMatrix;
         simpleShader_->setMat4("uMVP", mvp);
         // Per-object color
         simpleShader_->setVec4("uColor", cmd.color);
+        simpleShader_->setBool("uUseDiffuseTexture", cmd.useDiffuseTexture && cmd.diffuseTextureId != 0);
+        if (cmd.useDiffuseTexture && cmd.diffuseTextureId != 0) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, cmd.diffuseTextureId);
+        }
 
         glBindVertexArray(cmd.vao);
         glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, nullptr);
@@ -135,7 +163,43 @@ void Renderer::Flush() {
     glBindVertexArray(0);
     drawList_.clear();
 
+    if (!lineDrawList_.empty()) {
+        if (lineVao_ == 0) {
+            glGenVertexArrays(1, &lineVao_);
+            glGenBuffers(1, &lineVbo_);
+            glBindVertexArray(lineVao_);
+            glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 2, nullptr, GL_DYNAMIC_DRAW);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+            glBindVertexArray(0);
+        }
+
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+        glDepthMask(GL_FALSE);
+        simpleShader_->use();
+        simpleShader_->setMat4("uMVP", proj_ * view_);
+        simpleShader_->setBool("uUseDiffuseTexture", false);
+        glBindVertexArray(lineVao_);
+        for (const auto& cmd : lineDrawList_) {
+            const glm::vec3 vertices[2] = {cmd.start, cmd.end};
+            glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+            glLineWidth(cmd.width);
+            simpleShader_->setVec4("uColor", cmd.color);
+            glDrawArrays(GL_LINES, 0, 2);
+        }
+        glBindVertexArray(0);
+        lineDrawList_.clear();
+    }
+
     // Restore previous state
+    glLineWidth(lineWidth);
+    glDepthMask(depthWriteMask);
+    glDepthFunc(depthFunc);
+    glCullFace(cullFaceMode);
+    glFrontFace(frontFaceMode);
     if (depthEnabled) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
     if (cullEnabled) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
 }

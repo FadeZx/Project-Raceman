@@ -40,6 +40,9 @@ struct SceneObject {
     // Persistence for Mesh types
     std::string sourcePath; // original .obj path
     int meshIndex{0};       // submesh index within the model
+    std::string importedMaterialName;
+    std::string diffuseTexturePath;
+    unsigned int diffuseTextureId{0};
 };
 
 class SceneEditor {
@@ -74,9 +77,23 @@ private:
     // UI panels
     void RenderScenePanel();
     void RenderInspectorPanel();
+    void RenderProjectPanel();
+    void RenderMaterialInspector();
+    void UpdateMoveGizmo(Renderer& renderer);
+    void SubmitMoveGizmo(Renderer& renderer);
 
     // Actions
     void AddPlane();
+    void DeleteSelectedObject();
+    bool ReplaceSelectedMeshFromObj(const std::string& path);
+    bool AssignMaterialToSelected(const std::string& materialId);
+    void OpenMaterialEditor(const std::string& materialId);
+    void BeginObjectRename(int index);
+    void BeginProjectFileRename(const std::string& path);
+    void CommitProjectFileRename();
+    void DeleteProjectFile(const std::string& path);
+    void SelectProjectFile(const std::string& path);
+    void RefreshProjectFiles();
 
     void Select(int index);
 
@@ -103,6 +120,28 @@ private:
     std::string objScanDir_{"assets/mesh"};
     std::vector<std::string> objFiles_;
     int objSelectIndex_{-1};
+
+    std::vector<std::string> projectDirectories_;
+    std::vector<std::string> projectFiles_;
+    std::string selectedProjectDirectory_{"assets"};
+    std::string selectedProjectFile_;
+
+    bool inspectMaterial_{false};
+    std::string inspectedMaterialId_;
+
+    int renamingObjectIndex_{-1};
+    bool focusObjectRename_{false};
+    char objectRenameBuffer_[128]{};
+
+    std::string renamingProjectFile_;
+    bool focusProjectRename_{false};
+    char projectRenameBuffer_[260]{};
+
+    int hoveredGizmoAxis_{-1};
+    int activeGizmoAxis_{-1};
+    glm::vec2 gizmoDragStartMouse_{0.0f};
+    glm::vec3 gizmoDragStartPosition_{0.0f};
+    bool gizmoDirtyDuringDrag_{false};
 
     std::function<void()> onDirty_{};
 };

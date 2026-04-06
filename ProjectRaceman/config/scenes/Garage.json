@@ -1,7 +1,7 @@
 {
   "objects": [
     {
-      "id": "plane_2",
+      "id": "plane_1",
       "name": "Plane",
       "type": "Plane",
       "transform": {
@@ -9,11 +9,11 @@
         "rotationEuler": [0, 0, 0],
         "scale": [10, 1, 10]
       },
-      "color": [0.0363322, 0.27451, 0.120395, 1],
+      "color": [0, 0.357843, 0.0841984, 1],
       "materialId": "pbr_default"
     },
     {
-      "id": "mesh_1",
+      "id": "mesh_2",
       "name": "Chevrolet-nascar-FLWheel",
       "type": "Mesh",
       "transform": {
@@ -22,7 +22,11 @@
         "scale": [1, 1, 1]
       },
       "color": [1, 1, 1, 1],
-      "materialId": "pbr_default"
+      "materialId": "material_1",
+      "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+      "meshIndex": 0,
+      "importedMaterialName": "",
+      "diffuseTexturePath": "wheel.png"
     }
   ]
 }

@@ -1,0 +1,16 @@
+{
+  "objects": [
+    {
+      "id": "plane_3",
+      "name": "pbr_default",
+      "type": "Plane",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [53, 1, 53.5]
+      },
+      "color": [0.127163, 0.164869, 0.176471, 1],
+      "materialId": "pbr_default"
+    }
+  ]
+}

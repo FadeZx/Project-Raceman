@@ -29,6 +29,15 @@ struct MeshDrawCommand {
     glm::mat4 modelMatrix{1.0f};
     std::string materialId;
     glm::vec4 color{1.0f, 0.2f, 0.2f, 1.0f};
+    unsigned int diffuseTextureId{0};
+    bool useDiffuseTexture{false};
+};
+
+struct DebugLineCommand {
+    glm::vec3 start{0.0f};
+    glm::vec3 end{0.0f};
+    glm::vec4 color{1.0f};
+    float width{2.0f};
 };
 
 struct EnvironmentMaps {
@@ -50,6 +59,7 @@ public:
     void CreateShadowMaps(int resolution);
 
     void SubmitMesh(const MeshDrawCommand& cmd);
+    void SubmitLine(const DebugLineCommand& cmd);
     void Flush();
 
     // Fallback camera setup used by simple pipeline; later swap to scene camera
@@ -73,7 +83,10 @@ private:
     unsigned int captureFbo_{0};
     unsigned int captureRbo_{0};
     unsigned int fullscreenQuad_{0};
+    unsigned int lineVao_{0};
+    unsigned int lineVbo_{0};
     std::vector<unsigned int> shadowMaps_;
+    std::vector<DebugLineCommand> lineDrawList_;
 
     // Simple fallback pipeline state
     std::unique_ptr<Shader> simpleShader_;

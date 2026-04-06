@@ -1,8 +1,12 @@
 #version 450 core
 out vec4 FragColor;
+in vec2 vUV;
 
 uniform vec4 uColor; // RGBA
+uniform sampler2D uDiffuseTexture;
+uniform bool uUseDiffuseTexture;
 
 void main() {
-    FragColor = uColor;
+    vec4 base = uUseDiffuseTexture ? texture(uDiffuseTexture, vUV) : vec4(1.0);
+    FragColor = base * uColor;
 }

@@ -27,10 +27,12 @@ private:
             {-0.5f, 0.0f,  0.5f, 0,1,0, 0,1},
         };
         const unsigned int idx[] = {
+            0,2,1,
+            2,0,3,
             0,1,2,
             2,3,0
         };
-        indexCount_ = 6;
+        indexCount_ = 12;
 
         glGenVertexArrays(1, &vao_);
         glGenBuffers(1, &vbo_);

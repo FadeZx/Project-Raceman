@@ -20,6 +20,7 @@ public:
 
     // Draws the console panel. Returns true if any UI state changed.
     bool RenderPanel(const char* title = "Console");
+    bool RenderContents();
 
     // Optional: external toggle for auto-scroll
     void SetAutoScroll(bool enabled) { autoScroll_ = enabled; }

@@ -98,11 +98,8 @@ void MenuController::Render(Renderer& renderer,
 
     // Scenes panel is handled by DebugUI::RenderSceneSwitcher; avoid duplication here.
 
-    // Skybox controls are now inside the Rendering panel's collapsible section.
-    // Render Console panel if enabled and available
-    if (showConsole_ && console) {
-        console->RenderPanel("Console");
-    }
+    // Console is hosted inside the editor Browser tab window.
+    (void)console;
 }
 
 void MenuController::RenderMainMenu(const std::vector<std::shared_ptr<Scene>>& scenes,
@@ -110,10 +107,9 @@ void MenuController::RenderMainMenu(const std::vector<std::shared_ptr<Scene>>& s
                                     const std::function<void(std::size_t)>& switchScene,
                                     const std::function<void()>& onAddMeshPlane) {
     if (ImGui::Begin("Menu")) {
-        bool prevR = showRendering_, prevC = showConsole_;
+        bool prevR = showRendering_;
         ImGui::Checkbox("Rendering", &showRendering_);
-        ImGui::Checkbox("Console", &showConsole_);
-        if (prevR != showRendering_ || prevC != showConsole_) {
+        if (prevR != showRendering_) {
             SaveState();
         }
 

@@ -118,6 +118,7 @@
     <ClInclude Include="src\ui\MenuController.h" />
     <ClInclude Include="src\ui\ObjImport.h" />
     <ClInclude Include="src\ui\SceneEditor.h" />
+    <ClInclude Include="src\ui\SceneEditorInternal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -146,6 +147,10 @@
     <ClCompile Include="src\ui\MenuController.cpp" />
     <ClCompile Include="src\ui\ObjImport.cpp" />
     <ClCompile Include="src\ui\SceneEditor.cpp" />
+    <ClCompile Include="src\ui\SceneEditorGizmo.cpp" />
+    <ClCompile Include="src\ui\SceneEditorHierarchy.cpp" />
+    <ClCompile Include="src\ui\SceneEditorInspector.cpp" />
+    <ClCompile Include="src\ui\SceneEditorProject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assimp-vc140-mt.dll" />

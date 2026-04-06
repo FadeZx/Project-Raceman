@@ -1,63 +1,15 @@
-#include "SceneEditor.h"
-#include "../rendering/Renderer.h"
-#include "../rendering/PrimitivePlane.h"
-#include "./ObjImport.h"
-#include "Console.h"
-#include "../rendering/Material.h"
-
-#include <imgui/imgui.h>
-#include <filesystem>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include "SceneEditorInternal.h"
 #include "../physics/SimpleJson.h"
-
-// Native Windows file dialog for .obj (Windows only)
-#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#include <commdlg.h>
-#endif
-
 
 namespace fs = std::filesystem;
 
 namespace raceman {
-
-#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
-static std::string OpenObjFileDialogWin32() {
-    char fileBuffer[MAX_PATH] = {0};
-    OPENFILENAMEA ofn{};
-    ofn.lStructSize = sizeof(OPENFILENAMEA);
-    ofn.hwndOwner = nullptr;
-    ofn.lpstrFile = fileBuffer;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrFilter = "Wavefront OBJ (*.obj)\0*.obj\0All Files (*.*)\0*.*\0";
-    ofn.nFilterIndex = 1;
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
-    if (GetOpenFileNameA(&ofn) == TRUE) {
-        return std::string(fileBuffer);
-    }
-    return std::string();
-}
-#endif
-
-// Simple material options for editor preview
-static const char* kMaterials[] = { "pbr_default", "pbr_metal", "pbr_rough" };
-static constexpr int kMaterialCount = sizeof(kMaterials) / sizeof(kMaterials[0]);
-
-static bool IsCtrlSPressed() {
-    ImGuiIO& io = ImGui::GetIO();
-    return (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S));
-}
+using namespace scene_editor_internal;
 
 SceneEditor::SceneEditor() {
     // Load materials at startup
     materialManager_.LoadAll();
+    RefreshProjectFiles();
     // Optionally load previous scene
     Load(savePath_);
 }
@@ -76,286 +28,9 @@ void SceneEditor::RenderUI(float /*deltaTime*/) {
 
     RenderScenePanel();
     RenderInspectorPanel();
+    RenderProjectPanel();
 }
 
-void SceneEditor::RenderScenePanel() {
-    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar)) {
-        // Add button with dropdown (Scene panel)
-        if (ImGui::BeginMenuBar()) {
-            if (ImGui::BeginMenu("Add")) {
-                if (ImGui::BeginMenu("Mesh")) {
-                    if (ImGui::MenuItem("Plane")) {
-                        AddPlane();
-                    }
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Model")) {
-                    if (ImGui::MenuItem(".obj")) {
-#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
-                        // Use native Windows file dialog
-                        std::string selected = OpenObjFileDialogWin32();
-                        if (!selected.empty()) {
-                            ImportObj(selected);
-                        }
-#else
-                        // Fallback: existing ImGui-based directory scanner
-                        importPath_[0] = '\0';
-                        objScanDir_ = "assets/mesh";
-                        ScanObjDir(objScanDir_);
-                        objSelectIndex_ = objFiles_.empty() ? -1 : 0;
-                        showImportObjPopup_ = true;
-#endif
-                    }
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMenu();
-            }
-            ImGui::EndMenuBar();
-        }
-
-
-
-
-
-
-        // Trigger popup if requested
-        if (showImportObjPopup_) { ImGui::OpenPopup("Import OBJ"); showImportObjPopup_ = false; }
-        // Import OBJ popup
-        if (ImGui::BeginPopupModal("Import OBJ", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextUnformatted("Select a .obj file to import");
-            ImGui::InputText("Directory", importPath_, sizeof(importPath_));
-            ImGui::SameLine();
-            if (ImGui::Button("Use")) {
-                objScanDir_ = std::string(importPath_[0] ? importPath_ : objScanDir_.c_str());
-                ScanObjDir(objScanDir_);
-                objSelectIndex_ = objFiles_.empty() ? -1 : 0;
-            }
-            ImGui::Separator();
-            const float listHeight = 200.0f;
-            if (ImGui::BeginListBox("##objlist", ImVec2(500.0f, listHeight))) {
-                for (int i = 0; i < static_cast<int>(objFiles_.size()); ++i) {
-                    const bool selected = (i == objSelectIndex_);
-                    if (ImGui::Selectable(objFiles_[i].c_str(), selected)) {
-                        objSelectIndex_ = i;
-                    }
-                }
-                ImGui::EndListBox();
-            }
-            ImGui::Separator();
-            if (ImGui::Button("Import Selected")) {
-                if (objSelectIndex_ >= 0 && objSelectIndex_ < static_cast<int>(objFiles_.size())) {
-                    const std::string fullPath = (std::filesystem::path(objScanDir_) / objFiles_[objSelectIndex_]).string();
-                    ImportObj(fullPath);
-                }
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel")) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-
-        // List of objects
-        for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
-            const bool selected = (i == selectedIndex_);
-            if (ImGui::Selectable(objects_[i].name.c_str(), selected)) {
-                Select(i);
-            }
-        }
-
-        // If nothing selected and has objects, select first for convenience
-        if (selectedIndex_ < 0 && !objects_.empty()) {
-            Select(0);
-        }
-    }
-    ImGui::End();
-}
-
-void SceneEditor::RenderInspectorPanel() {
-    if (ImGui::Begin("Inspector")) {
-        if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())) {
-            SceneObject& obj = objects_[selectedIndex_];
-
-            // Name
-            char nameBuf[128];
-            std::snprintf(nameBuf, sizeof(nameBuf), "%s", obj.name.c_str());
-            if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf))) {
-                obj.name = nameBuf;
-                if (onDirty_) onDirty_();
-            }
-
-            // Type (read-only)
-            ImGui::TextDisabled("Type: %s", obj.type.c_str());
-
-            // Transform
-            ImGui::Separator();
-            ImGui::TextUnformatted("Transform");
-
-            if (ImGui::DragFloat3("Position", &obj.transform.position.x, 0.1f)) { if (onDirty_) onDirty_(); }
-            if (ImGui::DragFloat3("Rotation (deg)", &obj.transform.rotationEuler.x, 0.5f)) { if (onDirty_) onDirty_(); }
-            if (ImGui::DragFloat3("Scale", &obj.transform.scale.x, 0.1f)) { if (onDirty_) onDirty_(); }
-
-            // Appearance
-            ImGui::Separator();
-            ImGui::TextUnformatted("Appearance");
-            if (ImGui::ColorEdit4("Color", &obj.color.x)) { if (onDirty_) onDirty_(); }
-
-            // Materials (from assets/materials)
-            ImGui::Separator();
-            ImGui::TextUnformatted("Material");
-            auto ids = materialManager_.ListMaterialIds();
-            // Ensure current id is present or provide default
-            if (!obj.materialId.empty() && std::find(ids.begin(), ids.end(), obj.materialId) == ids.end()) {
-                // Create a default material backing if not found
-                materialManager_.CreateDefault(obj.materialId, true);
-                ids = materialManager_.ListMaterialIds();
-            }
-            int matIndex = 0;
-            if (!ids.empty()) {
-                for (int i = 0; i < (int)ids.size(); ++i) {
-                    if (ids[i] == obj.materialId) { matIndex = i; break; }
-                }
-                // Build items string for ImGui::Combo
-                std::string items;
-                for (size_t i = 0; i < ids.size(); ++i) {
-                    items += ids[i];
-                    items.push_back('\0');
-                }
-                if (ImGui::Combo("Material", &matIndex, items.c_str())) {
-                    obj.materialId = ids[matIndex];
-                    if (onDirty_) onDirty_();
-                }
-            } else {
-                ImGui::TextDisabled("No materials found. Use 'New' to create one.");
-            }
-
-            // Edit current material (if any)
-            if (!obj.materialId.empty()) {
-                if (Material* mat = materialManager_.Get(obj.materialId)) {
-                    ImGui::InputText("Name", (char*)mat->name.c_str(), (int)mat->name.size()+1, ImGuiInputTextFlags_ReadOnly);
-                    ImGui::ColorEdit4("Albedo Color", mat->albedoColor);
-                    ImGui::SliderFloat("Metallic", &mat->metallic, 0.0f, 1.0f);
-                    ImGui::SliderFloat("Roughness", &mat->roughness, 0.0f, 1.0f);
-                    ImGui::ColorEdit3("Emissive Color", mat->emissiveColor);
-                    ImGui::DragFloat2("UV Tiling", mat->uvTiling, 0.01f, 0.01f, 10.0f);
-                    ImGui::DragFloat2("UV Offset", mat->uvOffset, 0.01f, -10.0f, 10.0f);
-
-                    // Texture paths (simple text fields for now)
-                    static char albedoBuf[512], normalBuf[512], metalBuf[512], roughBuf[512], aoBuf[512];
-                    std::snprintf(albedoBuf, sizeof(albedoBuf), "%s", mat->texAlbedo.c_str());
-                    std::snprintf(normalBuf, sizeof(normalBuf), "%s", mat->texNormal.c_str());
-                    std::snprintf(metalBuf,  sizeof(metalBuf),  "%s", mat->texMetallic.c_str());
-                    std::snprintf(roughBuf,  sizeof(roughBuf),  "%s", mat->texRoughness.c_str());
-                    std::snprintf(aoBuf,     sizeof(aoBuf),     "%s", mat->texAo.c_str());
-
-                    ImGui::InputText("Albedo Tex", albedoBuf, IM_ARRAYSIZE(albedoBuf));
-                    ImGui::InputText("Normal Tex", normalBuf, IM_ARRAYSIZE(normalBuf));
-                    ImGui::InputText("Metallic Tex", metalBuf, IM_ARRAYSIZE(metalBuf));
-                    ImGui::InputText("Roughness Tex", roughBuf, IM_ARRAYSIZE(roughBuf));
-                    ImGui::InputText("AO Tex", aoBuf, IM_ARRAYSIZE(aoBuf));
-
-                    // Apply edits to strings on Save button
-                    if (ImGui::Button("Save Material")) {
-                        mat->texAlbedo = albedoBuf;
-                        mat->texNormal = normalBuf;
-                        mat->texMetallic = metalBuf;
-                        mat->texRoughness = roughBuf;
-                        mat->texAo = aoBuf;
-                        materialManager_.Save(obj.materialId, *mat);
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("New Material")) {
-                        // Create a unique id
-                        std::string base = "material";
-                        int i = 1;
-                        std::string newId = base + "_" + std::to_string(i);
-                        auto ids2 = materialManager_.ListMaterialIds();
-                        while (std::find(ids2.begin(), ids2.end(), newId) != ids2.end()) {
-                            ++i; newId = base + "_" + std::to_string(i);
-                        }
-                        Material& nm = materialManager_.CreateDefault(newId, true);
-                        nm.name = newId;
-                        obj.materialId = newId;
-                    }
-                }
-            }
-
-            ImGui::Separator();
-            if (ImGui::Button("Delete")) {
-                // Remove selected object and update selection
-                objects_.erase(objects_.begin() + selectedIndex_);
-                if (onDirty_) onDirty_();
-                if (objects_.empty()) {
-                    selectedIndex_ = -1;
-                } else {
-                    if (selectedIndex_ >= static_cast<int>(objects_.size())) {
-                        selectedIndex_ = static_cast<int>(objects_.size()) - 1;
-                    }
-                }
-            }
-        } else {
-            ImGui::TextDisabled("No object selected.");
-        }
-    }
-    ImGui::End();
-}
-
-void SceneEditor::ImportObj(const std::string& path) {
-    namespace fs = std::filesystem;
-    if (path.empty()) return;
-    try {
-        auto model = raceman::LoadModelFromFile(path);
-        std::string baseName;
-        try { baseName = fs::path(path).stem().string(); } catch (...) { baseName = "Mesh"; }
-
-        const auto infos = raceman::GetMeshInfos(model);
-        for (size_t i = 0; i < infos.size(); ++i) {
-            const auto& info = infos[i];
-            SceneObject o;
-            o.id = MakeId("mesh");
-            o.name = baseName + (infos.size() > 1 ? ("_" + std::to_string(i)) : "");
-            o.type = "Mesh";
-            o.transform.position = {0.0f, 0.0f, 0.0f};
-            o.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
-            o.transform.scale = {1.0f, 1.0f, 1.0f};
-            o.color = {1.0f, 1.0f, 1.0f, 1.0f};
-            o.vao = info.vao;
-            o.indexCount = info.indexCount;
-            o.materialId = "pbr_default";
-            o.modelRef = model;
-            objects_.push_back(std::move(o));
-        }
-
-        if (!objects_.empty()) {
-            Select(static_cast<int>(objects_.size()) - 1);
-            if (console_) {
-                console_->AddLog("Imported OBJ: " + path + " (" + std::to_string(infos.size()) + " mesh" + (infos.size() != 1 ? "es" : "") + ")");
-            }
-            if (onDirty_) onDirty_();
-        }
-    } catch (const std::exception&) {
-        // ignore
-    }
-}
-
-void SceneEditor::ScanObjDir(const std::string& dir) {
-    objFiles_.clear();
-    try {
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
-            if (!entry.is_regular_file()) continue;
-            auto ext = entry.path().extension().string();
-            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-            if (ext == ".obj") {
-                std::filesystem::path p = entry.path();
-                objFiles_.push_back(p.lexically_relative(dir).string());
-            }
-        }
-        std::sort(objFiles_.begin(), objFiles_.end());
-    } catch (...) {
-        // ignore
-    }
-}
 
 void SceneEditor::AddPlane() {
     if (!planePrim_) {
@@ -388,8 +63,10 @@ void SceneEditor::AddPlane() {
 void SceneEditor::Select(int index) {
     if (index >= 0 && index < static_cast<int>(objects_.size())) {
         selectedIndex_ = index;
+        inspectMaterial_ = false;
     }
 }
+
 
 void SceneEditor::Save(const std::string& path) {
     try {
@@ -404,16 +81,25 @@ void SceneEditor::Save(const std::string& path) {
     for (size_t i = 0; i < objects_.size(); ++i) {
         const auto& o = objects_[i];
         out << "    {\n";
-        out << "      \"id\": \"" << o.id << "\",\n";
-        out << "      \"name\": \"" << o.name << "\",\n";
-        out << "      \"type\": \"" << o.type << "\",\n";
+        out << "      \"id\": \"" << JsonEscape(o.id) << "\",\n";
+        out << "      \"name\": \"" << JsonEscape(o.name) << "\",\n";
+        out << "      \"type\": \"" << JsonEscape(o.type) << "\",\n";
         out << "      \"transform\": {\n";
         out << "        \"position\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
         out << "        \"rotationEuler\": [" << o.transform.rotationEuler.x << ", " << o.transform.rotationEuler.y << ", " << o.transform.rotationEuler.z << "],\n";
         out << "        \"scale\": [" << o.transform.scale.x << ", " << o.transform.scale.y << ", " << o.transform.scale.z << "]\n";
         out << "      },\n";
         out << "      \"color\": [" << o.color.r << ", " << o.color.g << ", " << o.color.b << ", " << o.color.a << "],\n";
-        out << "      \"materialId\": \"" << (o.materialId.empty() ? "pbr_default" : o.materialId) << "\"\n";
+        out << "      \"materialId\": \"" << JsonEscape(o.materialId.empty() ? "pbr_default" : o.materialId) << "\"";
+        if (o.type == "Mesh" && !o.sourcePath.empty()) {
+            out << ",\n";
+            out << "      \"sourcePath\": \"" << JsonEscape(NormalizeSlashes(o.sourcePath)) << "\",\n";
+            out << "      \"meshIndex\": " << o.meshIndex << ",\n";
+            out << "      \"importedMaterialName\": \"" << JsonEscape(o.importedMaterialName) << "\",\n";
+            out << "      \"diffuseTexturePath\": \"" << JsonEscape(NormalizeSlashes(o.diffuseTexturePath)) << "\"\n";
+        } else {
+            out << "\n";
+        }
         out << "    }" << (i + 1 < objects_.size() ? ",\n" : "\n");
     }
     out << "  ]\n}\n";
@@ -534,6 +220,26 @@ void SceneEditor::Load(const std::string& path) {
                 so.materialId = matIt->second.as_string();
             }
 
+            auto sourceIt = o.find("sourcePath");
+            if (sourceIt != o.end() && sourceIt->second.is_string()) {
+                so.sourcePath = NormalizeSlashes(sourceIt->second.as_string());
+            }
+
+            auto meshIndexIt = o.find("meshIndex");
+            if (meshIndexIt != o.end() && meshIndexIt->second.is_number()) {
+                so.meshIndex = static_cast<int>(meshIndexIt->second.as_number());
+            }
+
+            auto importedMaterialIt = o.find("importedMaterialName");
+            if (importedMaterialIt != o.end() && importedMaterialIt->second.is_string()) {
+                so.importedMaterialName = importedMaterialIt->second.as_string();
+            }
+
+            auto diffuseTextureIt = o.find("diffuseTexturePath");
+            if (diffuseTextureIt != o.end() && diffuseTextureIt->second.is_string()) {
+                so.diffuseTexturePath = NormalizeSlashes(diffuseTextureIt->second.as_string());
+            }
+
             // attach render info for known types
             if (so.type == "Plane") {
                 if (!planePrim_) {
@@ -543,6 +249,19 @@ void SceneEditor::Load(const std::string& path) {
                 so.indexCount = planePrim_->indexCount();
                 if (so.materialId.empty()) {
                     so.materialId = "pbr_default";
+                }
+            }
+            else if (so.type == "Mesh" && !so.sourcePath.empty()) {
+                try {
+                    auto model = raceman::LoadModelFromFile(so.sourcePath);
+                    const auto infos = raceman::GetMeshInfos(model);
+                    if (so.meshIndex >= 0 && so.meshIndex < static_cast<int>(infos.size())) {
+                        ApplyMeshInfoToSceneObject(so, infos[static_cast<std::size_t>(so.meshIndex)], model);
+                    }
+                } catch (...) {
+                    if (console_) {
+                        console_->AddLog("Failed to reload mesh source: " + so.sourcePath);
+                    }
                 }
             }
 
@@ -565,6 +284,8 @@ std::string SceneEditor::MakeId(const std::string& base) {
 }
 
 void SceneEditor::SubmitDraws(Renderer& renderer) {
+    UpdateMoveGizmo(renderer);
+
     for (const auto& o : objects_) {
         if (o.vao == 0 || o.indexCount == 0) continue;
 
@@ -582,10 +303,23 @@ void SceneEditor::SubmitDraws(Renderer& renderer) {
         cmd.indexCount = o.indexCount;
         cmd.modelMatrix = M;
         cmd.materialId = o.materialId.empty() ? std::string("pbr_default") : o.materialId;
-        cmd.color = o.color;
+        if (const Material* material = materialManager_.Get(cmd.materialId)) {
+            cmd.color = {
+                material->albedoColor[0],
+                material->albedoColor[1],
+                material->albedoColor[2],
+                material->albedoColor[3]
+            };
+        } else {
+            cmd.color = o.color;
+        }
+        cmd.diffuseTextureId = o.diffuseTextureId;
+        cmd.useDiffuseTexture = (cmd.diffuseTextureId != 0);
 
         renderer.SubmitMesh(cmd);
     }
+
+    SubmitMoveGizmo(renderer);
 }
 
 void SceneEditor::SetSavePath(const std::string& path) {
@@ -593,3 +327,4 @@ void SceneEditor::SetSavePath(const std::string& path) {
 }
 
 } // namespace raceman
+
