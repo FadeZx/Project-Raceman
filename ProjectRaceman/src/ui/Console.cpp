@@ -40,7 +40,14 @@ bool Console::RenderContents() {
     ImGui::SameLine();
     if (ImGui::Button("Send")) {
         if (!input_.empty()) {
-            AddLog(input_);
+            const std::string command = input_;
+            bool handled = false;
+            if (commandHandler_) {
+                handled = commandHandler_(command);
+            }
+            if (!handled) {
+                AddLog(command);
+            }
             input_.clear();
             changed = true;
         }

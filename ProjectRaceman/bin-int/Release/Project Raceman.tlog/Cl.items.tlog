@@ -12,6 +12,8 @@ D:\Project-Raceman\ProjectRaceman\src\rendering\SkyboxController.cpp;D:\Project-
 D:\Project-Raceman\ProjectRaceman\src\scenes\GarageScene.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\GarageScene.obj
 D:\Project-Raceman\ProjectRaceman\src\scenes\Scene.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\Scene.obj
 D:\Project-Raceman\ProjectRaceman\src\scenes\SimulationScene.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\SimulationScene.obj
+D:\Project-Raceman\ProjectRaceman\src\scripting\ObjectScript.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\ObjectScript.obj
+D:\Project-Raceman\ProjectRaceman\src\scripting\ScriptRegistry.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\ScriptRegistry.obj
 D:\Project-Raceman\ProjectRaceman\src\ui\Console.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\Console.obj
 D:\Project-Raceman\ProjectRaceman\src\ui\DebugUI.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\DebugUI.obj
 D:\Project-Raceman\includes\imgui\backends\imgui_impl_glfw.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\imgui_impl_glfw.obj
@@ -24,3 +26,10 @@ D:\Project-Raceman\includes\imgui\imgui_widgets.cpp;D:\Project-Raceman\ProjectRa
 D:\Project-Raceman\ProjectRaceman\src\ui\MenuController.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\MenuController.obj
 D:\Project-Raceman\ProjectRaceman\src\ui\ObjImport.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\ObjImport.obj
 D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\SceneEditor.obj
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditorGizmo.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\SceneEditorGizmo.obj
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditorHierarchy.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\SceneEditorHierarchy.obj
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditorInspector.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\SceneEditorInspector.obj
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditorProject.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\SceneEditorProject.obj
+D:\Project-Raceman\ProjectRaceman\assets\scripts\Test1.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\Test1.obj
+D:\Project-Raceman\ProjectRaceman\assets\scripts\Test.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\Test.obj
+D:\Project-Raceman\ProjectRaceman\assets\scripts\Test3.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Release\Test3.obj

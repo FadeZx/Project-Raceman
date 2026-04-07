@@ -1,5 +1,6 @@
 #include "SceneEditorInternal.h"
 #include "../physics/SimpleJson.h"
+#include "../scripting/ScriptRegistry.h"
 
 namespace fs = std::filesystem;
 
@@ -17,30 +18,83 @@ void SceneEditor::RenderInspectorPanel() {
             char nameBuf[128];
             std::snprintf(nameBuf, sizeof(nameBuf), "%s", obj.name.c_str());
             if (ImGui::InputText("Object Name##objectName", nameBuf, sizeof(nameBuf))) {
+                if (!inspectorEditActive_) {
+                    PushUndoState();
+                    inspectorEditActive_ = true;
+                }
                 obj.name = nameBuf;
                 if (onDirty_) onDirty_();
+            }
+            if (ImGui::IsItemDeactivated()) {
+                inspectorEditActive_ = false;
             }
 
             // Type (read-only)
             ImGui::TextDisabled("Type: %s", obj.type.c_str());
 
             if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (ImGui::DragFloat3("Position", &obj.transform.position.x, 0.1f)) { if (onDirty_) onDirty_(); }
-                if (ImGui::DragFloat3("Rotation (deg)", &obj.transform.rotationEuler.x, 0.5f)) { if (onDirty_) onDirty_(); }
-                if (ImGui::DragFloat3("Scale", &obj.transform.scale.x, 0.1f)) { if (onDirty_) onDirty_(); }
+                Transform before = obj.transform;
+                if (ImGui::DragFloat3("Position", &obj.transform.position.x, 0.1f)) {
+                    const glm::vec3 after = obj.transform.position;
+                    if (!inspectorEditActive_) {
+                        obj.transform = before;
+                        PushUndoState();
+                        obj.transform.position = after;
+                        inspectorEditActive_ = true;
+                    }
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::IsItemDeactivated()) {
+                    inspectorEditActive_ = false;
+                }
+
+                before = obj.transform;
+                if (ImGui::DragFloat3("Rotation (deg)", &obj.transform.rotationEuler.x, 0.5f)) {
+                    const glm::vec3 after = obj.transform.rotationEuler;
+                    if (!inspectorEditActive_) {
+                        obj.transform = before;
+                        PushUndoState();
+                        obj.transform.rotationEuler = after;
+                        inspectorEditActive_ = true;
+                    }
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::IsItemDeactivated()) {
+                    inspectorEditActive_ = false;
+                }
+
+                before = obj.transform;
+                if (ImGui::DragFloat3("Scale", &obj.transform.scale.x, 0.1f)) {
+                    const glm::vec3 after{
+                        (std::max)(obj.transform.scale.x, 0.01f),
+                        (std::max)(obj.transform.scale.y, 0.01f),
+                        (std::max)(obj.transform.scale.z, 0.01f)
+                    };
+                    if (!inspectorEditActive_) {
+                        obj.transform = before;
+                        PushUndoState();
+                        obj.transform.scale = after;
+                        inspectorEditActive_ = true;
+                    } else {
+                        obj.transform.scale = after;
+                    }
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::IsItemDeactivated()) {
+                    inspectorEditActive_ = false;
+                }
             }
 
             if (ImGui::CollapsingHeader("Mesh Filter", ImGuiTreeNodeFlags_DefaultOpen)) {
-                ImGui::TextDisabled("Mesh Type: %s", obj.type.c_str());
-                if (obj.type == "Mesh") {
-                    ImGui::TextWrapped("Source: %s", obj.sourcePath.empty() ? "(none)" : obj.sourcePath.c_str());
-                    ImGui::TextDisabled("Submesh Index: %d", obj.meshIndex);
-                    ImGui::TextWrapped("Imported Material: %s", obj.importedMaterialName.empty() ? "(none)" : obj.importedMaterialName.c_str());
-                    ImGui::TextWrapped("OBJ Diffuse: %s", obj.diffuseTexturePath.empty() ? "(none)" : obj.diffuseTexturePath.c_str());
-                } else {
-                    ImGui::TextDisabled("Built-in mesh: %s", obj.type.c_str());
+                const std::string meshButtonLabel = (obj.type == "Mesh" && !obj.sourcePath.empty())
+                    ? (fs::path(obj.sourcePath).filename().string() + "##selectMeshFilter")
+                    : (obj.type + "##selectMeshFilter");
+                ImGui::TextDisabled("Mesh Type:");
+                ImGui::SameLine();
+                if (ImGui::Button(meshButtonLabel.c_str(), ImVec2(-1.0f, 0.0f))) {
+                    assetPickerMode_ = ProjectAssetPickerMode::ReplaceMesh;
+                    ImGui::OpenPopup("Select Project Asset");
                 }
-                ImGui::Button("Drop OBJ here to replace Mesh Filter", ImVec2(-1.0f, 0.0f));
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
                         const char* path = static_cast<const char*>(payload->Data);
@@ -50,23 +104,36 @@ void SceneEditor::RenderInspectorPanel() {
                     }
                     ImGui::EndDragDropTarget();
                 }
+                if (obj.type == "Mesh") {
+                    ImGui::TextWrapped("Source: %s", obj.sourcePath.empty() ? "(none)" : obj.sourcePath.c_str());
+                    ImGui::TextDisabled("Submesh Index: %d", obj.meshIndex);
+                    ImGui::TextWrapped("Imported Material: %s", obj.importedMaterialName.empty() ? "(none)" : obj.importedMaterialName.c_str());
+                    ImGui::TextWrapped("OBJ Diffuse: %s", obj.diffuseTexturePath.empty() ? "(none)" : obj.diffuseTexturePath.c_str());
+                } else {
+                    ImGui::TextDisabled("Built-in mesh: %s", obj.type.c_str());
+                }
             }
 
             if (ImGui::CollapsingHeader("Mesh Renderer", ImGuiTreeNodeFlags_DefaultOpen)) {
                 const std::string materialId = obj.materialId.empty() ? std::string("pbr_default") : obj.materialId;
                 const Material* material = materialManager_.Get(materialId);
-                ImGui::TextWrapped("Material: %s", materialId.c_str());
+                std::string materialFilename = materialId + ".mat.json";
+                for (const std::string& file : projectFiles_) {
+                    if (IsMaterialAssetPath(file) && MaterialIdFromAssetPath(file) == materialId) {
+                        materialFilename = fs::path(file).filename().string();
+                        break;
+                    }
+                }
+                const std::string materialButtonLabel = materialFilename + "##selectMaterial";
+                ImGui::TextDisabled("Material:");
+                ImGui::SameLine();
+                if (ImGui::Button(materialButtonLabel.c_str(), ImVec2(-1.0f, 0.0f))) {
+                    assetPickerMode_ = ProjectAssetPickerMode::AssignMaterial;
+                    ImGui::OpenPopup("Select Project Asset");
+                }
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     OpenMaterialEditor(materialId);
                 }
-                if (material != nullptr) {
-                    ImGui::TextWrapped("Name: %s", material->name.empty() ? materialId.c_str() : material->name.c_str());
-                    ImGui::ColorButton("Albedo Preview", ImVec4(material->albedoColor[0], material->albedoColor[1], material->albedoColor[2], material->albedoColor[3]));
-                } else {
-                    ImGui::TextDisabled("Material asset not loaded.");
-                }
-                ImGui::TextDisabled("Double-click material name to edit asset.");
-                ImGui::Button("Drop Material here", ImVec2(-1.0f, 0.0f));
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMaterialAssetPayload)) {
                         const char* materialIdPayload = static_cast<const char*>(payload->Data);
@@ -75,6 +142,126 @@ void SceneEditor::RenderInspectorPanel() {
                         }
                     }
                     ImGui::EndDragDropTarget();
+                }
+                if (material != nullptr) {
+                    ImGui::ColorButton("Albedo Preview", ImVec4(material->albedoColor[0], material->albedoColor[1], material->albedoColor[2], material->albedoColor[3]));
+                } else {
+                    ImGui::TextDisabled("Material asset not loaded.");
+                }
+            }
+
+            if (ImGui::CollapsingHeader("Scripts", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::Button("Add Component")) {
+                    ImGui::OpenPopup("Add Script Component");
+                }
+                if (ImGui::BeginPopup("Add Script Component")) {
+                    if (ImGui::BeginMenu("Script from Project")) {
+                        const auto& registeredScripts = GetRegisteredScripts();
+                        if (registeredScripts.empty()) {
+                            ImGui::TextDisabled("No registered C++ scripts.");
+                            ImGui::TextDisabled("Create a script, rebuild, then attach it.");
+                        }
+                        for (const ScriptDescriptor& script : registeredScripts) {
+                            const std::string label = script.name + "##attachRegisteredScript";
+                            if (ImGui::MenuItem(label.c_str())) {
+                                AttachScriptToSelected(script.name, script.path);
+                            }
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("%s", script.path.c_str());
+                            }
+                        }
+                        ImGui::EndMenu();
+                    }
+                    if (ImGui::MenuItem("Create C++ Script")) {
+                        createScriptNameBuffer_[0] = '\0';
+                        showCreateScriptPopup_ = true;
+                    }
+                    ImGui::EndPopup();
+                }
+
+                if (showCreateScriptPopup_) {
+                    ImGui::OpenPopup("Create C++ Script");
+                    showCreateScriptPopup_ = false;
+                }
+
+                if (ImGui::BeginPopupModal("Create C++ Script", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::TextUnformatted("Create a compiled C++ object script.");
+                    ImGui::TextDisabled("Rebuild the app after creating or editing script source.");
+                    ImGui::InputText("Class Name", createScriptNameBuffer_, sizeof(createScriptNameBuffer_));
+                    if (ImGui::Button("Create")) {
+                        if (CreateScriptAsset(createScriptNameBuffer_)) {
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel")) {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
+                }
+
+                if (obj.scriptAttachments.empty()) {
+                    ImGui::TextDisabled("No script components.");
+                }
+
+                for (int scriptIndex = 0; scriptIndex < static_cast<int>(obj.scriptAttachments.size()); ++scriptIndex) {
+                    ObjectScriptAttachment& script = obj.scriptAttachments[static_cast<std::size_t>(scriptIndex)];
+                    ImGui::PushID(scriptIndex);
+
+                    const std::string header = std::string("Script: ") + (script.scriptName.empty() ? "(missing)" : script.scriptName);
+                    const bool scriptTreeOpen = ImGui::TreeNodeEx(header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !script.scriptPath.empty()) {
+                        if (OpenProjectAssetInDefaultEditor(script.scriptPath)) {
+                            if (console_) {
+                                console_->AddLog("Opened script file: " + script.scriptPath);
+                            }
+                        } else if (console_) {
+                            console_->AddError("Failed to open script file: " + script.scriptPath);
+                        }
+                    }
+                    if (scriptTreeOpen) {
+                        const bool enabledBefore = script.enabled;
+                        if (ImGui::Checkbox("Enabled", &script.enabled)) {
+                            const bool enabledAfter = script.enabled;
+                            script.enabled = enabledBefore;
+                            PushUndoState();
+                            script.enabled = enabledAfter;
+                            if (scriptsRunning_) {
+                                RebuildScriptRuntime();
+                            }
+                            if (onDirty_) onDirty_();
+                        }
+
+                        ImGui::TextWrapped("Class: %s", script.scriptName.empty() ? "(missing)" : script.scriptName.c_str());
+                        ImGui::TextWrapped("Source: %s", script.scriptPath.empty() ? "(none)" : script.scriptPath.c_str());
+                        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !script.scriptPath.empty()) {
+                            if (OpenProjectAssetInDefaultEditor(script.scriptPath)) {
+                                if (console_) {
+                                    console_->AddLog("Opened script file: " + script.scriptPath);
+                                }
+                            } else if (console_) {
+                                console_->AddError("Failed to open script file: " + script.scriptPath);
+                            }
+                        }
+                        if (FindRegisteredScript(script.scriptName) == nullptr) {
+                            ImGui::TextDisabled("Not registered in this build. Rebuild after creating or editing scripts.");
+                        }
+
+                        if (ImGui::Button("Remove Script")) {
+                            PushUndoState();
+                            obj.scriptAttachments.erase(obj.scriptAttachments.begin() + scriptIndex);
+                            if (scriptsRunning_) {
+                                RebuildScriptRuntime();
+                            }
+                            if (onDirty_) onDirty_();
+                            ImGui::TreePop();
+                            ImGui::PopID();
+                            break;
+                        }
+
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
                 }
             }
 
@@ -85,8 +272,64 @@ void SceneEditor::RenderInspectorPanel() {
         } else {
             ImGui::TextDisabled("No object selected.");
         }
+
+        RenderProjectAssetPickerPopup();
     }
     ImGui::End();
+}
+
+void SceneEditor::RenderProjectAssetPickerPopup() {
+    if (assetPickerMode_ == ProjectAssetPickerMode::None) {
+        return;
+    }
+
+    const bool pickingMesh = (assetPickerMode_ == ProjectAssetPickerMode::ReplaceMesh);
+    if (ImGui::BeginPopupModal("Select Project Asset", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted(pickingMesh ? "Select an OBJ from the project" : "Select a material from the project");
+        ImGui::Separator();
+
+        if (ImGui::Button("Refresh")) {
+            RefreshProjectFiles();
+        }
+
+        bool found = false;
+        if (ImGui::BeginChild("ProjectAssetPickerList", ImVec2(420.0f, 260.0f), true)) {
+            for (const std::string& file : projectFiles_) {
+                const bool matches = pickingMesh ? IsObjAssetPath(file) : IsMaterialAssetPath(file);
+                if (!matches) {
+                    continue;
+                }
+
+                found = true;
+                const std::string label = fs::path(file).filename().string() + "##" + file;
+                if (ImGui::Selectable(label.c_str())) {
+                    if (pickingMesh) {
+                        ReplaceSelectedMeshFromObj(file);
+                    } else {
+                        AssignMaterialToSelected(MaterialIdFromAssetPath(file));
+                    }
+                    assetPickerMode_ = ProjectAssetPickerMode::None;
+                    ImGui::CloseCurrentPopup();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("%s", file.c_str());
+                }
+            }
+
+            if (!found) {
+                ImGui::TextDisabled("%s", pickingMesh ? "No OBJ files found in project assets." : "No material files found in project assets.");
+            }
+        }
+        ImGui::EndChild();
+
+        ImGui::Separator();
+        if (ImGui::Button("Cancel")) {
+            assetPickerMode_ = ProjectAssetPickerMode::None;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
 }
 
 void SceneEditor::RenderMaterialInspector() {
@@ -176,6 +419,7 @@ bool SceneEditor::AssignMaterialToSelected(const std::string& materialId) {
     }
 
     SceneObject& obj = objects_[selectedIndex_];
+    PushUndoState();
     obj.materialId = materialId;
     if (console_) {
         console_->AddLog("Assigned material " + materialId + " to " + obj.name);

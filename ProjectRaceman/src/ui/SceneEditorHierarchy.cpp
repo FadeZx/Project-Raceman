@@ -43,8 +43,10 @@ void SceneEditor::RenderScenePanel() {
 
 
 
-
-
+        if (ImGui::Button(scriptsRunning_ ? "Pause Scripts" : "Run Scripts")) {
+            SetScriptsRunning(!scriptsRunning_);
+        }
+        ImGui::Separator();
 
         // Trigger popup if requested
         if (showImportObjPopup_) { ImGui::OpenPopup("Import OBJ"); showImportObjPopup_ = false; }
@@ -95,6 +97,7 @@ void SceneEditor::RenderScenePanel() {
                 }
                 const bool enterPressed = ImGui::InputText("##objectRename", objectRenameBuffer_, sizeof(objectRenameBuffer_), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
                 if (enterPressed || ImGui::IsItemDeactivatedAfterEdit()) {
+                    PushUndoState();
                     objects_[i].name = objectRenameBuffer_;
                     renamingObjectIndex_ = -1;
                     if (onDirty_) onDirty_();
@@ -129,10 +132,6 @@ void SceneEditor::RenderScenePanel() {
             ImGui::EndDragDropTarget();
         }
 
-        // If nothing selected and has objects, select first for convenience
-        if (selectedIndex_ < 0 && !objects_.empty()) {
-            Select(0);
-        }
     }
     ImGui::End();
 }
@@ -143,6 +142,7 @@ void SceneEditor::DeleteSelectedObject() {
         return;
     }
 
+    PushUndoState();
     objects_.erase(objects_.begin() + selectedIndex_);
     renamingObjectIndex_ = -1;
     inspectMaterial_ = false;

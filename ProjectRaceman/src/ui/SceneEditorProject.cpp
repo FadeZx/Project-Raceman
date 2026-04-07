@@ -72,8 +72,14 @@ void SceneEditor::RenderProjectPanel() {
                         const bool selected = (selectedProjectFile_ == file);
                         if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_AllowDoubleClick)) {
                             SelectProjectFile(file);
-                            if (isMaterial && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                                OpenMaterialEditor(MaterialIdFromAssetPath(file));
+                            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                                if (OpenProjectAssetInDefaultEditor(file)) {
+                                    if (console_) {
+                                        console_->AddLog("Opened project file: " + file);
+                                    }
+                                } else if (console_) {
+                                    console_->AddError("Failed to open project file: " + file);
+                                }
                             }
                         }
                         const bool fileActive = (selectedProjectFile_ == file) && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
@@ -130,6 +136,10 @@ void SceneEditor::ImportObj(const std::string& path) {
         try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Mesh"; }
 
         const auto infos = raceman::GetMeshInfos(model);
+        if (infos.empty()) {
+            return;
+        }
+        PushUndoState();
         for (size_t i = 0; i < infos.size(); ++i) {
             const auto& info = infos[i];
             SceneObject o;
@@ -176,6 +186,7 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
             return false;
         }
 
+        PushUndoState();
         SceneObject& obj = objects_[selectedIndex_];
         obj.type = "Mesh";
         obj.sourcePath = importPath;
@@ -196,6 +207,10 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
         }
         return false;
     }
+}
+
+bool SceneEditor::ReplaceSelectedMeshWithPlane() {
+    return ReplaceSelectedMeshFromObj(kPlaneObjAssetPath);
 }
 
 void SceneEditor::BeginProjectFileRename(const std::string& path) {

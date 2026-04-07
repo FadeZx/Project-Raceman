@@ -31,6 +31,18 @@ std::vector<ImportedMeshInfo> GetMeshInfos(const std::shared_ptr<::Model>& model
         info.indexCount = static_cast<unsigned int>(m.indices.size());
         info.meshIndex = static_cast<unsigned int>(i);
         info.materialName = m.materialName;
+        if (!m.vertices.empty()) {
+            info.localBoundsMin = m.vertices.front().Position;
+            info.localBoundsMax = m.vertices.front().Position;
+            for (const ::Vertex& vertex : m.vertices) {
+                info.localBoundsMin.x = (std::min)(info.localBoundsMin.x, vertex.Position.x);
+                info.localBoundsMin.y = (std::min)(info.localBoundsMin.y, vertex.Position.y);
+                info.localBoundsMin.z = (std::min)(info.localBoundsMin.z, vertex.Position.z);
+                info.localBoundsMax.x = (std::max)(info.localBoundsMax.x, vertex.Position.x);
+                info.localBoundsMax.y = (std::max)(info.localBoundsMax.y, vertex.Position.y);
+                info.localBoundsMax.z = (std::max)(info.localBoundsMax.z, vertex.Position.z);
+            }
+        }
         for (const ::Texture& texture : m.textures) {
             if (texture.type == "texture_albedo") {
                 info.diffuseTextureId = texture.id;

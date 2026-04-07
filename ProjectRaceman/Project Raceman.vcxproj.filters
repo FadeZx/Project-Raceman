@@ -93,6 +93,12 @@
     <ClInclude Include="src\rendering\Material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\scripting\ObjectScript.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scripting\ScriptRegistry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp">
@@ -185,6 +191,12 @@
     <ClCompile Include="src\rendering\Material.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\scripting\ObjectScript.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scripting\ScriptRegistry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\assimp-vc140-mt.dll" />
@@ -219,5 +231,23 @@
     <None Include="src\dlls\assimp-vc143-mt.dll" />
     <None Include="src\dlls\ikpMP3.dll" />
     <None Include="src\dlls\irrKlang.dll" />
+    <ClInclude Include="assets\scripts\Test1.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClCompile Include="assets\scripts\Test1.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="assets\scripts\Test.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClCompile Include="assets\scripts\Test.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="assets\scripts\Test3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClCompile Include="assets\scripts\Test3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -27,6 +27,7 @@
 #endif
 #include <windows.h>
 #include <commdlg.h>
+#include <shellapi.h>
 #endif
 
 namespace raceman::scene_editor_internal {
@@ -139,6 +140,28 @@ inline fs::path ProjectAssetPathToAbsolute(const std::string& projectPath) {
         relative /= *it;
     }
     return (assetsRoot / relative).lexically_normal();
+}
+
+inline bool OpenAbsolutePathInDefaultEditor(const fs::path& absolutePath) {
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+    const std::string path = absolutePath.string();
+    HINSTANCE result = ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    return reinterpret_cast<INT_PTR>(result) > 32;
+#else
+    (void)absolutePath;
+    return false;
+#endif
+}
+
+inline bool OpenProjectAssetInDefaultEditor(const std::string& projectPath) {
+    if (projectPath.empty()) {
+        return false;
+    }
+    const fs::path absolutePath = ProjectAssetPathToAbsolute(projectPath);
+    if (!fs::exists(absolutePath) || !fs::is_regular_file(absolutePath)) {
+        return false;
+    }
+    return OpenAbsolutePathInDefaultEditor(absolutePath);
 }
 
 inline glm::vec3 GizmoAxisVector(int axis) {
@@ -297,6 +320,8 @@ inline void ApplyMeshInfoToSceneObject(SceneObject& object, const ImportedMeshIn
     object.importedMaterialName = info.materialName;
     object.diffuseTexturePath = NormalizeSlashes(info.diffuseTexturePath);
     object.diffuseTextureId = info.diffuseTextureId;
+    object.localBoundsMin = info.localBoundsMin;
+    object.localBoundsMax = info.localBoundsMax;
     object.modelRef = model;
 }
 
@@ -313,7 +338,18 @@ inline bool IsCtrlSPressed() {
     return (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S));
 }
 
+inline bool IsCtrlZPressed() {
+    ImGuiIO& io = ImGui::GetIO();
+    return (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z));
+}
+
+inline bool IsCtrlYPressed() {
+    ImGuiIO& io = ImGui::GetIO();
+    return (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y));
+}
+
 inline constexpr const char* kObjAssetPayload = "RACEMAN_PROJECT_OBJ";
 inline constexpr const char* kMaterialAssetPayload = "RACEMAN_PROJECT_MATERIAL";
+inline constexpr const char* kPlaneObjAssetPath = "assets/mesh/plane.obj";
 
 } // namespace raceman::scene_editor_internal

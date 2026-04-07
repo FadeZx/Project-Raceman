@@ -12,6 +12,8 @@ D:\Project-Raceman\ProjectRaceman\src\rendering\SkyboxController.cpp;D:\Project-
 D:\Project-Raceman\ProjectRaceman\src\scenes\GarageScene.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\GarageScene.obj
 D:\Project-Raceman\ProjectRaceman\src\scenes\Scene.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\Scene.obj
 D:\Project-Raceman\ProjectRaceman\src\scenes\SimulationScene.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\SimulationScene.obj
+D:\Project-Raceman\ProjectRaceman\src\scripting\ObjectScript.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\ObjectScript.obj
+D:\Project-Raceman\ProjectRaceman\src\scripting\ScriptRegistry.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\ScriptRegistry.obj
 D:\Project-Raceman\ProjectRaceman\src\ui\Console.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\Console.obj
 D:\Project-Raceman\ProjectRaceman\src\ui\DebugUI.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\DebugUI.obj
 D:\Project-Raceman\includes\imgui\backends\imgui_impl_glfw.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\imgui_impl_glfw.obj
@@ -28,3 +30,6 @@ D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditorGizmo.cpp;D:\Project-Raceman
 D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditorHierarchy.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\SceneEditorHierarchy.obj
 D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditorInspector.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\SceneEditorInspector.obj
 D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditorProject.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\SceneEditorProject.obj
+D:\Project-Raceman\ProjectRaceman\assets\scripts\Test1.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\Test1.obj
+D:\Project-Raceman\ProjectRaceman\assets\scripts\Test.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\Test.obj
+D:\Project-Raceman\ProjectRaceman\assets\scripts\Test3.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\Test3.obj

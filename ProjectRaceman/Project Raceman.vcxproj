@@ -112,6 +112,8 @@
     <ClInclude Include="src\scenes\GarageScene.h" />
     <ClInclude Include="src\scenes\Scene.h" />
     <ClInclude Include="src\scenes\SimulationScene.h" />
+    <ClInclude Include="src\scripting\ObjectScript.h" />
+    <ClInclude Include="src\scripting\ScriptRegistry.h" />
     <ClInclude Include="src\ui\Console.h" />
     <ClInclude Include="src\ui\DebugUI.h" />
     <ClInclude Include="..\includes\imgui\backends\imgui_impl_opengl3_loader.h" />
@@ -135,6 +137,8 @@
     <ClCompile Include="src\scenes\GarageScene.cpp" />
     <ClCompile Include="src\scenes\Scene.cpp" />
     <ClCompile Include="src\scenes\SimulationScene.cpp" />
+    <ClCompile Include="src\scripting\ObjectScript.cpp" />
+    <ClCompile Include="src\scripting\ScriptRegistry.cpp" />
     <ClCompile Include="src\ui\Console.cpp" />
     <ClCompile Include="src\ui\DebugUI.cpp" />
     <ClCompile Include="..\includes\imgui\backends\imgui_impl_glfw.cpp" />
@@ -185,6 +189,12 @@
     <None Include="src\shaders\text.vs" />
     <None Include="src\shaders\UIShader.fs" />
     <None Include="src\shaders\UIShader.vs" />
+    <ClInclude Include="assets\scripts\Test1.h" />
+    <ClCompile Include="assets\scripts\Test1.cpp" />
+    <ClInclude Include="assets\scripts\Test.h" />
+    <ClCompile Include="assets\scripts\Test.cpp" />
+    <ClInclude Include="assets\scripts\Test3.h" />
+    <ClCompile Include="assets\scripts\Test3.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

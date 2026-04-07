@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <glm/glm.hpp>
 
 class Model; // global Model forward decl
 
@@ -15,6 +16,8 @@ struct ImportedMeshInfo {
     unsigned int meshIndex;
     std::string materialName;
     std::string diffuseTexturePath;
+    glm::vec3 localBoundsMin{0.0f};
+    glm::vec3 localBoundsMax{0.0f};
 };
 
 // Loads a model using Assimp in a separate translation unit to avoid UI macro conflicts

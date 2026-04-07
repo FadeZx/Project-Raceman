@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <string>
 #include <vector>
 #include <mutex>
@@ -24,6 +25,7 @@ public:
 
     // Optional: external toggle for auto-scroll
     void SetAutoScroll(bool enabled) { autoScroll_ = enabled; }
+    void SetCommandHandler(std::function<bool(const std::string&)> handler) { commandHandler_ = std::move(handler); }
 
 private:
     void Add(MessageType type, const std::string& msg);
@@ -37,6 +39,7 @@ private:
     bool showError_{true};
     bool autoScroll_{true};
     std::string input_;
+    std::function<bool(const std::string&)> commandHandler_;
     std::mutex mtx_;
     Tab currentTab_{Tab::Log};
 };

@@ -5,24 +5,50 @@
       "name": "Plane",
       "type": "Plane",
       "transform": {
-        "position": [0, 0, 0],
+        "position": [1.4729, -0.218724, 0],
         "rotationEuler": [0, 0, 0],
         "scale": [10, 1, 10]
       },
+      "enabled": true,
       "color": [0, 0.357843, 0.0841984, 1],
-      "materialId": "pbr_default"
+      "materialId": "pbr_default",
+      "scriptAttachments": [
+        {
+          "enabled": true,
+          "scriptName": "Test1",
+          "scriptPath": "assets/scripts/Test1.cpp"
+        }
+      ]
     },
     {
       "id": "mesh_2",
       "name": "Chevrolet-nascar-FLWheel",
       "type": "Mesh",
       "transform": {
-        "position": [0, 0, 0],
+        "position": [0, 0.384729, 1.38565],
         "rotationEuler": [0, 0, 0],
         "scale": [1, 1, 1]
       },
+      "enabled": true,
       "color": [1, 1, 1, 1],
       "materialId": "material_1",
+      "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+      "meshIndex": 0,
+      "importedMaterialName": "",
+      "diffuseTexturePath": "wheel.png"
+    },
+    {
+      "id": "mesh_1",
+      "name": "Chevrolet-nascar-FLWheel",
+      "type": "Mesh",
+      "transform": {
+        "position": [1.87923, 0.378237, 1.47999],
+        "rotationEuler": [0, -185.014, 0],
+        "scale": [1, 1, 1]
+      },
+      "enabled": true,
+      "color": [1, 1, 1, 1],
+      "materialId": "Wheel",
       "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
       "meshIndex": 0,
       "importedMaterialName": "",
