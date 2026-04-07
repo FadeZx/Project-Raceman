@@ -2,6 +2,7 @@
 #include "../physics/SimpleJson.h"
 
 #include <limits>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -22,6 +23,10 @@ glm::mat4 BuildObjectMatrix(const SceneObject& object) {
 }
 
 bool GetObjectLocalBounds(const SceneObject& object, glm::vec3& outMin, glm::vec3& outMax) {
+    if (!object.hasMeshFilter) {
+        return false;
+    }
+
     if (object.type == "Plane") {
         outMin = {-0.5f, -0.05f, -0.5f};
         outMax = {0.5f, 0.05f, 0.5f};
@@ -29,8 +34,8 @@ bool GetObjectLocalBounds(const SceneObject& object, glm::vec3& outMin, glm::vec
     }
 
     if (object.type == "Mesh") {
-        outMin = object.localBoundsMin;
-        outMax = object.localBoundsMax;
+        outMin = object.meshFilter.localBoundsMin;
+        outMax = object.meshFilter.localBoundsMax;
         constexpr float minThickness = 0.05f;
         for (int i = 0; i < 3; ++i) {
             if (std::abs(outMax[i] - outMin[i]) < minThickness) {
@@ -130,6 +135,110 @@ float DistanceToProjectedRing(const glm::vec2& mouse, const glm::vec3& origin, i
     return best;
 }
 
+glm::vec3 TransformPoint(const glm::mat4& transform, const glm::vec3& point) {
+    return glm::vec3(transform * glm::vec4(point, 1.0f));
+}
+
+void SubmitWireBox(Renderer& renderer, const glm::mat4& transform, const glm::vec3& center, const glm::vec3& size, const glm::vec4& color, float width) {
+    const glm::vec3 halfSize = glm::abs(size) * 0.5f;
+    const glm::vec3 corners[8] = {
+        TransformPoint(transform, center + glm::vec3{-halfSize.x, -halfSize.y, -halfSize.z}),
+        TransformPoint(transform, center + glm::vec3{ halfSize.x, -halfSize.y, -halfSize.z}),
+        TransformPoint(transform, center + glm::vec3{ halfSize.x,  halfSize.y, -halfSize.z}),
+        TransformPoint(transform, center + glm::vec3{-halfSize.x,  halfSize.y, -halfSize.z}),
+        TransformPoint(transform, center + glm::vec3{-halfSize.x, -halfSize.y,  halfSize.z}),
+        TransformPoint(transform, center + glm::vec3{ halfSize.x, -halfSize.y,  halfSize.z}),
+        TransformPoint(transform, center + glm::vec3{ halfSize.x,  halfSize.y,  halfSize.z}),
+        TransformPoint(transform, center + glm::vec3{-halfSize.x,  halfSize.y,  halfSize.z})
+    };
+    const int edges[12][2] = {
+        {0, 1}, {1, 2}, {2, 3}, {3, 0},
+        {4, 5}, {5, 6}, {6, 7}, {7, 4},
+        {0, 4}, {1, 5}, {2, 6}, {3, 7}
+    };
+    for (const auto& edge : edges) {
+        renderer.SubmitLine({corners[edge[0]], corners[edge[1]], color, width});
+    }
+}
+
+void SubmitWireCircle(Renderer& renderer, const glm::vec3& center, int axis, float radius, const glm::vec4& color, float width, int segments = 48) {
+    glm::vec3 previous;
+    for (int i = 0; i <= segments; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(segments) * 6.28318530718f;
+        glm::vec3 local{0.0f};
+        if (axis == 0) {
+            local = {0.0f, std::cos(t) * radius, std::sin(t) * radius};
+        } else if (axis == 1) {
+            local = {std::cos(t) * radius, 0.0f, std::sin(t) * radius};
+        } else {
+            local = {std::cos(t) * radius, std::sin(t) * radius, 0.0f};
+        }
+        const glm::vec3 current = center + local;
+        if (i > 0) {
+            renderer.SubmitLine({previous, current, color, width});
+        }
+        previous = current;
+    }
+}
+
+void SubmitWireSphere(Renderer& renderer, const glm::vec3& center, float radius, const glm::vec4& color, float width) {
+    SubmitWireCircle(renderer, center, 0, radius, color, width);
+    SubmitWireCircle(renderer, center, 1, radius, color, width);
+    SubmitWireCircle(renderer, center, 2, radius, color, width);
+}
+
+void SubmitWireCircleTransformed(Renderer& renderer, const glm::mat4& transform, const glm::vec3& center, int axis, float radius, const glm::vec4& color, float width, int segments = 48) {
+    glm::vec3 previous;
+    for (int i = 0; i <= segments; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(segments) * 6.28318530718f;
+        glm::vec3 local{0.0f};
+        if (axis == 0) {
+            local = {0.0f, std::cos(t) * radius, std::sin(t) * radius};
+        } else if (axis == 1) {
+            local = {std::cos(t) * radius, 0.0f, std::sin(t) * radius};
+        } else {
+            local = {std::cos(t) * radius, std::sin(t) * radius, 0.0f};
+        }
+        const glm::vec3 current = TransformPoint(transform, center + local);
+        if (i > 0) {
+            renderer.SubmitLine({previous, current, color, width});
+        }
+        previous = current;
+    }
+}
+
+void SubmitWireCapsuleY(Renderer& renderer, const glm::mat4& transform, const glm::vec3& center, float radius, float height, const glm::vec4& color, float width) {
+    const float cylinderHalfHeight = (std::max)(0.0f, height * 0.5f - radius);
+    const glm::vec3 top = center + glm::vec3{0.0f, cylinderHalfHeight, 0.0f};
+    const glm::vec3 bottom = center - glm::vec3{0.0f, cylinderHalfHeight, 0.0f};
+
+    SubmitWireCircleTransformed(renderer, transform, top, 1, radius, color, width);
+    SubmitWireCircleTransformed(renderer, transform, bottom, 1, radius, color, width);
+    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{ radius, 0.0f, 0.0f}), TransformPoint(transform, bottom + glm::vec3{ radius, 0.0f, 0.0f}), color, width});
+    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{-radius, 0.0f, 0.0f}), TransformPoint(transform, bottom + glm::vec3{-radius, 0.0f, 0.0f}), color, width});
+    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{0.0f, 0.0f,  radius}), TransformPoint(transform, bottom + glm::vec3{0.0f, 0.0f,  radius}), color, width});
+    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{0.0f, 0.0f, -radius}), TransformPoint(transform, bottom + glm::vec3{0.0f, 0.0f, -radius}), color, width});
+
+    constexpr int segments = 24;
+    for (int plane = 0; plane < 2; ++plane) {
+        glm::vec3 previousTop;
+        glm::vec3 previousBottom;
+        for (int i = 0; i <= segments; ++i) {
+            const float t = static_cast<float>(i) / static_cast<float>(segments) * 3.14159265359f;
+            const float side = std::cos(t) * radius;
+            const float y = std::sin(t) * radius;
+            const glm::vec3 topPoint = TransformPoint(transform, top + (plane == 0 ? glm::vec3{side, y, 0.0f} : glm::vec3{0.0f, y, side}));
+            const glm::vec3 bottomPoint = TransformPoint(transform, bottom + (plane == 0 ? glm::vec3{side, -y, 0.0f} : glm::vec3{0.0f, -y, side}));
+            if (i > 0) {
+                renderer.SubmitLine({previousTop, topPoint, color, width});
+                renderer.SubmitLine({previousBottom, bottomPoint, color, width});
+            }
+            previousTop = topPoint;
+            previousBottom = bottomPoint;
+        }
+    }
+}
+
 } // namespace
 
 void SceneEditor::SelectProjectFile(const std::string& path) {
@@ -188,6 +297,11 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
 
 void SceneEditor::UpdateGizmo(Renderer& renderer) {
     hoveredGizmoAxis_ = -1;
+    if (scriptsRunning_) {
+        activeGizmoAxis_ = -1;
+        return;
+    }
+
     ImGuiIO& io = ImGui::GetIO();
 
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
@@ -280,6 +394,10 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
 }
 
 void SceneEditor::SubmitGizmo(Renderer& renderer) {
+    if (scriptsRunning_) {
+        return;
+    }
+
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
         return;
     }
@@ -342,6 +460,33 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             renderer.SubmitLine({end, arrowBase + sideB, color, width});
             renderer.SubmitLine({end, arrowBase - sideB, color, width});
         }
+    }
+
+    const SceneObject& object = objects_[selectedIndex_];
+    const glm::vec4 colliderColor{0.1f, 0.9f, 0.35f, 1.0f};
+    constexpr float colliderWidth = 2.0f;
+    const glm::mat4 objectMatrix = BuildObjectMatrix(object);
+    if (object.hasBoxCollider && object.boxCollider.enabled) {
+        SubmitWireBox(
+            renderer,
+            objectMatrix,
+            object.boxCollider.center,
+            object.boxCollider.size,
+            colliderColor,
+            colliderWidth);
+    }
+    if (object.hasSphereCollider && object.sphereCollider.enabled) {
+        SubmitWireSphere(
+            renderer,
+            TransformPoint(objectMatrix, object.sphereCollider.center),
+            object.sphereCollider.radius * (std::max)((std::max)(std::abs(object.transform.scale.x), std::abs(object.transform.scale.y)), std::abs(object.transform.scale.z)),
+            colliderColor,
+            colliderWidth);
+    }
+    if (object.hasCapsuleCollider && object.capsuleCollider.enabled) {
+        const float radius = object.capsuleCollider.radius;
+        const float height = (std::max)(object.capsuleCollider.height, radius * 2.0f);
+        SubmitWireCapsuleY(renderer, objectMatrix, object.capsuleCollider.center, radius, height, colliderColor, colliderWidth);
     }
 }
 

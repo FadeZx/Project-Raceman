@@ -46,7 +46,7 @@ void SceneEditor::RenderProjectPanel() {
                     hasFiles = true;
                     const bool isObj = IsObjAssetPath(file);
                     const bool isMaterial = IsMaterialAssetPath(file);
-                    std::string filename = fs::path(file).filename().string();
+                    std::string filename = ProjectAssetDisplayFilename(file);
                     std::string label;
                     if (isObj) {
                         label = "[OBJ] " + filename;
@@ -149,9 +149,10 @@ void SceneEditor::ImportObj(const std::string& path) {
             o.transform.position = {0.0f, 0.0f, 0.0f};
             o.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
             o.transform.scale = {1.0f, 1.0f, 1.0f};
-            o.color = {1.0f, 1.0f, 1.0f, 1.0f};
-            o.materialId = "pbr_default";
-            o.sourcePath = importPath;
+            o.hasMeshRenderer = true;
+            o.meshRenderer.color = {1.0f, 1.0f, 1.0f, 1.0f};
+            o.meshRenderer.materialId = "pbr_default";
+            o.meshFilter.sourcePath = importPath;
             ApplyMeshInfoToSceneObject(o, info, model);
             objects_.push_back(std::move(o));
         }
@@ -189,10 +190,11 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
         PushUndoState();
         SceneObject& obj = objects_[selectedIndex_];
         obj.type = "Mesh";
-        obj.sourcePath = importPath;
+        obj.hasMeshFilter = true;
+        obj.meshFilter.sourcePath = importPath;
         ApplyMeshInfoToSceneObject(obj, infos.front(), model);
-        if (obj.materialId.empty()) {
-            obj.materialId = "pbr_default";
+        if (obj.meshRenderer.materialId.empty()) {
+            obj.meshRenderer.materialId = "pbr_default";
         }
 
         if (console_) {
@@ -264,12 +266,18 @@ void SceneEditor::CommitProjectFileRename() {
 
         fs::rename(oldAbsolutePath, newAbsolutePath);
 
+        const bool renamedScript = ParentProjectDirectory(oldProjectPath) == "assets/scripts"
+            || ParentProjectDirectory(newProjectPath) == "assets/scripts";
+        if (renamedScript) {
+            SyncScriptProjectFiles();
+        }
+
         const std::string oldMaterialId = MaterialIdFromAssetPath(oldProjectPath);
         const std::string newMaterialId = MaterialIdFromAssetPath(newProjectPath);
         if (IsMaterialAssetPath(oldProjectPath) && IsMaterialAssetPath(newProjectPath)) {
             for (auto& object : objects_) {
-                if (object.materialId == oldMaterialId) {
-                    object.materialId = newMaterialId;
+                if (object.meshRenderer.materialId == oldMaterialId) {
+                    object.meshRenderer.materialId = newMaterialId;
                 }
             }
             if (inspectedMaterialId_ == oldMaterialId) {
@@ -279,11 +287,11 @@ void SceneEditor::CommitProjectFileRename() {
         }
 
         for (auto& object : objects_) {
-            if (NormalizeSlashes(object.sourcePath) == oldProjectPath) {
-                object.sourcePath = newProjectPath;
+            if (NormalizeSlashes(object.meshFilter.sourcePath) == oldProjectPath) {
+                object.meshFilter.sourcePath = newProjectPath;
             }
-            if (NormalizeSlashes(object.diffuseTexturePath) == oldProjectPath) {
-                object.diffuseTexturePath = newProjectPath;
+            if (NormalizeSlashes(object.meshFilter.diffuseTexturePath) == oldProjectPath) {
+                object.meshFilter.diffuseTexturePath = newProjectPath;
             }
         }
 
@@ -310,6 +318,9 @@ void SceneEditor::DeleteProjectFile(const std::string& path) {
     const std::string projectPath = NormalizeSlashes(path);
     const fs::path absolutePath = ProjectAssetPathToAbsolute(projectPath);
     const std::string materialId = MaterialIdFromAssetPath(projectPath);
+    const bool isScriptAsset = ParentProjectDirectory(projectPath) == "assets/scripts"
+        && (ToLowerCopy(fs::path(projectPath).extension().string()) == ".cpp"
+            || ToLowerCopy(fs::path(projectPath).extension().string()) == ".h");
 
     try {
         if (!fs::exists(absolutePath) || !fs::is_regular_file(absolutePath)) {
@@ -318,10 +329,25 @@ void SceneEditor::DeleteProjectFile(const std::string& path) {
 
         fs::remove(absolutePath);
 
+        if (isScriptAsset) {
+            const std::string scriptName = absolutePath.stem().string();
+            for (auto& object : objects_) {
+                object.scriptComponent.attachments.erase(
+                    std::remove_if(object.scriptComponent.attachments.begin(), object.scriptComponent.attachments.end(), [&](const ObjectScriptAttachment& script) {
+                        return script.scriptName == scriptName || NormalizeSlashes(script.scriptPath) == projectPath;
+                    }),
+                    object.scriptComponent.attachments.end());
+            }
+            SyncScriptProjectFiles();
+            if (scriptsRunning_) {
+                RebuildScriptRuntime();
+            }
+        }
+
         if (IsMaterialAssetPath(projectPath)) {
             for (auto& object : objects_) {
-                if (object.materialId == materialId) {
-                    object.materialId = "pbr_default";
+                if (object.meshRenderer.materialId == materialId) {
+                    object.meshRenderer.materialId = "pbr_default";
                 }
             }
             if (inspectedMaterialId_ == materialId) {
@@ -332,15 +358,15 @@ void SceneEditor::DeleteProjectFile(const std::string& path) {
         }
 
         for (auto& object : objects_) {
-            if (NormalizeSlashes(object.sourcePath) == projectPath) {
-                object.sourcePath.clear();
-                object.vao = 0;
-                object.indexCount = 0;
-                object.modelRef.reset();
+            if (NormalizeSlashes(object.meshFilter.sourcePath) == projectPath) {
+                object.meshFilter.sourcePath.clear();
+                object.meshFilter.vao = 0;
+                object.meshFilter.indexCount = 0;
+                object.meshFilter.modelRef.reset();
             }
-            if (NormalizeSlashes(object.diffuseTexturePath) == projectPath) {
-                object.diffuseTexturePath.clear();
-                object.diffuseTextureId = 0;
+            if (NormalizeSlashes(object.meshFilter.diffuseTexturePath) == projectPath) {
+                object.meshFilter.diffuseTexturePath.clear();
+                object.meshFilter.diffuseTextureId = 0;
             }
         }
 
@@ -355,6 +381,9 @@ void SceneEditor::DeleteProjectFile(const std::string& path) {
         }
         RefreshProjectFiles();
         if (onDirty_) onDirty_();
+        if (isScriptAsset) {
+            Save(savePath_);
+        }
     } catch (...) {
         if (console_) {
             console_->AddError("Failed to delete project file: " + projectPath);

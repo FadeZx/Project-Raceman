@@ -237,17 +237,5 @@
     <ClCompile Include="assets\scripts\Test1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClInclude Include="assets\scripts\Test.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClCompile Include="assets\scripts\Test.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClInclude Include="assets\scripts\Test3.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClCompile Include="assets\scripts\Test3.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>

@@ -94,6 +94,13 @@ inline std::string MaterialIdFromAssetPath(const std::string& path) {
     return filename.empty() ? "pbr_default" : filename;
 }
 
+inline std::string ProjectAssetDisplayFilename(const std::string& path) {
+    if (IsMaterialAssetPath(path)) {
+        return MaterialIdFromAssetPath(path) + ".mat";
+    }
+    return fs::path(path).filename().string();
+}
+
 inline std::string ParentProjectDirectory(const std::string& path) {
     std::string parent = NormalizeSlashes(fs::path(path).parent_path().string());
     return parent.empty() ? std::string("assets") : parent;
@@ -314,15 +321,18 @@ inline std::string PrepareObjImportPath(const std::string& inputPath) {
 }
 
 inline void ApplyMeshInfoToSceneObject(SceneObject& object, const ImportedMeshInfo& info, const std::shared_ptr<::Model>& model) {
-    object.vao = info.vao;
-    object.indexCount = info.indexCount;
-    object.meshIndex = static_cast<int>(info.meshIndex);
-    object.importedMaterialName = info.materialName;
-    object.diffuseTexturePath = NormalizeSlashes(info.diffuseTexturePath);
-    object.diffuseTextureId = info.diffuseTextureId;
-    object.localBoundsMin = info.localBoundsMin;
-    object.localBoundsMax = info.localBoundsMax;
-    object.modelRef = model;
+    object.hasMeshFilter = true;
+    object.meshFilter.enabled = true;
+    object.meshFilter.meshType = "Mesh";
+    object.meshFilter.vao = info.vao;
+    object.meshFilter.indexCount = info.indexCount;
+    object.meshFilter.meshIndex = static_cast<int>(info.meshIndex);
+    object.meshFilter.importedMaterialName = info.materialName;
+    object.meshFilter.diffuseTexturePath = NormalizeSlashes(info.diffuseTexturePath);
+    object.meshFilter.diffuseTextureId = info.diffuseTextureId;
+    object.meshFilter.localBoundsMin = info.localBoundsMin;
+    object.meshFilter.localBoundsMax = info.localBoundsMax;
+    object.meshFilter.modelRef = model;
 }
 
 inline void BeginProjectAssetDrag(const std::string& payloadType, const std::string& payloadValue, const std::string& label) {

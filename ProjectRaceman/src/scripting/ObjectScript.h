@@ -7,11 +7,12 @@
 namespace raceman {
 
 class Console;
+class InputManager;
 struct SceneObject;
 
 class ObjectScriptContext {
 public:
-    ObjectScriptContext(SceneObject& object, Console* console);
+    ObjectScriptContext(SceneObject& object, Console* console, InputManager* inputManager = nullptr);
 
     const std::string& GetObjectId() const;
     const std::string& GetObjectName() const;
@@ -31,6 +32,13 @@ public:
     bool IsEnabled() const;
     void SetEnabled(bool value);
 
+    bool HasRigidbody() const;
+    bool IsRigidbodyDynamic() const;
+    glm::vec3 GetRigidbodyVelocity() const;
+    void SetRigidbodyVelocity(const glm::vec3& value);
+
+    bool IsKeyDown(int key) const;
+
     void Log(const std::string& message) const;
     void Warning(const std::string& message) const;
     void Error(const std::string& message) const;
@@ -38,6 +46,7 @@ public:
 private:
     SceneObject& object_;
     Console* console_{nullptr};
+    InputManager* inputManager_{nullptr};
 };
 
 class IObjectScript {

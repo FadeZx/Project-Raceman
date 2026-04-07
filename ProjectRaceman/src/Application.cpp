@@ -13,6 +13,7 @@
 #include <glad/glad.h>
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include <imgui/imgui.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -51,6 +52,7 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         InitializeImGui();
         sceneEditor_ = std::make_unique<SceneEditor>();
         sceneEditor_->SetConsole(console_.get());
+        sceneEditor_->SetInputManager(inputManager_.get());
         sceneEditor_->SetOnDirty([this](){
             if (!scenes_.empty()) { scenes_[activeScene_]->MarkDirty(); }
         });
@@ -227,12 +229,13 @@ void Application::Update(float deltaTime) {
         bool wantCaptureMouse = false;
 
         // RMB hold toggles free look with cursor disabled
+        const bool runMode = sceneEditor_ != nullptr && sceneEditor_->IsRunMode();
         int rmb = glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_RIGHT);
-        if (rmb == GLFW_PRESS && !rmbHeld_) {
+        if (!runMode && rmb == GLFW_PRESS && !rmbHeld_) {
             rmbHeld_ = true;
             firstMouse_ = true;
             glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        } else if (rmb == GLFW_RELEASE && rmbHeld_) {
+        } else if ((runMode || rmb == GLFW_RELEASE) && rmbHeld_) {
             rmbHeld_ = false;
             glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
@@ -256,6 +259,10 @@ void Application::Update(float deltaTime) {
             wantCaptureMouse = true;
         }
 
+        const bool allowKeyboardMove = !runMode && (rmbHeld_
+            || !(config_.enableImGui && ImGui::GetCurrentContext() != nullptr
+                && ImGui::GetIO().WantTextInput));
+
         // Keyboard move
         float speed = camBaseSpeed_;
         if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_LEFT_SHIFT))  speed *= camFastMultiplier_;
@@ -275,12 +282,12 @@ void Application::Update(float deltaTime) {
         glm::vec3 right = glm::normalize(glm::cross(front, worldUp));
         glm::vec3 up = glm::normalize(glm::cross(right, front));
 
-        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_W)) { camPosX_ += front.x * dist; camPosY_ += front.y * dist; camPosZ_ += front.z * dist; }
-        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_S)) { camPosX_ -= front.x * dist; camPosY_ -= front.y * dist; camPosZ_ -= front.z * dist; }
-        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_A)) { camPosX_ -= right.x * dist; camPosY_ -= right.y * dist; camPosZ_ -= right.z * dist; }
-        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_D)) { camPosX_ += right.x * dist; camPosY_ += right.y * dist; camPosZ_ += right.z * dist; }
-        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_Q)) { camPosX_ -= up.x * dist;    camPosY_ -= up.y * dist;    camPosZ_ -= up.z * dist; }
-        if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_E)) { camPosX_ += up.x * dist;    camPosY_ += up.y * dist;    camPosZ_ += up.z * dist; }
+        if (allowKeyboardMove && inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_W)) { camPosX_ += front.x * dist; camPosY_ += front.y * dist; camPosZ_ += front.z * dist; }
+        if (allowKeyboardMove && inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_S)) { camPosX_ -= front.x * dist; camPosY_ -= front.y * dist; camPosZ_ -= front.z * dist; }
+        if (allowKeyboardMove && inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_A)) { camPosX_ -= right.x * dist; camPosY_ -= right.y * dist; camPosZ_ -= right.z * dist; }
+        if (allowKeyboardMove && inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_D)) { camPosX_ += right.x * dist; camPosY_ += right.y * dist; camPosZ_ += right.z * dist; }
+        if (allowKeyboardMove && inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_Q)) { camPosX_ -= up.x * dist;    camPosY_ -= up.y * dist;    camPosZ_ -= up.z * dist; }
+        if (allowKeyboardMove && inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_E)) { camPosX_ += up.x * dist;    camPosY_ += up.y * dist;    camPosZ_ += up.z * dist; }
 
         (void)wantCaptureMouse; // reserved for future UI focus logic
     }

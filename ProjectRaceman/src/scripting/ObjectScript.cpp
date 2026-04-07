@@ -1,12 +1,13 @@
 #include "ObjectScript.h"
 
+#include "../input/InputManager.h"
 #include "../ui/Console.h"
 #include "../ui/SceneEditor.h"
 
 namespace raceman {
 
-ObjectScriptContext::ObjectScriptContext(SceneObject& object, Console* console)
-    : object_(object), console_(console) {}
+ObjectScriptContext::ObjectScriptContext(SceneObject& object, Console* console, InputManager* inputManager)
+    : object_(object), console_(console), inputManager_(inputManager) {}
 
 const std::string& ObjectScriptContext::GetObjectId() const {
     return object_.id;
@@ -41,11 +42,11 @@ void ObjectScriptContext::SetScale(const glm::vec3& value) {
 }
 
 std::string ObjectScriptContext::GetMaterialId() const {
-    return object_.materialId;
+    return object_.meshRenderer.materialId;
 }
 
 void ObjectScriptContext::SetMaterialId(const std::string& value) {
-    object_.materialId = value;
+    object_.meshRenderer.materialId = value;
 }
 
 bool ObjectScriptContext::IsEnabled() const {
@@ -54,6 +55,32 @@ bool ObjectScriptContext::IsEnabled() const {
 
 void ObjectScriptContext::SetEnabled(bool value) {
     object_.enabled = value;
+}
+
+bool ObjectScriptContext::HasRigidbody() const {
+    return object_.hasRigidbody && object_.rigidbody.enabled;
+}
+
+bool ObjectScriptContext::IsRigidbodyDynamic() const {
+    return HasRigidbody() && object_.rigidbody.bodyType == RigidbodyBodyType::Dynamic;
+}
+
+glm::vec3 ObjectScriptContext::GetRigidbodyVelocity() const {
+    if (!HasRigidbody()) {
+        return {0.0f, 0.0f, 0.0f};
+    }
+    return object_.rigidbody.velocity;
+}
+
+void ObjectScriptContext::SetRigidbodyVelocity(const glm::vec3& value) {
+    if (!IsRigidbodyDynamic()) {
+        return;
+    }
+    object_.rigidbody.velocity = value;
+}
+
+bool ObjectScriptContext::IsKeyDown(int key) const {
+    return inputManager_ != nullptr && inputManager_->IsKeyDown(key);
 }
 
 void ObjectScriptContext::Log(const std::string& message) const {

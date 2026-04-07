@@ -4,55 +4,147 @@
       "id": "plane_1",
       "name": "Plane",
       "type": "Plane",
-      "transform": {
-        "position": [1.4729, -0.218724, 0],
-        "rotationEuler": [0, 0, 0],
-        "scale": [10, 1, 10]
-      },
       "enabled": true,
-      "color": [0, 0.357843, 0.0841984, 1],
-      "materialId": "pbr_default",
-      "scriptAttachments": [
+      "components": [
         {
+          "type": "Transform",
+          "position": [1.08503, -0.218724, 0.921],
+          "rotationEuler": [0, 0, 0],
+          "scale": [10, 1, 10]
+        },
+        {
+          "type": "MeshFilter",
           "enabled": true,
-          "scriptName": "Test1",
-          "scriptPath": "assets/scripts/Test1.cpp"
+          "meshType": "Plane",
+          "sourcePath": "",
+          "meshIndex": 0,
+          "importedMaterialName": "",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [0, 0.357843, 0.0841984, 1]
+        },
+        {
+          "type": "BoxCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0, 0, 0],
+          "size": [1, 0.051, 1]
         }
       ]
     },
     {
       "id": "mesh_2",
-      "name": "Chevrolet-nascar-FLWheel",
+      "name": "Wheel_Left",
       "type": "Mesh",
-      "transform": {
-        "position": [0, 0.384729, 1.38565],
-        "rotationEuler": [0, 0, 0],
-        "scale": [1, 1, 1]
-      },
       "enabled": true,
-      "color": [1, 1, 1, 1],
-      "materialId": "material_1",
-      "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
-      "meshIndex": 0,
-      "importedMaterialName": "",
-      "diffuseTexturePath": "wheel.png"
+      "components": [
+        {
+          "type": "Transform",
+          "position": [1.0348, 0.781276, 0.927115],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "material_1",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+            {
+              "enabled": true,
+              "scriptName": "Test1",
+              "scriptPath": "assets/scripts/Test1.cpp"
+            }
+          ]
+        },
+        {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 1,
+          "useGravity": true,
+          "velocity": [0, 0, 0]
+        },
+        {
+          "type": "BoxCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
+        }
+      ]
     },
     {
       "id": "mesh_1",
-      "name": "Chevrolet-nascar-FLWheel",
+      "name": "Wheel_Right",
       "type": "Mesh",
-      "transform": {
-        "position": [1.87923, 0.378237, 1.47999],
-        "rotationEuler": [0, -185.014, 0],
-        "scale": [1, 1, 1]
-      },
       "enabled": true,
-      "color": [1, 1, 1, 1],
-      "materialId": "Wheel",
-      "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
-      "meshIndex": 0,
-      "importedMaterialName": "",
-      "diffuseTexturePath": "wheel.png"
+      "components": [
+        {
+          "type": "Transform",
+          "position": [2.68681, 0.781276, 0.756754],
+          "rotationEuler": [0, -180.514, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+            {
+              "enabled": true,
+              "scriptName": "Test1",
+              "scriptPath": "assets/scripts/Test1.cpp"
+            }
+          ]
+        },
+        {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 1,
+          "useGravity": true,
+          "velocity": [0, 0, 0]
+        },
+        {
+          "type": "SphereCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0, 0, 0],
+          "radius": 0.5
+        }
+      ]
     }
   ]
 }

@@ -40,11 +40,24 @@ void SceneEditor::RenderScenePanel() {
             }
             ImGui::EndMenuBar();
         }
-
-
-
-        if (ImGui::Button(scriptsRunning_ ? "Pause Scripts" : "Run Scripts")) {
-            SetScriptsRunning(!scriptsRunning_);
+        if (ImGui::Button(scriptsRunning_ && !scriptsPaused_ ? "||" : ">")) {
+            if (scriptsRunning_) {
+                SetScriptsPaused(!scriptsPaused_);
+            } else {
+                SetScriptsRunning(true);
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", scriptsRunning_ && !scriptsPaused_ ? "Pause" : "Play");
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!scriptsRunning_);
+        if (ImGui::Button("[]")) {
+            SetScriptsRunning(false);
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("Stop");
         }
         ImGui::Separator();
 

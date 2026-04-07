@@ -191,10 +191,6 @@
     <None Include="src\shaders\UIShader.vs" />
     <ClInclude Include="assets\scripts\Test1.h" />
     <ClCompile Include="assets\scripts\Test1.cpp" />
-    <ClInclude Include="assets\scripts\Test.h" />
-    <ClCompile Include="assets\scripts\Test.cpp" />
-    <ClInclude Include="assets\scripts\Test3.h" />
-    <ClCompile Include="assets\scripts\Test3.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

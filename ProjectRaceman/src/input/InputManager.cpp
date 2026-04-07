@@ -22,6 +22,13 @@ bool InputManager::WasKeyPressed(int key) const {
 }
 
 bool InputManager::IsKeyDown(int key) const {
+    if (window_ != nullptr) {
+        const int state = glfwGetKey(window_, key);
+        if (state == GLFW_PRESS || state == GLFW_REPEAT) {
+            return true;
+        }
+    }
+
     auto it = keyState_.find(key);
     return it != keyState_.end() && it->second;
 }
@@ -50,4 +57,4 @@ void InputManager::KeyCallback(GLFWwindow* window, int key, int, int action, int
     }
 }
 
-} 
+}

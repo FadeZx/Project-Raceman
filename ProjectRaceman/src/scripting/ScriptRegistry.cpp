@@ -1,31 +1,19 @@
 #include "ScriptRegistry.h"
 
-#include "../../assets/scripts/Test.h"
 #include "../../assets/scripts/Test1.h"
-#include "../../assets/scripts/Test3.h"
 
 namespace raceman {
 namespace {
 
-std::unique_ptr<IObjectScript> CreateTest() {
-    return std::make_unique<scripts::Test>();
-}
-
 std::unique_ptr<IObjectScript> CreateTest1() {
     return std::make_unique<scripts::Test1>();
-}
-
-std::unique_ptr<IObjectScript> CreateTest3() {
-    return std::make_unique<scripts::Test3>();
 }
 
 } // namespace
 
 const std::vector<ScriptDescriptor>& GetRegisteredScripts() {
     static const std::vector<ScriptDescriptor> scripts = {
-        {"Test", "assets/scripts/Test.cpp", &CreateTest},
         {"Test1", "assets/scripts/Test1.cpp", &CreateTest1},
-        {"Test3", "assets/scripts/Test3.cpp", &CreateTest3},
     };
     return scripts;
 }

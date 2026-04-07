@@ -17,6 +17,7 @@ namespace raceman {
 class Renderer;
 class PrimitivePlane;
 class Console;
+class InputManager;
 
 enum class GizmoMode {
     Move,
@@ -31,10 +32,47 @@ enum class ProjectAssetPickerMode {
     AttachScript
 };
 
+enum class SceneComponentType {
+    Transform,
+    MeshFilter,
+    MeshRenderer,
+    Script,
+    Rigidbody,
+    BoxCollider,
+    SphereCollider,
+    CapsuleCollider
+};
+
+enum class RigidbodyBodyType {
+    Static,
+    Dynamic
+};
+
 struct Transform {
     glm::vec3 position{0.0f, 0.0f, 0.0f};
     glm::vec3 rotationEuler{0.0f, 0.0f, 0.0f}; // degrees
     glm::vec3 scale{1.0f, 1.0f, 1.0f};
+};
+
+struct MeshFilterComponent {
+    bool enabled{true};
+    std::string meshType; // e.g., "Plane" or "Mesh"
+    std::string sourcePath;
+    int meshIndex{0};
+    std::string importedMaterialName;
+    std::string diffuseTexturePath;
+    unsigned int diffuseTextureId{0};
+    unsigned int vao{0};
+    unsigned int indexCount{0};
+    glm::vec3 localBoundsMin{-0.5f, -0.5f, -0.5f};
+    glm::vec3 localBoundsMax{0.5f, 0.5f, 0.5f};
+    std::shared_ptr<::Model> modelRef;
+};
+
+struct MeshRendererComponent {
+    bool enabled{true};
+    std::string materialId{"pbr_default"};
+    glm::vec4 color{1.0f, 1.0f, 1.0f, 1.0f};
 };
 
 struct ObjectScriptAttachment {
@@ -43,31 +81,61 @@ struct ObjectScriptAttachment {
     std::string scriptPath;
 };
 
+struct ScriptComponent {
+    bool enabled{true};
+    std::vector<ObjectScriptAttachment> attachments;
+};
+
+struct RigidbodyComponent {
+    bool enabled{true};
+    RigidbodyBodyType bodyType{RigidbodyBodyType::Dynamic};
+    float mass{1.0f};
+    bool useGravity{true};
+    glm::vec3 velocity{0.0f, 0.0f, 0.0f};
+};
+
+struct BoxColliderComponent {
+    bool enabled{true};
+    bool isTrigger{false};
+    glm::vec3 center{0.0f, 0.0f, 0.0f};
+    glm::vec3 size{1.0f, 1.0f, 1.0f};
+};
+
+struct SphereColliderComponent {
+    bool enabled{true};
+    bool isTrigger{false};
+    glm::vec3 center{0.0f, 0.0f, 0.0f};
+    float radius{0.5f};
+};
+
+struct CapsuleColliderComponent {
+    bool enabled{true};
+    bool isTrigger{false};
+    glm::vec3 center{0.0f, 0.0f, 0.0f};
+    float radius{0.5f};
+    float height{2.0f};
+};
+
 struct SceneObject {
     std::string id;    // simple unique id
     std::string name;  // editable name
-    std::string type;  // e.g., "Plane", "Mesh"
+    std::string type;  // legacy/display object type, e.g., "Plane", "Mesh"
     Transform transform;
     bool enabled{true};
-
-    // Visuals
-    glm::vec4 color{1.0f, 1.0f, 1.0f, 1.0f};
-
-    // Render data (if renderable)
-    unsigned int vao{0};
-    unsigned int indexCount{0};
-    std::string materialId; // e.g., "pbr_default"
-    std::shared_ptr<::Model> modelRef; // keep model alive for VAO/VBO lifetime (global Model)
-
-    // Persistence for Mesh types
-    std::string sourcePath; // original .obj path
-    int meshIndex{0};       // submesh index within the model
-    std::string importedMaterialName;
-    std::string diffuseTexturePath;
-    unsigned int diffuseTextureId{0};
-    glm::vec3 localBoundsMin{-0.5f, -0.5f, -0.5f};
-    glm::vec3 localBoundsMax{0.5f, 0.5f, 0.5f};
-    std::vector<ObjectScriptAttachment> scriptAttachments;
+    bool hasMeshFilter{true};
+    bool hasMeshRenderer{true};
+    bool hasScriptComponent{true};
+    bool hasRigidbody{false};
+    bool hasBoxCollider{false};
+    bool hasSphereCollider{false};
+    bool hasCapsuleCollider{false};
+    MeshFilterComponent meshFilter;
+    MeshRendererComponent meshRenderer;
+    ScriptComponent scriptComponent;
+    RigidbodyComponent rigidbody;
+    BoxColliderComponent boxCollider;
+    SphereColliderComponent sphereCollider;
+    CapsuleColliderComponent capsuleCollider;
 };
 
 class SceneEditor {
@@ -86,6 +154,8 @@ public:
     // Submit renderables for drawing via Renderer (PBR pipeline)
     void SubmitDraws(Renderer& renderer);
     void SetConsole(Console* console);
+    void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
+    bool IsRunMode() const { return scriptsRunning_; }
 
     // Notify app when editor content changes
     void SetOnDirty(std::function<void()> cb) { onDirty_ = std::move(cb); }
@@ -107,7 +177,10 @@ private:
     void RenderProjectAssetPickerPopup();
     void HandleEditorShortcuts();
     void UpdateScripts(float deltaTime);
+    void UpdatePhysics(float deltaTime);
+    void ResetPhysicsVelocities();
     void SetScriptsRunning(bool running);
+    void SetScriptsPaused(bool paused);
     void RebuildScriptRuntime();
     void ClearScriptRuntime();
     void HandleConsoleCommand(const std::string& command);
@@ -126,6 +199,7 @@ private:
     bool AssignMaterialToSelected(const std::string& materialId);
     bool AttachScriptToSelected(const std::string& scriptName, const std::string& scriptPath);
     bool CreateScriptAsset(const std::string& requestedName);
+    void SyncScriptProjectFiles();
     void OpenMaterialEditor(const std::string& materialId);
     void BeginObjectRename(int index);
     void BeginProjectFileRename(const std::string& path);
@@ -149,6 +223,7 @@ private:
     // shared primitives
     std::unique_ptr<PrimitivePlane> planePrim_;
     Console* console_{nullptr};
+    InputManager* inputManager_{nullptr};
 
     // Materials
     MaterialManager materialManager_;
@@ -169,6 +244,7 @@ private:
     std::string inspectedMaterialId_;
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
     bool scriptsRunning_{false};
+    bool scriptsPaused_{false};
     bool showCreateScriptPopup_{false};
     char createScriptNameBuffer_[128]{};
 
@@ -204,6 +280,8 @@ private:
     };
     std::vector<HistoryState> undoStack_;
     std::vector<HistoryState> redoStack_;
+    HistoryState playModeSnapshot_{};
+    bool hasPlayModeSnapshot_{false};
 
     std::function<void()> onDirty_{};
 };
