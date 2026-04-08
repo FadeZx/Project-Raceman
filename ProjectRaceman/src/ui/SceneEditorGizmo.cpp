@@ -1,6 +1,7 @@
 #include "SceneEditorInternal.h"
 #include "../physics/SimpleJson.h"
 
+#include <cmath>
 #include <limits>
 #include <vector>
 
@@ -22,8 +23,26 @@ glm::mat4 BuildObjectMatrix(const SceneObject& object) {
     return model;
 }
 
+glm::mat4 BuildRotationMatrix(const SceneObject& object) {
+    glm::mat4 rotation(1.0f);
+    const glm::vec3 rads = glm::radians(object.transform.rotationEuler);
+    rotation = glm::rotate(rotation, rads.z, glm::vec3(0.0f, 0.0f, 1.0f));
+    rotation = glm::rotate(rotation, rads.y, glm::vec3(0.0f, 1.0f, 0.0f));
+    rotation = glm::rotate(rotation, rads.x, glm::vec3(1.0f, 0.0f, 0.0f));
+    return rotation;
+}
+
+glm::vec3 TransformDirection(const glm::mat4& transform, const glm::vec3& direction) {
+    return glm::vec3(transform * glm::vec4(direction, 0.0f));
+}
+
 bool GetObjectLocalBounds(const SceneObject& object, glm::vec3& outMin, glm::vec3& outMax) {
     if (!object.hasMeshFilter) {
+        if (object.hasCamera) {
+            outMin = {-0.25f, -0.25f, -0.25f};
+            outMax = {0.25f, 0.25f, 0.25f};
+            return true;
+        }
         return false;
     }
 
@@ -103,7 +122,7 @@ bool IntersectRayAabb(const glm::vec3& origin, const glm::vec3& direction, const
     return true;
 }
 
-float DistanceToProjectedRing(const glm::vec2& mouse, const glm::vec3& origin, int axis, float radius, Renderer& renderer) {
+float DistanceToProjectedRing(const glm::vec2& mouse, const glm::vec3& origin, const glm::mat4& rotation, int axis, float radius, Renderer& renderer) {
     constexpr int segments = 48;
     float best = (std::numeric_limits<float>::max)();
 
@@ -121,7 +140,7 @@ float DistanceToProjectedRing(const glm::vec2& mouse, const glm::vec3& origin, i
         }
 
         glm::vec2 current;
-        if (!ProjectWorldToScreen(origin + local, renderer, current)) {
+        if (!ProjectWorldToScreen(origin + TransformDirection(rotation, local), renderer, current)) {
             hasPrevious = false;
             continue;
         }
@@ -238,6 +257,51 @@ void SubmitWireCapsuleY(Renderer& renderer, const glm::mat4& transform, const gl
         }
     }
 }
+void SubmitCameraFrustum(Renderer& renderer, const SceneObject& object, const glm::vec4& color, float width) {
+    if (!object.hasCamera || !object.camera.enabled) {
+        return;
+    }
+
+    constexpr float aspect = 16.0f / 9.0f;
+    const CameraComponent& camera = object.camera;
+    const float fov = (std::max)(1.0f, (std::min)(camera.fieldOfViewDegrees, 179.0f));
+    const float nearClip = (std::max)(0.001f, camera.nearClip);
+    const float farClip = (std::max)(nearClip + 0.001f, camera.farClip);
+    const float frustumFar = (std::min)(farClip, (std::max)(nearClip + 0.25f, 5.0f));
+    const float nearHalfHeight = std::tan(glm::radians(fov) * 0.5f) * nearClip;
+    const float nearHalfWidth = nearHalfHeight * aspect;
+    const float farHalfHeight = std::tan(glm::radians(fov) * 0.5f) * frustumFar;
+    const float farHalfWidth = farHalfHeight * aspect;
+
+    const glm::mat4 rotation = BuildRotationMatrix(object);
+    const glm::vec3 origin = object.transform.position;
+    auto toWorld = [&](const glm::vec3& local) {
+        return origin + TransformDirection(rotation, local);
+    };
+
+    const glm::vec3 nearCenter{0.0f, 0.0f, -nearClip};
+    const glm::vec3 farCenter{0.0f, 0.0f, -frustumFar};
+    const glm::vec3 nearCorners[4] = {
+        toWorld(nearCenter + glm::vec3{-nearHalfWidth, -nearHalfHeight, 0.0f}),
+        toWorld(nearCenter + glm::vec3{ nearHalfWidth, -nearHalfHeight, 0.0f}),
+        toWorld(nearCenter + glm::vec3{ nearHalfWidth,  nearHalfHeight, 0.0f}),
+        toWorld(nearCenter + glm::vec3{-nearHalfWidth,  nearHalfHeight, 0.0f})
+    };
+    const glm::vec3 farCorners[4] = {
+        toWorld(farCenter + glm::vec3{-farHalfWidth, -farHalfHeight, 0.0f}),
+        toWorld(farCenter + glm::vec3{ farHalfWidth, -farHalfHeight, 0.0f}),
+        toWorld(farCenter + glm::vec3{ farHalfWidth,  farHalfHeight, 0.0f}),
+        toWorld(farCenter + glm::vec3{-farHalfWidth,  farHalfHeight, 0.0f})
+    };
+
+    for (int i = 0; i < 4; ++i) {
+        const int next = (i + 1) % 4;
+        renderer.SubmitLine({nearCorners[i], nearCorners[next], color, width});
+        renderer.SubmitLine({farCorners[i], farCorners[next], color, width});
+        renderer.SubmitLine({origin, farCorners[i], color, width});
+        renderer.SubmitLine({nearCorners[i], farCorners[i], color, width});
+    }
+}
 
 } // namespace
 
@@ -297,11 +361,6 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
 
 void SceneEditor::UpdateGizmo(Renderer& renderer) {
     hoveredGizmoAxis_ = -1;
-    if (scriptsRunning_) {
-        activeGizmoAxis_ = -1;
-        return;
-    }
-
     ImGuiIO& io = ImGui::GetIO();
 
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
@@ -310,8 +369,10 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
         return;
     }
 
+    const SceneObject& selectedObject = objects_[selectedIndex_];
     const glm::vec2 mouse{io.MousePos.x, io.MousePos.y};
-    const glm::vec3 origin = objects_[selectedIndex_].transform.position;
+    const glm::vec3 origin = selectedObject.transform.position;
+    const glm::mat4 gizmoRotation = BuildRotationMatrix(selectedObject);
     constexpr float axisLength = 1.0f;
     constexpr float hitDistancePixels = 10.0f;
 
@@ -319,11 +380,11 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
     for (int axis = 0; axis < 3; ++axis) {
         float distance = bestDistance;
         if (gizmoMode_ == GizmoMode::Rotate) {
-            distance = DistanceToProjectedRing(mouse, origin, axis, axisLength, renderer);
+            distance = DistanceToProjectedRing(mouse, origin, gizmoRotation, axis, axisLength, renderer);
         } else {
             glm::vec2 startScreen;
             glm::vec2 endScreen;
-            const glm::vec3 end = origin + GizmoAxisVector(axis) * axisLength;
+            const glm::vec3 end = origin + (gizmoMode_ == GizmoMode::Rotate ? TransformDirection(gizmoRotation, GizmoAxisVector(axis)) : GizmoAxisVector(axis)) * axisLength;
             if (!ProjectWorldToScreen(origin, renderer, startScreen) || !ProjectWorldToScreen(end, renderer, endScreen)) {
                 continue;
             }
@@ -361,23 +422,45 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
 
     glm::vec2 startScreen;
     glm::vec2 endScreen;
-    const glm::vec3 axisVector = GizmoAxisVector(activeGizmoAxis_);
-    if (!ProjectWorldToScreen(gizmoDragStartPosition_, renderer, startScreen) ||
-        !ProjectWorldToScreen(gizmoDragStartPosition_ + axisVector * axisLength, renderer, endScreen)) {
-        return;
-    }
+    const glm::vec3 eulerAxisVector = GizmoAxisVector(activeGizmoAxis_);
+    const glm::vec3 axisVector = (gizmoMode_ == GizmoMode::Rotate) ? TransformDirection(gizmoRotation, eulerAxisVector) : eulerAxisVector;
 
-    glm::vec2 axisScreen = endScreen - startScreen;
-    const float axisScreenLength = glm::length(axisScreen);
-    if (axisScreenLength < 0.001f) {
-        return;
-    }
-
-    const glm::vec2 axisScreenDir = axisScreen / axisScreenLength;
-    const float pixelsAlongAxis = glm::dot(mouse - gizmoDragStartMouse_, axisScreenDir);
     if (gizmoMode_ == GizmoMode::Rotate) {
-        objects_[selectedIndex_].transform.rotationEuler = gizmoDragStartRotation_ + axisVector * (pixelsAlongAxis * 0.5f);
+        glm::vec2 centerScreen;
+        if (!ProjectWorldToScreen(gizmoDragStartPosition_, renderer, centerScreen)) {
+            return;
+        }
+
+        const glm::vec2 startDelta = gizmoDragStartMouse_ - centerScreen;
+        const glm::vec2 currentDelta = mouse - centerScreen;
+        if (glm::length(startDelta) < 0.001f || glm::length(currentDelta) < 0.001f) {
+            return;
+        }
+
+        float angleDelta = std::atan2(currentDelta.y, currentDelta.x) - std::atan2(startDelta.y, startDelta.x);
+        constexpr float pi = 3.14159265359f;
+        if (angleDelta > pi) {
+            angleDelta -= pi * 2.0f;
+        } else if (angleDelta < -pi) {
+            angleDelta += pi * 2.0f;
+        }
+
+        const float direction = (activeGizmoAxis_ == 1 || activeGizmoAxis_ == 2) ? -1.0f : 1.0f;
+        objects_[selectedIndex_].transform.rotationEuler = gizmoDragStartRotation_ + eulerAxisVector * (glm::degrees(angleDelta) * direction);
     } else {
+        if (!ProjectWorldToScreen(gizmoDragStartPosition_, renderer, startScreen) ||
+            !ProjectWorldToScreen(gizmoDragStartPosition_ + axisVector * axisLength, renderer, endScreen)) {
+            return;
+        }
+
+        glm::vec2 axisScreen = endScreen - startScreen;
+        const float axisScreenLength = glm::length(axisScreen);
+        if (axisScreenLength < 0.001f) {
+            return;
+        }
+
+        const glm::vec2 axisScreenDir = axisScreen / axisScreenLength;
+        const float pixelsAlongAxis = glm::dot(mouse - gizmoDragStartMouse_, axisScreenDir);
         const float worldDelta = pixelsAlongAxis / axisScreenLength * axisLength;
         if (gizmoMode_ == GizmoMode::Scale) {
             const glm::vec3 scaled = gizmoDragStartScale_ + axisVector * worldDelta;
@@ -394,15 +477,13 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
 }
 
 void SceneEditor::SubmitGizmo(Renderer& renderer) {
-    if (scriptsRunning_) {
-        return;
-    }
-
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
         return;
     }
 
-    const glm::vec3 origin = objects_[selectedIndex_].transform.position;
+    const SceneObject& object = objects_[selectedIndex_];
+    const glm::vec3 origin = object.transform.position;
+    const glm::mat4 gizmoRotation = BuildRotationMatrix(object);
     constexpr float axisLength = 1.0f;
     constexpr float arrowHeadLength = 0.35f;
     constexpr float arrowHeadWidth = 0.14f;
@@ -410,9 +491,10 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
     for (int axis = 0; axis < 3; ++axis) {
         const bool highlighted = (axis == hoveredGizmoAxis_ || axis == activeGizmoAxis_);
         const glm::vec3 axisVector = GizmoAxisVector(axis);
+        const glm::vec3 visualAxisVector = (gizmoMode_ == GizmoMode::Rotate) ? TransformDirection(gizmoRotation, axisVector) : axisVector;
         const glm::vec4 color = GizmoAxisColor(axis, highlighted);
         const float width = highlighted ? 4.0f : 3.0f;
-        const glm::vec3 end = origin + axisVector * axisLength;
+        const glm::vec3 end = origin + visualAxisVector * axisLength;
 
         if (gizmoMode_ == GizmoMode::Rotate) {
             constexpr int segments = 64;
@@ -427,7 +509,7 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
                 } else {
                     local = {std::cos(t) * axisLength, std::sin(t) * axisLength, 0.0f};
                 }
-                const glm::vec3 current = origin + local;
+                const glm::vec3 current = origin + TransformDirection(gizmoRotation, local);
                 if (i > 0) {
                     renderer.SubmitLine({previous, current, color, width});
                 }
@@ -449,7 +531,7 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             sideB = {0.0f, arrowHeadWidth, 0.0f};
         }
 
-        const glm::vec3 arrowBase = end - axisVector * arrowHeadLength;
+        const glm::vec3 arrowBase = end - visualAxisVector * arrowHeadLength;
         renderer.SubmitLine({origin, end, color, width});
         if (gizmoMode_ == GizmoMode::Scale) {
             renderer.SubmitLine({end - sideA, end + sideA, color, width});
@@ -462,7 +544,6 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
         }
     }
 
-    const SceneObject& object = objects_[selectedIndex_];
     const glm::vec4 colliderColor{0.1f, 0.9f, 0.35f, 1.0f};
     constexpr float colliderWidth = 2.0f;
     const glm::mat4 objectMatrix = BuildObjectMatrix(object);
@@ -487,6 +568,9 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
         const float radius = object.capsuleCollider.radius;
         const float height = (std::max)(object.capsuleCollider.height, radius * 2.0f);
         SubmitWireCapsuleY(renderer, objectMatrix, object.capsuleCollider.center, radius, height, colliderColor, colliderWidth);
+    }
+    if (object.hasCamera && object.camera.enabled) {
+        SubmitCameraFrustum(renderer, object, glm::vec4{1.0f, 0.85f, 0.2f, 1.0f}, 2.0f);
     }
 }
 

@@ -51,6 +51,10 @@ void SceneEditor::RenderInspectorPanel() {
                 ImGui::OpenPopup("Add Object Component");
             }
             if (ImGui::BeginPopup("Add Object Component")) {
+                if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+                    ImGui::CloseCurrentPopup();
+                }
+
                 bool anyAvailable = false;
                 if (!obj.hasMeshFilter) {
                     anyAvailable = true;
@@ -113,6 +117,23 @@ void SceneEditor::RenderInspectorPanel() {
                         PushUndoState();
                         obj.hasCapsuleCollider = true;
                         obj.capsuleCollider = CapsuleColliderComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
+                if (!obj.hasCamera) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Camera")) {
+                        bool hasAnyCamera = false;
+                        for (const SceneObject& sceneObject : objects_) {
+                            if (&sceneObject != &obj && sceneObject.hasCamera) {
+                                hasAnyCamera = true;
+                                break;
+                            }
+                        }
+                        PushUndoState();
+                        obj.hasCamera = true;
+                        obj.camera = CameraComponent{};
+                        obj.camera.isMain = !hasAnyCamera;
                         if (onDirty_) onDirty_();
                     }
                 }
@@ -254,9 +275,17 @@ void SceneEditor::RenderInspectorPanel() {
                 const std::string materialButtonLabel = materialFilename + "##selectMaterial";
                 ImGui::TextDisabled("Material:");
                 ImGui::SameLine();
-                if (ImGui::Button(materialButtonLabel.c_str(), ImVec2(-1.0f, 0.0f))) {
+                const float editButtonWidth = ImGui::CalcTextSize("Edit").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+                const float materialButtonWidth = (std::max)(1.0f, ImGui::GetContentRegionAvail().x - editButtonWidth - ImGui::GetStyle().ItemSpacing.x);
+                if (ImGui::Button(materialButtonLabel.c_str(), ImVec2(materialButtonWidth, 0.0f))) {
                     assetPickerMode_ = ProjectAssetPickerMode::AssignMaterial;
                     ImGui::OpenPopup("Select Project Asset");
+                }
+                if (ImGui::BeginPopupContextItem("MaterialFieldContext")) {
+                    if (ImGui::MenuItem("Edit")) {
+                        OpenMaterialEditor(materialId);
+                    }
+                    ImGui::EndPopup();
                 }
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     OpenMaterialEditor(materialId);
@@ -270,8 +299,15 @@ void SceneEditor::RenderInspectorPanel() {
                     }
                     ImGui::EndDragDropTarget();
                 }
+                ImGui::SameLine();
+                if (ImGui::Button("Edit##materialProperties")) {
+                    OpenMaterialEditor(materialId);
+                }
                 if (material != nullptr) {
                     ImGui::ColorButton("Albedo Preview", ImVec4(material->albedoColor[0], material->albedoColor[1], material->albedoColor[2], material->albedoColor[3]));
+                    if (ImGui::CollapsingHeader("Material Properties", ImGuiTreeNodeFlags_DefaultOpen)) {
+                        RenderMaterialProperties(materialId, false);
+                    }
                 } else {
                     ImGui::TextDisabled("Material asset not loaded.");
                 }
@@ -615,6 +651,64 @@ void SceneEditor::RenderInspectorPanel() {
                 }
             }
 
+            bool removeCamera = false;
+            bool cameraOpen = false;
+            if (obj.hasCamera) {
+                cameraOpen = RenderRemovableComponentHeader("Camera", "CameraHeader", removeCamera);
+            }
+            if (removeCamera) {
+                PushUndoState();
+                obj.hasCamera = false;
+                obj.camera = CameraComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasCamera && cameraOpen) {
+                const bool cameraEnabledBefore = obj.camera.enabled;
+                if (ImGui::Checkbox("Enabled##Camera", &obj.camera.enabled)) {
+                    const bool cameraEnabledAfter = obj.camera.enabled;
+                    obj.camera.enabled = cameraEnabledBefore;
+                    PushUndoState();
+                    obj.camera.enabled = cameraEnabledAfter;
+                    if (onDirty_) onDirty_();
+                }
+
+                const bool isMainBefore = obj.camera.isMain;
+                if (ImGui::Checkbox("Main Camera", &obj.camera.isMain)) {
+                    const bool isMainAfter = obj.camera.isMain;
+                    obj.camera.isMain = isMainBefore;
+                    PushUndoState();
+                    obj.camera.isMain = isMainAfter;
+                    if (onDirty_) onDirty_();
+                }
+
+                float fov = obj.camera.fieldOfViewDegrees;
+                if (ImGui::DragFloat("Field of View", &fov, 0.5f, 1.0f, 179.0f)) {
+                    PushUndoState();
+                    obj.camera.fieldOfViewDegrees = (std::max)(1.0f, (std::min)(179.0f, fov));
+                    if (onDirty_) onDirty_();
+                }
+
+                float nearClip = obj.camera.nearClip;
+                if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, 0.001f, 100000.0f)) {
+                    PushUndoState();
+                    obj.camera.nearClip = (std::max)(0.001f, nearClip);
+                    obj.camera.farClip = (std::max)(obj.camera.nearClip + 0.001f, obj.camera.farClip);
+                    if (onDirty_) onDirty_();
+                }
+
+                float farClip = obj.camera.farClip;
+                if (ImGui::DragFloat("Far Clip", &farClip, 1.0f, 0.002f, 1000000.0f)) {
+                    PushUndoState();
+                    obj.camera.farClip = (std::max)(obj.camera.nearClip + 0.001f, farClip);
+                    if (onDirty_) onDirty_();
+                }
+
+                glm::vec4 clearColor = obj.camera.clearColor;
+                if (ImGui::ColorEdit4("Clear Color", &clearColor.x)) {
+                    PushUndoState();
+                    obj.camera.clearColor = clearColor;
+                    if (onDirty_) onDirty_();
+                }
+            }
             ImGui::Separator();
             if (ImGui::Button("Delete")) {
                 DeleteSelectedObject();
@@ -635,11 +729,35 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
 
     const bool pickingMesh = (assetPickerMode_ == ProjectAssetPickerMode::ReplaceMesh);
     if (ImGui::BeginPopupModal("Select Project Asset", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+            assetPickerMode_ = ProjectAssetPickerMode::None;
+            ImGui::CloseCurrentPopup();
+        }
+
         ImGui::TextUnformatted(pickingMesh ? "Select an OBJ from the project" : "Select a material from the project");
         ImGui::Separator();
 
         if (ImGui::Button("Refresh")) {
             RefreshProjectFiles();
+        }
+
+        if (!pickingMesh) {
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(190.0f);
+            ImGui::InputText("##newMaterialName", createMaterialNameBuffer_, sizeof(createMaterialNameBuffer_));
+            ImGui::SameLine();
+            if (ImGui::Button("Add Material")) {
+                std::string newMaterialId;
+                if (CreateMaterialAsset(createMaterialNameBuffer_, &newMaterialId)) {
+                    createMaterialNameBuffer_[0] = '\0';
+                    AssignMaterialToSelected(newMaterialId);
+                    assetPickerMode_ = ProjectAssetPickerMode::None;
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Create a material and assign it to the selected object.");
+            }
         }
 
         bool found = false;
@@ -688,21 +806,30 @@ void SceneEditor::RenderMaterialInspector() {
         return;
     }
 
-    if (!materialManager_.Exists(inspectedMaterialId_)) {
+    RenderMaterialProperties(inspectedMaterialId_, true);
+}
+
+void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool showBackButton) {
+    if (materialId.empty()) {
+        return;
+    }
+
+    if (!materialManager_.Exists(materialId)) {
         materialManager_.LoadAll();
     }
 
-    Material* material = materialManager_.Get(inspectedMaterialId_);
+    Material* material = materialManager_.Get(materialId);
     if (material == nullptr) {
-        ImGui::TextDisabled("Material not found: %s", inspectedMaterialId_.c_str());
-        if (ImGui::Button("Back to Object")) {
+        ImGui::TextDisabled("Material not found: %s", materialId.c_str());
+        if (showBackButton && ImGui::Button("Back to Object")) {
             inspectMaterial_ = false;
         }
         return;
     }
 
+    ImGui::PushID(materialId.c_str());
     ImGui::TextUnformatted("Material Asset");
-    ImGui::TextWrapped("ID: %s", inspectedMaterialId_.c_str());
+    ImGui::TextWrapped("ID: %s", materialId.c_str());
     ImGui::Separator();
 
     char nameBuf[128];
@@ -743,22 +870,77 @@ void SceneEditor::RenderMaterialInspector() {
 
     ImGui::Separator();
     if (ImGui::Button("Save Material")) {
-        if (materialManager_.Save(inspectedMaterialId_, *material)) {
+        if (materialManager_.Save(materialId, *material)) {
             materialManager_.LoadAll();
             if (console_) {
-                console_->AddLog("Saved material: " + inspectedMaterialId_);
+                console_->AddLog("Saved material: " + materialId);
             }
         } else if (console_) {
-            console_->AddError("Failed to save material: " + inspectedMaterialId_);
+            console_->AddError("Failed to save material: " + materialId);
         }
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Back to Object")) {
-        inspectMaterial_ = false;
+    if (showBackButton) {
+        ImGui::SameLine();
+        if (ImGui::Button("Back to Object")) {
+            inspectMaterial_ = false;
+        }
     }
+    ImGui::PopID();
 }
 
+bool SceneEditor::CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId) {
+    std::string materialId = TrimCopyLocal(requestedName);
+    if (materialId.empty()) {
+        if (console_) {
+            console_->AddError("Material name cannot be empty.");
+        }
+        return false;
+    }
 
+    const std::string suffix = ".mat";
+    if (EndsWith(ToLowerCopy(materialId), suffix)) {
+        materialId.resize(materialId.size() - suffix.size());
+    }
+
+    for (char& ch : materialId) {
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (std::isspace(uch)) {
+            ch = '_';
+        } else if (!std::isalnum(uch) && ch != '_' && ch != '-') {
+            ch = '_';
+        }
+    }
+    materialId = TrimCopyLocal(materialId);
+    if (materialId.empty()) {
+        if (console_) {
+            console_->AddError("Material name must contain letters or numbers.");
+        }
+        return false;
+    }
+
+    if (!materialManager_.Exists(materialId)) {
+        materialManager_.LoadAll();
+    }
+    if (materialManager_.Exists(materialId)) {
+        if (console_) {
+            console_->AddError("Material already exists: " + materialId);
+        }
+        return false;
+    }
+
+    Material& material = materialManager_.CreateDefault(materialId, true);
+    material.name = materialId;
+    materialManager_.Save(materialId, material);
+    materialManager_.LoadAll();
+    RefreshProjectFiles();
+    if (outMaterialId) {
+        *outMaterialId = materialId;
+    }
+    if (console_) {
+        console_->AddLog("Created material: " + materialId);
+    }
+    return true;
+}
 bool SceneEditor::AssignMaterialToSelected(const std::string& materialId) {
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size()) || materialId.empty()) {
         return false;

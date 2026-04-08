@@ -44,7 +44,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [1.0348, 0.781276, 0.927115],
+          "position": [1.0348, 0.306776, 0.927115],
           "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
@@ -99,8 +99,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [2.68681, 0.781276, 0.756754],
-          "rotationEuler": [0, -180.514, 0],
+          "position": [2.68681, 0.306776, 0.756754],
+          "rotationEuler": [-4.59892, -180.514, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -143,6 +143,29 @@
           "isTrigger": false,
           "center": [0, 0, 0],
           "radius": 0.5
+        }
+      ]
+    },
+    {
+      "id": "camera_3",
+      "name": "Camera",
+      "type": "Camera",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [1.05491, 2.12743, 10.0648],
+          "rotationEuler": [-15.4008, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": true,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.38,
+          "farClip": 561,
+          "clearColor": [0.02, 0.02, 0.02, 1]
         }
       ]
     }

@@ -40,12 +40,18 @@ enum class SceneComponentType {
     Rigidbody,
     BoxCollider,
     SphereCollider,
-    CapsuleCollider
+    CapsuleCollider,
+    Camera
 };
 
 enum class RigidbodyBodyType {
     Static,
     Dynamic
+};
+
+enum class SceneEditorViewportMode {
+    Scene,
+    Game
 };
 
 struct Transform {
@@ -116,6 +122,15 @@ struct CapsuleColliderComponent {
     float height{2.0f};
 };
 
+struct CameraComponent {
+    bool enabled{true};
+    bool isMain{true};
+    float fieldOfViewDegrees{60.0f};
+    float nearClip{0.1f};
+    float farClip{500.0f};
+    glm::vec4 clearColor{0.02f, 0.02f, 0.02f, 1.0f};
+};
+
 struct SceneObject {
     std::string id;    // simple unique id
     std::string name;  // editable name
@@ -129,6 +144,7 @@ struct SceneObject {
     bool hasBoxCollider{false};
     bool hasSphereCollider{false};
     bool hasCapsuleCollider{false};
+    bool hasCamera{false};
     MeshFilterComponent meshFilter;
     MeshRendererComponent meshRenderer;
     ScriptComponent scriptComponent;
@@ -136,6 +152,7 @@ struct SceneObject {
     BoxColliderComponent boxCollider;
     SphereColliderComponent sphereCollider;
     CapsuleColliderComponent capsuleCollider;
+    CameraComponent camera;
 };
 
 class SceneEditor {
@@ -152,10 +169,12 @@ public:
     const std::vector<SceneObject>& GetObjects() const { return objects_; }
 
     // Submit renderables for drawing via Renderer (PBR pipeline)
-    void SubmitDraws(Renderer& renderer);
+    void SubmitDraws(Renderer& renderer, bool editorInteraction = true);
     void SetConsole(Console* console);
     void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
     bool IsRunMode() const { return scriptsRunning_; }
+    bool IsGameViewActive() const { return viewportMode_ == SceneEditorViewportMode::Game; }
+    bool TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float aspect, glm::vec4* outClearColor = nullptr) const;
 
     // Notify app when editor content changes
     void SetOnDirty(std::function<void()> cb) { onDirty_ = std::move(cb); }
@@ -174,6 +193,7 @@ private:
     void RenderInspectorPanel();
     void RenderProjectPanel();
     void RenderMaterialInspector();
+    void RenderMaterialProperties(const std::string& materialId, bool showBackButton);
     void RenderProjectAssetPickerPopup();
     void HandleEditorShortcuts();
     void UpdateScripts(float deltaTime);
@@ -193,12 +213,14 @@ private:
 
     // Actions
     void AddPlane();
+    void AddCameraObject();
     void DeleteSelectedObject();
     bool ReplaceSelectedMeshWithPlane();
     bool ReplaceSelectedMeshFromObj(const std::string& path);
     bool AssignMaterialToSelected(const std::string& materialId);
     bool AttachScriptToSelected(const std::string& scriptName, const std::string& scriptPath);
     bool CreateScriptAsset(const std::string& requestedName);
+    bool CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId = nullptr);
     void SyncScriptProjectFiles();
     void OpenMaterialEditor(const std::string& materialId);
     void BeginObjectRename(int index);
@@ -247,6 +269,7 @@ private:
     bool scriptsPaused_{false};
     bool showCreateScriptPopup_{false};
     char createScriptNameBuffer_[128]{};
+    char createMaterialNameBuffer_[128]{};
 
     struct RuntimeScriptInstance {
         std::string objectId;
@@ -282,6 +305,7 @@ private:
     std::vector<HistoryState> redoStack_;
     HistoryState playModeSnapshot_{};
     bool hasPlayModeSnapshot_{false};
+    SceneEditorViewportMode viewportMode_{SceneEditorViewportMode::Scene};
 
     std::function<void()> onDirty_{};
 };

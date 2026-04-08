@@ -58,13 +58,6 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         });
     }
 
-    inputManager_->RegisterKeyCallback([this](int key) {
-        if (key >= GLFW_KEY_1 && key <= GLFW_KEY_9) {
-            std::size_t index = static_cast<std::size_t>(key - GLFW_KEY_1);
-            SwitchScene(index);
-        }
-    });
-
     lastFrameTime_ = glfwGetTime();
     baseTitle_ = config_.windowTitle;
 }
@@ -187,10 +180,6 @@ void Application::ShutdownGlfw() {
 void Application::PollEvents() {
     glfwPollEvents();
 
-    if (inputManager_->WasKeyPressed(GLFW_KEY_ESCAPE)) {
-        running_ = false;
-    }
-
     // Ctrl+S: Save active scene if dirty
     bool ctrlDown = inputManager_ && (inputManager_->IsKeyDown(GLFW_KEY_LEFT_CONTROL) || inputManager_->IsKeyDown(GLFW_KEY_RIGHT_CONTROL));
     if (ctrlDown && inputManager_ && inputManager_->WasKeyPressed(GLFW_KEY_S)) {
@@ -228,14 +217,17 @@ void Application::Update(float deltaTime) {
     {
         bool wantCaptureMouse = false;
 
-        // RMB hold toggles free look with cursor disabled
+        // RMB hold toggles free look with cursor disabled. Play mode keeps Scene view editable,
+        // but Game view stays controlled by the runtime camera.
         const bool runMode = sceneEditor_ != nullptr && sceneEditor_->IsRunMode();
+        const bool gameViewActive = sceneEditor_ != nullptr && sceneEditor_->IsGameViewActive();
+        const bool allowEditorCamera = !runMode || !gameViewActive;
         int rmb = glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_RIGHT);
-        if (!runMode && rmb == GLFW_PRESS && !rmbHeld_) {
+        if (allowEditorCamera && rmb == GLFW_PRESS && !rmbHeld_) {
             rmbHeld_ = true;
             firstMouse_ = true;
             glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        } else if ((runMode || rmb == GLFW_RELEASE) && rmbHeld_) {
+        } else if ((!allowEditorCamera || rmb == GLFW_RELEASE) && rmbHeld_) {
             rmbHeld_ = false;
             glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
@@ -259,7 +251,7 @@ void Application::Update(float deltaTime) {
             wantCaptureMouse = true;
         }
 
-        const bool allowKeyboardMove = !runMode && (rmbHeld_
+        const bool allowKeyboardMove = allowEditorCamera && (rmbHeld_
             || !(config_.enableImGui && ImGui::GetCurrentContext() != nullptr
                 && ImGui::GetIO().WantTextInput));
 
@@ -348,13 +340,29 @@ void Application::Render() {
     }
 
     auto& scene = scenes_[activeScene_];
+    const auto& cfg = renderer_->GetConfig();
+    const float aspect = (cfg.height != 0) ? (static_cast<float>(cfg.width) / static_cast<float>(cfg.height)) : 1.0f;
+
+    glm::mat4 view{1.0f};
+    glm::mat4 proj{1.0f};
+    glm::vec4 gameClearColor{0.0f};
+    const bool gameViewActive = sceneEditor_ && sceneEditor_->IsGameViewActive();
+    bool usingGameCamera = false;
+    if (gameViewActive) {
+        usingGameCamera = sceneEditor_->TryGetGameCamera(view, proj, aspect, &gameClearColor);
+    }
+
+    RendererSettings& rendererSettings = renderer_->GetSettings();
+    const glm::vec3 previousClearColor = rendererSettings.clearColor;
+    if (usingGameCamera) {
+        rendererSettings.clearColor = {gameClearColor.r, gameClearColor.g, gameClearColor.b};
+    } else if (gameViewActive) {
+        rendererSettings.clearColor = {0.02f, 0.02f, 0.02f};
+    }
+
     renderer_->BeginFrame();
 
-    // Set editor camera (Unity-like free fly)
-    {
-        const auto& cfg = renderer_->GetConfig();
-        float aspect = (cfg.height != 0) ? (static_cast<float>(cfg.width) / static_cast<float>(cfg.height)) : 1.0f;
-
+    if (!usingGameCamera && !gameViewActive) {
         float yawRad = glm::radians(camYaw_);
         float pitchRad = glm::radians(camPitch_);
         glm::vec3 front{
@@ -368,18 +376,24 @@ void Application::Render() {
         glm::vec3 up = glm::normalize(glm::cross(right, front));
 
         glm::vec3 camPos(camPosX_, camPosY_, camPosZ_);
-        glm::mat4 view = glm::lookAt(camPos, camPos + front, up);
-        glm::mat4 proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 500.0f);
-        renderer_->SetCamera(view, proj);
+        view = glm::lookAt(camPos, camPos + front, up);
+        proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 500.0f);
     }
-    scene->Render(*renderer_);
+    if (!gameViewActive || usingGameCamera) {
+        renderer_->SetCamera(view, proj);
+        scene->Render(*renderer_);
+    }
 
-    // Submit editor meshes (PBR default material) before finalizing the frame
-    if (sceneEditor_) {
-        sceneEditor_->SubmitDraws(*renderer_);
+    // SceneEditor owns editor-created objects. Game view renders those meshes too,
+    // but disables editor selection/gizmos while looking through the runtime camera.
+    if (sceneEditor_ && (!gameViewActive || usingGameCamera)) {
+        sceneEditor_->SubmitDraws(*renderer_, !gameViewActive);
     }
 
     renderer_->EndFrame();
+    if (usingGameCamera || gameViewActive) {
+        rendererSettings.clearColor = previousClearColor;
+    }
 
     if (config_.enableImGui) {
         debugUi_->RenderDrawData();

@@ -87,6 +87,28 @@ function Start-App {
     return Start-Process -FilePath $exePath -WorkingDirectory $projectRoot -PassThru
 }
 
+function Attach-DebuggerToExistingVisualStudio {
+    param([System.Diagnostics.Process]$Process)
+
+    $dteProgIds = @("VisualStudio.DTE.17.0", "VisualStudio.DTE.16.0")
+    foreach ($progId in $dteProgIds) {
+        try {
+            $dte = [System.Runtime.InteropServices.Marshal]::GetActiveObject($progId)
+            foreach ($localProcess in $dte.Debugger.LocalProcesses) {
+                if ($localProcess.ProcessID -eq $Process.Id) {
+                    Write-Host "Attaching existing Visual Studio debugger to ProjectRaceman pid $($Process.Id)..."
+                    $localProcess.Attach()
+                    return $true
+                }
+            }
+        } catch {
+            continue
+        }
+    }
+
+    return $false
+}
+
 function Attach-Debugger {
     param(
         [System.Diagnostics.Process]$Process,
@@ -98,13 +120,17 @@ function Attach-Debugger {
         return
     }
 
+    if (Attach-DebuggerToExistingVisualStudio -Process $Process) {
+        return
+    }
+
     if ([string]::IsNullOrWhiteSpace($DebuggerPath) -or -not (Test-Path $DebuggerPath)) {
         Write-Warning "Visual Studio debugger was not found. Attach manually to process id $($Process.Id)."
         return
     }
 
     try {
-        Write-Host "Attaching Visual Studio debugger to ProjectRaceman pid $($Process.Id)..."
+        Write-Host "Existing Visual Studio debugger was not available; invoking JIT debugger for pid $($Process.Id)..."
         Start-Process -FilePath $DebuggerPath -ArgumentList @("-p", $Process.Id) | Out-Null
     } catch {
         Write-Warning "Failed to attach debugger to process id $($Process.Id): $($_.Exception.Message)"

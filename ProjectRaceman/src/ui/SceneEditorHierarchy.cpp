@@ -17,6 +17,9 @@ void SceneEditor::RenderScenePanel() {
                     }
                     ImGui::EndMenu();
                 }
+                if (ImGui::MenuItem("Camera")) {
+                    AddCameraObject();
+                }
                 if (ImGui::BeginMenu("Model")) {
                     if (ImGui::MenuItem(".obj")) {
 #if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
@@ -58,6 +61,23 @@ void SceneEditor::RenderScenePanel() {
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip("Stop");
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Scene", viewportMode_ == SceneEditorViewportMode::Scene)) {
+            viewportMode_ = SceneEditorViewportMode::Scene;
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Game", viewportMode_ == SceneEditorViewportMode::Game)) {
+            viewportMode_ = SceneEditorViewportMode::Game;
+        }
+        ImGui::Separator();
+        if (viewportMode_ == SceneEditorViewportMode::Game) {
+            glm::mat4 view;
+            glm::mat4 proj;
+            if (!TryGetGameCamera(view, proj, 1.0f)) {
+                ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "No Camera");
+                ImGui::TextDisabled("Add a Camera object or Camera component to render Game view.");
+            }
         }
         ImGui::Separator();
 

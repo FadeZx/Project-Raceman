@@ -100,6 +100,24 @@ glm::mat4 BuildTransformMatrix(const Transform& transform) {
 glm::vec3 TransformPoint(const glm::mat4& transform, const glm::vec3& point) {
     return glm::vec3(transform * glm::vec4(point, 1.0f));
 }
+glm::mat4 BuildRotationMatrix(const glm::vec3& rotationEuler) {
+    glm::mat4 rotation(1.0f);
+    const glm::vec3 rads = glm::radians(rotationEuler);
+    rotation = glm::rotate(rotation, rads.z, glm::vec3(0.0f, 0.0f, 1.0f));
+    rotation = glm::rotate(rotation, rads.y, glm::vec3(0.0f, 1.0f, 0.0f));
+    rotation = glm::rotate(rotation, rads.x, glm::vec3(1.0f, 0.0f, 0.0f));
+    return rotation;
+}
+
+glm::vec3 CameraForwardFromEuler(const glm::vec3& rotationEuler) {
+    const glm::vec3 forward = glm::vec3(BuildRotationMatrix(rotationEuler) * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f));
+    return glm::length(forward) > 0.0001f ? glm::normalize(forward) : glm::vec3{0.0f, 0.0f, -1.0f};
+}
+
+glm::vec3 CameraUpFromEuler(const glm::vec3& rotationEuler) {
+    const glm::vec3 up = glm::vec3(BuildRotationMatrix(rotationEuler) * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f));
+    return glm::length(up) > 0.0001f ? glm::normalize(up) : glm::vec3{0.0f, 1.0f, 0.0f};
+}
 
 ColliderWorldAabb MakeAabbFromLocalBox(const glm::mat4& transform, const glm::vec3& center, const glm::vec3& size) {
     const glm::vec3 halfSize = glm::abs(size) * 0.5f;
@@ -413,6 +431,41 @@ void SceneEditor::SetConsole(Console* console) {
     }
 }
 
+bool SceneEditor::TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float aspect, glm::vec4* outClearColor) const {
+    const SceneObject* fallbackCamera = nullptr;
+    for (const SceneObject& object : objects_) {
+        if (!object.enabled || !object.hasCamera || !object.camera.enabled) {
+            continue;
+        }
+        if (fallbackCamera == nullptr) {
+            fallbackCamera = &object;
+        }
+        if (object.camera.isMain) {
+            fallbackCamera = &object;
+            break;
+        }
+    }
+
+    if (fallbackCamera == nullptr) {
+        return false;
+    }
+
+    const CameraComponent& camera = fallbackCamera->camera;
+    const float safeAspect = aspect > 0.0001f ? aspect : 1.0f;
+    const float fov = (std::max)(1.0f, (std::min)(camera.fieldOfViewDegrees, 179.0f));
+    const float nearClip = (std::max)(0.001f, camera.nearClip);
+    const float farClip = (std::max)(nearClip + 0.001f, camera.farClip);
+    const glm::vec3 position = fallbackCamera->transform.position;
+    const glm::vec3 forward = CameraForwardFromEuler(fallbackCamera->transform.rotationEuler);
+    const glm::vec3 up = CameraUpFromEuler(fallbackCamera->transform.rotationEuler);
+
+    outView = glm::lookAt(position, position + forward, up);
+    outProj = glm::perspective(glm::radians(fov), safeAspect, nearClip, farClip);
+    if (outClearColor) {
+        *outClearColor = camera.clearColor;
+    }
+    return true;
+}
 void SceneEditor::AddMeshPlane() {
     AddPlane();
 }
@@ -717,6 +770,40 @@ void SceneEditor::AddPlane() {
     }
 }
 
+
+void SceneEditor::AddCameraObject() {
+    PushUndoState();
+
+    bool hasAnyCamera = false;
+    for (const SceneObject& object : objects_) {
+        if (object.hasCamera) {
+            hasAnyCamera = true;
+            break;
+        }
+    }
+
+    SceneObject cameraObject;
+    cameraObject.id = MakeId("camera");
+    cameraObject.name = "Camera";
+    cameraObject.type = "Camera";
+    cameraObject.transform.position = {0.0f, 2.0f, 5.0f};
+    cameraObject.transform.rotationEuler = {-15.0f, 0.0f, 0.0f};
+    cameraObject.hasMeshFilter = false;
+    cameraObject.hasMeshRenderer = false;
+    cameraObject.hasScriptComponent = false;
+    cameraObject.hasCamera = true;
+    cameraObject.camera = CameraComponent{};
+    cameraObject.camera.isMain = !hasAnyCamera;
+
+    objects_.push_back(std::move(cameraObject));
+    selectedIndex_ = static_cast<int>(objects_.size()) - 1;
+    inspectMaterial_ = false;
+    renamingObjectIndex_ = -1;
+    if (console_) {
+        console_->AddLog("Added Camera object.");
+    }
+    if (onDirty_) onDirty_();
+}
 bool SceneEditor::AttachScriptToSelected(const std::string& scriptName, const std::string& scriptPath) {
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size()) || scriptName.empty()) {
         return false;
@@ -1010,6 +1097,18 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"height\": " << o.capsuleCollider.height << "\n";
             out << "        }";
         }
+        if (o.hasCamera) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Camera\",\n";
+            out << "          \"enabled\": " << (o.camera.enabled ? "true" : "false") << ",\n";
+            out << "          \"isMain\": " << (o.camera.isMain ? "true" : "false") << ",\n";
+            out << "          \"fieldOfViewDegrees\": " << o.camera.fieldOfViewDegrees << ",\n";
+            out << "          \"nearClip\": " << o.camera.nearClip << ",\n";
+            out << "          \"farClip\": " << o.camera.farClip << ",\n";
+            out << "          \"clearColor\": [" << o.camera.clearColor.r << ", " << o.camera.clearColor.g << ", " << o.camera.clearColor.b << ", " << o.camera.clearColor.a << "]\n";
+            out << "        }";
+        }
         out << "\n";
         out << "      ]\n";
         out << "    }" << (i + 1 < objects_.size() ? ",\n" : "\n");
@@ -1295,6 +1394,24 @@ void SceneEditor::Load(const std::string& path) {
                         if (heightIt != component.end() && heightIt->second.is_number()) {
                             so.capsuleCollider.height = (std::max)(so.capsuleCollider.radius * 2.0f, static_cast<float>(heightIt->second.as_number()));
                         }
+                    } else if (componentType == "Camera") {
+                        so.hasCamera = true;
+                        ReadBool(component, "enabled", so.camera.enabled);
+                        ReadBool(component, "isMain", so.camera.isMain);
+                        ReadVec4(component, "clearColor", so.camera.clearColor);
+
+                        auto fovIt = component.find("fieldOfViewDegrees");
+                        if (fovIt != component.end() && fovIt->second.is_number()) {
+                            so.camera.fieldOfViewDegrees = (std::max)(1.0f, (std::min)(179.0f, static_cast<float>(fovIt->second.as_number())));
+                        }
+                        auto nearIt = component.find("nearClip");
+                        if (nearIt != component.end() && nearIt->second.is_number()) {
+                            so.camera.nearClip = (std::max)(0.001f, static_cast<float>(nearIt->second.as_number()));
+                        }
+                        auto farIt = component.find("farClip");
+                        if (farIt != component.end() && farIt->second.is_number()) {
+                            so.camera.farClip = (std::max)(so.camera.nearClip + 0.001f, static_cast<float>(farIt->second.as_number()));
+                        }
                     }
                 }
             }
@@ -1353,8 +1470,10 @@ std::string SceneEditor::MakeId(const std::string& base) {
     return base + "_" + std::to_string(++counter);
 }
 
-void SceneEditor::SubmitDraws(Renderer& renderer) {
-    UpdateGizmo(renderer);
+void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
+    if (editorInteraction) {
+        UpdateGizmo(renderer);
+    }
 
     for (const auto& o : objects_) {
         if (!o.enabled) continue;
@@ -1392,7 +1511,9 @@ void SceneEditor::SubmitDraws(Renderer& renderer) {
         renderer.SubmitMesh(cmd);
     }
 
-    SubmitGizmo(renderer);
+    if (editorInteraction) {
+        SubmitGizmo(renderer);
+    }
 }
 
 void SceneEditor::SetSavePath(const std::string& path) {
