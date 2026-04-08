@@ -3,15 +3,13 @@ D:\Capt\Project-Raceman\ProjectRaceman\src\glad.c;D:\Capt\Project-Raceman\Projec
 D:\Capt\Project-Raceman\ProjectRaceman\src\Main.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Main.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\input\InputManager.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\InputManager.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\physics\PhysicsLayer.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\PhysicsLayer.obj
+D:\Capt\Project-Raceman\ProjectRaceman\src\physics\PhysicsWorld.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\PhysicsWorld.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\physics\VehicleConfig.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\VehicleConfig.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\physics\VehiclePhysics.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\VehiclePhysics.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\Material.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Material.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\Renderer.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Renderer.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\Skybox.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Skybox.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\SkyboxController.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\SkyboxController.obj
-D:\Capt\Project-Raceman\ProjectRaceman\src\scenes\GarageScene.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\GarageScene.obj
-D:\Capt\Project-Raceman\ProjectRaceman\src\scenes\Scene.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Scene.obj
-D:\Capt\Project-Raceman\ProjectRaceman\src\scenes\SimulationScene.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\SimulationScene.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\scripting\ObjectScript.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\ObjectScript.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\scripting\ScriptRegistry.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\ScriptRegistry.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\Console.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Console.obj
@@ -30,4 +28,4 @@ D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorGizmo.cpp;D:\Capt\Proje
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorHierarchy.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\SceneEditorHierarchy.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorInspector.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\SceneEditorInspector.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorProject.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\SceneEditorProject.obj
-D:\Capt\Project-Raceman\ProjectRaceman\assets\scripts\Test1.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Test1.obj
+D:\Capt\Project-Raceman\ProjectRaceman\Project\assets\scripts\Test1.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Test1.obj

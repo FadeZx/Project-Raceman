@@ -32,9 +32,9 @@ struct Material {
 
 class MaterialManager {
 public:
-    // Load all materials from assets/materials/*.mat.json
+    // Load all materials from project assets recursively.
     void LoadAll();
-    // Persist a material to assets/materials/<id>.mat.json
+    // Persist a material to its known asset path, falling back to assets/<id>.mat.json.
     bool Save(const std::string& id, const Material& m);
     // Create a default material entry in memory (optionally auto-save)
     Material& CreateDefault(const std::string& id, bool autoSave = true);
@@ -48,6 +48,7 @@ public:
 
 private:
     std::unordered_map<std::string, Material> materials_;
+    std::unordered_map<std::string, std::string> materialPaths_;
     static std::string MaterialPath(const std::string& id);
     static bool LoadOne(const std::string& path, Material& out);
 };

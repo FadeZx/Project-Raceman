@@ -1,13 +1,14 @@
 #include "ObjectScript.h"
 
 #include "../input/InputManager.h"
+#include "../physics/PhysicsWorld.h"
 #include "../ui/Console.h"
 #include "../ui/SceneEditor.h"
 
 namespace raceman {
 
-ObjectScriptContext::ObjectScriptContext(SceneObject& object, Console* console, InputManager* inputManager)
-    : object_(object), console_(console), inputManager_(inputManager) {}
+ObjectScriptContext::ObjectScriptContext(SceneObject& object, Console* console, InputManager* inputManager, PhysicsWorld* physicsWorld)
+    : object_(object), console_(console), inputManager_(inputManager), physicsWorld_(physicsWorld) {}
 
 const std::string& ObjectScriptContext::GetObjectId() const {
     return object_.id;
@@ -69,6 +70,9 @@ glm::vec3 ObjectScriptContext::GetRigidbodyVelocity() const {
     if (!HasRigidbody()) {
         return {0.0f, 0.0f, 0.0f};
     }
+    if (physicsWorld_ && physicsWorld_->HasBody(object_.id)) {
+        return physicsWorld_->GetBodyVelocity(object_.id);
+    }
     return object_.rigidbody.velocity;
 }
 
@@ -77,6 +81,9 @@ void ObjectScriptContext::SetRigidbodyVelocity(const glm::vec3& value) {
         return;
     }
     object_.rigidbody.velocity = value;
+    if (physicsWorld_ && physicsWorld_->HasBody(object_.id)) {
+        physicsWorld_->SetBodyVelocity(object_.id, value);
+    }
 }
 
 bool ObjectScriptContext::IsKeyDown(int key) const {

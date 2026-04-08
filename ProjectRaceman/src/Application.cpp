@@ -2,13 +2,11 @@
 
 #include "input/InputManager.h"
 #include "rendering/Renderer.h"
-#include "scenes/Scene.h"
+#include "rendering/SkyboxController.h"
 #include "ui/DebugUI.h"
 #include "ui/MenuController.h"
 #include "ui/SceneEditor.h"
 #include "ui/Console.h"
-#include "scenes/GarageScene.h"
-#include "scenes/SimulationScene.h"
 
 #include <glad/glad.h>
 #define GLFW_INCLUDE_NONE
@@ -25,6 +23,9 @@
 #endif
 
 #include <chrono>
+#include <algorithm>
+#include <cctype>
+#include <filesystem>
 #include <stdexcept>
 
 namespace raceman {
@@ -32,6 +33,18 @@ namespace raceman {
 namespace {
 void GlfwErrorCallback(int error, const char* description) {
     fprintf(stderr, "GLFW Error (%d): %s\n", error, description);
+}
+
+std::string SceneDisplayName(const std::string& scenePath) {
+    std::string filename = std::filesystem::path(scenePath).filename().string();
+    const std::string suffix = ".scene.json";
+    std::string lower = filename;
+    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    if (lower.size() >= suffix.size() && lower.compare(lower.size() - suffix.size(), suffix.size(), suffix) == 0) {
+        filename.resize(filename.size() - suffix.size());
+        filename += ".scene";
+    }
+    return filename;
 }
 } // namespace
 
@@ -47,6 +60,8 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
     debugUi_ = std::make_unique<DebugUI>(config.enableImGui);
     menuController_ = std::make_unique<MenuController>();
     console_ = std::make_unique<Console>();
+    skyboxController_ = std::make_unique<SkyboxController>();
+    skyboxController_->Reload();
 
     if (config.enableImGui) {
         InitializeImGui();
@@ -54,7 +69,9 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         sceneEditor_->SetConsole(console_.get());
         sceneEditor_->SetInputManager(inputManager_.get());
         sceneEditor_->SetOnDirty([this](){
-            if (!scenes_.empty()) { scenes_[activeScene_]->MarkDirty(); }
+        });
+        sceneEditor_->SetOnFocusObject([this](const glm::vec3& target, float radius) {
+            FocusEditorCameraOn(target, radius);
         });
     }
 
@@ -66,7 +83,6 @@ Application::~Application() {
     if (config_.enableImGui) {
         ShutdownImGui();
     }
-    scenes_.clear();
     renderer_.reset();
     debugUi_.reset();
     inputManager_.reset();
@@ -86,11 +102,9 @@ void Application::Run() {
         ++fpsFrames_;
         if (fpsAccum_ >= 1.0) {
             double fps = static_cast<double>(fpsFrames_) / fpsAccum_;
-            std::string sceneName = (!scenes_.empty() ? scenes_[activeScene_]->GetName() : "");
-            bool dirty = (!scenes_.empty() ? scenes_[activeScene_]->IsDirty() : false);
+            std::string sceneName = sceneEditor_ ? SceneDisplayName(sceneEditor_->GetCurrentScenePath()) : "";
             std::string title = std::string("Project Race man") +
                                 (sceneName.empty() ? "" : " - " + sceneName) +
-                                (dirty ? " *" : "") +
                                 " - FPS:" + std::to_string(static_cast<int>(fps + 0.5));
             glfwSetWindowTitle(window_, title.c_str());
             fpsAccum_ = 0.0;
@@ -106,25 +120,6 @@ Renderer& Application::GetRenderer() { return *renderer_; }
 std::shared_ptr<Renderer> Application::GetRendererPtr() { return renderer_; }
 InputManager& Application::GetInputManager() { return *inputManager_; }
 DebugUI& Application::GetDebugUI() { return *debugUi_; }
-
-void Application::RegisterScene(const std::shared_ptr<Scene>& scene) {
-    scenes_.push_back(scene);
-}
-
-void Application::SwitchScene(std::size_t index) {
-    if (index < scenes_.size()) {
-        activeScene_ = index;
-        scenes_[activeScene_]->Init();
-        // Set editor file path per scene and load it
-        if (sceneEditor_) {
-            std::string path = std::string("config/scenes/") + scenes_[activeScene_]->GetName() + ".json";
-            sceneEditor_->SetSavePath(path);
-            sceneEditor_->Load(path);
-        }
-        // Reset dirty flag when switching scenes
-        scenes_[activeScene_]->MarkClean();
-    }
-}
 
 void Application::InitializeGlfw() {
     if (!glfwInit()) {
@@ -180,34 +175,32 @@ void Application::ShutdownGlfw() {
 void Application::PollEvents() {
     glfwPollEvents();
 
-    // Ctrl+S: Save active scene if dirty
-    bool ctrlDown = inputManager_ && (inputManager_->IsKeyDown(GLFW_KEY_LEFT_CONTROL) || inputManager_->IsKeyDown(GLFW_KEY_RIGHT_CONTROL));
-    if (ctrlDown && inputManager_ && inputManager_->WasKeyPressed(GLFW_KEY_S)) {
-        if (!scenes_.empty()) {
-            auto& scene = scenes_[activeScene_];
-            // Save editor scene file
-            if (sceneEditor_) {
-                std::string path = std::string("config/scenes/") + scene->GetName() + ".json";
-                sceneEditor_->SetSavePath(path);
-                sceneEditor_->Save(path);
-            }
-            // Also call scene->Save() if overridden
-            if (scene->IsDirty()) {
-                scene->Save();
-                scene->MarkClean();
-                if (console_) {
-                    console_->AddLog(std::string("Scene '") + scene->GetName() + "' saved");
-                }
-            } else {
-                if (console_) {
-                    console_->AddLog(std::string("No changes to save for scene '") + scene->GetName() + "'");
-                }
-            }
-        }
-    }
-
     // Reset per-frame pressed flags after handling
     inputManager_->Update();
+}
+
+void Application::FocusEditorCameraOn(const glm::vec3& target, float radius) {
+    const float yawRad = glm::radians(camYaw_);
+    const float pitchRad = glm::radians(camPitch_);
+    glm::vec3 front{
+        cosf(yawRad) * cosf(pitchRad),
+        sinf(pitchRad),
+        sinf(yawRad) * cosf(pitchRad)
+    };
+    if (glm::length(front) < 0.0001f) {
+        front = {0.0f, 0.0f, -1.0f};
+    } else {
+        front = glm::normalize(front);
+    }
+
+    const float focusDistance = (std::max)(4.0f, radius * 2.5f);
+    const glm::vec3 newPosition = target - front * focusDistance;
+    cameraFocusStart_ = {camPosX_, camPosY_, camPosZ_};
+    cameraFocusTarget_ = newPosition;
+    cameraFocusElapsed_ = 0.0f;
+    cameraFocusDuration_ = 0.25f;
+    cameraFocusActive_ = true;
+    firstMouse_ = true;
 }
 
 void Application::Update(float deltaTime) {
@@ -222,9 +215,22 @@ void Application::Update(float deltaTime) {
         const bool runMode = sceneEditor_ != nullptr && sceneEditor_->IsRunMode();
         const bool gameViewActive = sceneEditor_ != nullptr && sceneEditor_->IsGameViewActive();
         const bool allowEditorCamera = !runMode || !gameViewActive;
+        if (allowEditorCamera && cameraFocusActive_ && !rmbHeld_) {
+            cameraFocusElapsed_ += deltaTime;
+            const float t = (std::min)(1.0f, cameraFocusElapsed_ / (std::max)(0.001f, cameraFocusDuration_));
+            const float eased = 1.0f - (1.0f - t) * (1.0f - t);
+            const glm::vec3 position = cameraFocusStart_ + (cameraFocusTarget_ - cameraFocusStart_) * eased;
+            camPosX_ = position.x;
+            camPosY_ = position.y;
+            camPosZ_ = position.z;
+            if (t >= 1.0f) {
+                cameraFocusActive_ = false;
+            }
+        }
         int rmb = glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_RIGHT);
         if (allowEditorCamera && rmb == GLFW_PRESS && !rmbHeld_) {
             rmbHeld_ = true;
+            cameraFocusActive_ = false;
             firstMouse_ = true;
             glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         } else if ((!allowEditorCamera || rmb == GLFW_RELEASE) && rmbHeld_) {
@@ -284,21 +290,8 @@ void Application::Update(float deltaTime) {
         (void)wantCaptureMouse; // reserved for future UI focus logic
     }
 
-    if (scenes_.empty()) {
-        return;
-    }
-
-    auto& scene = scenes_[activeScene_];
-    scene->Update(deltaTime);
-
     if (config_.enableImGui) {
         debugUi_->BeginFrame();
-
-        // Old renderer panel removed
-        // Old per-scene skybox panels are removed from scenes
-
-        // Keep scene-specific debug (non-skybox)
-        scene->RenderDebugUi(*debugUi_);
 
         // Unity-like Scene Editor panels (Scene hierarchy + Inspector)
         if (sceneEditor_) {
@@ -307,39 +300,42 @@ void Application::Update(float deltaTime) {
 
 
         // Centralized menu (no renderer panel duplication; skybox selection only if wired)
-        menuController_->Render(*renderer_, scenes_, activeScene_,
-            [this](std::size_t index) { SwitchScene(index); },
-            [this](std::size_t targetScene, const std::array<std::string,6>& faces) {
-                if (targetScene < scenes_.size()) {
-                    auto scene = scenes_[targetScene];
-                    if (auto gs = std::dynamic_pointer_cast<GarageScene>(scene)) {
-                        gs->SetSkyboxFaces(faces);
-                    } else if (auto ss = std::dynamic_pointer_cast<SimulationScene>(scene)) {
-                        ss->SetSkyboxFaces(faces);
-                    }
-                    // Mark scene dirty after applying skybox
-                    scene->MarkDirty();
-                }
-            },
+        menuController_->Render(*renderer_,
             vsyncEnabled_,
             [this](bool enabled){ SetVSync(enabled); },
             [this](){
                 if (sceneEditor_) sceneEditor_->AddMeshPlane();
-                // Mark active scene dirty after adding a mesh
-                if (!scenes_.empty()) { scenes_[activeScene_]->MarkDirty(); }
             },
-            console_.get());
+            console_.get(),
+            sceneEditor_ ? EditorProjectMenu{
+                sceneEditor_->GetProjectName(),
+                sceneEditor_->GetCurrentScenePath(),
+                sceneEditor_->GetSceneAssetPaths(),
+                [this](const std::string& sceneName) {
+                    if (sceneEditor_) sceneEditor_->NewScene(sceneName);
+                },
+                [this]() {
+                    if (sceneEditor_) sceneEditor_->SaveCurrentScene();
+                },
+                [this](const std::string& scenePath) {
+                    if (sceneEditor_) sceneEditor_->OpenSceneAsset(scenePath);
+                },
+                [this]() {
+                    if (sceneEditor_) sceneEditor_->SaveProject();
+                }
+            } : EditorProjectMenu{},
+            [this](const SkyboxFaces& faces) {
+                if (skyboxController_) {
+                    skyboxController_->SetFaces(faces);
+                    skyboxController_->Reload();
+                }
+            });
 
         debugUi_->EndFrame();
     }
 }
 
 void Application::Render() {
-    if (scenes_.empty()) {
-        return;
-    }
-
-    auto& scene = scenes_[activeScene_];
     const auto& cfg = renderer_->GetConfig();
     const float aspect = (cfg.height != 0) ? (static_cast<float>(cfg.width) / static_cast<float>(cfg.height)) : 1.0f;
 
@@ -381,7 +377,9 @@ void Application::Render() {
     }
     if (!gameViewActive || usingGameCamera) {
         renderer_->SetCamera(view, proj);
-        scene->Render(*renderer_);
+        if (skyboxController_) {
+            skyboxController_->Draw(view, proj);
+        }
     }
 
     // SceneEditor owns editor-created objects. Game view renders those meshes too,

@@ -1,9 +1,16 @@
 #include "SceneEditorInternal.h"
+#include "../physics/PhysicsWorld.h"
 #include "../physics/SimpleJson.h"
 #include "../scripting/ScriptRegistry.h"
 
+#include <glad/glad.h>
+
 #include <cmath>
 #include <iostream>
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
+#include <glm/gtx/matrix_decompose.hpp>
 
 namespace fs = std::filesystem;
 
@@ -82,6 +89,18 @@ RigidbodyBodyType RigidbodyBodyTypeFromString(const std::string& value) {
     return value == "Static" ? RigidbodyBodyType::Static : RigidbodyBodyType::Dynamic;
 }
 
+std::string LightTypeToString(LightType type) {
+    if (type == LightType::Directional) return "Directional";
+    if (type == LightType::Spot) return "Spot";
+    return "Point";
+}
+
+LightType LightTypeFromString(const std::string& value) {
+    if (value == "Directional") return LightType::Directional;
+    if (value == "Spot") return LightType::Spot;
+    return LightType::Point;
+}
+
 float MaxAbsComponent(const glm::vec3& value) {
     return (std::max)((std::max)(std::abs(value.x), std::abs(value.y)), std::abs(value.z));
 }
@@ -95,6 +114,17 @@ glm::mat4 BuildTransformMatrix(const Transform& transform) {
     model = glm::rotate(model, rads.x, glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::scale(model, transform.scale);
     return model;
+}
+
+Transform TransformFromMatrix(const glm::mat4& matrix) {
+    Transform transform;
+    glm::vec3 skew;
+    glm::vec4 perspective;
+    glm::quat orientation;
+    if (glm::decompose(matrix, transform.scale, orientation, transform.position, skew, perspective)) {
+        transform.rotationEuler = glm::degrees(glm::eulerAngles(orientation));
+    }
+    return transform;
 }
 
 glm::vec3 TransformPoint(const glm::mat4& transform, const glm::vec3& point) {
@@ -112,6 +142,10 @@ glm::mat4 BuildRotationMatrix(const glm::vec3& rotationEuler) {
 glm::vec3 CameraForwardFromEuler(const glm::vec3& rotationEuler) {
     const glm::vec3 forward = glm::vec3(BuildRotationMatrix(rotationEuler) * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f));
     return glm::length(forward) > 0.0001f ? glm::normalize(forward) : glm::vec3{0.0f, 0.0f, -1.0f};
+}
+
+glm::vec3 ForwardFromEuler(const glm::vec3& rotationEuler) {
+    return CameraForwardFromEuler(rotationEuler);
 }
 
 glm::vec3 CameraUpFromEuler(const glm::vec3& rotationEuler) {
@@ -246,6 +280,12 @@ bool ContainsText(const std::string& text, const std::string& needle) {
     return text.find(needle) != std::string::npos;
 }
 
+void AddDefaultBoxColliderToPlane(SceneObject& object) {
+    object.hasBoxCollider = true;
+    object.boxCollider = BoxColliderComponent{};
+    object.boxCollider.size = {1.0f, 0.1f, 1.0f};
+}
+
 void WriteTextFile(const fs::path& path, const std::string& content) {
     fs::create_directories(path.parent_path());
     std::ofstream out(path, std::ios::trunc);
@@ -261,6 +301,76 @@ bool ReadTextFile(const fs::path& path, std::string& out) {
     buffer << in.rdbuf();
     out = buffer.str();
     return true;
+}
+
+fs::path ProjectRootPath() {
+    return FindProjectRoot();
+}
+
+fs::path EngineRootPath() {
+    return FindEngineRoot();
+}
+
+fs::path ResolveEditorPath(const std::string& path) {
+    if (path.empty()) {
+        return {};
+    }
+
+    const fs::path normalized = fs::path(NormalizeSlashes(path));
+    if (normalized.is_absolute()) {
+        return normalized.lexically_normal();
+    }
+
+    auto it = normalized.begin();
+    if (it != normalized.end() && *it == "assets") {
+        return ProjectAssetPathToAbsolute(path);
+    }
+
+    return (ProjectRootPath() / normalized).lexically_normal();
+}
+
+void MigrateLegacyProjectLayout() {
+    const fs::path engineRoot = EngineRootPath();
+    const fs::path projectRoot = ProjectRootPath();
+    const fs::path assetsRoot = FindAssetsRoot();
+    const fs::path legacyAssets = LegacyAssetsRoot();
+
+    try {
+        fs::create_directories(projectRoot);
+        fs::create_directories(assetsRoot);
+
+        if (fs::exists(legacyAssets) && fs::is_directory(legacyAssets)) {
+            for (const auto& entry : fs::directory_iterator(legacyAssets)) {
+                const std::string name = entry.path().filename().string();
+                if (name == "editor") {
+                    CopyDirectoryIfMissing(entry.path(), engineRoot / "editor-assets");
+                    continue;
+                }
+
+                const fs::path dest = assetsRoot / entry.path().filename();
+                if (entry.is_directory()) {
+                    CopyDirectoryIfMissing(entry.path(), dest);
+                } else if (entry.is_regular_file() && !fs::exists(dest)) {
+                    fs::create_directories(dest.parent_path());
+                    fs::copy_file(entry.path(), dest, fs::copy_options::skip_existing);
+                }
+            }
+        }
+
+        const fs::path legacyProjectFile = engineRoot / "project.raceman.json";
+        const fs::path projectFile = projectRoot / "project.raceman.json";
+        if (!fs::exists(projectFile) && fs::exists(legacyProjectFile)) {
+            fs::copy_file(legacyProjectFile, projectFile, fs::copy_options::skip_existing);
+        }
+    } catch (...) {}
+}
+
+std::string ViewportModeToString(SceneEditorViewportMode mode) {
+    return mode == SceneEditorViewportMode::Game ? "Game" : "Scene";
+}
+
+SceneEditorViewportMode ViewportModeFromString(const std::string& value) {
+    return value == "Game" ? SceneEditorViewportMode::Game : SceneEditorViewportMode::Scene;
 }
 
 void InsertBeforeClosingItemGroup(const fs::path& projectPath, const std::string& entry) {
@@ -325,7 +435,8 @@ void RemoveProjectEntriesUnderScripts(const fs::path& projectPath) {
             continue;
         }
 
-        const bool scriptEntry = ContainsText(line, "Include=\"assets\\scripts\\");
+        const bool scriptEntry = ContainsText(line, "Include=\"assets\\scripts\\")
+            || ContainsText(line, "Include=\"Project\\assets\\");
         if (!scriptEntry) {
             out += lineWithNewline;
             continue;
@@ -348,35 +459,49 @@ void RemoveProjectEntriesUnderScripts(const fs::path& projectPath) {
     }
 }
 
-std::vector<std::string> FindCompleteScriptNames(const fs::path& scriptsDir) {
-    std::vector<std::string> scriptNames;
-    if (!fs::exists(scriptsDir)) {
-        return scriptNames;
+struct ScriptSourceInfo {
+    std::string name;
+    std::string projectHeaderPath;
+    std::string projectSourcePath;
+};
+
+std::vector<ScriptSourceInfo> FindCompleteScripts(const fs::path& assetsRoot) {
+    std::vector<ScriptSourceInfo> scripts;
+    if (!fs::exists(assetsRoot)) {
+        return scripts;
     }
 
-    for (const auto& entry : fs::directory_iterator(scriptsDir)) {
+    for (const auto& entry : fs::recursive_directory_iterator(assetsRoot)) {
         if (!entry.is_regular_file() || ToLowerCopy(entry.path().extension().string()) != ".h") {
             continue;
         }
 
         const std::string scriptName = entry.path().stem().string();
-        if (fs::exists(scriptsDir / (scriptName + ".cpp"))) {
-            scriptNames.push_back(scriptName);
+        const fs::path sourcePath = entry.path().parent_path() / (scriptName + ".cpp");
+        if (fs::exists(sourcePath)) {
+            ScriptSourceInfo info;
+            info.name = scriptName;
+            info.projectHeaderPath = ToProjectAssetPath(entry.path(), assetsRoot);
+            info.projectSourcePath = ToProjectAssetPath(sourcePath, assetsRoot);
+            scripts.push_back(std::move(info));
         }
     }
 
-    std::sort(scriptNames.begin(), scriptNames.end());
-    return scriptNames;
+    std::sort(scripts.begin(), scripts.end(), [](const ScriptSourceInfo& a, const ScriptSourceInfo& b) {
+        return ToLowerCopy(a.projectSourcePath) < ToLowerCopy(b.projectSourcePath);
+    });
+    return scripts;
 }
 
-std::string BuildScriptRegistrySource(const std::vector<std::string>& scriptNames) {
+std::string BuildScriptRegistrySource(const std::vector<ScriptSourceInfo>& scripts) {
     std::string registry;
     registry += "#include \"ScriptRegistry.h\"\n\n";
-    for (const std::string& scriptName : scriptNames) {
-        registry += "#include \"../../assets/scripts/" + scriptName + ".h\"\n";
+    for (const ScriptSourceInfo& script : scripts) {
+        registry += "#include \"../../Project/" + script.projectHeaderPath + "\"\n";
     }
     registry += "\nnamespace raceman {\nnamespace {\n\n";
-    for (const std::string& scriptName : scriptNames) {
+    for (const ScriptSourceInfo& script : scripts) {
+        const std::string& scriptName = script.name;
         registry += "std::unique_ptr<IObjectScript> Create" + scriptName + "() {\n";
         registry += "    return std::make_unique<scripts::" + scriptName + ">();\n";
         registry += "}\n\n";
@@ -384,8 +509,8 @@ std::string BuildScriptRegistrySource(const std::vector<std::string>& scriptName
     registry += "} // namespace\n\n";
     registry += "const std::vector<ScriptDescriptor>& GetRegisteredScripts() {\n";
     registry += "    static const std::vector<ScriptDescriptor> scripts = {\n";
-    for (const std::string& scriptName : scriptNames) {
-        registry += "        {\"" + scriptName + "\", \"assets/scripts/" + scriptName + ".cpp\", &Create" + scriptName + "},\n";
+    for (const ScriptSourceInfo& script : scripts) {
+        registry += "        {\"" + script.name + "\", \"" + script.projectSourcePath + "\", &Create" + script.name + "},\n";
     }
     registry += "    };\n";
     registry += "    return scripts;\n";
@@ -415,11 +540,19 @@ SceneEditor::SceneEditor() {
     // Load materials at startup
     materialManager_.LoadAll();
     RefreshProjectFiles();
-    // Optionally load previous scene
-    Load(savePath_);
+    LoadProject();
+    materialManager_.LoadAll();
+    RefreshProjectFiles();
 }
 
-SceneEditor::~SceneEditor() = default;
+SceneEditor::~SceneEditor() {
+    for (const auto& [filename, textureId] : componentIconTextures_) {
+        (void)filename;
+        if (textureId != 0) {
+            glDeleteTextures(1, &textureId);
+        }
+    }
+}
 
 void SceneEditor::SetConsole(Console* console) {
     console_ = console;
@@ -433,8 +566,9 @@ void SceneEditor::SetConsole(Console* console) {
 
 bool SceneEditor::TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float aspect, glm::vec4* outClearColor) const {
     const SceneObject* fallbackCamera = nullptr;
-    for (const SceneObject& object : objects_) {
-        if (!object.enabled || !object.hasCamera || !object.camera.enabled) {
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& object = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !object.hasCamera || !object.camera.enabled) {
             continue;
         }
         if (fallbackCamera == nullptr) {
@@ -451,13 +585,15 @@ bool SceneEditor::TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float
     }
 
     const CameraComponent& camera = fallbackCamera->camera;
+    const int cameraIndex = static_cast<int>(fallbackCamera - objects_.data());
+    const glm::mat4 worldMatrix = GetObjectWorldMatrix(cameraIndex);
     const float safeAspect = aspect > 0.0001f ? aspect : 1.0f;
     const float fov = (std::max)(1.0f, (std::min)(camera.fieldOfViewDegrees, 179.0f));
     const float nearClip = (std::max)(0.001f, camera.nearClip);
     const float farClip = (std::max)(nearClip + 0.001f, camera.farClip);
-    const glm::vec3 position = fallbackCamera->transform.position;
-    const glm::vec3 forward = CameraForwardFromEuler(fallbackCamera->transform.rotationEuler);
-    const glm::vec3 up = CameraUpFromEuler(fallbackCamera->transform.rotationEuler);
+    const glm::vec3 position = glm::vec3(worldMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    const glm::vec3 forward = glm::normalize(glm::vec3(worldMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+    const glm::vec3 up = glm::normalize(glm::vec3(worldMatrix * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
 
     outView = glm::lookAt(position, position + forward, up);
     outProj = glm::perspective(glm::radians(fov), safeAspect, nearClip, farClip);
@@ -468,6 +604,27 @@ bool SceneEditor::TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float
 }
 void SceneEditor::AddMeshPlane() {
     AddPlane();
+}
+
+void SceneEditor::AddEmptyObject() {
+    PushUndoState();
+
+    SceneObject object;
+    object.id = MakeId("gameobject");
+    object.name = "GameObject";
+    object.type = "GameObject";
+    object.hasMeshFilter = false;
+    object.hasMeshRenderer = false;
+    object.hasScriptComponent = false;
+
+    objects_.push_back(std::move(object));
+    Select(static_cast<int>(objects_.size()) - 1);
+    renamingObjectIndex_ = -1;
+    inspectMaterial_ = false;
+    if (console_) {
+        console_->AddLog("Added empty GameObject.");
+    }
+    if (onDirty_) onDirty_();
 }
 
 void SceneEditor::RenderUI(float deltaTime) {
@@ -482,12 +639,11 @@ void SceneEditor::RenderUI(float deltaTime) {
 
 void SceneEditor::HandleEditorShortcuts() {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantTextInput) {
+    if (IsCtrlSPressed()) {
+        SaveActiveAsset();
         return;
     }
-
-    if (IsCtrlSPressed()) {
-        Save(savePath_);
+    if (io.WantTextInput) {
         return;
     }
     if (IsCtrlZPressed()) {
@@ -522,7 +678,8 @@ void SceneEditor::UpdateScripts(float deltaTime) {
         if (objectIt == objects_.end()) {
             continue;
         }
-        if (!objectIt->hasScriptComponent || !objectIt->scriptComponent.enabled) {
+        const int objectIndex = static_cast<int>(std::distance(objects_.begin(), objectIt));
+        if (!IsObjectEffectivelyEnabled(objectIndex) || !objectIt->hasScriptComponent || !objectIt->scriptComponent.enabled) {
             continue;
         }
         if (runtimeScript.attachmentIndex >= objectIt->scriptComponent.attachments.size()) {
@@ -534,7 +691,8 @@ void SceneEditor::UpdateScripts(float deltaTime) {
             continue;
         }
 
-        ObjectScriptContext context(*objectIt, console_, inputManager_);
+        InputManager* scriptInput = viewportMode_ == SceneEditorViewportMode::Game ? inputManager_ : nullptr;
+        ObjectScriptContext context(*objectIt, console_, scriptInput, physicsWorld_.get());
         if (!runtimeScript.started) {
             runtimeScript.instance->OnStart(context);
             runtimeScript.started = true;
@@ -548,71 +706,45 @@ void SceneEditor::UpdatePhysics(float deltaTime) {
         return;
     }
 
-    const glm::vec3 gravity{0.0f, -9.81f, 0.0f};
-    const float step = (std::min)(deltaTime, 0.05f);
+    if (!physicsWorld_) {
+        return;
+    }
 
-    for (SceneObject& object : objects_) {
-        if (!object.enabled || !object.hasRigidbody) {
-            continue;
+    for (const SceneObject& object : objects_) {
+        if (object.hasRigidbody && object.rigidbody.enabled && object.rigidbody.bodyType == RigidbodyBodyType::Dynamic) {
+            physicsWorld_->SetBodyVelocity(object.id, object.rigidbody.velocity);
         }
-        if (!object.rigidbody.enabled) {
-            continue;
-        }
-        if (object.rigidbody.bodyType != RigidbodyBodyType::Dynamic) {
-            continue;
-        }
+    }
 
-        if (object.rigidbody.useGravity) {
-            object.rigidbody.velocity += gravity * step;
-        }
-        object.transform.position += object.rigidbody.velocity * step;
+    physicsWorld_->Step(deltaTime);
 
-        std::vector<ColliderWorldAabb> dynamicColliders = BuildSolidColliderAabbs(object);
-        if (dynamicColliders.empty()) {
+    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
+        SceneObject& object = objects_[objectIndex];
+        if (!object.hasRigidbody || object.rigidbody.bodyType != RigidbodyBodyType::Dynamic) {
             continue;
         }
 
-        for (const SceneObject& staticObject : objects_) {
-            if (&staticObject == &object) {
-                continue;
-            }
-            if (!staticObject.enabled) {
-                continue;
-            }
-            const bool isStaticBody = !staticObject.hasRigidbody
-                || !staticObject.rigidbody.enabled
-                || staticObject.rigidbody.bodyType == RigidbodyBodyType::Static;
-            if (!isStaticBody) {
-                continue;
-            }
-
-            const std::vector<ColliderWorldAabb> staticColliders = BuildSolidColliderAabbs(staticObject);
-            if (staticColliders.empty()) {
-                continue;
-            }
-
-            for (const ColliderWorldAabb& staticBox : staticColliders) {
-                for (const ColliderWorldAabb& dynamicBox : dynamicColliders) {
-                    if (!AabbOverlap(dynamicBox, staticBox)) {
-                        continue;
-                    }
-
-                    const glm::vec3 correction = ComputeMinimumTranslation(dynamicBox, staticBox);
-                    object.transform.position += correction;
-                    if (std::abs(correction.x) > 0.0f) {
-                        object.rigidbody.velocity.x = 0.0f;
-                    }
-                    if (std::abs(correction.y) > 0.0f) {
-                        object.rigidbody.velocity.y = 0.0f;
-                    }
-                    if (std::abs(correction.z) > 0.0f) {
-                        object.rigidbody.velocity.z = 0.0f;
-                    }
-                    dynamicColliders = BuildSolidColliderAabbs(object);
-                    break;
-                }
-            }
+        PhysicsBodyState state;
+        if (!physicsWorld_->GetBodyState(object.id, state)) {
+            continue;
         }
+
+        object.rigidbody.velocity = state.velocity;
+        const Transform previousLocal = object.transform;
+        Transform worldTransform;
+        worldTransform.position = state.position;
+        worldTransform.rotationEuler = state.rotationEuler;
+        worldTransform.scale = glm::vec3(1.0f);
+
+        glm::mat4 worldMatrix = BuildTransformMatrix(worldTransform);
+        worldMatrix = glm::scale(worldMatrix, previousLocal.scale);
+        const int parentIndex = FindObjectIndexById(object.parentId);
+        if (parentIndex >= 0 && parentIndex != objectIndex) {
+            object.transform = TransformFromMatrix(glm::inverse(GetObjectWorldMatrix(parentIndex)) * worldMatrix);
+        } else {
+            object.transform = TransformFromMatrix(worldMatrix);
+        }
+        object.transform.scale = previousLocal.scale;
     }
 }
 
@@ -630,10 +762,63 @@ void SceneEditor::SetScriptsRunning(bool running) {
     }
 
     if (running) {
-        playModeSnapshot_ = {objects_, selectedIndex_};
+        SaveCurrentScene();
+        playModeSnapshot_ = {objects_, selectedIndex_, selectedIndices_};
         hasPlayModeSnapshot_ = true;
+        viewportMode_ = SceneEditorViewportMode::Game;
         scriptsRunning_ = true;
         scriptsPaused_ = false;
+        std::vector<PhysicsBodyDesc> physicsBodies;
+        for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
+            const SceneObject& object = objects_[objectIndex];
+            if (!IsObjectEffectivelyEnabled(objectIndex)) {
+                continue;
+            }
+
+            PhysicsBodyDesc body;
+            body.objectId = object.id;
+            const Transform worldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
+            body.position = worldTransform.position;
+            body.rotationEuler = worldTransform.rotationEuler;
+            body.scale = worldTransform.scale;
+            body.bodyType = object.hasRigidbody && object.rigidbody.enabled && object.rigidbody.bodyType == RigidbodyBodyType::Dynamic
+                ? PhysicsBodyType::Dynamic
+                : PhysicsBodyType::Static;
+            body.mass = object.hasRigidbody ? object.rigidbody.mass : 1.0f;
+            body.useGravity = object.hasRigidbody ? object.rigidbody.useGravity : false;
+            body.velocity = object.hasRigidbody ? object.rigidbody.velocity : glm::vec3{0.0f};
+
+            if (object.hasBoxCollider && object.boxCollider.enabled) {
+                PhysicsColliderDesc collider;
+                collider.type = PhysicsColliderType::Box;
+                collider.isTrigger = object.boxCollider.isTrigger;
+                collider.center = object.boxCollider.center;
+                collider.size = object.boxCollider.size;
+                body.colliders.push_back(collider);
+            }
+            if (object.hasSphereCollider && object.sphereCollider.enabled) {
+                PhysicsColliderDesc collider;
+                collider.type = PhysicsColliderType::Sphere;
+                collider.isTrigger = object.sphereCollider.isTrigger;
+                collider.center = object.sphereCollider.center;
+                collider.radius = object.sphereCollider.radius;
+                body.colliders.push_back(collider);
+            }
+            if (object.hasCapsuleCollider && object.capsuleCollider.enabled) {
+                PhysicsColliderDesc collider;
+                collider.type = PhysicsColliderType::Capsule;
+                collider.isTrigger = object.capsuleCollider.isTrigger;
+                collider.center = object.capsuleCollider.center;
+                collider.radius = object.capsuleCollider.radius;
+                collider.height = object.capsuleCollider.height;
+                body.colliders.push_back(collider);
+            }
+            if (!body.colliders.empty()) {
+                physicsBodies.push_back(std::move(body));
+            }
+        }
+        physicsWorld_ = std::make_unique<PhysicsWorld>();
+        physicsWorld_->Build(physicsBodies);
         RebuildScriptRuntime();
         if (console_) {
             console_->AddLog("Play mode started.");
@@ -642,17 +827,21 @@ void SceneEditor::SetScriptsRunning(bool running) {
         scriptsRunning_ = false;
         scriptsPaused_ = false;
         ClearScriptRuntime();
+        if (physicsWorld_) {
+            physicsWorld_->Clear();
+            physicsWorld_.reset();
+        }
         if (hasPlayModeSnapshot_) {
             objects_ = playModeSnapshot_.objects;
             selectedIndex_ = playModeSnapshot_.selectedIndex;
-            if (selectedIndex_ >= static_cast<int>(objects_.size())) {
-                selectedIndex_ = objects_.empty() ? -1 : static_cast<int>(objects_.size()) - 1;
-            }
+            selectedIndices_ = playModeSnapshot_.selectedIndices;
+            NormalizeSelection();
             playModeSnapshot_ = {};
             hasPlayModeSnapshot_ = false;
         } else {
             ResetPhysicsVelocities();
         }
+        viewportMode_ = SceneEditorViewportMode::Scene;
         activeGizmoAxis_ = -1;
         hoveredGizmoAxis_ = -1;
         if (console_) {
@@ -667,6 +856,9 @@ void SceneEditor::SetScriptsPaused(bool paused) {
     }
 
     scriptsPaused_ = paused;
+    if (!scriptsPaused_) {
+        viewportMode_ = SceneEditorViewportMode::Game;
+    }
     if (console_) {
         console_->AddLog(scriptsPaused_ ? "Play mode paused." : "Play mode resumed.");
     }
@@ -679,8 +871,9 @@ void SceneEditor::ClearScriptRuntime() {
 void SceneEditor::RebuildScriptRuntime() {
     ClearScriptRuntime();
 
-    for (SceneObject& object : objects_) {
-        if (!object.hasScriptComponent || !object.scriptComponent.enabled) {
+    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
+        SceneObject& object = objects_[objectIndex];
+        if (!IsObjectEffectivelyEnabled(objectIndex) || !object.hasScriptComponent || !object.scriptComponent.enabled) {
             continue;
         }
         for (std::size_t i = 0; i < object.scriptComponent.attachments.size(); ++i) {
@@ -764,6 +957,7 @@ void SceneEditor::AddPlane() {
         object.type = "Mesh";
         object.meshFilter.meshType = "Mesh";
         object.transform.scale = {10.0f, 1.0f, 10.0f};
+        AddDefaultBoxColliderToPlane(object);
         if (console_) {
             console_->AddLog(std::string("Added Plane: ") + object.id + " (" + object.name + ")");
         }
@@ -797,10 +991,54 @@ void SceneEditor::AddCameraObject() {
 
     objects_.push_back(std::move(cameraObject));
     selectedIndex_ = static_cast<int>(objects_.size()) - 1;
+    selectedIndices_ = {selectedIndex_};
     inspectMaterial_ = false;
     renamingObjectIndex_ = -1;
     if (console_) {
         console_->AddLog("Added Camera object.");
+    }
+    if (onDirty_) onDirty_();
+}
+
+void SceneEditor::AddLightObject(LightType type) {
+    PushUndoState();
+
+    SceneObject lightObject;
+    lightObject.id = MakeId("light");
+    lightObject.type = "Light";
+    lightObject.hasMeshFilter = false;
+    lightObject.hasMeshRenderer = false;
+    lightObject.hasScriptComponent = false;
+    lightObject.hasLight = true;
+    lightObject.light = LightComponent{};
+    lightObject.light.type = type;
+
+    if (type == LightType::Directional) {
+        lightObject.name = "Directional Light";
+        lightObject.transform.rotationEuler = {-45.0f, 35.0f, 0.0f};
+        lightObject.light.intensity = 1.5f;
+        lightObject.light.range = 100.0f;
+    } else if (type == LightType::Spot) {
+        lightObject.name = "Spot Light";
+        lightObject.transform.position = {0.0f, 3.0f, 3.0f};
+        lightObject.transform.rotationEuler = {-35.0f, 0.0f, 0.0f};
+        lightObject.light.intensity = 4.0f;
+        lightObject.light.range = 12.0f;
+        lightObject.light.spotAngleDegrees = 35.0f;
+    } else {
+        lightObject.name = "Point Light";
+        lightObject.transform.position = {0.0f, 2.0f, 0.0f};
+        lightObject.light.intensity = 3.0f;
+        lightObject.light.range = 10.0f;
+    }
+
+    objects_.push_back(std::move(lightObject));
+    selectedIndex_ = static_cast<int>(objects_.size()) - 1;
+    selectedIndices_ = {selectedIndex_};
+    inspectMaterial_ = false;
+    renamingObjectIndex_ = -1;
+    if (console_) {
+        console_->AddLog("Added " + objects_[selectedIndex_].name + " object.");
     }
     if (onDirty_) onDirty_();
 }
@@ -829,36 +1067,56 @@ bool SceneEditor::AttachScriptToSelected(const std::string& scriptName, const st
 
 void SceneEditor::SyncScriptProjectFiles() {
     const fs::path assetsRoot = FindAssetsRoot();
-    const fs::path scriptsDir = assetsRoot / "scripts";
-    const fs::path projectRoot = assetsRoot.parent_path();
-    const fs::path projectPath = projectRoot / "Project Raceman.vcxproj";
-    const fs::path filtersPath = projectRoot / "Project Raceman.vcxproj.filters";
+    const fs::path engineRoot = EngineRootPath();
+    const fs::path projectPath = engineRoot / "Project Raceman.vcxproj";
+    const fs::path filtersPath = engineRoot / "Project Raceman.vcxproj.filters";
 
-    const std::vector<std::string> scriptNames = FindCompleteScriptNames(scriptsDir);
+    const std::vector<ScriptSourceInfo> scripts = FindCompleteScripts(assetsRoot);
 
     RemoveProjectEntriesUnderScripts(projectPath);
     RemoveProjectEntriesUnderScripts(filtersPath);
-    for (const std::string& scriptName : scriptNames) {
-        const std::string headerProjectPath = "assets\\scripts\\" + scriptName + ".h";
-        const std::string sourceProjectPath = "assets\\scripts\\" + scriptName + ".cpp";
+    for (const ScriptSourceInfo& script : scripts) {
+        std::string headerProjectPath = "Project\\" + script.projectHeaderPath;
+        std::string sourceProjectPath = "Project\\" + script.projectSourcePath;
+        std::replace(headerProjectPath.begin(), headerProjectPath.end(), '/', '\\');
+        std::replace(sourceProjectPath.begin(), sourceProjectPath.end(), '/', '\\');
         AddProjectIncludeEntry(projectPath, headerProjectPath);
         AddProjectCompileEntry(projectPath, sourceProjectPath);
         AddFilterIncludeEntry(filtersPath, headerProjectPath);
         AddFilterCompileEntry(filtersPath, sourceProjectPath);
     }
 
-    WriteTextFile(projectRoot / "src" / "scripting" / "ScriptRegistry.cpp", BuildScriptRegistrySource(scriptNames));
+    WriteTextFile(engineRoot / "src" / "scripting" / "ScriptRegistry.cpp", BuildScriptRegistrySource(scripts));
     if (console_) {
-        console_->AddLog("Synced script project files with " + std::to_string(scriptNames.size()) + " script(s).");
+        console_->AddLog("Synced script project files with " + std::to_string(scripts.size()) + " script(s).");
     }
 }
 
-bool SceneEditor::CreateScriptAsset(const std::string& requestedName) {
+bool SceneEditor::CreateScriptAsset(const std::string& requestedName, bool attachToSelected) {
     const std::string className = SanitizeScriptClassName(requestedName);
     const fs::path assetsRoot = FindAssetsRoot();
-    const fs::path scriptsDir = assetsRoot / "scripts";
+    const fs::path scriptsDir = ProjectAssetPathToAbsolute(selectedProjectDirectory_);
+    if (!IsUnderPath(scriptsDir, assetsRoot)) {
+        if (console_) {
+            console_->AddError("Script creation blocked outside assets: " + className);
+        }
+        return false;
+    }
     const fs::path headerPath = scriptsDir / (className + ".h");
     const fs::path sourcePath = scriptsDir / (className + ".cpp");
+    std::string objectScriptInclude = NormalizeSlashes(fs::relative(EngineRootPath() / "src" / "scripting" / "ObjectScript.h", scriptsDir).string());
+
+    if (fs::exists(assetsRoot)) {
+        for (const auto& entry : fs::recursive_directory_iterator(assetsRoot)) {
+            const std::string extension = ToLowerCopy(entry.path().extension().string());
+            if (entry.is_regular_file() && entry.path().stem().string() == className && (extension == ".h" || extension == ".cpp")) {
+                if (console_) {
+                    console_->AddError("Script already exists: " + className);
+                }
+                return false;
+            }
+        }
+    }
 
     if (fs::exists(headerPath) || fs::exists(sourcePath)) {
         if (console_) {
@@ -869,7 +1127,7 @@ bool SceneEditor::CreateScriptAsset(const std::string& requestedName) {
 
     const std::string header =
         "#pragma once\n\n"
-        "#include \"../../src/scripting/ObjectScript.h\"\n\n"
+        "#include \"" + objectScriptInclude + "\"\n\n"
         "namespace raceman::scripts {\n\n"
         "class " + className + " : public raceman::IObjectScript {\n"
         "public:\n"
@@ -899,8 +1157,8 @@ bool SceneEditor::CreateScriptAsset(const std::string& requestedName) {
         SyncScriptProjectFiles();
         std::cout << "[SceneEditor] Added script to project: " << className << '\n';
 
-        const std::string scriptPath = "assets/scripts/" + className + ".cpp";
-        if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())) {
+        const std::string scriptPath = ToProjectAssetPath(sourcePath, assetsRoot);
+        if (attachToSelected && selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())) {
             SceneObject& obj = objects_[selectedIndex_];
             PushUndoState();
             obj.hasScriptComponent = true;
@@ -919,7 +1177,7 @@ bool SceneEditor::CreateScriptAsset(const std::string& requestedName) {
 
         if (console_) {
             console_->AddLog("Created C++ script " + className + ": " + scriptPath);
-            if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())) {
+            if (attachToSelected && selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())) {
                 console_->AddLog("Attached pending script " + className + " to " + objects_[selectedIndex_].name + " and saved the scene. Rebuild/restart before running it.");
             } else {
                 console_->AddLog("Rebuild the app before attaching/running " + className + ".");
@@ -940,12 +1198,199 @@ bool SceneEditor::CreateScriptAsset(const std::string& requestedName) {
 void SceneEditor::Select(int index) {
     if (index >= 0 && index < static_cast<int>(objects_.size())) {
         selectedIndex_ = index;
+        selectedIndices_ = {index};
         inspectMaterial_ = false;
     }
 }
 
+void SceneEditor::ToggleSelect(int index) {
+    if (index < 0 || index >= static_cast<int>(objects_.size())) {
+        return;
+    }
+
+    inspectMaterial_ = false;
+    const auto it = std::find(selectedIndices_.begin(), selectedIndices_.end(), index);
+    if (it != selectedIndices_.end()) {
+        selectedIndices_.erase(it);
+        if (selectedIndex_ == index) {
+            selectedIndex_ = selectedIndices_.empty() ? -1 : selectedIndices_.back();
+        }
+    } else {
+        selectedIndices_.push_back(index);
+        selectedIndex_ = index;
+    }
+    NormalizeSelection();
+}
+
+bool SceneEditor::IsSelected(int index) const {
+    return std::find(selectedIndices_.begin(), selectedIndices_.end(), index) != selectedIndices_.end();
+}
+
+int SceneEditor::FindObjectIndexById(const std::string& id) const {
+    if (id.empty()) {
+        return -1;
+    }
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        if (objects_[i].id == id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+bool SceneEditor::IsObjectEffectivelyEnabled(int index) const {
+    if (index < 0 || index >= static_cast<int>(objects_.size())) {
+        return false;
+    }
+
+    int currentIndex = index;
+    std::vector<std::string> visited;
+    while (currentIndex >= 0 && currentIndex < static_cast<int>(objects_.size())) {
+        const SceneObject& object = objects_[currentIndex];
+        if (!object.enabled) {
+            return false;
+        }
+        if (object.parentId.empty()) {
+            return true;
+        }
+        if (std::find(visited.begin(), visited.end(), object.id) != visited.end()) {
+            return false;
+        }
+        visited.push_back(object.id);
+        currentIndex = FindObjectIndexById(object.parentId);
+    }
+
+    return true;
+}
+
+bool SceneEditor::IsDescendantOf(const std::string& objectId, const std::string& potentialAncestorId) const {
+    int currentIndex = FindObjectIndexById(objectId);
+    while (currentIndex >= 0 && currentIndex < static_cast<int>(objects_.size())) {
+        const std::string parentId = objects_[currentIndex].parentId;
+        if (parentId.empty()) {
+            return false;
+        }
+        if (parentId == potentialAncestorId) {
+            return true;
+        }
+        currentIndex = FindObjectIndexById(parentId);
+    }
+    return false;
+}
+
+void SceneEditor::SetParent(int childIndex, int parentIndex) {
+    if (childIndex < 0 || childIndex >= static_cast<int>(objects_.size())) {
+        return;
+    }
+    if (parentIndex >= static_cast<int>(objects_.size())) {
+        return;
+    }
+    if (parentIndex == childIndex) {
+        return;
+    }
+
+    const std::string newParentId = parentIndex >= 0 ? objects_[parentIndex].id : std::string();
+    if (!newParentId.empty() && IsDescendantOf(newParentId, objects_[childIndex].id)) {
+        if (console_) {
+            console_->AddWarning("Cannot parent an object under its own child.");
+        }
+        return;
+    }
+    if (objects_[childIndex].parentId == newParentId) {
+        return;
+    }
+
+    const glm::mat4 worldMatrix = GetObjectWorldMatrix(childIndex);
+    PushUndoState();
+    objects_[childIndex].parentId = newParentId;
+    if (parentIndex >= 0) {
+        const glm::mat4 parentWorld = GetObjectWorldMatrix(parentIndex);
+        objects_[childIndex].transform = TransformFromMatrix(glm::inverse(parentWorld) * worldMatrix);
+    } else {
+        objects_[childIndex].transform = TransformFromMatrix(worldMatrix);
+    }
+    Select(childIndex);
+    if (onDirty_) onDirty_();
+}
+
+glm::mat4 SceneEditor::GetObjectWorldMatrix(int index) const {
+    if (index < 0 || index >= static_cast<int>(objects_.size())) {
+        return glm::mat4(1.0f);
+    }
+
+    const SceneObject& object = objects_[index];
+    const glm::mat4 local = BuildTransformMatrix(object.transform);
+    const int parentIndex = FindObjectIndexById(object.parentId);
+    if (parentIndex < 0 || parentIndex == index) {
+        return local;
+    }
+    return GetObjectWorldMatrix(parentIndex) * local;
+}
+
+glm::vec3 SceneEditor::GetObjectWorldPosition(int index) const {
+    return glm::vec3(GetObjectWorldMatrix(index) * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+}
+
+void SceneEditor::RequestFocusSelectedObject() {
+    if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size()) || !onFocusObject_) {
+        return;
+    }
+
+    const SceneObject& object = objects_[selectedIndex_];
+    const glm::mat4 world = GetObjectWorldMatrix(selectedIndex_);
+    const glm::vec3 center = GetObjectWorldPosition(selectedIndex_);
+    float radius = 1.0f;
+
+    if (object.hasMeshFilter) {
+        const glm::vec3 minBounds = object.meshFilter.localBoundsMin;
+        const glm::vec3 maxBounds = object.meshFilter.localBoundsMax;
+        const glm::vec3 corners[8] = {
+            {minBounds.x, minBounds.y, minBounds.z},
+            {maxBounds.x, minBounds.y, minBounds.z},
+            {maxBounds.x, maxBounds.y, minBounds.z},
+            {minBounds.x, maxBounds.y, minBounds.z},
+            {minBounds.x, minBounds.y, maxBounds.z},
+            {maxBounds.x, minBounds.y, maxBounds.z},
+            {maxBounds.x, maxBounds.y, maxBounds.z},
+            {minBounds.x, maxBounds.y, maxBounds.z}
+        };
+        radius = 0.0f;
+        for (const glm::vec3& corner : corners) {
+            radius = (std::max)(radius, glm::length(TransformPoint(world, corner) - center));
+        }
+    } else {
+        radius = (std::max)(0.5f, glm::length(object.transform.scale));
+    }
+
+    viewportMode_ = SceneEditorViewportMode::Scene;
+    onFocusObject_(center, (std::max)(0.5f, radius));
+}
+
+void SceneEditor::NormalizeSelection() {
+    std::vector<int> normalized;
+    normalized.reserve(selectedIndices_.size() + 1);
+    for (int index : selectedIndices_) {
+        if (index >= 0 && index < static_cast<int>(objects_.size())
+            && std::find(normalized.begin(), normalized.end(), index) == normalized.end()) {
+            normalized.push_back(index);
+        }
+    }
+    if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())
+        && std::find(normalized.begin(), normalized.end(), selectedIndex_) == normalized.end()) {
+        normalized.push_back(selectedIndex_);
+    }
+    selectedIndices_ = std::move(normalized);
+    if (selectedIndices_.empty()) {
+        selectedIndex_ = -1;
+    } else if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())
+        || std::find(selectedIndices_.begin(), selectedIndices_.end(), selectedIndex_) == selectedIndices_.end()) {
+        selectedIndex_ = selectedIndices_.back();
+    }
+}
+
 void SceneEditor::PushUndoState() {
-    undoStack_.push_back({objects_, selectedIndex_});
+    NormalizeSelection();
+    undoStack_.push_back({objects_, selectedIndex_, selectedIndices_});
     redoStack_.clear();
     constexpr std::size_t maxHistory = 64;
     if (undoStack_.size() > maxHistory) {
@@ -958,14 +1403,14 @@ void SceneEditor::Undo() {
         return;
     }
 
-    redoStack_.push_back({objects_, selectedIndex_});
+    NormalizeSelection();
+    redoStack_.push_back({objects_, selectedIndex_, selectedIndices_});
     const HistoryState state = std::move(undoStack_.back());
     undoStack_.pop_back();
     objects_ = state.objects;
     selectedIndex_ = state.selectedIndex;
-    if (selectedIndex_ >= static_cast<int>(objects_.size())) {
-        selectedIndex_ = objects_.empty() ? -1 : static_cast<int>(objects_.size()) - 1;
-    }
+    selectedIndices_ = state.selectedIndices;
+    NormalizeSelection();
     renamingObjectIndex_ = -1;
     inspectMaterial_ = false;
     activeGizmoAxis_ = -1;
@@ -977,14 +1422,14 @@ void SceneEditor::Redo() {
         return;
     }
 
-    undoStack_.push_back({objects_, selectedIndex_});
+    NormalizeSelection();
+    undoStack_.push_back({objects_, selectedIndex_, selectedIndices_});
     const HistoryState state = std::move(redoStack_.back());
     redoStack_.pop_back();
     objects_ = state.objects;
     selectedIndex_ = state.selectedIndex;
-    if (selectedIndex_ >= static_cast<int>(objects_.size())) {
-        selectedIndex_ = objects_.empty() ? -1 : static_cast<int>(objects_.size()) - 1;
-    }
+    selectedIndices_ = state.selectedIndices;
+    NormalizeSelection();
     renamingObjectIndex_ = -1;
     inspectMaterial_ = false;
     activeGizmoAxis_ = -1;
@@ -993,11 +1438,12 @@ void SceneEditor::Redo() {
 
 
 void SceneEditor::Save(const std::string& path) {
+    const fs::path targetPath = ResolveEditorPath(path);
     try {
-        fs::create_directories(fs::path(path).parent_path());
+        fs::create_directories(targetPath.parent_path());
     } catch (...) {}
 
-    std::ofstream out(path, std::ios::trunc);
+    std::ofstream out(targetPath, std::ios::trunc);
     if (!out.good()) return;
 
     // Minimal JSON (manual)
@@ -1007,6 +1453,7 @@ void SceneEditor::Save(const std::string& path) {
         const std::string meshType = o.meshFilter.meshType.empty() ? o.type : o.meshFilter.meshType;
         out << "    {\n";
         out << "      \"id\": \"" << JsonEscape(o.id) << "\",\n";
+        out << "      \"parentId\": \"" << JsonEscape(o.parentId) << "\",\n";
         out << "      \"name\": \"" << JsonEscape(o.name) << "\",\n";
         out << "      \"type\": \"" << JsonEscape(o.type) << "\",\n";
         out << "      \"enabled\": " << (o.enabled ? "true" : "false") << ",\n";
@@ -1109,6 +1556,18 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"clearColor\": [" << o.camera.clearColor.r << ", " << o.camera.clearColor.g << ", " << o.camera.clearColor.b << ", " << o.camera.clearColor.a << "]\n";
             out << "        }";
         }
+        if (o.hasLight) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Light\",\n";
+            out << "          \"enabled\": " << (o.light.enabled ? "true" : "false") << ",\n";
+            out << "          \"lightType\": \"" << LightTypeToString(o.light.type) << "\",\n";
+            out << "          \"color\": [" << o.light.color.r << ", " << o.light.color.g << ", " << o.light.color.b << "],\n";
+            out << "          \"intensity\": " << o.light.intensity << ",\n";
+            out << "          \"range\": " << o.light.range << ",\n";
+            out << "          \"spotAngleDegrees\": " << o.light.spotAngleDegrees << "\n";
+            out << "        }";
+        }
         out << "\n";
         out << "      ]\n";
         out << "    }" << (i + 1 < objects_.size() ? ",\n" : "\n");
@@ -1119,12 +1578,15 @@ void SceneEditor::Save(const std::string& path) {
 void SceneEditor::Load(const std::string& path) {
     using namespace raceman::physics::json;
     objects_.clear();
+    selectedIndex_ = -1;
+    selectedIndices_.clear();
     undoStack_.clear();
     redoStack_.clear();
 
-    if (!fs::exists(path)) return;
+    const fs::path sourcePath = ResolveEditorPath(path);
+    if (!fs::exists(sourcePath)) return;
 
-    std::ifstream in(path);
+    std::ifstream in(sourcePath);
     if (!in.good()) return;
     std::stringstream buffer;
     buffer << in.rdbuf();
@@ -1152,6 +1614,8 @@ void SceneEditor::Load(const std::string& path) {
             else {
                 so.id = MakeId("obj");
             }
+
+            ReadString(o, "parentId", so.parentId);
 
             // name
             auto nameIt = o.find("name");
@@ -1284,6 +1748,8 @@ void SceneEditor::Load(const std::string& path) {
                 so.hasBoxCollider = false;
                 so.hasSphereCollider = false;
                 so.hasCapsuleCollider = false;
+                so.hasCamera = false;
+                so.hasLight = false;
 
                 const auto& components = componentsIt->second.as_array();
                 for (const auto& componentValue : components) {
@@ -1412,6 +1878,28 @@ void SceneEditor::Load(const std::string& path) {
                         if (farIt != component.end() && farIt->second.is_number()) {
                             so.camera.farClip = (std::max)(so.camera.nearClip + 0.001f, static_cast<float>(farIt->second.as_number()));
                         }
+                    } else if (componentType == "Light") {
+                        so.hasLight = true;
+                        ReadBool(component, "enabled", so.light.enabled);
+                        ReadVec3(component, "color", so.light.color);
+
+                        std::string lightType;
+                        if (ReadString(component, "lightType", lightType)) {
+                            so.light.type = LightTypeFromString(lightType);
+                        }
+
+                        auto intensityIt = component.find("intensity");
+                        if (intensityIt != component.end() && intensityIt->second.is_number()) {
+                            so.light.intensity = (std::max)(0.0f, static_cast<float>(intensityIt->second.as_number()));
+                        }
+                        auto rangeIt = component.find("range");
+                        if (rangeIt != component.end() && rangeIt->second.is_number()) {
+                            so.light.range = (std::max)(0.001f, static_cast<float>(rangeIt->second.as_number()));
+                        }
+                        auto spotAngleIt = component.find("spotAngleDegrees");
+                        if (spotAngleIt != component.end() && spotAngleIt->second.is_number()) {
+                            so.light.spotAngleDegrees = (std::max)(1.0f, (std::min)(179.0f, static_cast<float>(spotAngleIt->second.as_number())));
+                        }
                     }
                 }
             }
@@ -1438,7 +1926,7 @@ void SceneEditor::Load(const std::string& path) {
             }
             else if (so.hasMeshFilter && meshType == "Mesh" && !so.meshFilter.sourcePath.empty()) {
                 try {
-                    auto model = raceman::LoadModelFromFile(so.meshFilter.sourcePath);
+                    auto model = raceman::LoadModelFromFile(ProjectAssetPathToAbsolute(so.meshFilter.sourcePath).string());
                     const auto infos = raceman::GetMeshInfos(model);
                     if (so.meshFilter.meshIndex >= 0 && so.meshFilter.meshIndex < static_cast<int>(infos.size())) {
                         so.type = "Mesh";
@@ -1456,6 +1944,11 @@ void SceneEditor::Load(const std::string& path) {
         }
 
         // Select first object if available
+        for (SceneObject& object : objects_) {
+            if (!object.parentId.empty() && FindObjectIndexById(object.parentId) < 0) {
+                object.parentId.clear();
+            }
+        }
         if (!objects_.empty()) {
             Select(0);
         }
@@ -1463,6 +1956,419 @@ void SceneEditor::Load(const std::string& path) {
         // Silently ignore malformed files
     }
     
+}
+
+void SceneEditor::LoadProject() {
+    using namespace raceman::physics::json;
+
+    MigrateLegacyProjectLayout();
+
+    projectName_ = "Project Raceman";
+    assetsRootSetting_ = "assets";
+    defaultScenePath_ = "assets/scenes/EditorScene.scene.json";
+    lastScenePath_ = defaultScenePath_;
+    selectedProjectDirectory_ = "assets";
+    viewportMode_ = SceneEditorViewportMode::Scene;
+
+    const fs::path assetsRoot = FindAssetsRoot();
+    const fs::path scenesRoot = assetsRoot / "scenes";
+    const fs::path projectFile = ProjectRootPath() / projectPath_;
+    bool shouldSaveProject = false;
+
+    try {
+        fs::create_directories(scenesRoot);
+    } catch (...) {}
+
+    std::string projectSource;
+    if (ReadTextFile(projectFile, projectSource)) {
+        try {
+            Value root = parse(projectSource);
+            if (root.is_object()) {
+                const auto& object = root.as_object();
+                ReadString(object, "projectName", projectName_);
+                ReadString(object, "assetsRoot", assetsRootSetting_);
+                ReadString(object, "defaultScene", defaultScenePath_);
+                ReadString(object, "lastScene", lastScenePath_);
+
+                auto editorIt = object.find("editorState");
+                if (editorIt != object.end() && editorIt->second.is_object()) {
+                    const auto& editorState = editorIt->second.as_object();
+                    ReadString(editorState, "selectedProjectDirectory", selectedProjectDirectory_);
+                    std::string viewportModeValue;
+                    if (ReadString(editorState, "viewportMode", viewportModeValue)) {
+                        viewportMode_ = ViewportModeFromString(viewportModeValue);
+                    }
+                }
+            }
+        } catch (...) {
+            shouldSaveProject = true;
+        }
+    } else {
+        shouldSaveProject = true;
+    }
+
+    defaultScenePath_ = NormalizeSlashes(defaultScenePath_.empty() ? "assets/scenes/EditorScene.scene.json" : defaultScenePath_);
+    lastScenePath_ = NormalizeSlashes(lastScenePath_.empty() ? defaultScenePath_ : lastScenePath_);
+
+    std::string sceneToLoad = lastScenePath_;
+    if (!IsSceneAssetPath(sceneToLoad)) {
+        sceneToLoad = defaultScenePath_;
+        shouldSaveProject = true;
+    }
+
+    if (!fs::exists(ResolveEditorPath(sceneToLoad))) {
+        const fs::path defaultSceneAbsolute = ResolveEditorPath(defaultScenePath_);
+        const fs::path legacyEditorScene = EngineRootPath() / "config" / "scenes" / "EditorScene.json";
+        if (!fs::exists(defaultSceneAbsolute) && fs::exists(legacyEditorScene)) {
+            try {
+                fs::create_directories(defaultSceneAbsolute.parent_path());
+                fs::copy_file(legacyEditorScene, defaultSceneAbsolute, fs::copy_options::overwrite_existing);
+                shouldSaveProject = true;
+            } catch (...) {}
+        }
+        sceneToLoad = defaultScenePath_;
+    }
+
+    savePath_ = NormalizeSlashes(sceneToLoad);
+    if (fs::exists(ResolveEditorPath(savePath_))) {
+        Load(savePath_);
+    } else {
+        objects_.clear();
+        selectedIndex_ = -1;
+        selectedIndices_.clear();
+        undoStack_.clear();
+        redoStack_.clear();
+        CreateDefaultSceneObjects();
+        Save(savePath_);
+        shouldSaveProject = true;
+    }
+
+    lastScenePath_ = savePath_;
+    RefreshProjectFiles();
+    if (shouldSaveProject) {
+        SaveProject();
+    }
+}
+
+void SceneEditor::SaveProject() {
+    try {
+        const fs::path projectFile = ProjectRootPath() / projectPath_;
+        fs::create_directories(projectFile.parent_path());
+        std::ofstream out(projectFile, std::ios::trunc);
+        if (!out.good()) {
+            return;
+        }
+
+        out << "{\n";
+        out << "  \"version\": 1,\n";
+        out << "  \"projectName\": \"" << JsonEscape(projectName_) << "\",\n";
+        out << "  \"assetsRoot\": \"" << JsonEscape(assetsRootSetting_) << "\",\n";
+        out << "  \"defaultScene\": \"" << JsonEscape(NormalizeSlashes(defaultScenePath_)) << "\",\n";
+        out << "  \"lastScene\": \"" << JsonEscape(NormalizeSlashes(lastScenePath_)) << "\",\n";
+        out << "  \"editorState\": {\n";
+        out << "    \"selectedProjectDirectory\": \"" << JsonEscape(NormalizeSlashes(selectedProjectDirectory_)) << "\",\n";
+        out << "    \"viewportMode\": \"" << ViewportModeToString(viewportMode_) << "\"\n";
+        out << "  }\n";
+        out << "}\n";
+        if (console_) {
+            console_->AddLog("Project saved: " + NormalizeSlashes(projectFile.string()));
+        }
+    } catch (...) {
+        if (console_) {
+            console_->AddError("Failed to save project file.");
+        }
+    }
+}
+
+void SceneEditor::NewScene() {
+    NewScene("Untitled");
+}
+
+void SceneEditor::CreateDefaultSceneObjects() {
+    try {
+        auto model = raceman::LoadModelFromFile(ProjectAssetPathToAbsolute(kPlaneObjAssetPath).string());
+        const auto infos = raceman::GetMeshInfos(model);
+        if (!infos.empty()) {
+            SceneObject planeObject;
+            planeObject.id = MakeId("mesh");
+            planeObject.name = "Plane";
+            planeObject.type = "Mesh";
+            planeObject.transform.scale = {10.0f, 1.0f, 10.0f};
+            planeObject.hasMeshRenderer = true;
+            planeObject.meshRenderer.color = {1.0f, 1.0f, 1.0f, 1.0f};
+            planeObject.meshRenderer.materialId = "pbr_default";
+            planeObject.meshFilter.sourcePath = kPlaneObjAssetPath;
+            ApplyMeshInfoToSceneObject(planeObject, infos.front(), model);
+            AddDefaultBoxColliderToPlane(planeObject);
+            objects_.push_back(std::move(planeObject));
+        }
+    } catch (...) {
+        if (console_) {
+            console_->AddWarning("Failed to add default Plane object.");
+        }
+    }
+
+    SceneObject cameraObject;
+    cameraObject.id = MakeId("camera");
+    cameraObject.name = "Camera";
+    cameraObject.type = "Camera";
+    cameraObject.transform.position = {0.0f, 2.0f, 5.0f};
+    cameraObject.transform.rotationEuler = {-15.0f, 0.0f, 0.0f};
+    cameraObject.hasMeshFilter = false;
+    cameraObject.hasMeshRenderer = false;
+    cameraObject.hasScriptComponent = false;
+    cameraObject.hasCamera = true;
+    cameraObject.camera = CameraComponent{};
+    cameraObject.camera.isMain = true;
+    objects_.push_back(std::move(cameraObject));
+
+    SceneObject lightObject;
+    lightObject.id = MakeId("light");
+    lightObject.name = "Directional Light";
+    lightObject.type = "Light";
+    lightObject.transform.rotationEuler = {-45.0f, 35.0f, 0.0f};
+    lightObject.hasMeshFilter = false;
+    lightObject.hasMeshRenderer = false;
+    lightObject.hasScriptComponent = false;
+    lightObject.hasLight = true;
+    lightObject.light = LightComponent{};
+    lightObject.light.type = LightType::Directional;
+    lightObject.light.intensity = 1.5f;
+    lightObject.light.range = 100.0f;
+    objects_.push_back(std::move(lightObject));
+
+    selectedIndex_ = -1;
+    selectedIndices_.clear();
+}
+
+void SceneEditor::NewScene(const std::string& sceneName) {
+    if (scriptsRunning_) {
+        SetScriptsRunning(false);
+    }
+    ClearScriptRuntime();
+    objects_.clear();
+    selectedIndex_ = -1;
+    selectedIndices_.clear();
+    undoStack_.clear();
+    redoStack_.clear();
+    playModeSnapshot_ = {};
+    hasPlayModeSnapshot_ = false;
+    renamingObjectIndex_ = -1;
+    activeGizmoAxis_ = -1;
+    hoveredGizmoAxis_ = -1;
+    inspectMaterial_ = false;
+    CreateDefaultSceneObjects();
+    savePath_ = MakeUniqueSceneAssetPath(sceneName.empty() ? "Untitled" : sceneName);
+    lastScenePath_ = savePath_;
+    viewportMode_ = SceneEditorViewportMode::Scene;
+    SaveProject();
+    RefreshProjectFiles();
+    if (console_) {
+        console_->AddLog("New scene: " + savePath_);
+    }
+    if (onDirty_) onDirty_();
+}
+
+void SceneEditor::SaveCurrentScene() {
+    if (!IsSceneAssetPath(savePath_)) {
+        savePath_ = MakeUniqueSceneAssetPath("Untitled");
+    }
+    Save(savePath_);
+    lastScenePath_ = NormalizeSlashes(savePath_);
+    if (defaultScenePath_.empty()) {
+        defaultScenePath_ = lastScenePath_;
+    }
+    SaveProject();
+    RefreshProjectFiles();
+    if (console_) {
+        console_->AddLog("Scene saved: " + lastScenePath_);
+    }
+}
+
+void SceneEditor::SaveActiveAsset() {
+    if (inspectMaterial_ && !inspectedMaterialId_.empty()) {
+        Material* material = materialManager_.Get(inspectedMaterialId_);
+        if (material == nullptr) {
+            materialManager_.LoadAll();
+            material = materialManager_.Get(inspectedMaterialId_);
+        }
+
+        if (material != nullptr) {
+            if (materialManager_.Save(inspectedMaterialId_, *material)) {
+                materialManager_.LoadAll();
+                if (console_) {
+                    console_->AddLog("Saved material: " + inspectedMaterialId_);
+                }
+            } else if (console_) {
+                console_->AddError("Failed to save material: " + inspectedMaterialId_);
+            }
+            return;
+        }
+
+        if (console_) {
+            console_->AddError("Material not found: " + inspectedMaterialId_);
+        }
+        return;
+    }
+
+    SaveCurrentScene();
+}
+
+void SceneEditor::SaveCurrentSceneAs() {
+    std::string baseName = fs::path(savePath_).filename().string();
+    const std::string suffix = ".scene.json";
+    if (EndsWith(ToLowerCopy(baseName), suffix)) {
+        baseName = baseName.substr(0, baseName.size() - suffix.size());
+    } else {
+        baseName = fs::path(baseName).stem().string();
+    }
+    if (baseName.empty()) {
+        baseName = "Scene";
+    }
+    savePath_ = MakeUniqueSceneAssetPath(baseName);
+    SaveCurrentScene();
+}
+
+bool SceneEditor::CreateSceneAsset(const std::string& requestedName, std::string* outScenePath) {
+    std::string baseName = TrimCopyLocal(requestedName);
+    if (baseName.empty()) {
+        if (console_) {
+            console_->AddError("Scene name cannot be empty.");
+        }
+        return false;
+    }
+
+    const std::string scenePath = MakeUniqueSceneAssetPath(baseName);
+    const std::vector<SceneObject> previousObjects = objects_;
+    const int previousSelectedIndex = selectedIndex_;
+    const std::vector<int> previousSelectedIndices = selectedIndices_;
+    const bool previousInspectMaterial = inspectMaterial_;
+    const std::string previousInspectedMaterialId = inspectedMaterialId_;
+
+    try {
+        objects_.clear();
+        selectedIndex_ = -1;
+        selectedIndices_.clear();
+        inspectMaterial_ = false;
+        inspectedMaterialId_.clear();
+        CreateDefaultSceneObjects();
+        Save(scenePath);
+
+        objects_ = previousObjects;
+        selectedIndex_ = previousSelectedIndex;
+        selectedIndices_ = previousSelectedIndices;
+        inspectMaterial_ = previousInspectMaterial;
+        inspectedMaterialId_ = previousInspectedMaterialId;
+        NormalizeSelection();
+
+        if (outScenePath) {
+            *outScenePath = scenePath;
+        }
+        RefreshProjectFiles();
+        if (console_) {
+            console_->AddLog("Created scene asset: " + scenePath);
+        }
+        return true;
+    } catch (...) {
+        objects_ = previousObjects;
+        selectedIndex_ = previousSelectedIndex;
+        selectedIndices_ = previousSelectedIndices;
+        inspectMaterial_ = previousInspectMaterial;
+        inspectedMaterialId_ = previousInspectedMaterialId;
+        NormalizeSelection();
+        if (console_) {
+            console_->AddError("Failed to create scene asset.");
+        }
+        return false;
+    }
+}
+
+bool SceneEditor::OpenSceneAsset(const std::string& path) {
+    const std::string scenePath = NormalizeSlashes(path);
+    if (!IsSceneAssetPath(scenePath)) {
+        return false;
+    }
+    if (!fs::exists(ResolveEditorPath(scenePath))) {
+        if (console_) {
+            console_->AddError("Scene asset not found: " + scenePath);
+        }
+        return false;
+    }
+    if (scriptsRunning_) {
+        SetScriptsRunning(false);
+    }
+    ClearScriptRuntime();
+    Load(scenePath);
+    savePath_ = scenePath;
+    lastScenePath_ = scenePath;
+    SaveProject();
+    RefreshProjectFiles();
+    if (console_) {
+        console_->AddLog("Opened scene: " + scenePath);
+    }
+    return true;
+}
+
+std::vector<std::string> SceneEditor::GetSceneAssetPaths() const {
+    std::vector<std::string> scenes;
+    for (const std::string& file : projectFiles_) {
+        if (IsSceneAssetPath(file)) {
+            scenes.push_back(file);
+        }
+    }
+    return scenes;
+}
+
+void SceneEditor::UpdateProjectSceneReference(const std::string& oldPath, const std::string& newPath) {
+    const std::string oldScenePath = NormalizeSlashes(oldPath);
+    const std::string newScenePath = NormalizeSlashes(newPath);
+    bool changed = false;
+
+    if (NormalizeSlashes(defaultScenePath_) == oldScenePath) {
+        defaultScenePath_ = !newScenePath.empty() ? newScenePath : "assets/scenes/EditorScene.scene.json";
+        changed = true;
+    }
+    if (NormalizeSlashes(lastScenePath_) == oldScenePath) {
+        lastScenePath_ = !newScenePath.empty() ? newScenePath : defaultScenePath_;
+        changed = true;
+    }
+    if (NormalizeSlashes(savePath_) == oldScenePath) {
+        savePath_ = !newScenePath.empty() ? newScenePath : lastScenePath_;
+        changed = true;
+    }
+
+    if (changed) {
+        SaveProject();
+    }
+}
+
+std::string SceneEditor::MakeUniqueSceneAssetPath(const std::string& baseName) const {
+    std::string cleanBase;
+    cleanBase.reserve(baseName.size());
+    for (char ch : baseName) {
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (std::isalnum(uch) || ch == '_' || ch == '-') {
+            cleanBase.push_back(ch);
+        } else if (ch == ' ' || ch == '.') {
+            cleanBase.push_back('_');
+        }
+    }
+    if (cleanBase.empty()) {
+        cleanBase = "Scene";
+    }
+
+    std::string directory = selectedProjectDirectory_.empty() ? std::string("assets") : NormalizeSlashes(selectedProjectDirectory_);
+    if (directory != "assets" && directory.rfind("assets/", 0) != 0) {
+        directory = "assets";
+    }
+    const std::string prefix = directory + "/";
+    for (int i = 0; i < 10000; ++i) {
+        const std::string candidate = prefix + cleanBase + (i == 0 ? "" : "_" + std::to_string(i)) + ".scene.json";
+        if (!fs::exists(ResolveEditorPath(candidate))) {
+            return candidate;
+        }
+    }
+    return prefix + cleanBase + "_9999.scene.json";
 }
 
 std::string SceneEditor::MakeId(const std::string& base) {
@@ -1475,25 +2381,41 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
         UpdateGizmo(renderer);
     }
 
-    for (const auto& o : objects_) {
-        if (!o.enabled) continue;
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const auto& o = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !o.hasLight || !o.light.enabled) {
+            continue;
+        }
+
+        const glm::mat4 worldMatrix = GetObjectWorldMatrix(i);
+        LightDrawCommand light;
+        if (o.light.type == LightType::Directional) {
+            light.type = RenderLightType::Directional;
+        } else if (o.light.type == LightType::Spot) {
+            light.type = RenderLightType::Spot;
+        } else {
+            light.type = RenderLightType::Point;
+        }
+        light.position = glm::vec3(worldMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+        light.direction = glm::normalize(glm::vec3(worldMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+        light.color = o.light.color;
+        light.intensity = o.light.intensity;
+        light.range = o.light.range;
+        light.spotAngleDegrees = o.light.spotAngleDegrees;
+        renderer.SubmitLight(light);
+    }
+
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const auto& o = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i)) continue;
         if (!o.hasMeshFilter || !o.hasMeshRenderer) continue;
         if (!o.meshFilter.enabled || !o.meshRenderer.enabled) continue;
         if (o.meshFilter.vao == 0 || o.meshFilter.indexCount == 0) continue;
 
-        // Build model matrix from Transform (T * Rz * Ry * Rx * S)
-        glm::mat4 M(1.0f);
-        M = glm::translate(M, o.transform.position);
-        glm::vec3 rads = glm::radians(o.transform.rotationEuler);
-        M = glm::rotate(M, rads.z, glm::vec3(0,0,1));
-        M = glm::rotate(M, rads.y, glm::vec3(0,1,0));
-        M = glm::rotate(M, rads.x, glm::vec3(1,0,0));
-        M = glm::scale(M, o.transform.scale);
-
         MeshDrawCommand cmd;
         cmd.vao = o.meshFilter.vao;
         cmd.indexCount = o.meshFilter.indexCount;
-        cmd.modelMatrix = M;
+        cmd.modelMatrix = GetObjectWorldMatrix(i);
         cmd.materialId = o.meshRenderer.materialId.empty() ? std::string("pbr_default") : o.meshRenderer.materialId;
         if (const Material* material = materialManager_.Get(cmd.materialId)) {
             cmd.color = {
@@ -1502,6 +2424,14 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
                 material->albedoColor[2],
                 material->albedoColor[3]
             };
+            cmd.emissiveColor = {
+                material->emissiveColor[0],
+                material->emissiveColor[1],
+                material->emissiveColor[2]
+            };
+            cmd.metallic = material->metallic;
+            cmd.roughness = material->roughness;
+            cmd.unlit = ToLowerCopy(material->shader) == "unlit";
         } else {
             cmd.color = o.meshRenderer.color;
         }
@@ -1517,7 +2447,7 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
 }
 
 void SceneEditor::SetSavePath(const std::string& path) {
-    savePath_ = path;
+    savePath_ = NormalizeSlashes(path);
 }
 
 } // namespace raceman

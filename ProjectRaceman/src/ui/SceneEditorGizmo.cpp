@@ -38,7 +38,7 @@ glm::vec3 TransformDirection(const glm::mat4& transform, const glm::vec3& direct
 
 bool GetObjectLocalBounds(const SceneObject& object, glm::vec3& outMin, glm::vec3& outMax) {
     if (!object.hasMeshFilter) {
-        if (object.hasCamera) {
+        if (object.hasCamera || object.hasLight || object.type == "GameObject") {
             outMin = {-0.25f, -0.25f, -0.25f};
             outMax = {0.25f, 0.25f, 0.25f};
             return true;
@@ -158,7 +158,7 @@ glm::vec3 TransformPoint(const glm::mat4& transform, const glm::vec3& point) {
     return glm::vec3(transform * glm::vec4(point, 1.0f));
 }
 
-void SubmitWireBox(Renderer& renderer, const glm::mat4& transform, const glm::vec3& center, const glm::vec3& size, const glm::vec4& color, float width) {
+void SubmitWireBox(Renderer& renderer, const glm::mat4& transform, const glm::vec3& center, const glm::vec3& size, const glm::vec4& color, float width, DebugLineDepthMode depthMode = DebugLineDepthMode::AlwaysOnTop) {
     const glm::vec3 halfSize = glm::abs(size) * 0.5f;
     const glm::vec3 corners[8] = {
         TransformPoint(transform, center + glm::vec3{-halfSize.x, -halfSize.y, -halfSize.z}),
@@ -176,11 +176,11 @@ void SubmitWireBox(Renderer& renderer, const glm::mat4& transform, const glm::ve
         {0, 4}, {1, 5}, {2, 6}, {3, 7}
     };
     for (const auto& edge : edges) {
-        renderer.SubmitLine({corners[edge[0]], corners[edge[1]], color, width});
+        renderer.SubmitLine({corners[edge[0]], corners[edge[1]], color, width, depthMode});
     }
 }
 
-void SubmitWireCircle(Renderer& renderer, const glm::vec3& center, int axis, float radius, const glm::vec4& color, float width, int segments = 48) {
+void SubmitWireCircle(Renderer& renderer, const glm::vec3& center, int axis, float radius, const glm::vec4& color, float width, int segments = 48, DebugLineDepthMode depthMode = DebugLineDepthMode::AlwaysOnTop) {
     glm::vec3 previous;
     for (int i = 0; i <= segments; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(segments) * 6.28318530718f;
@@ -194,19 +194,19 @@ void SubmitWireCircle(Renderer& renderer, const glm::vec3& center, int axis, flo
         }
         const glm::vec3 current = center + local;
         if (i > 0) {
-            renderer.SubmitLine({previous, current, color, width});
+            renderer.SubmitLine({previous, current, color, width, depthMode});
         }
         previous = current;
     }
 }
 
-void SubmitWireSphere(Renderer& renderer, const glm::vec3& center, float radius, const glm::vec4& color, float width) {
-    SubmitWireCircle(renderer, center, 0, radius, color, width);
-    SubmitWireCircle(renderer, center, 1, radius, color, width);
-    SubmitWireCircle(renderer, center, 2, radius, color, width);
+void SubmitWireSphere(Renderer& renderer, const glm::vec3& center, float radius, const glm::vec4& color, float width, DebugLineDepthMode depthMode = DebugLineDepthMode::AlwaysOnTop) {
+    SubmitWireCircle(renderer, center, 0, radius, color, width, 48, depthMode);
+    SubmitWireCircle(renderer, center, 1, radius, color, width, 48, depthMode);
+    SubmitWireCircle(renderer, center, 2, radius, color, width, 48, depthMode);
 }
 
-void SubmitWireCircleTransformed(Renderer& renderer, const glm::mat4& transform, const glm::vec3& center, int axis, float radius, const glm::vec4& color, float width, int segments = 48) {
+void SubmitWireCircleTransformed(Renderer& renderer, const glm::mat4& transform, const glm::vec3& center, int axis, float radius, const glm::vec4& color, float width, int segments = 48, DebugLineDepthMode depthMode = DebugLineDepthMode::AlwaysOnTop) {
     glm::vec3 previous;
     for (int i = 0; i <= segments; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(segments) * 6.28318530718f;
@@ -220,23 +220,23 @@ void SubmitWireCircleTransformed(Renderer& renderer, const glm::mat4& transform,
         }
         const glm::vec3 current = TransformPoint(transform, center + local);
         if (i > 0) {
-            renderer.SubmitLine({previous, current, color, width});
+            renderer.SubmitLine({previous, current, color, width, depthMode});
         }
         previous = current;
     }
 }
 
-void SubmitWireCapsuleY(Renderer& renderer, const glm::mat4& transform, const glm::vec3& center, float radius, float height, const glm::vec4& color, float width) {
+void SubmitWireCapsuleY(Renderer& renderer, const glm::mat4& transform, const glm::vec3& center, float radius, float height, const glm::vec4& color, float width, DebugLineDepthMode depthMode = DebugLineDepthMode::AlwaysOnTop) {
     const float cylinderHalfHeight = (std::max)(0.0f, height * 0.5f - radius);
     const glm::vec3 top = center + glm::vec3{0.0f, cylinderHalfHeight, 0.0f};
     const glm::vec3 bottom = center - glm::vec3{0.0f, cylinderHalfHeight, 0.0f};
 
-    SubmitWireCircleTransformed(renderer, transform, top, 1, radius, color, width);
-    SubmitWireCircleTransformed(renderer, transform, bottom, 1, radius, color, width);
-    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{ radius, 0.0f, 0.0f}), TransformPoint(transform, bottom + glm::vec3{ radius, 0.0f, 0.0f}), color, width});
-    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{-radius, 0.0f, 0.0f}), TransformPoint(transform, bottom + glm::vec3{-radius, 0.0f, 0.0f}), color, width});
-    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{0.0f, 0.0f,  radius}), TransformPoint(transform, bottom + glm::vec3{0.0f, 0.0f,  radius}), color, width});
-    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{0.0f, 0.0f, -radius}), TransformPoint(transform, bottom + glm::vec3{0.0f, 0.0f, -radius}), color, width});
+    SubmitWireCircleTransformed(renderer, transform, top, 1, radius, color, width, 48, depthMode);
+    SubmitWireCircleTransformed(renderer, transform, bottom, 1, radius, color, width, 48, depthMode);
+    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{ radius, 0.0f, 0.0f}), TransformPoint(transform, bottom + glm::vec3{ radius, 0.0f, 0.0f}), color, width, depthMode});
+    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{-radius, 0.0f, 0.0f}), TransformPoint(transform, bottom + glm::vec3{-radius, 0.0f, 0.0f}), color, width, depthMode});
+    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{0.0f, 0.0f,  radius}), TransformPoint(transform, bottom + glm::vec3{0.0f, 0.0f,  radius}), color, width, depthMode});
+    renderer.SubmitLine({TransformPoint(transform, top + glm::vec3{0.0f, 0.0f, -radius}), TransformPoint(transform, bottom + glm::vec3{0.0f, 0.0f, -radius}), color, width, depthMode});
 
     constexpr int segments = 24;
     for (int plane = 0; plane < 2; ++plane) {
@@ -249,15 +249,15 @@ void SubmitWireCapsuleY(Renderer& renderer, const glm::mat4& transform, const gl
             const glm::vec3 topPoint = TransformPoint(transform, top + (plane == 0 ? glm::vec3{side, y, 0.0f} : glm::vec3{0.0f, y, side}));
             const glm::vec3 bottomPoint = TransformPoint(transform, bottom + (plane == 0 ? glm::vec3{side, -y, 0.0f} : glm::vec3{0.0f, -y, side}));
             if (i > 0) {
-                renderer.SubmitLine({previousTop, topPoint, color, width});
-                renderer.SubmitLine({previousBottom, bottomPoint, color, width});
+                renderer.SubmitLine({previousTop, topPoint, color, width, depthMode});
+                renderer.SubmitLine({previousBottom, bottomPoint, color, width, depthMode});
             }
             previousTop = topPoint;
             previousBottom = bottomPoint;
         }
     }
 }
-void SubmitCameraFrustum(Renderer& renderer, const SceneObject& object, const glm::vec4& color, float width) {
+void SubmitCameraFrustum(Renderer& renderer, const SceneObject& object, const glm::mat4& worldMatrix, const glm::vec4& color, float width, DebugLineDepthMode depthMode = DebugLineDepthMode::AlwaysOnTop) {
     if (!object.hasCamera || !object.camera.enabled) {
         return;
     }
@@ -273,10 +273,9 @@ void SubmitCameraFrustum(Renderer& renderer, const SceneObject& object, const gl
     const float farHalfHeight = std::tan(glm::radians(fov) * 0.5f) * frustumFar;
     const float farHalfWidth = farHalfHeight * aspect;
 
-    const glm::mat4 rotation = BuildRotationMatrix(object);
-    const glm::vec3 origin = object.transform.position;
+    const glm::vec3 origin = TransformPoint(worldMatrix, {0.0f, 0.0f, 0.0f});
     auto toWorld = [&](const glm::vec3& local) {
-        return origin + TransformDirection(rotation, local);
+        return TransformPoint(worldMatrix, local);
     };
 
     const glm::vec3 nearCenter{0.0f, 0.0f, -nearClip};
@@ -296,17 +295,65 @@ void SubmitCameraFrustum(Renderer& renderer, const SceneObject& object, const gl
 
     for (int i = 0; i < 4; ++i) {
         const int next = (i + 1) % 4;
-        renderer.SubmitLine({nearCorners[i], nearCorners[next], color, width});
-        renderer.SubmitLine({farCorners[i], farCorners[next], color, width});
-        renderer.SubmitLine({origin, farCorners[i], color, width});
-        renderer.SubmitLine({nearCorners[i], farCorners[i], color, width});
+        renderer.SubmitLine({nearCorners[i], nearCorners[next], color, width, depthMode});
+        renderer.SubmitLine({farCorners[i], farCorners[next], color, width, depthMode});
+        renderer.SubmitLine({origin, farCorners[i], color, width, depthMode});
+        renderer.SubmitLine({nearCorners[i], farCorners[i], color, width, depthMode});
     }
+}
+
+void SubmitLightIcon(Renderer& renderer, const SceneObject& object, const glm::mat4& worldMatrix, DebugLineDepthMode depthMode = DebugLineDepthMode::DepthTestedOverlay) {
+    if (!object.hasLight || !object.light.enabled) {
+        return;
+    }
+
+    const glm::vec4 color{1.0f, 0.92f, 0.2f, 1.0f};
+    const glm::vec3 origin = TransformPoint(worldMatrix, {0.0f, 0.0f, 0.0f});
+    constexpr float width = 2.0f;
+    constexpr float iconRadius = 0.25f;
+
+    if (object.light.type == LightType::Directional) {
+        const glm::vec3 forward = TransformDirection(worldMatrix, {0.0f, 0.0f, -1.0f});
+        const glm::vec3 right = TransformDirection(worldMatrix, {1.0f, 0.0f, 0.0f});
+        const glm::vec3 up = TransformDirection(worldMatrix, {0.0f, 1.0f, 0.0f});
+        for (int i = -1; i <= 1; ++i) {
+            const glm::vec3 offset = right * (static_cast<float>(i) * 0.18f);
+            const glm::vec3 start = origin + offset - forward * 0.2f;
+            const glm::vec3 end = origin + offset + forward * 0.55f;
+            renderer.SubmitLine({start, end, color, width, depthMode});
+            renderer.SubmitLine({end, end - forward * 0.18f + up * 0.10f, color, width, depthMode});
+            renderer.SubmitLine({end, end - forward * 0.18f - up * 0.10f, color, width, depthMode});
+        }
+        return;
+    }
+
+    if (object.light.type == LightType::Spot) {
+        const float previewRange = (std::min)((std::max)(object.light.range, 0.5f), 3.0f);
+        const float angle = glm::radians((std::max)(1.0f, (std::min)(object.light.spotAngleDegrees, 179.0f))) * 0.5f;
+        const float coneRadius = std::tan(angle) * previewRange;
+        const glm::vec3 forward = TransformDirection(worldMatrix, {0.0f, 0.0f, -1.0f});
+        const glm::vec3 center = origin + forward * previewRange;
+        SubmitWireCircleTransformed(renderer, worldMatrix, glm::vec3{0.0f, 0.0f, -previewRange}, 2, coneRadius, color, width, 32, depthMode);
+        renderer.SubmitLine({origin, center + TransformDirection(worldMatrix, { coneRadius, 0.0f, 0.0f}), color, width, depthMode});
+        renderer.SubmitLine({origin, center + TransformDirection(worldMatrix, {-coneRadius, 0.0f, 0.0f}), color, width, depthMode});
+        renderer.SubmitLine({origin, center + TransformDirection(worldMatrix, {0.0f,  coneRadius, 0.0f}), color, width, depthMode});
+        renderer.SubmitLine({origin, center + TransformDirection(worldMatrix, {0.0f, -coneRadius, 0.0f}), color, width, depthMode});
+        return;
+    }
+
+    SubmitWireSphere(renderer, origin, iconRadius, color, width, depthMode);
+    renderer.SubmitLine({origin + glm::vec3{-iconRadius * 1.4f, 0.0f, 0.0f}, origin + glm::vec3{iconRadius * 1.4f, 0.0f, 0.0f}, color, width, depthMode});
+    renderer.SubmitLine({origin + glm::vec3{0.0f, -iconRadius * 1.4f, 0.0f}, origin + glm::vec3{0.0f, iconRadius * 1.4f, 0.0f}, color, width, depthMode});
+    renderer.SubmitLine({origin + glm::vec3{0.0f, 0.0f, -iconRadius * 1.4f}, origin + glm::vec3{0.0f, 0.0f, iconRadius * 1.4f}, color, width, depthMode});
 }
 
 } // namespace
 
 void SceneEditor::SelectProjectFile(const std::string& path) {
     selectedProjectFile_ = NormalizeSlashes(path);
+    if (!selectedProjectFile_.empty()) {
+        selectedProjectDirectory_ = ParentProjectDirectory(selectedProjectFile_);
+    }
 }
 
 void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
@@ -325,13 +372,16 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
     int bestIndex = -1;
     float bestT = (std::numeric_limits<float>::max)();
     for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        if (!IsObjectEffectivelyEnabled(i)) {
+            continue;
+        }
         glm::vec3 boundsMin;
         glm::vec3 boundsMax;
         if (!GetObjectLocalBounds(objects_[i], boundsMin, boundsMax)) {
             continue;
         }
 
-        const glm::mat4 model = BuildObjectMatrix(objects_[i]);
+        const glm::mat4 model = GetObjectWorldMatrix(i);
         const float det = glm::determinant(model);
         if (std::abs(det) < 0.000001f) {
             continue;
@@ -351,9 +401,14 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
     }
 
     if (bestIndex >= 0) {
-        Select(bestIndex);
-    } else {
+        if (io.KeyCtrl) {
+            ToggleSelect(bestIndex);
+        } else {
+            Select(bestIndex);
+        }
+    } else if (!io.KeyCtrl) {
         selectedIndex_ = -1;
+        selectedIndices_.clear();
         inspectMaterial_ = false;
         activeGizmoAxis_ = -1;
     }
@@ -370,8 +425,13 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
     }
 
     const SceneObject& selectedObject = objects_[selectedIndex_];
+    if (!IsObjectEffectivelyEnabled(selectedIndex_)) {
+        activeGizmoAxis_ = -1;
+        TrySelectObjectAtMouse(renderer);
+        return;
+    }
     const glm::vec2 mouse{io.MousePos.x, io.MousePos.y};
-    const glm::vec3 origin = selectedObject.transform.position;
+    const glm::vec3 origin = GetObjectWorldPosition(selectedIndex_);
     const glm::mat4 gizmoRotation = BuildRotationMatrix(selectedObject);
     constexpr float axisLength = 1.0f;
     constexpr float hitDistancePixels = 10.0f;
@@ -470,7 +530,13 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
                 (std::max)(scaled.z, 0.01f)
             };
         } else {
-            objects_[selectedIndex_].transform.position = gizmoDragStartPosition_ + axisVector * worldDelta;
+            const glm::vec3 targetWorldPosition = gizmoDragStartPosition_ + axisVector * worldDelta;
+            const int parentIndex = FindObjectIndexById(objects_[selectedIndex_].parentId);
+            if (parentIndex >= 0) {
+                objects_[selectedIndex_].transform.position = glm::vec3(glm::inverse(GetObjectWorldMatrix(parentIndex)) * glm::vec4(targetWorldPosition, 1.0f));
+            } else {
+                objects_[selectedIndex_].transform.position = targetWorldPosition;
+            }
         }
     }
     gizmoDirtyDuringDrag_ = true;
@@ -482,7 +548,10 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
     }
 
     const SceneObject& object = objects_[selectedIndex_];
-    const glm::vec3 origin = object.transform.position;
+    if (!IsObjectEffectivelyEnabled(selectedIndex_)) {
+        return;
+    }
+    const glm::vec3 origin = GetObjectWorldPosition(selectedIndex_);
     const glm::mat4 gizmoRotation = BuildRotationMatrix(object);
     constexpr float axisLength = 1.0f;
     constexpr float arrowHeadLength = 0.35f;
@@ -546,7 +615,8 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
 
     const glm::vec4 colliderColor{0.1f, 0.9f, 0.35f, 1.0f};
     constexpr float colliderWidth = 2.0f;
-    const glm::mat4 objectMatrix = BuildObjectMatrix(object);
+    constexpr DebugLineDepthMode helperDepthMode = DebugLineDepthMode::DepthTestedOverlay;
+    const glm::mat4 objectMatrix = GetObjectWorldMatrix(selectedIndex_);
     if (object.hasBoxCollider && object.boxCollider.enabled) {
         SubmitWireBox(
             renderer,
@@ -554,7 +624,8 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             object.boxCollider.center,
             object.boxCollider.size,
             colliderColor,
-            colliderWidth);
+            colliderWidth,
+            helperDepthMode);
     }
     if (object.hasSphereCollider && object.sphereCollider.enabled) {
         SubmitWireSphere(
@@ -562,15 +633,19 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             TransformPoint(objectMatrix, object.sphereCollider.center),
             object.sphereCollider.radius * (std::max)((std::max)(std::abs(object.transform.scale.x), std::abs(object.transform.scale.y)), std::abs(object.transform.scale.z)),
             colliderColor,
-            colliderWidth);
+            colliderWidth,
+            helperDepthMode);
     }
     if (object.hasCapsuleCollider && object.capsuleCollider.enabled) {
         const float radius = object.capsuleCollider.radius;
         const float height = (std::max)(object.capsuleCollider.height, radius * 2.0f);
-        SubmitWireCapsuleY(renderer, objectMatrix, object.capsuleCollider.center, radius, height, colliderColor, colliderWidth);
+        SubmitWireCapsuleY(renderer, objectMatrix, object.capsuleCollider.center, radius, height, colliderColor, colliderWidth, helperDepthMode);
     }
     if (object.hasCamera && object.camera.enabled) {
-        SubmitCameraFrustum(renderer, object, glm::vec4{1.0f, 0.85f, 0.2f, 1.0f}, 2.0f);
+        SubmitCameraFrustum(renderer, object, objectMatrix, glm::vec4{1.0f, 0.85f, 0.2f, 1.0f}, 2.0f, helperDepthMode);
+    }
+    if (object.hasLight && object.light.enabled) {
+        SubmitLightIcon(renderer, object, objectMatrix, helperDepthMode);
     }
 }
 

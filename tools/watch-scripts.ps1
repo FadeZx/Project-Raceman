@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $projectRoot = Join-Path $repoRoot "ProjectRaceman"
 $solutionPath = Join-Path $projectRoot "Project Raceman.sln"
-$scriptsPath = Join-Path $projectRoot "assets\scripts"
+$scriptsPath = Join-Path $projectRoot "Project\assets\scripts"
 $exePath = Join-Path $projectRoot "bin\$Configuration\ProjectRaceman.exe"
 
 function Find-MSBuild {

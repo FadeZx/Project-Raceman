@@ -29,8 +29,34 @@ struct MeshDrawCommand {
     glm::mat4 modelMatrix{1.0f};
     std::string materialId;
     glm::vec4 color{1.0f, 0.2f, 0.2f, 1.0f};
+    glm::vec3 emissiveColor{0.0f};
+    float metallic{0.0f};
+    float roughness{1.0f};
     unsigned int diffuseTextureId{0};
     bool useDiffuseTexture{false};
+    bool unlit{false};
+};
+
+enum class RenderLightType {
+    Directional,
+    Point,
+    Spot
+};
+
+struct LightDrawCommand {
+    RenderLightType type{RenderLightType::Point};
+    glm::vec3 position{0.0f};
+    glm::vec3 direction{0.0f, -1.0f, 0.0f};
+    glm::vec3 color{1.0f};
+    float intensity{1.0f};
+    float range{10.0f};
+    float spotAngleDegrees{30.0f};
+};
+
+enum class DebugLineDepthMode {
+    AlwaysOnTop,
+    DepthTested,
+    DepthTestedOverlay
 };
 
 struct DebugLineCommand {
@@ -38,6 +64,7 @@ struct DebugLineCommand {
     glm::vec3 end{0.0f};
     glm::vec4 color{1.0f};
     float width{2.0f};
+    DebugLineDepthMode depthMode{DebugLineDepthMode::AlwaysOnTop};
 };
 
 struct EnvironmentMaps {
@@ -59,6 +86,7 @@ public:
     void CreateShadowMaps(int resolution);
 
     void SubmitMesh(const MeshDrawCommand& cmd);
+    void SubmitLight(const LightDrawCommand& cmd);
     void SubmitLine(const DebugLineCommand& cmd);
     void Flush();
 
@@ -78,6 +106,7 @@ private:
 
     RendererConfig config_{};
     std::vector<MeshDrawCommand> drawList_;
+    std::vector<LightDrawCommand> lightDrawList_;
     EnvironmentMaps environmentMaps_{};
     RendererSettings settings_{};
     unsigned int captureFbo_{0};

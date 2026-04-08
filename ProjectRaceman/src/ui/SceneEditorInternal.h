@@ -85,6 +85,10 @@ inline bool IsMaterialAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".mat.json");
 }
 
+inline bool IsSceneAssetPath(const std::string& path) {
+    return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".scene.json");
+}
+
 inline std::string MaterialIdFromAssetPath(const std::string& path) {
     std::string filename = fs::path(path).filename().string();
     const std::string suffix = ".mat.json";
@@ -95,6 +99,15 @@ inline std::string MaterialIdFromAssetPath(const std::string& path) {
 }
 
 inline std::string ProjectAssetDisplayFilename(const std::string& path) {
+    if (IsSceneAssetPath(path)) {
+        std::string filename = fs::path(path).filename().string();
+        const std::string suffix = ".scene.json";
+        if (EndsWith(ToLowerCopy(filename), suffix)) {
+            filename.resize(filename.size() - suffix.size());
+            filename += ".scene";
+        }
+        return filename;
+    }
     if (IsMaterialAssetPath(path)) {
         return MaterialIdFromAssetPath(path) + ".mat";
     }
@@ -106,14 +119,52 @@ inline std::string ParentProjectDirectory(const std::string& path) {
     return parent.empty() ? std::string("assets") : parent;
 }
 
+inline fs::path FindEngineRoot() {
+    if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
+        return fs::absolute("ProjectRaceman").lexically_normal();
+    }
+    if (fs::exists("src") && fs::is_directory("src")) {
+        return fs::absolute(".").lexically_normal();
+    }
+    return fs::absolute(".").lexically_normal();
+}
+
+inline fs::path FindProjectRoot() {
+    return (FindEngineRoot() / "Project").lexically_normal();
+}
+
 inline fs::path FindAssetsRoot() {
-    if (fs::exists("assets") && fs::is_directory("assets")) {
-        return fs::absolute("assets").lexically_normal();
+    return (FindProjectRoot() / "assets").lexically_normal();
+}
+
+inline fs::path EditorAssetPathToAbsolute(const std::string& relativePath) {
+    return (FindEngineRoot() / "editor-assets" / fs::path(NormalizeSlashes(relativePath))).lexically_normal();
+}
+
+inline fs::path LegacyAssetsRoot() {
+    return (FindEngineRoot() / "assets").lexically_normal();
+}
+
+inline fs::path LegacyProjectRoot() {
+    return FindEngineRoot();
+}
+
+inline void CopyDirectoryIfMissing(const fs::path& from, const fs::path& to) {
+    if (!fs::exists(from) || !fs::is_directory(from)) {
+        return;
     }
-    if (fs::exists("ProjectRaceman/assets") && fs::is_directory("ProjectRaceman/assets")) {
-        return fs::absolute("ProjectRaceman/assets").lexically_normal();
+    for (const auto& entry : fs::recursive_directory_iterator(from)) {
+        const fs::path relative = fs::relative(entry.path(), from);
+        const fs::path dest = to / relative;
+        if (entry.is_directory()) {
+            fs::create_directories(dest);
+        } else if (entry.is_regular_file()) {
+            fs::create_directories(dest.parent_path());
+            if (!fs::exists(dest)) {
+                fs::copy_file(entry.path(), dest, fs::copy_options::skip_existing);
+            }
+        }
     }
-    return fs::absolute("assets").lexically_normal();
 }
 
 inline bool IsUnderPath(const fs::path& path, const fs::path& root) {
@@ -360,6 +411,7 @@ inline bool IsCtrlYPressed() {
 
 inline constexpr const char* kObjAssetPayload = "RACEMAN_PROJECT_OBJ";
 inline constexpr const char* kMaterialAssetPayload = "RACEMAN_PROJECT_MATERIAL";
+inline constexpr const char* kProjectFilePayload = "RACEMAN_PROJECT_FILE";
 inline constexpr const char* kPlaneObjAssetPath = "assets/mesh/plane.obj";
 
 } // namespace raceman::scene_editor_internal

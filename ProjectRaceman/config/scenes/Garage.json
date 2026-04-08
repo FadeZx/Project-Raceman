@@ -2,6 +2,7 @@
   "objects": [
     {
       "id": "plane_1",
+      "parentId": "",
       "name": "Plane",
       "type": "Plane",
       "enabled": true,
@@ -38,14 +39,15 @@
     },
     {
       "id": "mesh_2",
+      "parentId": "gameobject_1",
       "name": "Wheel_Left",
       "type": "Mesh",
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [1.0348, 0.306776, 0.927115],
-          "rotationEuler": [0, 0, 0],
+          "position": [0, 0, 0],
+          "rotationEuler": [0, -0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -60,7 +62,7 @@
         {
           "type": "MeshRenderer",
           "enabled": true,
-          "materialId": "material_1",
+          "materialId": "Wheel",
           "color": [1, 1, 1, 1]
         },
         {
@@ -93,14 +95,15 @@
     },
     {
       "id": "mesh_1",
+      "parentId": "gameobject_1",
       "name": "Wheel_Right",
       "type": "Mesh",
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [2.68681, 0.306776, 0.756754],
-          "rotationEuler": [-4.59892, -180.514, 0],
+          "position": [2.13854, 0, 0],
+          "rotationEuler": [175.401, 0.514004, -180],
           "scale": [1, 1, 1]
         },
         {
@@ -141,13 +144,14 @@
           "type": "SphereCollider",
           "enabled": true,
           "isTrigger": false,
-          "center": [0, 0, 0],
+          "center": [0.1, 0, 0],
           "radius": 0.5
         }
       ]
     },
     {
       "id": "camera_3",
+      "parentId": "",
       "name": "Camera",
       "type": "Camera",
       "enabled": true,
@@ -166,6 +170,69 @@
           "nearClip": 0.38,
           "farClip": 561,
           "clearColor": [0.02, 0.02, 0.02, 1]
+        }
+      ]
+    },
+    {
+      "id": "light_1",
+      "parentId": "",
+      "name": "Directional Light",
+      "type": "Light",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [-24.9017, 25.5468, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "lightType": "Directional",
+          "color": [0.946078, 0.838049, 0.612168],
+          "intensity": 1.5,
+          "range": 100,
+          "spotAngleDegrees": 30
+        }
+      ]
+    },
+    {
+      "id": "light_1",
+      "parentId": "",
+      "name": "Spot Light",
+      "type": "Light",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [4.04892, 4.12308, 4.39756],
+          "rotationEuler": [-35, 23.711, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "lightType": "Spot",
+          "color": [1, 1, 1],
+          "intensity": 6.5,
+          "range": 14,
+          "spotAngleDegrees": 32
+        }
+      ]
+    },
+    {
+      "id": "gameobject_1",
+      "parentId": "",
+      "name": "Wheels",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
         }
       ]
     }

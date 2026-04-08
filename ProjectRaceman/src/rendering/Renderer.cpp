@@ -3,6 +3,8 @@
 
 #include <glad/glad.h>
 
+#include <algorithm>
+#include <glm/gtc/matrix_inverse.hpp>
 #include <stdexcept>
 
 namespace raceman {
@@ -114,6 +116,8 @@ void Renderer::CreateShadowMaps(int resolution) {
 
 void Renderer::SubmitMesh(const MeshDrawCommand& cmd) { drawList_.push_back(cmd); }
 
+void Renderer::SubmitLight(const LightDrawCommand& cmd) { lightDrawList_.push_back(cmd); }
+
 void Renderer::SubmitLine(const DebugLineCommand& cmd) { lineDrawList_.push_back(cmd); }
 
 void Renderer::Flush() {
@@ -125,15 +129,28 @@ void Renderer::Flush() {
     // Draw editor meshes as real scene geometry, while preserving caller GL state.
     GLboolean depthEnabled = glIsEnabled(GL_DEPTH_TEST);
     GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
+    GLboolean blendEnabled = glIsEnabled(GL_BLEND);
     GLboolean depthWriteMask = GL_TRUE;
     GLint depthFunc = GL_LESS;
     GLint cullFaceMode = GL_BACK;
     GLint frontFaceMode = GL_CCW;
+    GLint blendSrcRgb = GL_ONE;
+    GLint blendDstRgb = GL_ZERO;
+    GLint blendSrcAlpha = GL_ONE;
+    GLint blendDstAlpha = GL_ZERO;
+    GLint blendEquationRgb = GL_FUNC_ADD;
+    GLint blendEquationAlpha = GL_FUNC_ADD;
     GLfloat lineWidth = 1.0f;
     glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWriteMask);
     glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
     glGetIntegerv(GL_CULL_FACE_MODE, &cullFaceMode);
     glGetIntegerv(GL_FRONT_FACE, &frontFaceMode);
+    glGetIntegerv(GL_BLEND_SRC_RGB, &blendSrcRgb);
+    glGetIntegerv(GL_BLEND_DST_RGB, &blendDstRgb);
+    glGetIntegerv(GL_BLEND_SRC_ALPHA, &blendSrcAlpha);
+    glGetIntegerv(GL_BLEND_DST_ALPHA, &blendDstAlpha);
+    glGetIntegerv(GL_BLEND_EQUATION_RGB, &blendEquationRgb);
+    glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &blendEquationAlpha);
     glGetFloatv(GL_LINE_WIDTH, &lineWidth);
 
     glEnable(GL_DEPTH_TEST);
@@ -145,13 +162,38 @@ void Renderer::Flush() {
 
     simpleShader_->use();
     simpleShader_->setInt("uDiffuseTexture", 0);
+    const int lightCount = static_cast<int>((std::min)(lightDrawList_.size(), static_cast<std::size_t>(8)));
+    simpleShader_->setInt("uLightCount", lightCount);
+    simpleShader_->setVec3("uCameraPosition", glm::vec3(glm::inverse(view_)[3]));
+    for (int i = 0; i < lightCount; ++i) {
+        const LightDrawCommand& light = lightDrawList_[static_cast<std::size_t>(i)];
+        const std::string prefix = "uLights[" + std::to_string(i) + "].";
+        int type = 1;
+        if (light.type == RenderLightType::Directional) {
+            type = 0;
+        } else if (light.type == RenderLightType::Spot) {
+            type = 2;
+        }
+        simpleShader_->setInt(prefix + "type", type);
+        simpleShader_->setVec3(prefix + "position", light.position);
+        simpleShader_->setVec3(prefix + "direction", glm::length(light.direction) > 0.0001f ? glm::normalize(light.direction) : glm::vec3{0.0f, -1.0f, 0.0f});
+        simpleShader_->setVec3(prefix + "color", light.color);
+        simpleShader_->setFloat(prefix + "intensity", light.intensity);
+        simpleShader_->setFloat(prefix + "range", (std::max)(0.001f, light.range));
+        simpleShader_->setFloat(prefix + "spotAngleDegrees", (std::max)(1.0f, (std::min)(179.0f, light.spotAngleDegrees)));
+    }
     for (const auto& cmd : drawList_) {
         // MVP = proj * view * model
         glm::mat4 mvp = proj_ * view_ * cmd.modelMatrix;
         simpleShader_->setMat4("uMVP", mvp);
+        simpleShader_->setMat4("uModel", cmd.modelMatrix);
         // Per-object color
         simpleShader_->setVec4("uColor", cmd.color);
+        simpleShader_->setVec3("uEmissiveColor", cmd.emissiveColor);
+        simpleShader_->setFloat("uMetallic", (std::max)(0.0f, (std::min)(1.0f, cmd.metallic)));
+        simpleShader_->setFloat("uRoughness", (std::max)(0.02f, (std::min)(1.0f, cmd.roughness)));
         simpleShader_->setBool("uUseDiffuseTexture", cmd.useDiffuseTexture && cmd.diffuseTextureId != 0);
+        simpleShader_->setBool("uUnlit", cmd.unlit);
         if (cmd.useDiffuseTexture && cmd.diffuseTextureId != 0) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, cmd.diffuseTextureId);
@@ -162,6 +204,7 @@ void Renderer::Flush() {
     }
     glBindVertexArray(0);
     drawList_.clear();
+    lightDrawList_.clear();
 
     if (!lineDrawList_.empty()) {
         if (lineVao_ == 0) {
@@ -175,21 +218,54 @@ void Renderer::Flush() {
             glBindVertexArray(0);
         }
 
-        glDisable(GL_DEPTH_TEST);
-        glDisable(GL_CULL_FACE);
-        glDepthMask(GL_FALSE);
         simpleShader_->use();
         simpleShader_->setMat4("uMVP", proj_ * view_);
+        simpleShader_->setMat4("uModel", glm::mat4(1.0f));
+        simpleShader_->setVec3("uEmissiveColor", glm::vec3(0.0f));
+        simpleShader_->setFloat("uMetallic", 0.0f);
+        simpleShader_->setFloat("uRoughness", 1.0f);
         simpleShader_->setBool("uUseDiffuseTexture", false);
+        simpleShader_->setBool("uUnlit", true);
         glBindVertexArray(lineVao_);
-        for (const auto& cmd : lineDrawList_) {
-            const glm::vec3 vertices[2] = {cmd.start, cmd.end};
-            glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-            glLineWidth(cmd.width);
-            simpleShader_->setVec4("uColor", cmd.color);
-            glDrawArrays(GL_LINES, 0, 2);
-        }
+
+        auto drawLineBatch = [&](DebugLineDepthMode mode, bool overlayPass) {
+            if (mode == DebugLineDepthMode::AlwaysOnTop || overlayPass) {
+                glDisable(GL_DEPTH_TEST);
+            } else {
+                glEnable(GL_DEPTH_TEST);
+                glDepthFunc(GL_LEQUAL);
+            }
+            glDisable(GL_CULL_FACE);
+            glDepthMask(GL_FALSE);
+            if (overlayPass) {
+                glEnable(GL_BLEND);
+                glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            } else {
+                glDisable(GL_BLEND);
+            }
+
+            for (const auto& cmd : lineDrawList_) {
+                if (cmd.depthMode != mode) {
+                    continue;
+                }
+                const glm::vec3 vertices[2] = {cmd.start, cmd.end};
+                glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
+                glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+                glLineWidth(cmd.width);
+                glm::vec4 color = cmd.color;
+                if (overlayPass) {
+                    color.a *= 0.25f;
+                }
+                simpleShader_->setVec4("uColor", color);
+                glDrawArrays(GL_LINES, 0, 2);
+            }
+        };
+
+        drawLineBatch(DebugLineDepthMode::DepthTested, false);
+        drawLineBatch(DebugLineDepthMode::DepthTestedOverlay, false);
+        drawLineBatch(DebugLineDepthMode::DepthTestedOverlay, true);
+        drawLineBatch(DebugLineDepthMode::AlwaysOnTop, false);
         glBindVertexArray(0);
         lineDrawList_.clear();
     }
@@ -200,8 +276,11 @@ void Renderer::Flush() {
     glDepthFunc(depthFunc);
     glCullFace(cullFaceMode);
     glFrontFace(frontFaceMode);
+    glBlendEquationSeparate(blendEquationRgb, blendEquationAlpha);
+    glBlendFuncSeparate(blendSrcRgb, blendDstRgb, blendSrcAlpha, blendDstAlpha);
     if (depthEnabled) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
     if (cullEnabled) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+    if (blendEnabled) glEnable(GL_BLEND); else glDisable(GL_BLEND);
 }
 
 const RendererConfig& Renderer::GetConfig() const { return config_; }

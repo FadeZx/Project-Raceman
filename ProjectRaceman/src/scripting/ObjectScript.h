@@ -8,11 +8,12 @@ namespace raceman {
 
 class Console;
 class InputManager;
+class PhysicsWorld;
 struct SceneObject;
 
 class ObjectScriptContext {
 public:
-    ObjectScriptContext(SceneObject& object, Console* console, InputManager* inputManager = nullptr);
+    ObjectScriptContext(SceneObject& object, Console* console, InputManager* inputManager = nullptr, PhysicsWorld* physicsWorld = nullptr);
 
     const std::string& GetObjectId() const;
     const std::string& GetObjectName() const;
@@ -47,6 +48,7 @@ private:
     SceneObject& object_;
     Console* console_{nullptr};
     InputManager* inputManager_{nullptr};
+    PhysicsWorld* physicsWorld_{nullptr};
 };
 
 class IObjectScript {

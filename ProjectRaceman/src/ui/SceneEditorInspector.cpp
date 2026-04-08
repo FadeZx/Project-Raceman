@@ -2,6 +2,11 @@
 #include "../physics/SimpleJson.h"
 #include "../scripting/ScriptRegistry.h"
 
+#include <glad/glad.h>
+#include <stb_image.h>
+
+#include <cstdint>
+
 namespace fs = std::filesystem;
 
 namespace raceman {
@@ -9,8 +14,25 @@ using namespace scene_editor_internal;
 
 namespace {
 
-bool RenderRemovableComponentHeader(const char* label, const char* id, bool& removeRequested) {
+void RenderComponentIcon(unsigned int textureId) {
+    if (textureId == 0) {
+        return;
+    }
+    ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<intptr_t>(textureId)), ImVec2(18.0f, 18.0f));
+    ImGui::SameLine();
+}
+
+bool RenderRemovableComponentHeader(const char* label, const char* id, unsigned int textureId, bool* enabled, bool& enabledChanged, bool& removeRequested) {
     ImGui::PushID(id);
+    RenderComponentIcon(textureId);
+    enabledChanged = false;
+    if (enabled != nullptr) {
+        enabledChanged = ImGui::Checkbox("##componentEnabled", enabled);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enable Component");
+        }
+        ImGui::SameLine();
+    }
     const bool open = ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
     const float removeButtonWidth = ImGui::CalcTextSize("Remove").x + ImGui::GetStyle().FramePadding.x * 2.0f;
     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - removeButtonWidth);
@@ -22,14 +44,68 @@ bool RenderRemovableComponentHeader(const char* label, const char* id, bool& rem
 
 } // namespace
 
+unsigned int SceneEditor::GetComponentIconTexture(const std::string& filename) {
+    const auto existing = componentIconTextures_.find(filename);
+    if (existing != componentIconTextures_.end()) {
+        return existing->second;
+    }
+
+    const fs::path absolutePath = EditorAssetPathToAbsolute("icons/" + filename);
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    unsigned char* data = stbi_load(absolutePath.string().c_str(), &width, &height, &channels, 4);
+    if (data == nullptr || width <= 0 || height <= 0) {
+        componentIconTextures_[filename] = 0;
+        return 0;
+    }
+
+    unsigned int textureId = 0;
+    glGenTextures(1, &textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(data);
+
+    componentIconTextures_[filename] = textureId;
+    return textureId;
+}
+
 void SceneEditor::RenderInspectorPanel() {
-    if (ImGui::Begin("Inspector")) {
+    if (ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoCollapse)) {
         if (inspectMaterial_) {
             RenderMaterialInspector();
+        } else if (selectedIndices_.size() > 1) {
+            RenderMultiSelectionInspector();
         } else if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())) {
             SceneObject& obj = objects_[selectedIndex_];
+            auto beginInspectorContinuousEdit = [&]() {
+                if (!inspectorEditActive_) {
+                    PushUndoState();
+                    inspectorEditActive_ = true;
+                }
+            };
+            auto endInspectorContinuousEdit = [&]() {
+                if (ImGui::IsItemDeactivated()) {
+                    inspectorEditActive_ = false;
+                }
+            };
 
             // Name
+            bool objectEnabled = obj.enabled;
+            if (ImGui::Checkbox("##objectEnabledInspector", &objectEnabled)) {
+                PushUndoState();
+                obj.enabled = objectEnabled;
+                if (onDirty_) onDirty_();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Enable Object");
+            }
+            ImGui::SameLine();
             char nameBuf[128];
             std::snprintf(nameBuf, sizeof(nameBuf), "%s", obj.name.c_str());
             if (ImGui::InputText("Object Name##objectName", nameBuf, sizeof(nameBuf))) {
@@ -47,14 +123,7 @@ void SceneEditor::RenderInspectorPanel() {
             // Type (read-only)
             ImGui::TextDisabled("Type: %s", obj.type.c_str());
 
-            if (ImGui::Button("Add Component")) {
-                ImGui::OpenPopup("Add Object Component");
-            }
-            if (ImGui::BeginPopup("Add Object Component")) {
-                if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-                    ImGui::CloseCurrentPopup();
-                }
-
+            auto renderAddComponentMenu = [&]() {
                 bool anyAvailable = false;
                 if (!obj.hasMeshFilter) {
                     anyAvailable = true;
@@ -93,31 +162,29 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                 }
-                if (!obj.hasBoxCollider) {
+                const bool hasAvailableCollider = !obj.hasBoxCollider || !obj.hasSphereCollider || !obj.hasCapsuleCollider;
+                if (hasAvailableCollider) {
                     anyAvailable = true;
-                    if (ImGui::MenuItem("Box Collider")) {
-                        PushUndoState();
-                        obj.hasBoxCollider = true;
-                        obj.boxCollider = BoxColliderComponent{};
-                        if (onDirty_) onDirty_();
-                    }
-                }
-                if (!obj.hasSphereCollider) {
-                    anyAvailable = true;
-                    if (ImGui::MenuItem("Sphere Collider")) {
-                        PushUndoState();
-                        obj.hasSphereCollider = true;
-                        obj.sphereCollider = SphereColliderComponent{};
-                        if (onDirty_) onDirty_();
-                    }
-                }
-                if (!obj.hasCapsuleCollider) {
-                    anyAvailable = true;
-                    if (ImGui::MenuItem("Capsule Collider")) {
-                        PushUndoState();
-                        obj.hasCapsuleCollider = true;
-                        obj.capsuleCollider = CapsuleColliderComponent{};
-                        if (onDirty_) onDirty_();
+                    if (ImGui::BeginMenu("Collider")) {
+                        if (!obj.hasBoxCollider && ImGui::MenuItem("Box")) {
+                            PushUndoState();
+                            obj.hasBoxCollider = true;
+                            obj.boxCollider = BoxColliderComponent{};
+                            if (onDirty_) onDirty_();
+                        }
+                        if (!obj.hasSphereCollider && ImGui::MenuItem("Sphere")) {
+                            PushUndoState();
+                            obj.hasSphereCollider = true;
+                            obj.sphereCollider = SphereColliderComponent{};
+                            if (onDirty_) onDirty_();
+                        }
+                        if (!obj.hasCapsuleCollider && ImGui::MenuItem("Capsule")) {
+                            PushUndoState();
+                            obj.hasCapsuleCollider = true;
+                            obj.capsuleCollider = CapsuleColliderComponent{};
+                            if (onDirty_) onDirty_();
+                        }
+                        ImGui::EndMenu();
                     }
                 }
                 if (!obj.hasCamera) {
@@ -137,12 +204,64 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                 }
+                if (!obj.hasLight) {
+                    anyAvailable = true;
+                    if (ImGui::BeginMenu("Light")) {
+                        if (ImGui::MenuItem("Directional")) {
+                            PushUndoState();
+                            obj.hasLight = true;
+                            obj.light = LightComponent{};
+                            obj.light.type = LightType::Directional;
+                            obj.light.intensity = 1.5f;
+                            obj.light.range = 100.0f;
+                            if (onDirty_) onDirty_();
+                        }
+                        if (ImGui::MenuItem("Point")) {
+                            PushUndoState();
+                            obj.hasLight = true;
+                            obj.light = LightComponent{};
+                            obj.light.type = LightType::Point;
+                            obj.light.intensity = 3.0f;
+                            obj.light.range = 10.0f;
+                            if (onDirty_) onDirty_();
+                        }
+                        if (ImGui::MenuItem("Spot")) {
+                            PushUndoState();
+                            obj.hasLight = true;
+                            obj.light = LightComponent{};
+                            obj.light.type = LightType::Spot;
+                            obj.light.intensity = 4.0f;
+                            obj.light.range = 12.0f;
+                            obj.light.spotAngleDegrees = 35.0f;
+                            if (onDirty_) onDirty_();
+                        }
+                        ImGui::EndMenu();
+                    }
+                }
                 if (!anyAvailable) {
                     ImGui::TextDisabled("All supported components are already added.");
                 }
+            };
+
+            if (ImGui::Button("Add Component")) {
+                ImGui::OpenPopup("Add Object Component");
+            }
+            if (ImGui::BeginPopup("Add Object Component")) {
+                if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+                    ImGui::CloseCurrentPopup();
+                }
+
+                renderAddComponentMenu();
+                ImGui::EndPopup();
+            }
+            if (ImGui::BeginPopupContextWindow("InspectorAddComponentContext", ImGuiPopupFlags_MouseButtonRight)) {
+                ImGui::TextDisabled("Add Component");
+                ImGui::Separator();
+                renderAddComponentMenu();
                 ImGui::EndPopup();
             }
 
+            RenderComponentIcon(GetComponentIconTexture("component-transform.png"));
             if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
                 Transform before = obj.transform;
                 if (ImGui::DragFloat3("Position", &obj.transform.position.x, 0.1f)) {
@@ -198,24 +317,27 @@ void SceneEditor::RenderInspectorPanel() {
 
             bool removeMeshFilter = false;
             bool meshFilterOpen = false;
+            bool meshFilterEnabledChanged = false;
+            const bool meshFilterEnabledBefore = obj.meshFilter.enabled;
             if (obj.hasMeshFilter) {
-                meshFilterOpen = RenderRemovableComponentHeader("Mesh Filter", "MeshFilterHeader", removeMeshFilter);
+                meshFilterOpen = RenderRemovableComponentHeader("Mesh Filter", "MeshFilterHeader", GetComponentIconTexture("component-mesh-filter.png"), &obj.meshFilter.enabled, meshFilterEnabledChanged, removeMeshFilter);
             }
             if (removeMeshFilter) {
                 PushUndoState();
                 obj.hasMeshFilter = false;
                 obj.meshFilter = MeshFilterComponent{};
                 if (onDirty_) onDirty_();
-            } else if (obj.hasMeshFilter && meshFilterOpen) {
-                const std::string meshType = obj.meshFilter.meshType.empty() ? obj.type : obj.meshFilter.meshType;
-                const bool meshFilterEnabledBefore = obj.meshFilter.enabled;
-                if (ImGui::Checkbox("Enabled##MeshFilter", &obj.meshFilter.enabled)) {
+            } else {
+                if (obj.hasMeshFilter && meshFilterEnabledChanged) {
                     const bool meshFilterEnabledAfter = obj.meshFilter.enabled;
                     obj.meshFilter.enabled = meshFilterEnabledBefore;
                     PushUndoState();
                     obj.meshFilter.enabled = meshFilterEnabledAfter;
                     if (onDirty_) onDirty_();
                 }
+            }
+            if (obj.hasMeshFilter && meshFilterOpen) {
+                const std::string meshType = obj.meshFilter.meshType.empty() ? obj.type : obj.meshFilter.meshType;
                 const std::string meshButtonLabel = (meshType == "Mesh" && !obj.meshFilter.sourcePath.empty())
                     ? (fs::path(obj.meshFilter.sourcePath).filename().string() + "##selectMeshFilter")
                     : (meshType + "##selectMeshFilter");
@@ -246,23 +368,26 @@ void SceneEditor::RenderInspectorPanel() {
 
             bool removeMeshRenderer = false;
             bool meshRendererOpen = false;
+            bool meshRendererEnabledChanged = false;
+            const bool meshRendererEnabledBefore = obj.meshRenderer.enabled;
             if (obj.hasMeshRenderer) {
-                meshRendererOpen = RenderRemovableComponentHeader("Mesh Renderer", "MeshRendererHeader", removeMeshRenderer);
+                meshRendererOpen = RenderRemovableComponentHeader("Mesh Renderer", "MeshRendererHeader", GetComponentIconTexture("component-mesh-renderer.png"), &obj.meshRenderer.enabled, meshRendererEnabledChanged, removeMeshRenderer);
             }
             if (removeMeshRenderer) {
                 PushUndoState();
                 obj.hasMeshRenderer = false;
                 obj.meshRenderer = MeshRendererComponent{};
                 if (onDirty_) onDirty_();
-            } else if (obj.hasMeshRenderer && meshRendererOpen) {
-                const bool meshRendererEnabledBefore = obj.meshRenderer.enabled;
-                if (ImGui::Checkbox("Enabled##MeshRenderer", &obj.meshRenderer.enabled)) {
+            } else {
+                if (obj.hasMeshRenderer && meshRendererEnabledChanged) {
                     const bool meshRendererEnabledAfter = obj.meshRenderer.enabled;
                     obj.meshRenderer.enabled = meshRendererEnabledBefore;
                     PushUndoState();
                     obj.meshRenderer.enabled = meshRendererEnabledAfter;
                     if (onDirty_) onDirty_();
                 }
+            }
+            if (obj.hasMeshRenderer && meshRendererOpen) {
                 const std::string materialId = obj.meshRenderer.materialId.empty() ? std::string("pbr_default") : obj.meshRenderer.materialId;
                 const Material* material = materialManager_.Get(materialId);
                 std::string materialFilename = materialId + ".mat";
@@ -305,9 +430,6 @@ void SceneEditor::RenderInspectorPanel() {
                 }
                 if (material != nullptr) {
                     ImGui::ColorButton("Albedo Preview", ImVec4(material->albedoColor[0], material->albedoColor[1], material->albedoColor[2], material->albedoColor[3]));
-                    if (ImGui::CollapsingHeader("Material Properties", ImGuiTreeNodeFlags_DefaultOpen)) {
-                        RenderMaterialProperties(materialId, false);
-                    }
                 } else {
                     ImGui::TextDisabled("Material asset not loaded.");
                 }
@@ -315,8 +437,10 @@ void SceneEditor::RenderInspectorPanel() {
 
             bool removeScripts = false;
             bool scriptsOpen = false;
+            bool scriptsEnabledChanged = false;
+            const bool scriptsEnabledBefore = obj.scriptComponent.enabled;
             if (obj.hasScriptComponent) {
-                scriptsOpen = RenderRemovableComponentHeader("Scripts", "ScriptsHeader", removeScripts);
+                scriptsOpen = RenderRemovableComponentHeader("Scripts", "ScriptsHeader", GetComponentIconTexture("component-script.png"), &obj.scriptComponent.enabled, scriptsEnabledChanged, removeScripts);
             }
             if (removeScripts) {
                 PushUndoState();
@@ -326,9 +450,8 @@ void SceneEditor::RenderInspectorPanel() {
                     RebuildScriptRuntime();
                 }
                 if (onDirty_) onDirty_();
-            } else if (obj.hasScriptComponent && scriptsOpen) {
-                const bool scriptsEnabledBefore = obj.scriptComponent.enabled;
-                if (ImGui::Checkbox("Enabled##Scripts", &obj.scriptComponent.enabled)) {
+            } else {
+                if (obj.hasScriptComponent && scriptsEnabledChanged) {
                     const bool scriptsEnabledAfter = obj.scriptComponent.enabled;
                     obj.scriptComponent.enabled = scriptsEnabledBefore;
                     PushUndoState();
@@ -338,6 +461,8 @@ void SceneEditor::RenderInspectorPanel() {
                     }
                     if (onDirty_) onDirty_();
                 }
+            }
+            if (obj.hasScriptComponent && scriptsOpen) {
                 if (ImGui::Button("Add Script")) {
                     ImGui::OpenPopup("Add Script Component");
                 }
@@ -397,13 +522,10 @@ void SceneEditor::RenderInspectorPanel() {
 
                     const std::string header = std::string("Script: ") + (script.scriptName.empty() ? "(missing)" : script.scriptName);
                     const bool scriptTreeOpen = ImGui::TreeNodeEx(header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-                    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !script.scriptPath.empty()) {
-                        if (OpenProjectAssetInDefaultEditor(script.scriptPath)) {
-                            if (console_) {
-                                console_->AddLog("Opened script file: " + script.scriptPath);
-                            }
-                        } else if (console_) {
-                            console_->AddError("Failed to open script file: " + script.scriptPath);
+                    if (ImGui::IsItemHovered() && !script.scriptPath.empty()) {
+                        ImGui::SetTooltip("Click to show in Browser: %s", script.scriptPath.c_str());
+                        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                            SelectProjectFile(script.scriptPath);
                         }
                     }
                     if (scriptTreeOpen) {
@@ -421,13 +543,10 @@ void SceneEditor::RenderInspectorPanel() {
 
                         ImGui::TextWrapped("Class: %s", script.scriptName.empty() ? "(missing)" : script.scriptName.c_str());
                         ImGui::TextWrapped("Source: %s", script.scriptPath.empty() ? "(none)" : script.scriptPath.c_str());
-                        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !script.scriptPath.empty()) {
-                            if (OpenProjectAssetInDefaultEditor(script.scriptPath)) {
-                                if (console_) {
-                                    console_->AddLog("Opened script file: " + script.scriptPath);
-                                }
-                            } else if (console_) {
-                                console_->AddError("Failed to open script file: " + script.scriptPath);
+                        if (ImGui::IsItemHovered() && !script.scriptPath.empty()) {
+                            ImGui::SetTooltip("Click to show in Browser.");
+                            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                                SelectProjectFile(script.scriptPath);
                             }
                         }
                         if (FindRegisteredScript(script.scriptName) == nullptr) {
@@ -454,23 +573,26 @@ void SceneEditor::RenderInspectorPanel() {
 
             bool removeRigidbody = false;
             bool rigidbodyOpen = false;
+            bool rigidbodyEnabledChanged = false;
+            const bool rigidbodyEnabledBefore = obj.rigidbody.enabled;
             if (obj.hasRigidbody) {
-                rigidbodyOpen = RenderRemovableComponentHeader("Rigidbody", "RigidbodyHeader", removeRigidbody);
+                rigidbodyOpen = RenderRemovableComponentHeader("Rigidbody", "RigidbodyHeader", GetComponentIconTexture("component-rigidbody.png"), &obj.rigidbody.enabled, rigidbodyEnabledChanged, removeRigidbody);
             }
             if (removeRigidbody) {
                 PushUndoState();
                 obj.hasRigidbody = false;
                 obj.rigidbody = RigidbodyComponent{};
                 if (onDirty_) onDirty_();
-            } else if (obj.hasRigidbody && rigidbodyOpen) {
-                const bool rigidbodyEnabledBefore = obj.rigidbody.enabled;
-                if (ImGui::Checkbox("Enabled##Rigidbody", &obj.rigidbody.enabled)) {
+            } else {
+                if (obj.hasRigidbody && rigidbodyEnabledChanged) {
                     const bool rigidbodyEnabledAfter = obj.rigidbody.enabled;
                     obj.rigidbody.enabled = rigidbodyEnabledBefore;
                     PushUndoState();
                     obj.rigidbody.enabled = rigidbodyEnabledAfter;
                     if (onDirty_) onDirty_();
                 }
+            }
+            if (obj.hasRigidbody && rigidbodyOpen) {
 
                 int bodyTypeIndex = obj.rigidbody.bodyType == RigidbodyBodyType::Static ? 0 : 1;
                 const char* bodyTypes[] = {"Static", "Dynamic"};
@@ -485,10 +607,11 @@ void SceneEditor::RenderInspectorPanel() {
 
                 float mass = obj.rigidbody.mass;
                 if (ImGui::DragFloat("Mass", &mass, 0.1f, 0.0001f, 100000.0f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.rigidbody.mass = (std::max)(0.0001f, mass);
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
 
                 const bool useGravityBefore = obj.rigidbody.useGravity;
                 if (ImGui::Checkbox("Use Gravity", &obj.rigidbody.useGravity)) {
@@ -501,31 +624,35 @@ void SceneEditor::RenderInspectorPanel() {
 
                 glm::vec3 velocity = obj.rigidbody.velocity;
                 if (ImGui::DragFloat3("Velocity", &velocity.x, 0.1f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.rigidbody.velocity = velocity;
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
             }
 
             bool removeBoxCollider = false;
             bool boxColliderOpen = false;
+            bool boxColliderEnabledChanged = false;
+            const bool boxColliderEnabledBefore = obj.boxCollider.enabled;
             if (obj.hasBoxCollider) {
-                boxColliderOpen = RenderRemovableComponentHeader("Box Collider", "BoxColliderHeader", removeBoxCollider);
+                boxColliderOpen = RenderRemovableComponentHeader("Box Collider", "BoxColliderHeader", GetComponentIconTexture("component-box-collider.png"), &obj.boxCollider.enabled, boxColliderEnabledChanged, removeBoxCollider);
             }
             if (removeBoxCollider) {
                 PushUndoState();
                 obj.hasBoxCollider = false;
                 obj.boxCollider = BoxColliderComponent{};
                 if (onDirty_) onDirty_();
-            } else if (obj.hasBoxCollider && boxColliderOpen) {
-                const bool colliderEnabledBefore = obj.boxCollider.enabled;
-                if (ImGui::Checkbox("Enabled##BoxCollider", &obj.boxCollider.enabled)) {
+            } else {
+                if (obj.hasBoxCollider && boxColliderEnabledChanged) {
                     const bool colliderEnabledAfter = obj.boxCollider.enabled;
-                    obj.boxCollider.enabled = colliderEnabledBefore;
+                    obj.boxCollider.enabled = boxColliderEnabledBefore;
                     PushUndoState();
                     obj.boxCollider.enabled = colliderEnabledAfter;
                     if (onDirty_) onDirty_();
                 }
+            }
+            if (obj.hasBoxCollider && boxColliderOpen) {
 
                 const bool isTriggerBefore = obj.boxCollider.isTrigger;
                 if (ImGui::Checkbox("Is Trigger", &obj.boxCollider.isTrigger)) {
@@ -538,14 +665,15 @@ void SceneEditor::RenderInspectorPanel() {
 
                 glm::vec3 center = obj.boxCollider.center;
                 if (ImGui::DragFloat3("Center", &center.x, 0.05f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.boxCollider.center = center;
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
 
                 glm::vec3 size = obj.boxCollider.size;
                 if (ImGui::DragFloat3("Size", &size.x, 0.05f, 0.001f, 100000.0f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.boxCollider.size = {
                         (std::max)(0.001f, size.x),
                         (std::max)(0.001f, size.y),
@@ -553,27 +681,31 @@ void SceneEditor::RenderInspectorPanel() {
                     };
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
             }
 
             bool removeSphereCollider = false;
             bool sphereColliderOpen = false;
+            bool sphereColliderEnabledChanged = false;
+            const bool sphereColliderEnabledBefore = obj.sphereCollider.enabled;
             if (obj.hasSphereCollider) {
-                sphereColliderOpen = RenderRemovableComponentHeader("Sphere Collider", "SphereColliderHeader", removeSphereCollider);
+                sphereColliderOpen = RenderRemovableComponentHeader("Sphere Collider", "SphereColliderHeader", GetComponentIconTexture("component-sphere-collider.png"), &obj.sphereCollider.enabled, sphereColliderEnabledChanged, removeSphereCollider);
             }
             if (removeSphereCollider) {
                 PushUndoState();
                 obj.hasSphereCollider = false;
                 obj.sphereCollider = SphereColliderComponent{};
                 if (onDirty_) onDirty_();
-            } else if (obj.hasSphereCollider && sphereColliderOpen) {
-                const bool colliderEnabledBefore = obj.sphereCollider.enabled;
-                if (ImGui::Checkbox("Enabled##SphereCollider", &obj.sphereCollider.enabled)) {
+            } else {
+                if (obj.hasSphereCollider && sphereColliderEnabledChanged) {
                     const bool colliderEnabledAfter = obj.sphereCollider.enabled;
-                    obj.sphereCollider.enabled = colliderEnabledBefore;
+                    obj.sphereCollider.enabled = sphereColliderEnabledBefore;
                     PushUndoState();
                     obj.sphereCollider.enabled = colliderEnabledAfter;
                     if (onDirty_) onDirty_();
                 }
+            }
+            if (obj.hasSphereCollider && sphereColliderOpen) {
 
                 const bool isTriggerBefore = obj.sphereCollider.isTrigger;
                 if (ImGui::Checkbox("Is Trigger##SphereCollider", &obj.sphereCollider.isTrigger)) {
@@ -586,38 +718,43 @@ void SceneEditor::RenderInspectorPanel() {
 
                 glm::vec3 center = obj.sphereCollider.center;
                 if (ImGui::DragFloat3("Center##SphereCollider", &center.x, 0.05f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.sphereCollider.center = center;
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
 
                 float radius = obj.sphereCollider.radius;
                 if (ImGui::DragFloat("Radius##SphereCollider", &radius, 0.05f, 0.001f, 100000.0f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.sphereCollider.radius = (std::max)(0.001f, radius);
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
             }
 
             bool removeCapsuleCollider = false;
             bool capsuleColliderOpen = false;
+            bool capsuleColliderEnabledChanged = false;
+            const bool capsuleColliderEnabledBefore = obj.capsuleCollider.enabled;
             if (obj.hasCapsuleCollider) {
-                capsuleColliderOpen = RenderRemovableComponentHeader("Capsule Collider", "CapsuleColliderHeader", removeCapsuleCollider);
+                capsuleColliderOpen = RenderRemovableComponentHeader("Capsule Collider", "CapsuleColliderHeader", GetComponentIconTexture("component-capsule-collider.png"), &obj.capsuleCollider.enabled, capsuleColliderEnabledChanged, removeCapsuleCollider);
             }
             if (removeCapsuleCollider) {
                 PushUndoState();
                 obj.hasCapsuleCollider = false;
                 obj.capsuleCollider = CapsuleColliderComponent{};
                 if (onDirty_) onDirty_();
-            } else if (obj.hasCapsuleCollider && capsuleColliderOpen) {
-                const bool colliderEnabledBefore = obj.capsuleCollider.enabled;
-                if (ImGui::Checkbox("Enabled##CapsuleCollider", &obj.capsuleCollider.enabled)) {
+            } else {
+                if (obj.hasCapsuleCollider && capsuleColliderEnabledChanged) {
                     const bool colliderEnabledAfter = obj.capsuleCollider.enabled;
-                    obj.capsuleCollider.enabled = colliderEnabledBefore;
+                    obj.capsuleCollider.enabled = capsuleColliderEnabledBefore;
                     PushUndoState();
                     obj.capsuleCollider.enabled = colliderEnabledAfter;
                     if (onDirty_) onDirty_();
                 }
+            }
+            if (obj.hasCapsuleCollider && capsuleColliderOpen) {
 
                 const bool isTriggerBefore = obj.capsuleCollider.isTrigger;
                 if (ImGui::Checkbox("Is Trigger##CapsuleCollider", &obj.capsuleCollider.isTrigger)) {
@@ -630,46 +767,52 @@ void SceneEditor::RenderInspectorPanel() {
 
                 glm::vec3 center = obj.capsuleCollider.center;
                 if (ImGui::DragFloat3("Center##CapsuleCollider", &center.x, 0.05f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.capsuleCollider.center = center;
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
 
                 float radius = obj.capsuleCollider.radius;
                 if (ImGui::DragFloat("Radius##CapsuleCollider", &radius, 0.05f, 0.001f, 100000.0f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.capsuleCollider.radius = (std::max)(0.001f, radius);
                     obj.capsuleCollider.height = (std::max)(obj.capsuleCollider.height, obj.capsuleCollider.radius * 2.0f);
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
 
                 float height = obj.capsuleCollider.height;
                 if (ImGui::DragFloat("Height##CapsuleCollider", &height, 0.05f, 0.001f, 100000.0f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.capsuleCollider.height = (std::max)(obj.capsuleCollider.radius * 2.0f, height);
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
             }
 
             bool removeCamera = false;
             bool cameraOpen = false;
+            bool cameraEnabledChanged = false;
+            const bool cameraEnabledBefore = obj.camera.enabled;
             if (obj.hasCamera) {
-                cameraOpen = RenderRemovableComponentHeader("Camera", "CameraHeader", removeCamera);
+                cameraOpen = RenderRemovableComponentHeader("Camera", "CameraHeader", GetComponentIconTexture("component-camera.png"), &obj.camera.enabled, cameraEnabledChanged, removeCamera);
             }
             if (removeCamera) {
                 PushUndoState();
                 obj.hasCamera = false;
                 obj.camera = CameraComponent{};
                 if (onDirty_) onDirty_();
-            } else if (obj.hasCamera && cameraOpen) {
-                const bool cameraEnabledBefore = obj.camera.enabled;
-                if (ImGui::Checkbox("Enabled##Camera", &obj.camera.enabled)) {
+            } else {
+                if (obj.hasCamera && cameraEnabledChanged) {
                     const bool cameraEnabledAfter = obj.camera.enabled;
                     obj.camera.enabled = cameraEnabledBefore;
                     PushUndoState();
                     obj.camera.enabled = cameraEnabledAfter;
                     if (onDirty_) onDirty_();
                 }
+            }
+            if (obj.hasCamera && cameraOpen) {
 
                 const bool isMainBefore = obj.camera.isMain;
                 if (ImGui::Checkbox("Main Camera", &obj.camera.isMain)) {
@@ -682,31 +825,108 @@ void SceneEditor::RenderInspectorPanel() {
 
                 float fov = obj.camera.fieldOfViewDegrees;
                 if (ImGui::DragFloat("Field of View", &fov, 0.5f, 1.0f, 179.0f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.camera.fieldOfViewDegrees = (std::max)(1.0f, (std::min)(179.0f, fov));
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
 
                 float nearClip = obj.camera.nearClip;
                 if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, 0.001f, 100000.0f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.camera.nearClip = (std::max)(0.001f, nearClip);
                     obj.camera.farClip = (std::max)(obj.camera.nearClip + 0.001f, obj.camera.farClip);
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
 
                 float farClip = obj.camera.farClip;
                 if (ImGui::DragFloat("Far Clip", &farClip, 1.0f, 0.002f, 1000000.0f)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.camera.farClip = (std::max)(obj.camera.nearClip + 0.001f, farClip);
                     if (onDirty_) onDirty_();
                 }
+                endInspectorContinuousEdit();
 
                 glm::vec4 clearColor = obj.camera.clearColor;
                 if (ImGui::ColorEdit4("Clear Color", &clearColor.x)) {
-                    PushUndoState();
+                    beginInspectorContinuousEdit();
                     obj.camera.clearColor = clearColor;
                     if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+            }
+
+            bool removeLight = false;
+            bool lightOpen = false;
+            bool lightEnabledChanged = false;
+            const bool lightEnabledBefore = obj.light.enabled;
+            if (obj.hasLight) {
+                lightOpen = RenderRemovableComponentHeader("Light", "LightHeader", GetComponentIconTexture("component-light.png"), &obj.light.enabled, lightEnabledChanged, removeLight);
+            }
+            if (removeLight) {
+                PushUndoState();
+                obj.hasLight = false;
+                obj.light = LightComponent{};
+                if (onDirty_) onDirty_();
+            } else {
+                if (obj.hasLight && lightEnabledChanged) {
+                    const bool lightEnabledAfter = obj.light.enabled;
+                    obj.light.enabled = lightEnabledBefore;
+                    PushUndoState();
+                    obj.light.enabled = lightEnabledAfter;
+                    if (onDirty_) onDirty_();
+                }
+            }
+            if (obj.hasLight && lightOpen) {
+
+                int lightTypeIndex = 1;
+                if (obj.light.type == LightType::Directional) {
+                    lightTypeIndex = 0;
+                } else if (obj.light.type == LightType::Spot) {
+                    lightTypeIndex = 2;
+                }
+                const char* lightTypes[] = {"Directional", "Point", "Spot"};
+                if (ImGui::Combo("Type##Light", &lightTypeIndex, lightTypes, 3)) {
+                    PushUndoState();
+                    obj.light.type = lightTypeIndex == 0 ? LightType::Directional : (lightTypeIndex == 2 ? LightType::Spot : LightType::Point);
+                    if (onDirty_) onDirty_();
+                }
+
+                glm::vec3 color = obj.light.color;
+                if (ImGui::ColorEdit3("Color##Light", &color.x)) {
+                    beginInspectorContinuousEdit();
+                    obj.light.color = color;
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float intensity = obj.light.intensity;
+                if (ImGui::DragFloat("Intensity##Light", &intensity, 0.05f, 0.0f, 1000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.light.intensity = (std::max)(0.0f, intensity);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                if (obj.light.type != LightType::Directional) {
+                    float range = obj.light.range;
+                    if (ImGui::DragFloat("Range##Light", &range, 0.1f, 0.001f, 100000.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.light.range = (std::max)(0.001f, range);
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                }
+
+                if (obj.light.type == LightType::Spot) {
+                    float spotAngle = obj.light.spotAngleDegrees;
+                    if (ImGui::DragFloat("Spot Angle##Light", &spotAngle, 0.5f, 1.0f, 179.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.light.spotAngleDegrees = (std::max)(1.0f, (std::min)(179.0f, spotAngle));
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
                 }
             }
             ImGui::Separator();
@@ -720,6 +940,383 @@ void SceneEditor::RenderInspectorPanel() {
         RenderProjectAssetPickerPopup();
     }
     ImGui::End();
+}
+
+void SceneEditor::RenderMultiSelectionInspector() {
+    NormalizeSelection();
+    if (selectedIndices_.size() <= 1 || selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
+        return;
+    }
+
+    SceneObject& active = objects_[selectedIndex_];
+    ImGui::Text("%zu objects selected", selectedIndices_.size());
+    ImGui::TextDisabled("Showing components shared by every selected object. Edits apply to all selected objects.");
+
+    auto beginInspectorContinuousEdit = [&]() {
+        if (!inspectorEditActive_) {
+            PushUndoState();
+            inspectorEditActive_ = true;
+        }
+    };
+    auto endInspectorContinuousEdit = [&]() {
+        if (ImGui::IsItemDeactivated()) {
+            inspectorEditActive_ = false;
+        }
+    };
+    auto forEachSelected = [&](auto&& fn) {
+        for (int index : selectedIndices_) {
+            if (index >= 0 && index < static_cast<int>(objects_.size())) {
+                fn(objects_[index]);
+            }
+        }
+    };
+    auto allSelected = [&](auto&& predicate) {
+        for (int index : selectedIndices_) {
+            if (index < 0 || index >= static_cast<int>(objects_.size()) || !predicate(objects_[index])) {
+                return false;
+            }
+        }
+        return true;
+    };
+    auto renderSharedHeader = [&](const char* label, const std::string& icon) {
+        RenderComponentIcon(GetComponentIconTexture(icon));
+        return ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen);
+    };
+    auto markDirty = [&]() {
+        if (onDirty_) {
+            onDirty_();
+        }
+    };
+    auto renderSharedEnabledHeader = [&](const char* label, const char* id, const std::string& icon, bool enabled, auto&& setter) {
+        ImGui::PushID(id);
+        RenderComponentIcon(GetComponentIconTexture(icon));
+        bool changedEnabled = enabled;
+        if (ImGui::Checkbox("##multiComponentEnabled", &changedEnabled)) {
+            PushUndoState();
+            forEachSelected([&](SceneObject& object) { setter(object, changedEnabled); });
+            markDirty();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enable Component");
+        }
+        ImGui::SameLine();
+        const bool open = ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen);
+        ImGui::PopID();
+        return open;
+    };
+
+    bool enabled = active.enabled;
+    if (ImGui::Checkbox("##multiObjectEnabled", &enabled)) {
+        PushUndoState();
+        forEachSelected([&](SceneObject& object) { object.enabled = enabled; });
+        markDirty();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable Selected Objects");
+    }
+    ImGui::SameLine();
+    ImGui::TextUnformatted("Selected Objects");
+
+    if (renderSharedHeader("Transform", "component-transform.png")) {
+        glm::vec3 position = active.transform.position;
+        if (ImGui::DragFloat3("Position##multi", &position.x, 0.1f)) {
+            beginInspectorContinuousEdit();
+            forEachSelected([&](SceneObject& object) { object.transform.position = position; });
+            markDirty();
+        }
+        endInspectorContinuousEdit();
+
+        glm::vec3 rotation = active.transform.rotationEuler;
+        if (ImGui::DragFloat3("Rotation (deg)##multi", &rotation.x, 0.5f)) {
+            beginInspectorContinuousEdit();
+            forEachSelected([&](SceneObject& object) { object.transform.rotationEuler = rotation; });
+            markDirty();
+        }
+        endInspectorContinuousEdit();
+
+        glm::vec3 scale = active.transform.scale;
+        if (ImGui::DragFloat3("Scale##multi", &scale.x, 0.1f)) {
+            beginInspectorContinuousEdit();
+            scale = {
+                (std::max)(scale.x, 0.01f),
+                (std::max)(scale.y, 0.01f),
+                (std::max)(scale.z, 0.01f)
+            };
+            forEachSelected([&](SceneObject& object) { object.transform.scale = scale; });
+            markDirty();
+        }
+        endInspectorContinuousEdit();
+    }
+
+    bool showedSharedComponent = false;
+    if (allSelected([](const SceneObject& object) { return object.hasMeshFilter; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Mesh Filter", "MultiMeshFilterHeader", "component-mesh-filter.png", active.meshFilter.enabled, [](SceneObject& object, bool value) { object.meshFilter.enabled = value; })) {
+            ImGui::TextDisabled("Mesh Filter is shared. Mesh replacement uses the active object for now.");
+        }
+    }
+
+    if (allSelected([](const SceneObject& object) { return object.hasMeshRenderer; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Mesh Renderer", "MultiMeshRendererHeader", "component-mesh-renderer.png", active.meshRenderer.enabled, [](SceneObject& object, bool value) { object.meshRenderer.enabled = value; })) {
+            const std::string materialId = active.meshRenderer.materialId.empty() ? std::string("pbr_default") : active.meshRenderer.materialId;
+            std::string materialFilename = materialId + ".mat";
+            for (const std::string& file : projectFiles_) {
+                if (IsMaterialAssetPath(file) && MaterialIdFromAssetPath(file) == materialId) {
+                    materialFilename = ProjectAssetDisplayFilename(file);
+                    break;
+                }
+            }
+            if (ImGui::Button((materialFilename + "##multiSelectMaterial").c_str(), ImVec2(-1.0f, 0.0f))) {
+                assetPickerMode_ = ProjectAssetPickerMode::AssignMaterial;
+                ImGui::OpenPopup("Select Project Asset");
+            }
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMaterialAssetPayload)) {
+                    const char* materialIdPayload = static_cast<const char*>(payload->Data);
+                    if (materialIdPayload != nullptr) {
+                        AssignMaterialToSelected(materialIdPayload);
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+            ImGui::TextDisabled("Material assignment applies to all selected Mesh Renderers.");
+        }
+    }
+
+    if (allSelected([](const SceneObject& object) { return object.hasRigidbody; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Rigidbody", "MultiRigidbodyHeader", "component-rigidbody.png", active.rigidbody.enabled, [](SceneObject& object, bool value) { object.rigidbody.enabled = value; })) {
+            int bodyTypeIndex = active.rigidbody.bodyType == RigidbodyBodyType::Static ? 0 : 1;
+            const char* bodyTypes[] = {"Static", "Dynamic"};
+            if (ImGui::Combo("Body Type##multiRigidbody", &bodyTypeIndex, bodyTypes, 2)) {
+                PushUndoState();
+                const RigidbodyBodyType bodyType = bodyTypeIndex == 0 ? RigidbodyBodyType::Static : RigidbodyBodyType::Dynamic;
+                forEachSelected([&](SceneObject& object) { object.rigidbody.bodyType = bodyType; });
+                markDirty();
+            }
+
+            float mass = active.rigidbody.mass;
+            if (ImGui::DragFloat("Mass##multiRigidbody", &mass, 0.1f, 0.0001f, 100000.0f)) {
+                beginInspectorContinuousEdit();
+                mass = (std::max)(0.0001f, mass);
+                forEachSelected([&](SceneObject& object) { object.rigidbody.mass = mass; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+
+            bool useGravity = active.rigidbody.useGravity;
+            if (ImGui::Checkbox("Use Gravity##multiRigidbody", &useGravity)) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) { object.rigidbody.useGravity = useGravity; });
+                markDirty();
+            }
+
+            glm::vec3 velocity = active.rigidbody.velocity;
+            if (ImGui::DragFloat3("Velocity##multiRigidbody", &velocity.x, 0.1f)) {
+                beginInspectorContinuousEdit();
+                forEachSelected([&](SceneObject& object) { object.rigidbody.velocity = velocity; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+        }
+    }
+
+    if (allSelected([](const SceneObject& object) { return object.hasBoxCollider; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Box Collider", "MultiBoxColliderHeader", "component-box-collider.png", active.boxCollider.enabled, [](SceneObject& object, bool value) { object.boxCollider.enabled = value; })) {
+            bool isTrigger = active.boxCollider.isTrigger;
+            if (ImGui::Checkbox("Is Trigger##multiBoxCollider", &isTrigger)) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) { object.boxCollider.isTrigger = isTrigger; });
+                markDirty();
+            }
+            glm::vec3 center = active.boxCollider.center;
+            if (ImGui::DragFloat3("Center##multiBoxCollider", &center.x, 0.05f)) {
+                beginInspectorContinuousEdit();
+                forEachSelected([&](SceneObject& object) { object.boxCollider.center = center; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            glm::vec3 size = active.boxCollider.size;
+            if (ImGui::DragFloat3("Size##multiBoxCollider", &size.x, 0.05f, 0.001f, 100000.0f)) {
+                beginInspectorContinuousEdit();
+                size = {(std::max)(0.001f, size.x), (std::max)(0.001f, size.y), (std::max)(0.001f, size.z)};
+                forEachSelected([&](SceneObject& object) { object.boxCollider.size = size; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+        }
+    }
+
+    if (allSelected([](const SceneObject& object) { return object.hasSphereCollider; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Sphere Collider", "MultiSphereColliderHeader", "component-sphere-collider.png", active.sphereCollider.enabled, [](SceneObject& object, bool value) { object.sphereCollider.enabled = value; })) {
+            bool isTrigger = active.sphereCollider.isTrigger;
+            if (ImGui::Checkbox("Is Trigger##multiSphereCollider", &isTrigger)) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) { object.sphereCollider.isTrigger = isTrigger; });
+                markDirty();
+            }
+            glm::vec3 center = active.sphereCollider.center;
+            if (ImGui::DragFloat3("Center##multiSphereCollider", &center.x, 0.05f)) {
+                beginInspectorContinuousEdit();
+                forEachSelected([&](SceneObject& object) { object.sphereCollider.center = center; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            float radius = active.sphereCollider.radius;
+            if (ImGui::DragFloat("Radius##multiSphereCollider", &radius, 0.05f, 0.001f, 100000.0f)) {
+                beginInspectorContinuousEdit();
+                radius = (std::max)(0.001f, radius);
+                forEachSelected([&](SceneObject& object) { object.sphereCollider.radius = radius; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+        }
+    }
+
+    if (allSelected([](const SceneObject& object) { return object.hasCapsuleCollider; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Capsule Collider", "MultiCapsuleColliderHeader", "component-capsule-collider.png", active.capsuleCollider.enabled, [](SceneObject& object, bool value) { object.capsuleCollider.enabled = value; })) {
+            bool isTrigger = active.capsuleCollider.isTrigger;
+            if (ImGui::Checkbox("Is Trigger##multiCapsuleCollider", &isTrigger)) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) { object.capsuleCollider.isTrigger = isTrigger; });
+                markDirty();
+            }
+            glm::vec3 center = active.capsuleCollider.center;
+            if (ImGui::DragFloat3("Center##multiCapsuleCollider", &center.x, 0.05f)) {
+                beginInspectorContinuousEdit();
+                forEachSelected([&](SceneObject& object) { object.capsuleCollider.center = center; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            float radius = active.capsuleCollider.radius;
+            if (ImGui::DragFloat("Radius##multiCapsuleCollider", &radius, 0.05f, 0.001f, 100000.0f)) {
+                beginInspectorContinuousEdit();
+                radius = (std::max)(0.001f, radius);
+                forEachSelected([&](SceneObject& object) {
+                    object.capsuleCollider.radius = radius;
+                    object.capsuleCollider.height = (std::max)(object.capsuleCollider.height, radius * 2.0f);
+                });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            float height = active.capsuleCollider.height;
+            if (ImGui::DragFloat("Height##multiCapsuleCollider", &height, 0.05f, 0.001f, 100000.0f)) {
+                beginInspectorContinuousEdit();
+                height = (std::max)(active.capsuleCollider.radius * 2.0f, height);
+                forEachSelected([&](SceneObject& object) { object.capsuleCollider.height = height; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+        }
+    }
+
+    if (allSelected([](const SceneObject& object) { return object.hasCamera; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Camera", "MultiCameraHeader", "component-camera.png", active.camera.enabled, [](SceneObject& object, bool value) { object.camera.enabled = value; })) {
+            bool isMain = active.camera.isMain;
+            if (ImGui::Checkbox("Main Camera##multiCamera", &isMain)) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) { object.camera.isMain = isMain; });
+                markDirty();
+            }
+            float fov = active.camera.fieldOfViewDegrees;
+            if (ImGui::DragFloat("Field of View##multiCamera", &fov, 0.5f, 1.0f, 179.0f)) {
+                beginInspectorContinuousEdit();
+                fov = (std::max)(1.0f, (std::min)(179.0f, fov));
+                forEachSelected([&](SceneObject& object) { object.camera.fieldOfViewDegrees = fov; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            float nearClip = active.camera.nearClip;
+            if (ImGui::DragFloat("Near Clip##multiCamera", &nearClip, 0.01f, 0.001f, 100000.0f)) {
+                beginInspectorContinuousEdit();
+                nearClip = (std::max)(0.001f, nearClip);
+                forEachSelected([&](SceneObject& object) {
+                    object.camera.nearClip = nearClip;
+                    object.camera.farClip = (std::max)(nearClip + 0.001f, object.camera.farClip);
+                });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            float farClip = active.camera.farClip;
+            if (ImGui::DragFloat("Far Clip##multiCamera", &farClip, 1.0f, 0.002f, 1000000.0f)) {
+                beginInspectorContinuousEdit();
+                farClip = (std::max)(active.camera.nearClip + 0.001f, farClip);
+                forEachSelected([&](SceneObject& object) { object.camera.farClip = farClip; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            glm::vec4 clearColor = active.camera.clearColor;
+            if (ImGui::ColorEdit4("Clear Color##multiCamera", &clearColor.x)) {
+                beginInspectorContinuousEdit();
+                forEachSelected([&](SceneObject& object) { object.camera.clearColor = clearColor; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+        }
+    }
+
+    if (allSelected([](const SceneObject& object) { return object.hasLight; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Light", "MultiLightHeader", "component-light.png", active.light.enabled, [](SceneObject& object, bool value) { object.light.enabled = value; })) {
+            int lightTypeIndex = active.light.type == LightType::Directional ? 0 : (active.light.type == LightType::Spot ? 2 : 1);
+            const char* lightTypes[] = {"Directional", "Point", "Spot"};
+            if (ImGui::Combo("Type##multiLight", &lightTypeIndex, lightTypes, 3)) {
+                PushUndoState();
+                const LightType lightType = lightTypeIndex == 0 ? LightType::Directional : (lightTypeIndex == 2 ? LightType::Spot : LightType::Point);
+                forEachSelected([&](SceneObject& object) { object.light.type = lightType; });
+                markDirty();
+            }
+            glm::vec3 color = active.light.color;
+            if (ImGui::ColorEdit3("Color##multiLight", &color.x)) {
+                beginInspectorContinuousEdit();
+                forEachSelected([&](SceneObject& object) { object.light.color = color; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            float intensity = active.light.intensity;
+            if (ImGui::DragFloat("Intensity##multiLight", &intensity, 0.05f, 0.0f, 1000.0f)) {
+                beginInspectorContinuousEdit();
+                intensity = (std::max)(0.0f, intensity);
+                forEachSelected([&](SceneObject& object) { object.light.intensity = intensity; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            if (active.light.type != LightType::Directional) {
+                float range = active.light.range;
+                if (ImGui::DragFloat("Range##multiLight", &range, 0.1f, 0.001f, 100000.0f)) {
+                    beginInspectorContinuousEdit();
+                    range = (std::max)(0.001f, range);
+                    forEachSelected([&](SceneObject& object) { object.light.range = range; });
+                    markDirty();
+                }
+                endInspectorContinuousEdit();
+            }
+            if (active.light.type == LightType::Spot) {
+                float spotAngle = active.light.spotAngleDegrees;
+                if (ImGui::DragFloat("Spot Angle##multiLight", &spotAngle, 0.5f, 1.0f, 179.0f)) {
+                    beginInspectorContinuousEdit();
+                    spotAngle = (std::max)(1.0f, (std::min)(179.0f, spotAngle));
+                    forEachSelected([&](SceneObject& object) { object.light.spotAngleDegrees = spotAngle; });
+                    markDirty();
+                }
+                endInspectorContinuousEdit();
+            }
+        }
+    }
+
+    if (!showedSharedComponent) {
+        ImGui::TextDisabled("No optional components are shared by every selected object.");
+    }
+
+    ImGui::Separator();
+    if (ImGui::Button("Delete Selected")) {
+        DeleteSelectedObject();
+    }
 }
 
 void SceneEditor::RenderProjectAssetPickerPopup() {
@@ -918,9 +1515,7 @@ bool SceneEditor::CreateMaterialAsset(const std::string& requestedName, std::str
         return false;
     }
 
-    if (!materialManager_.Exists(materialId)) {
-        materialManager_.LoadAll();
-    }
+    materialManager_.LoadAll();
     if (materialManager_.Exists(materialId)) {
         if (console_) {
             console_->AddError("Material already exists: " + materialId);
@@ -928,9 +1523,53 @@ bool SceneEditor::CreateMaterialAsset(const std::string& requestedName, std::str
         return false;
     }
 
-    Material& material = materialManager_.CreateDefault(materialId, true);
+    const fs::path targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + materialId + ".mat.json");
+    const fs::path assetsRoot = FindAssetsRoot();
+    if (!IsUnderPath(targetPath, assetsRoot)) {
+        if (console_) {
+            console_->AddError("Material creation blocked outside assets: " + materialId);
+        }
+        return false;
+    }
+    if (fs::exists(targetPath)) {
+        if (console_) {
+            console_->AddError("Material already exists: " + materialId);
+        }
+        return false;
+    }
+
+    Material material;
     material.name = materialId;
-    materialManager_.Save(materialId, material);
+    try {
+        fs::create_directories(targetPath.parent_path());
+        std::ofstream out(targetPath, std::ios::trunc);
+        if (!out.good()) {
+            return false;
+        }
+        out << "{\n";
+        out << "  \"version\": 1,\n";
+        out << "  \"name\": \"" << JsonEscape(material.name) << "\",\n";
+        out << "  \"shader\": \"pbr\",\n";
+        out << "  \"albedoColor\": [1, 1, 1, 1],\n";
+        out << "  \"metallic\": 0,\n";
+        out << "  \"roughness\": 0.5,\n";
+        out << "  \"emissiveColor\": [0, 0, 0],\n";
+        out << "  \"uvTiling\": [1, 1],\n";
+        out << "  \"uvOffset\": [0, 0],\n";
+        out << "  \"textures\": {\n";
+        out << "    \"albedo\": \"\",\n";
+        out << "    \"normal\": \"\",\n";
+        out << "    \"metallic\": \"\",\n";
+        out << "    \"roughness\": \"\",\n";
+        out << "    \"ao\": \"\"\n";
+        out << "  }\n";
+        out << "}\n";
+    } catch (...) {
+        if (console_) {
+            console_->AddError("Failed to create material: " + materialId);
+        }
+        return false;
+    }
     materialManager_.LoadAll();
     RefreshProjectFiles();
     if (outMaterialId) {
@@ -950,15 +1589,27 @@ bool SceneEditor::AssignMaterialToSelected(const std::string& materialId) {
         materialManager_.LoadAll();
     }
 
-    SceneObject& obj = objects_[selectedIndex_];
+    NormalizeSelection();
     PushUndoState();
-    obj.hasMeshRenderer = true;
-    obj.meshRenderer.materialId = materialId;
+    int assignedCount = 0;
+    for (int index : selectedIndices_) {
+        if (index < 0 || index >= static_cast<int>(objects_.size())) {
+            continue;
+        }
+        SceneObject& obj = objects_[index];
+        obj.hasMeshRenderer = true;
+        obj.meshRenderer.materialId = materialId;
+        ++assignedCount;
+    }
     if (console_) {
-        console_->AddLog("Assigned material " + materialId + " to " + obj.name);
+        if (assignedCount == 1) {
+            console_->AddLog("Assigned material " + materialId + " to " + objects_[selectedIndex_].name);
+        } else {
+            console_->AddLog("Assigned material " + materialId + " to " + std::to_string(assignedCount) + " selected objects.");
+        }
     }
     if (onDirty_) onDirty_();
-    return true;
+    return assignedCount > 0;
 }
 
 void SceneEditor::OpenMaterialEditor(const std::string& materialId) {

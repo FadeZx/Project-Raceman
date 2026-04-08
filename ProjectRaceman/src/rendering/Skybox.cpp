@@ -98,7 +98,12 @@ unsigned int Skybox::loadCubemap(const std::vector<std::string>& faces) {
 }
 
 void Skybox::draw(glm::mat4 view, glm::mat4 projection) {
+    GLboolean previousDepthMask = GL_TRUE;
+    GLint previousDepthFunc = GL_LESS;
+    glGetBooleanv(GL_DEPTH_WRITEMASK, &previousDepthMask);
+    glGetIntegerv(GL_DEPTH_FUNC, &previousDepthFunc);
     glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_FALSE);
     glUseProgram(shaderProgram);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(glm::mat4(glm::mat3(view))));
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
@@ -108,5 +113,6 @@ void Skybox::draw(glm::mat4 view, glm::mat4 projection) {
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glBindVertexArray(0);
-    glDepthFunc(GL_LESS); // Restore depth function
+    glDepthMask(previousDepthMask);
+    glDepthFunc(previousDepthFunc);
 }

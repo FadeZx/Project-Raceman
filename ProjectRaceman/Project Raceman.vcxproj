@@ -62,16 +62,17 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;IMGUI_IMPL_OPENGL_LOADER_GLAD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)../includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)../includes;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Debug\STB_IMAGE.lib;Debug\GLAD.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Jolt.lib;Debug\STB_IMAGE.lib;Debug\GLAD.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)../lib;$(ProjectDir)editor-assets/third_party/JoltPhysics-master/Build/VS2022_CL/Debug</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -79,17 +80,18 @@
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NRELEASE;_CONSOLE;IMGUI_IMPL_OPENGL_LOADER_GLAD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)../includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)../includes;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;Debug/STB_IMAGE.lib;Debug/GLAD.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Jolt.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;Debug/STB_IMAGE.lib;Debug/GLAD.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)../lib;$(ProjectDir)editor-assets/third_party/JoltPhysics-master/Build/VS2022_CL/Release</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -98,6 +100,7 @@
     <ClInclude Include="src\input\InputManager.h" />
     <ClInclude Include="src\physics\MathTypes.h" />
     <ClInclude Include="src\physics\PhysicsLayer.h" />
+    <ClInclude Include="src\physics\PhysicsWorld.h" />
     <ClInclude Include="src\physics\SimpleJson.h" />
     <ClInclude Include="src\physics\VehicleConfig.h" />
     <ClInclude Include="src\physics\VehiclePhysics.h" />
@@ -109,9 +112,6 @@
     <ClInclude Include="src\rendering\shader.h" />
     <ClInclude Include="src\rendering\Skybox.h" />
     <ClInclude Include="src\rendering\SkyboxController.h" />
-    <ClInclude Include="src\scenes\GarageScene.h" />
-    <ClInclude Include="src\scenes\Scene.h" />
-    <ClInclude Include="src\scenes\SimulationScene.h" />
     <ClInclude Include="src\scripting\ObjectScript.h" />
     <ClInclude Include="src\scripting\ScriptRegistry.h" />
     <ClInclude Include="src\ui\Console.h" />
@@ -128,15 +128,13 @@
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\input\InputManager.cpp" />
     <ClCompile Include="src\physics\PhysicsLayer.cpp" />
+    <ClCompile Include="src\physics\PhysicsWorld.cpp" />
     <ClCompile Include="src\physics\VehicleConfig.cpp" />
     <ClCompile Include="src\physics\VehiclePhysics.cpp" />
     <ClCompile Include="src\rendering\Material.cpp" />
     <ClCompile Include="src\rendering\Renderer.cpp" />
     <ClCompile Include="src\rendering\Skybox.cpp" />
     <ClCompile Include="src\rendering\SkyboxController.cpp" />
-    <ClCompile Include="src\scenes\GarageScene.cpp" />
-    <ClCompile Include="src\scenes\Scene.cpp" />
-    <ClCompile Include="src\scenes\SimulationScene.cpp" />
     <ClCompile Include="src\scripting\ObjectScript.cpp" />
     <ClCompile Include="src\scripting\ScriptRegistry.cpp" />
     <ClCompile Include="src\ui\Console.cpp" />
@@ -189,8 +187,8 @@
     <None Include="src\shaders\text.vs" />
     <None Include="src\shaders\UIShader.fs" />
     <None Include="src\shaders\UIShader.vs" />
-    <ClInclude Include="assets\scripts\Test1.h" />
-    <ClCompile Include="assets\scripts\Test1.cpp" />
+    <ClInclude Include="Project\assets\scripts\Test1.h" />
+    <ClCompile Include="Project\assets\scripts\Test1.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,6 +1,5 @@
 #include "DebugUI.h"
 
-#include "../scenes/Scene.h"
 #include "../rendering/Renderer.h"
 
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
@@ -28,6 +27,7 @@ void DebugUI::Initialize(GLFWwindow* window) {
     // Persist window positions/sizes to config/imgui.ini
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = "config/imgui.ini"; // ImGui will auto-load/save this
+    io.ConfigWindowsResizeFromEdges = true;
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 450");
@@ -71,24 +71,6 @@ void DebugUI::RenderDrawData() {
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-void DebugUI::RenderSceneSwitcher(const std::vector<std::shared_ptr<Scene>>& scenes,
-                                  std::size_t activeScene,
-                                  const std::function<void(std::size_t)>& switchSceneCallback) {
-    if (!enabled_) {
-        return;
-    }
-
-    if (ImGui::Begin("Scenes")) {
-        for (std::size_t i = 0; i < scenes.size(); ++i) {
-            const bool isActive = i == activeScene;
-            if (ImGui::Selectable(scenes[i]->GetName().c_str(), isActive)) {
-                switchSceneCallback(i);
-            }
-        }
-    }
-    ImGui::End();
 }
 
 void DebugUI::RenderAppMetrics(float deltaTime, Renderer& renderer) {

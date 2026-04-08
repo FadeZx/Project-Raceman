@@ -24,13 +24,7 @@
     <ClInclude Include="src\physics\PhysicsLayer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\scenes\GarageScene.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\scenes\Scene.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\scenes\SimulationScene.h">
+    <ClInclude Include="src\physics\PhysicsWorld.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ui\DebugUI.h">
@@ -113,10 +107,7 @@
     <ClCompile Include="src\physics\PhysicsLayer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\scenes\GarageScene.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\scenes\SimulationScene.cpp">
+    <ClCompile Include="src\physics\PhysicsWorld.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ui\DebugUI.cpp">
@@ -156,9 +147,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\rendering\Skybox.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\scenes\Scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\rendering\SkyboxController.cpp">
@@ -231,10 +219,10 @@
     <None Include="src\dlls\assimp-vc143-mt.dll" />
     <None Include="src\dlls\ikpMP3.dll" />
     <None Include="src\dlls\irrKlang.dll" />
-    <ClInclude Include="assets\scripts\Test1.h">
+    <ClInclude Include="Project\assets\scripts\Test1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClCompile Include="assets\scripts\Test1.cpp">
+    <ClCompile Include="Project\assets\scripts\Test1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

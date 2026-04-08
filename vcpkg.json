@@ -5,6 +5,7 @@
   "dependencies": [
     "assimp",
     "glad",
-    "glfw3"
+    "glfw3",
+    "joltphysics"
   ]
 }

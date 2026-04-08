@@ -1,49 +1,47 @@
 #pragma once
 
-#include <memory>
 #include <string>
 #include <vector>
 #include <array>
 #include <functional>
-#include <unordered_map>
 
 namespace raceman {
 
 class Renderer;
-class Scene;
 class Console;
 
 using SkyboxFaces = std::array<std::string, 6>; // +X, -X, +Y, -Y, +Z, -Z
+
+struct EditorProjectMenu {
+    std::string projectName;
+    std::string currentScenePath;
+    std::vector<std::string> sceneAssets;
+    std::function<void(const std::string&)> onNewScene;
+    std::function<void()> onSaveScene;
+    std::function<void(const std::string&)> onOpenScene;
+    std::function<void()> onSaveProject;
+};
 
 class MenuController {
 public:
     MenuController();
     ~MenuController();
 
-    // Render the main menu and panels. switchScene is invoked when a new scene is selected.
-    // onSkyboxChosen is invoked when user clicks Apply in the Skybox panel (you can wire it later).
+    // Render the editor menu and supporting panels.
     void Render(Renderer& renderer,
-                const std::vector<std::shared_ptr<Scene>>& scenes,
-                std::size_t activeScene,
-                const std::function<void(std::size_t)>& switchScene,
-                const std::function<void(std::size_t, const SkyboxFaces&)>& onSkyboxChosen = {},
                 bool vsyncEnabled = true,
                 const std::function<void(bool)>& setVSync = std::function<void(bool)>(),
                 const std::function<void()>& onAddMeshPlane = std::function<void()>(),
-                Console* console = nullptr);
+                Console* console = nullptr,
+                EditorProjectMenu projectMenu = {},
+                const std::function<void(const SkyboxFaces&)>& onSkyboxChosen = {});
 
 private:
     // Panels
-    void RenderMainMenu(const std::vector<std::shared_ptr<Scene>>& scenes,
-                        std::size_t activeScene,
-                        const std::function<void(std::size_t)>& switchScene,
-                        const std::function<void()>& onAddMeshPlane);
+    void RenderMainMenu(const std::function<void()>& onAddMeshPlane,
+                        const EditorProjectMenu& projectMenu);
 
-    void RenderScenesPanel(const std::vector<std::shared_ptr<Scene>>& scenes,
-                           std::size_t activeScene,
-                           const std::function<void(std::size_t)>& switchScene);
-    void RenderSkyboxPanel(std::size_t activeScene,
-                           const std::function<void(std::size_t, const SkyboxFaces&)>& onSkyboxChosen);
+    void RenderSkyboxPanel(const std::function<void(const SkyboxFaces&)>& onSkyboxChosen);
 
     // Helpers
     void RefreshSkyboxSets();
@@ -57,15 +55,14 @@ private:
 
     // Toggles
     bool showRendering_{false};
-    bool showScenes_{false};
     bool showSkybox_{false};
     bool showConsole_{false};
 
     // Cached skybox folders under assets/skybox
     std::vector<std::string> skyboxFolders_;
 
-    // Per-scene chosen faces (by activeScene index)
-    std::unordered_map<std::size_t, SkyboxFaces> perSceneFaces_;
+    SkyboxFaces selectedSkyboxFaces_{};
+    bool hasSelectedSkyboxFaces_{false};
     // Selected folder index for UI
     int selectedFolder_{-1};
 
@@ -74,6 +71,9 @@ private:
 
     // Last frame dt for metrics
     float lastDt_{0.0f};
+    char newSceneNameBuffer_[128]{"NewScene"};
+    bool focusNewSceneName_{false};
+    bool openNewScenePopup_{false};
 };
 
 } // namespace raceman

@@ -24,7 +24,6 @@ d:\capt\project-raceman\projectraceman\bin-int\debug\sceneeditorproject.obj
 d:\capt\project-raceman\projectraceman\bin-int\debug\sceneeditorinspector.obj
 d:\capt\project-raceman\projectraceman\bin-int\debug\sceneeditorhierarchy.obj
 d:\capt\project-raceman\projectraceman\bin-int\debug\sceneeditorgizmo.obj
-d:\capt\project-raceman\projectraceman\bin-int\debug\sceneeditor.obj
 d:\capt\project-raceman\projectraceman\bin-int\debug\objimport.obj
 d:\capt\project-raceman\projectraceman\bin-int\debug\menucontroller.obj
 d:\capt\project-raceman\projectraceman\bin-int\debug\debugui.obj
@@ -32,12 +31,11 @@ d:\capt\project-raceman\projectraceman\bin-int\debug\console.obj
 d:\capt\project-raceman\projectraceman\bin-int\debug\scriptregistry.obj
 d:\capt\project-raceman\projectraceman\bin-int\debug\objectscript.obj
 d:\capt\project-raceman\projectraceman\bin-int\debug\simulationscene.obj
+d:\capt\project-raceman\projectraceman\bin-int\debug\sceneeditor.obj
 d:\capt\project-raceman\projectraceman\bin-int\debug\glad.obj
-d:\capt\project-raceman\projectraceman\bin-int\debug\projectraceman.ilk
-d:\capt\project-raceman\projectraceman\bin-int\debug\test.obj
-d:\capt\project-raceman\projectraceman\bin-int\debug\test3.obj
-d:\capt\project-raceman\projectraceman\bin\debug\projectraceman.pdb
 d:\capt\project-raceman\projectraceman\bin\debug\projectraceman.exe
+d:\capt\project-raceman\projectraceman\bin\debug\projectraceman.pdb
+d:\capt\project-raceman\projectraceman\bin-int\debug\projectraceman.ilk
 d:\capt\project-raceman\projectraceman\bin-int\debug\project raceman.vcxproj.filelistabsolute.txt
 d:\capt\project-raceman\projectraceman\bin-int\debug\project raceman.tlog\cl.command.1.tlog
 d:\capt\project-raceman\projectraceman\bin-int\debug\project raceman.tlog\cl.items.tlog

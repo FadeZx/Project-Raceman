@@ -7,10 +7,13 @@ namespace raceman {
 using namespace scene_editor_internal;
 
 void SceneEditor::RenderScenePanel() {
-    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar)) {
+    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse)) {
         // Add button with dropdown (Scene panel)
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("Add")) {
+                if (ImGui::MenuItem("Empty GameObject")) {
+                    AddEmptyObject();
+                }
                 if (ImGui::BeginMenu("Mesh")) {
                     if (ImGui::MenuItem("Plane")) {
                         AddPlane();
@@ -19,6 +22,18 @@ void SceneEditor::RenderScenePanel() {
                 }
                 if (ImGui::MenuItem("Camera")) {
                     AddCameraObject();
+                }
+                if (ImGui::BeginMenu("Light")) {
+                    if (ImGui::MenuItem("Directional Light")) {
+                        AddLightObject(LightType::Directional);
+                    }
+                    if (ImGui::MenuItem("Point Light")) {
+                        AddLightObject(LightType::Point);
+                    }
+                    if (ImGui::MenuItem("Spot Light")) {
+                        AddLightObject(LightType::Spot);
+                    }
+                    ImGui::EndMenu();
                 }
                 if (ImGui::BeginMenu("Model")) {
                     if (ImGui::MenuItem(".obj")) {
@@ -119,9 +134,32 @@ void SceneEditor::RenderScenePanel() {
             ImGui::EndPopup();
         }
 
-        // List of objects
-        for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
-            const bool selected = (i == selectedIndex_);
+        constexpr const char* kHierarchyObjectPayload = "SCENE_HIERARCHY_OBJECT_INDEX";
+        ImGui::TextDisabled("Drag an object onto another object to parent it.");
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
+                if (payload->DataSize == sizeof(int)) {
+                    int childIndex = *static_cast<const int*>(payload->Data);
+                    SetParent(childIndex, -1);
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        bool hierarchyDeleted = false;
+        std::function<void(int)> renderObjectRow = [&](int i) {
+            if (hierarchyDeleted) {
+                return;
+            }
+            const bool selected = IsSelected(i);
+            std::vector<int> children;
+            children.reserve(objects_.size());
+            for (int childIndex = 0; childIndex < static_cast<int>(objects_.size()); ++childIndex) {
+                if (objects_[childIndex].parentId == objects_[i].id) {
+                    children.push_back(childIndex);
+                }
+            }
+
             ImGui::PushID(i);
             if (renamingObjectIndex_ == i) {
                 if (focusObjectRename_) {
@@ -138,31 +176,75 @@ void SceneEditor::RenderScenePanel() {
                     renamingObjectIndex_ = -1;
                 }
             } else {
-                if (ImGui::Selectable(objects_[i].name.c_str(), selected)) {
-                    Select(i);
+                bool objectEnabled = objects_[i].enabled;
+                if (ImGui::Checkbox("##objectEnabled", &objectEnabled)) {
+                    PushUndoState();
+                    objects_[i].enabled = objectEnabled;
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Enable Object");
+                }
+                ImGui::SameLine();
+                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+                if (children.empty()) {
+                    flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                }
+                if (selected) {
+                    flags |= ImGuiTreeNodeFlags_Selected;
+                }
+                const bool open = ImGui::TreeNodeEx(objects_[i].name.c_str(), flags);
+                if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                        Select(i);
+                        RequestFocusSelectedObject();
+                    } else if (ImGui::GetIO().KeyCtrl) {
+                        ToggleSelect(i);
+                    } else {
+                        Select(i);
+                    }
+                }
+                if (ImGui::BeginDragDropSource()) {
+                    ImGui::SetDragDropPayload(kHierarchyObjectPayload, &i, sizeof(i));
+                    ImGui::TextUnformatted(objects_[i].name.c_str());
+                    ImGui::EndDragDropSource();
+                }
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
+                        if (payload->DataSize == sizeof(int)) {
+                            int childIndex = *static_cast<const int*>(payload->Data);
+                            SetParent(childIndex, i);
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
                 }
                 if (ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_F2)) {
                     BeginObjectRename(i);
                 }
                 if (selected && ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::GetIO().WantTextInput) {
                     DeleteSelectedObject();
+                    hierarchyDeleted = true;
                     ImGui::PopID();
-                    break;
+                    return;
+                }
+                if (open && !children.empty()) {
+                    for (int childIndex : children) {
+                        renderObjectRow(childIndex);
+                    }
+                    ImGui::TreePop();
                 }
             }
             ImGui::PopID();
-        }
+        };
 
-        ImGui::Separator();
-        ImGui::Button("Drop OBJ here to import", ImVec2(-1.0f, 0.0f));
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
-                const char* path = static_cast<const char*>(payload->Data);
-                if (path != nullptr) {
-                    ImportObj(path);
-                }
+        for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+            if (hierarchyDeleted) {
+                break;
             }
-            ImGui::EndDragDropTarget();
+            if (!objects_[i].parentId.empty() && FindObjectIndexById(objects_[i].parentId) >= 0) {
+                continue;
+            }
+            renderObjectRow(i);
         }
 
     }
@@ -171,24 +253,55 @@ void SceneEditor::RenderScenePanel() {
 
 
 void SceneEditor::DeleteSelectedObject() {
-    if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
+    NormalizeSelection();
+    if (selectedIndices_.empty()) {
         return;
     }
 
     PushUndoState();
-    objects_.erase(objects_.begin() + selectedIndex_);
+    std::vector<std::string> deleteIds;
+    for (int index : selectedIndices_) {
+        if (index >= 0 && index < static_cast<int>(objects_.size())) {
+            deleteIds.push_back(objects_[index].id);
+        }
+    }
+    std::vector<int> indices;
+    for (int index = 0; index < static_cast<int>(objects_.size()); ++index) {
+        const std::string& id = objects_[index].id;
+        bool shouldDelete = std::find(deleteIds.begin(), deleteIds.end(), id) != deleteIds.end();
+        if (!shouldDelete) {
+            for (const std::string& deleteId : deleteIds) {
+                if (IsDescendantOf(id, deleteId)) {
+                    shouldDelete = true;
+                    break;
+                }
+            }
+        }
+        if (shouldDelete) {
+            indices.push_back(index);
+        }
+    }
+    std::sort(indices.begin(), indices.end(), [](int a, int b) { return a > b; });
+    if (indices.empty()) {
+        return;
+    }
+    for (int index : indices) {
+        if (index >= 0 && index < static_cast<int>(objects_.size())) {
+            objects_.erase(objects_.begin() + index);
+        }
+    }
     renamingObjectIndex_ = -1;
     inspectMaterial_ = false;
     if (onDirty_) onDirty_();
 
     if (objects_.empty()) {
         selectedIndex_ = -1;
+        selectedIndices_.clear();
         return;
     }
 
-    if (selectedIndex_ >= static_cast<int>(objects_.size())) {
-        selectedIndex_ = static_cast<int>(objects_.size()) - 1;
-    }
+    selectedIndex_ = (std::min)(indices.back(), static_cast<int>(objects_.size()) - 1);
+    selectedIndices_ = {selectedIndex_};
 }
 
 

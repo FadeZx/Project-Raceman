@@ -1,38 +1,60 @@
 #include "MenuController.h"
 
 #include "../rendering/Renderer.h"
-#include "../scenes/Scene.h"
 #include "Console.h"
 
 #include <imgui/imgui.h>
 #include <filesystem>
 #include <algorithm>
+#include <cctype>
+#include <cstdio>
 #include <fstream>
 
 namespace fs = std::filesystem;
 
 namespace raceman {
 
+namespace {
+fs::path ProjectRootPath() {
+    if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
+        return fs::absolute("ProjectRaceman/Project").lexically_normal();
+    }
+    if (fs::exists("src") && fs::is_directory("src")) {
+        return fs::absolute("Project").lexically_normal();
+    }
+    return fs::absolute("Project").lexically_normal();
+}
+
+std::string SceneDisplayName(const std::string& scenePath) {
+    std::string filename = fs::path(scenePath).filename().string();
+    const std::string suffix = ".scene.json";
+    std::string lower = filename;
+    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    if (lower.size() >= suffix.size() && lower.compare(lower.size() - suffix.size(), suffix.size(), suffix) == 0) {
+        filename.resize(filename.size() - suffix.size());
+        filename += ".scene";
+    }
+    return filename;
+}
+} // namespace
+
 MenuController::MenuController() { LoadState(); }
 MenuController::~MenuController() { SaveState(); }
 
 void MenuController::Render(Renderer& renderer,
-                            const std::vector<std::shared_ptr<Scene>>& scenes,
-                            std::size_t activeScene,
-                            const std::function<void(std::size_t)>& switchScene,
-                            const std::function<void(std::size_t, const SkyboxFaces&)>& onSkyboxChosen,
                             bool vsyncEnabled,
                             const std::function<void(bool)>& setVSync,
                             const std::function<void()>& onAddMeshPlane,
-                            Console* console) {
+                            Console* console,
+                            EditorProjectMenu projectMenu,
+                            const std::function<void(const SkyboxFaces&)>& onSkyboxChosen) {
     (void)renderer;
 
-    // Draw top-level compact menu (now includes Scenes list and Add menu)
-    RenderMainMenu(scenes, activeScene, switchScene, onAddMeshPlane);
+    RenderMainMenu(onAddMeshPlane, projectMenu);
 
     // Rendering panel: reuse existing DebugUI metrics by just showing a small window that calls them
     if (showRendering_) {
-        ImGui::Begin("Rendering");
+        if (ImGui::Begin("Rendering", &showRendering_, ImGuiWindowFlags_NoCollapse)) {
         // Note: Application already calls DebugUI::RenderAppMetrics; to avoid duplication,
         // we just mirror a few controls, or we could display a note.
         auto& settings = renderer.GetSettings();
@@ -63,18 +85,17 @@ void MenuController::Render(Renderer& renderer,
                     bool selected = (i == selectedFolder_);
                     if (ImGui::Selectable(skyboxFolders_[i].c_str(), selected)) {
                         selectedFolder_ = i;
-                        // Precompute current faces for this scene
                         if (selectedFolder_ >= 0) {
-                            perSceneFaces_[activeScene] = BuildFacesFromFolder(skyboxFolders_[selectedFolder_]);
+                            selectedSkyboxFaces_ = BuildFacesFromFolder(skyboxFolders_[selectedFolder_]);
+                            hasSelectedSkyboxFaces_ = true;
                         }
                     }
                 }
                 ImGui::EndListBox();
             }
 
-            auto it = perSceneFaces_.find(activeScene);
-            if (it != perSceneFaces_.end()) {
-                const auto& faces = it->second;
+            if (hasSelectedSkyboxFaces_) {
+                const auto& faces = selectedSkyboxFaces_;
                 const char* labels[6] = {"+X","-X","+Y","-Y","+Z","-Z"};
                 for (int i = 0; i < 6; ++i) {
                     std::vector<char> buf(faces[i].begin(), faces[i].end());
@@ -82,62 +103,103 @@ void MenuController::Render(Renderer& renderer,
                     ImGui::InputText(labels[i], buf.data(), buf.size(), ImGuiInputTextFlags_ReadOnly);
                 }
                 if (onSkyboxChosen) {
-                    if (ImGui::Button("Apply To Scene")) {
-                        onSkyboxChosen(activeScene, faces);
+                    if (ImGui::Button("Apply Skybox")) {
+                        onSkyboxChosen(faces);
                     }
                 } else {
-                    ImGui::TextDisabled("Apply callback not wired; selection is stored only.");
+                    ImGui::TextDisabled("Skybox selection is stored only.");
                 }
             } else {
-                ImGui::TextDisabled("No skybox selected for this scene.");
+                ImGui::TextDisabled("No skybox selected.");
             }
         }
 
+        }
         ImGui::End();
+        if (!showRendering_) {
+            SaveState();
+        }
     }
-
-    // Scenes panel is handled by DebugUI::RenderSceneSwitcher; avoid duplication here.
 
     // Console is hosted inside the editor Browser tab window.
     (void)console;
 }
 
-void MenuController::RenderMainMenu(const std::vector<std::shared_ptr<Scene>>& scenes,
-                                    std::size_t activeScene,
-                                    const std::function<void(std::size_t)>& switchScene,
-                                    const std::function<void()>& onAddMeshPlane) {
-    if (ImGui::Begin("Menu")) {
-        bool prevR = showRendering_;
-        ImGui::Checkbox("Rendering", &showRendering_);
-        if (prevR != showRendering_) {
-            SaveState();
-        }
-
-
-        ImGui::Separator();
-        ImGui::TextUnformatted("Scenes");
-        for (std::size_t i = 0; i < scenes.size(); ++i) {
-            const bool isActive = (i == activeScene);
-            if (ImGui::Selectable(scenes[i]->GetName().c_str(), isActive)) {
-                if (switchScene) switchScene(i);
+void MenuController::RenderMainMenu(const std::function<void()>& onAddMeshPlane,
+                                    const EditorProjectMenu& projectMenu) {
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("New Scene...")) {
+                std::snprintf(newSceneNameBuffer_, sizeof(newSceneNameBuffer_), "%s", "NewScene");
+                focusNewSceneName_ = true;
+                openNewScenePopup_ = true;
             }
-        }
-    }
-    ImGui::End();
-}
-
-void MenuController::RenderScenesPanel(const std::vector<std::shared_ptr<Scene>>& scenes,
-                                       std::size_t activeScene,
-                                       const std::function<void(std::size_t)>& switchScene) {
-    if (ImGui::Begin("Scenes")) {
-        for (std::size_t i = 0; i < scenes.size(); ++i) {
-            bool isActive = (i == activeScene);
-            if (ImGui::Selectable(scenes[i]->GetName().c_str(), isActive)) {
-                switchScene(i);
+            if (ImGui::MenuItem("Save Scene", "Ctrl+S") && projectMenu.onSaveScene) {
+                projectMenu.onSaveScene();
             }
+            ImGui::Separator();
+            if (ImGui::BeginMenu("Open Scene")) {
+                if (projectMenu.sceneAssets.empty()) {
+                    ImGui::TextDisabled("No scene assets found.");
+                } else {
+                    for (const std::string& scenePath : projectMenu.sceneAssets) {
+                        const bool selected = (scenePath == projectMenu.currentScenePath);
+                        const std::string label = SceneDisplayName(scenePath) + "##" + scenePath;
+                        if (ImGui::MenuItem(label.c_str(), nullptr, selected) && projectMenu.onOpenScene) {
+                            projectMenu.onOpenScene(scenePath);
+                        }
+                    }
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Save Project") && projectMenu.onSaveProject) {
+                projectMenu.onSaveProject();
+            }
+            ImGui::EndMenu();
         }
+
+        if (ImGui::BeginMenu("Edit")) {
+            ImGui::MenuItem("Undo", "Ctrl+Z", false, false);
+            ImGui::MenuItem("Redo", "Ctrl+Y", false, false);
+            ImGui::EndMenu();
+        }
+
+        (void)onAddMeshPlane;
+
+        if (ImGui::BeginMenu("Window")) {
+            if (ImGui::MenuItem("Rendering", nullptr, showRendering_)) {
+                showRendering_ = !showRendering_;
+                SaveState();
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
     }
-    ImGui::End();
+
+    if (openNewScenePopup_) {
+        ImGui::OpenPopup("New Scene");
+        openNewScenePopup_ = false;
+    }
+
+    if (ImGui::BeginPopupModal("New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("Scene name");
+        if (focusNewSceneName_) {
+            ImGui::SetKeyboardFocusHere();
+            focusNewSceneName_ = false;
+        }
+        const bool enterPressed = ImGui::InputText("##newSceneName", newSceneNameBuffer_, sizeof(newSceneNameBuffer_), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+        if ((enterPressed || ImGui::Button("Create")) && projectMenu.onNewScene) {
+            projectMenu.onNewScene(newSceneNameBuffer_);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 }
 
 bool MenuController::LooksLikeFaceSet(const std::vector<std::string>& names) {
@@ -190,7 +252,7 @@ SkyboxFaces MenuController::BuildFacesFromFolder(const std::string& folder) {
 
 void MenuController::RefreshSkyboxSets() {
     skyboxFolders_.clear();
-    const fs::path base = fs::path("assets") / "skybox";
+    const fs::path base = ProjectRootPath() / "assets" / "skybox";
     if (!fs::exists(base)) return;
 
     // Collect folders that contain a valid set of 6 faces
@@ -214,10 +276,21 @@ void MenuController::RefreshSkyboxSets() {
         // ignore FS errors
     }
     std::sort(skyboxFolders_.begin(), skyboxFolders_.end());
+    if (!hasSelectedSkyboxFaces_) {
+        for (int i = 0; i < static_cast<int>(skyboxFolders_.size()); ++i) {
+            std::string lower = skyboxFolders_[static_cast<std::size_t>(i)];
+            std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+            if (lower.find("sunset") != std::string::npos) {
+                selectedFolder_ = i;
+                selectedSkyboxFaces_ = BuildFacesFromFolder(skyboxFolders_[static_cast<std::size_t>(i)]);
+                hasSelectedSkyboxFaces_ = true;
+                break;
+            }
+        }
+    }
 }
 
-void MenuController::RenderSkyboxPanel(std::size_t activeScene,
-                                       const std::function<void(std::size_t, const SkyboxFaces&)>& onSkyboxChosen) {
+void MenuController::RenderSkyboxPanel(const std::function<void(const SkyboxFaces&)>& onSkyboxChosen) {
     if (skyboxFolders_.empty()) {
         RefreshSkyboxSets();
     }
@@ -229,18 +302,17 @@ void MenuController::RenderSkyboxPanel(std::size_t activeScene,
                 bool selected = (i == selectedFolder_);
                 if (ImGui::Selectable(skyboxFolders_[i].c_str(), selected)) {
                     selectedFolder_ = i;
-                    // Precompute current faces for this scene
                     if (selectedFolder_ >= 0) {
-                        perSceneFaces_[activeScene] = BuildFacesFromFolder(skyboxFolders_[selectedFolder_]);
+                        selectedSkyboxFaces_ = BuildFacesFromFolder(skyboxFolders_[selectedFolder_]);
+                        hasSelectedSkyboxFaces_ = true;
                     }
                 }
             }
             ImGui::EndListBox();
         }
 
-        auto it = perSceneFaces_.find(activeScene);
-        if (it != perSceneFaces_.end()) {
-            const auto& faces = it->second;
+        if (hasSelectedSkyboxFaces_) {
+            const auto& faces = selectedSkyboxFaces_;
             const char* labels[6] = {"+X","-X","+Y","-Y","+Z","-Z"};
             for (int i = 0; i < 6; ++i) {
                 std::vector<char> buf(faces[i].begin(), faces[i].end());
@@ -248,14 +320,14 @@ void MenuController::RenderSkyboxPanel(std::size_t activeScene,
                 ImGui::InputText(labels[i], buf.data(), buf.size(), ImGuiInputTextFlags_ReadOnly);
             }
             if (onSkyboxChosen) {
-                if (ImGui::Button("Apply To Scene")) {
-                    onSkyboxChosen(activeScene, faces);
+                if (ImGui::Button("Apply")) {
+                    onSkyboxChosen(faces);
                 }
             } else {
-                ImGui::TextDisabled("Apply callback not wired; selection is stored only.");
+                ImGui::TextDisabled("Skybox selection is stored only.");
             }
         } else {
-            ImGui::TextDisabled("No skybox selected for this scene.");
+            ImGui::TextDisabled("No skybox selected.");
         }
     }
     ImGui::End();
@@ -272,7 +344,6 @@ void MenuController::LoadState() {
         auto key = line.substr(0, pos);
         auto val = line.substr(pos + 1);
         if (key == "showRendering") showRendering_ = (val == "1");
-        else if (key == "showScenes") showScenes_ = (val == "1");
         else if (key == "showSkybox") showSkybox_ = (val == "1");
         else if (key == "showConsole") showConsole_ = (val == "1");
         else if (key == "selectedFolder") selectedFolder_ = std::stoi(val);
@@ -287,7 +358,6 @@ void MenuController::SaveState() const {
     std::ofstream out(stateFile_, std::ios::trunc);
     if (!out.good()) return;
     out << "showRendering=" << (showRendering_ ? "1" : "0") << "\n";
-    out << "showScenes=" << (showScenes_ ? "1" : "0") << "\n";
     out << "showSkybox=" << (showSkybox_ ? "1" : "0") << "\n";
     out << "showConsole=" << (showConsole_ ? "1" : "0") << "\n";
     out << "selectedFolder=" << selectedFolder_ << "\n";

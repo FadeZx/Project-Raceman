@@ -3,15 +3,13 @@ D:\Capt\Project-Raceman\ProjectRaceman\src\glad.c;D:\Capt\Project-Raceman\Projec
 D:\Capt\Project-Raceman\ProjectRaceman\src\Main.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\Main.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\input\InputManager.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\InputManager.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\physics\PhysicsLayer.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\PhysicsLayer.obj
+D:\Capt\Project-Raceman\ProjectRaceman\src\physics\PhysicsWorld.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\PhysicsWorld.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\physics\VehicleConfig.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\VehicleConfig.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\physics\VehiclePhysics.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\VehiclePhysics.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\Material.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\Material.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\Renderer.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\Renderer.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\Skybox.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\Skybox.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\SkyboxController.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\SkyboxController.obj
-D:\Capt\Project-Raceman\ProjectRaceman\src\scenes\GarageScene.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\GarageScene.obj
-D:\Capt\Project-Raceman\ProjectRaceman\src\scenes\Scene.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\Scene.obj
-D:\Capt\Project-Raceman\ProjectRaceman\src\scenes\SimulationScene.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\SimulationScene.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\scripting\ObjectScript.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\ObjectScript.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\scripting\ScriptRegistry.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\ScriptRegistry.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\Console.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\Console.obj
@@ -30,6 +28,4 @@ D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorGizmo.cpp;D:\Capt\Proje
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorHierarchy.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\SceneEditorHierarchy.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorInspector.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\SceneEditorInspector.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorProject.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\SceneEditorProject.obj
-D:\Capt\Project-Raceman\ProjectRaceman\assets\scripts\Test1.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\Test1.obj
-D:\Capt\Project-Raceman\ProjectRaceman\assets\scripts\Test.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\Test.obj
-D:\Capt\Project-Raceman\ProjectRaceman\assets\scripts\Test3.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\Test3.obj
+D:\Capt\Project-Raceman\ProjectRaceman\Project\assets\scripts\Test1.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Release\Test1.obj

@@ -18,7 +18,7 @@ The watcher:
 
 - builds `ProjectRaceman/Project Raceman.sln`
 - starts `ProjectRaceman/bin/<Configuration>/ProjectRaceman.exe`
-- watches `ProjectRaceman/assets/scripts/*.h` and `*.cpp`
+- watches `ProjectRaceman/Project/assets/scripts/*.h` and `*.cpp`
 - stops the running app, rebuilds, and starts it again after a script save
 - with `-AttachDebugger`, first tries to attach through an existing Visual Studio instance, then falls back to `vsjitdebugger.exe -p <pid>`
 

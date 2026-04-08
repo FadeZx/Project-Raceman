@@ -2,7 +2,8 @@
 
 #include <memory>
 #include <string>
-#include <vector>
+
+#include <glm/glm.hpp>
 
 
 
@@ -10,13 +11,13 @@ struct GLFWwindow;
 
 namespace raceman {
 
-class Scene;
 class Renderer;
 class InputManager;
 class DebugUI;
 class MenuController;
 class Console;
 class SceneEditor;
+class SkyboxController;
 
 struct ApplicationConfig {
     std::string windowTitle{"Project Raceman"};
@@ -37,8 +38,6 @@ public:
     InputManager& GetInputManager();
     DebugUI& GetDebugUI();
 
-    void RegisterScene(const std::shared_ptr<Scene>& scene);
-    void SwitchScene(std::size_t index);
     void SetVSync(bool enabled);
 
 private:
@@ -50,6 +49,7 @@ private:
     void PollEvents();
     void Update(float deltaTime);
     void Render();
+    void FocusEditorCameraOn(const glm::vec3& target, float radius);
 
     ApplicationConfig config_{};
     GLFWwindow* window_{nullptr};
@@ -60,9 +60,8 @@ private:
     std::unique_ptr<MenuController> menuController_;
     std::unique_ptr<Console> console_;
     std::unique_ptr<SceneEditor> sceneEditor_;
+    std::unique_ptr<SkyboxController> skyboxController_;
 
-    std::vector<std::shared_ptr<Scene>> scenes_;
-    std::size_t activeScene_{0};
     bool running_{true};
     double lastFrameTime_{0.0};
 
@@ -83,6 +82,11 @@ private:
     bool rmbHeld_{false};
     bool firstMouse_{true};
     double lastMouseX_{0.0}, lastMouseY_{0.0};
+    bool cameraFocusActive_{false};
+    glm::vec3 cameraFocusStart_{0.0f};
+    glm::vec3 cameraFocusTarget_{0.0f};
+    float cameraFocusElapsed_{0.0f};
+    float cameraFocusDuration_{0.25f};
 };
 
 } // namespace raceman

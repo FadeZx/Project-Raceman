@@ -1,6 +1,6 @@
 #include "ScriptRegistry.h"
 
-#include "../../assets/scripts/Test1.h"
+#include "../../Project/assets/scripts/Test1.h"
 
 namespace raceman {
 namespace {

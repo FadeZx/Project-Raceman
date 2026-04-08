@@ -3,19 +3,51 @@
 #include "Skybox.h"
 #include "shader.h"
 
+#include <filesystem>
 #include <vector>
 
 namespace raceman {
+namespace fs = std::filesystem;
+
+namespace {
+fs::path ProjectRootPath() {
+    if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
+        return fs::absolute("ProjectRaceman/Project").lexically_normal();
+    }
+    if (fs::exists("src") && fs::is_directory("src")) {
+        return fs::absolute("Project").lexically_normal();
+    }
+    return fs::absolute("Project").lexically_normal();
+}
+
+fs::path EngineRootPath() {
+    if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
+        return fs::absolute("ProjectRaceman").lexically_normal();
+    }
+    if (fs::exists("src") && fs::is_directory("src")) {
+        return fs::absolute(".").lexically_normal();
+    }
+    return fs::absolute(".").lexically_normal();
+}
+
+std::string ProjectPath(const std::string& relativePath) {
+    return (ProjectRootPath() / fs::path(relativePath)).lexically_normal().string();
+}
+
+std::string EnginePath(const std::string& relativePath) {
+    return (EngineRootPath() / fs::path(relativePath)).lexically_normal().string();
+}
+} // namespace
 
 static SkyboxFaces MakeDefaultFaces() {
-    // Default to racetrack set if available
+    // Default to the sunset set.
     return SkyboxFaces{
-        "assets/skybox/sunset/px.jpg",
-        "assets/skybox/sunset/nx.jpg",
-        "assets/skybox/sunset/py.jpg",
-        "assets/skybox/sunset/ny.jpg",
-        "assets/skybox/sunset/pz.jpg",
-        "assets/skybox/sunset/nz.jpg",
+        ProjectPath("assets/skybox/sunset/px.jpg"),
+        ProjectPath("assets/skybox/sunset/nx.jpg"),
+        ProjectPath("assets/skybox/sunset/py.jpg"),
+        ProjectPath("assets/skybox/sunset/ny.jpg"),
+        ProjectPath("assets/skybox/sunset/pz.jpg"),
+        ProjectPath("assets/skybox/sunset/nz.jpg"),
     };
 }
 
@@ -23,8 +55,8 @@ SkyboxFaces SkyboxController::DefaultFaces() { return MakeDefaultFaces(); }
 
 SkyboxController::SkyboxController() : faces_(DefaultFaces()) {
     // Default shader paths relative to executable working directory
-    vsPath_ = "src/shaders/skybox/skybox.vs";
-    fsPath_ = "src/shaders/skybox/skybox.fs";
+    vsPath_ = EnginePath("src/shaders/skybox/skybox.vs");
+    fsPath_ = EnginePath("src/shaders/skybox/skybox.fs");
 }
 
 SkyboxController::~SkyboxController() = default;

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "projectName": "Project Raceman",
+  "assetsRoot": "assets",
+  "defaultScene": "assets/scenes/EditorScene.scene.json",
+  "lastScene": "assets/scenes/TestScene.scene.json",
+  "editorState": {
+    "selectedProjectDirectory": "assets/car",
+    "viewportMode": "Scene"
+  }
+}

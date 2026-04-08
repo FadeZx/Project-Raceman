@@ -4,12 +4,47 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <cctype>
 
 #include "../physics/SimpleJson.h"
 
 namespace fs = std::filesystem;
 
 namespace raceman {
+
+namespace {
+
+fs::path FindAssetsRoot() {
+    if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
+        return fs::absolute("ProjectRaceman/Project/assets").lexically_normal();
+    }
+    if (fs::exists("src") && fs::is_directory("src")) {
+        return fs::absolute("Project/assets").lexically_normal();
+    }
+    return fs::absolute("Project/assets").lexically_normal();
+}
+
+fs::path DefaultMaterialDirectory() {
+    return FindAssetsRoot();
+}
+
+std::string JsonEscape(const std::string& value) {
+    std::string out;
+    out.reserve(value.size());
+    for (char ch : value) {
+        switch (ch) {
+        case '\\': out += "\\\\"; break;
+        case '"': out += "\\\""; break;
+        case '\n': out += "\\n"; break;
+        case '\r': out += "\\r"; break;
+        case '\t': out += "\\t"; break;
+        default: out.push_back(ch); break;
+        }
+    }
+    return out;
+}
+
+} // namespace
 
 static inline std::string trim_copy(std::string s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch){ return !std::isspace(ch); }));
@@ -18,7 +53,7 @@ static inline std::string trim_copy(std::string s) {
 }
 
 std::string MaterialManager::MaterialPath(const std::string& id) {
-    return std::string("assets/materials/") + id + ".mat.json";
+    return (DefaultMaterialDirectory() / (id + ".mat.json")).lexically_normal().string();
 }
 
 bool MaterialManager::LoadOne(const std::string& path, Material& out) {
@@ -95,10 +130,11 @@ bool MaterialManager::LoadOne(const std::string& path, Material& out) {
 
 void MaterialManager::LoadAll() {
     materials_.clear();
-    const fs::path dir("assets/materials");
+    materialPaths_.clear();
+    const fs::path dir = FindAssetsRoot();
     if (!fs::exists(dir)) return;
     try {
-        for (const auto& entry : fs::directory_iterator(dir)) {
+        for (const auto& entry : fs::recursive_directory_iterator(dir)) {
             if (!entry.is_regular_file()) continue;
             auto path = entry.path();
             if (path.extension() == ".json" && path.filename().string().find(".mat.json") != std::string::npos) {
@@ -111,6 +147,7 @@ void MaterialManager::LoadAll() {
                     if (pos != std::string::npos) id = id.substr(0, pos);
                     if (m.name.empty()) m.name = id;
                     materials_[id] = m;
+                    materialPaths_[id] = path.lexically_normal().string();
                 }
             }
         }
@@ -120,17 +157,22 @@ void MaterialManager::LoadAll() {
 }
 
 bool MaterialManager::Save(const std::string& id, const Material& m) {
+    std::string path = MaterialPath(id);
+    if (auto it = materialPaths_.find(id); it != materialPaths_.end() && !it->second.empty()) {
+        path = it->second;
+    }
+
     try {
-        fs::create_directories(fs::path("assets/materials"));
+        fs::create_directories(fs::path(path).parent_path());
     } catch (...) {}
 
-    std::ofstream out(MaterialPath(id), std::ios::trunc);
+    std::ofstream out(path, std::ios::trunc);
     if (!out.good()) return false;
 
     out << "{\n";
     out << "  \"version\": 1,\n";
-    out << "  \"name\": \"" << (m.name.empty() ? id : m.name) << "\",\n";
-    out << "  \"shader\": \"" << (m.shader.empty() ? "pbr" : m.shader) << "\",\n";
+    out << "  \"name\": \"" << JsonEscape(m.name.empty() ? id : m.name) << "\",\n";
+    out << "  \"shader\": \"" << JsonEscape(m.shader.empty() ? std::string("pbr") : m.shader) << "\",\n";
     out << "  \"albedoColor\": [" << m.albedoColor[0] << ", " << m.albedoColor[1] << ", " << m.albedoColor[2] << ", " << m.albedoColor[3] << "],\n";
     out << "  \"metallic\": " << m.metallic << ",\n";
     out << "  \"roughness\": " << m.roughness << ",\n";
@@ -138,11 +180,11 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
     out << "  \"uvTiling\": [" << m.uvTiling[0] << ", " << m.uvTiling[1] << "],\n";
     out << "  \"uvOffset\": [" << m.uvOffset[0] << ", " << m.uvOffset[1] << "],\n";
     out << "  \"textures\": {\n";
-    out << "    \"albedo\": \"" << m.texAlbedo << "\",\n";
-    out << "    \"normal\": \"" << m.texNormal << "\",\n";
-    out << "    \"metallic\": \"" << m.texMetallic << "\",\n";
-    out << "    \"roughness\": \"" << m.texRoughness << "\",\n";
-    out << "    \"ao\": \"" << m.texAo << "\"\n";
+    out << "    \"albedo\": \"" << JsonEscape(m.texAlbedo) << "\",\n";
+    out << "    \"normal\": \"" << JsonEscape(m.texNormal) << "\",\n";
+    out << "    \"metallic\": \"" << JsonEscape(m.texMetallic) << "\",\n";
+    out << "    \"roughness\": \"" << JsonEscape(m.texRoughness) << "\",\n";
+    out << "    \"ao\": \"" << JsonEscape(m.texAo) << "\"\n";
     out << "  }\n";
     out << "}\n";
     return true;

@@ -1,0 +1,151 @@
+{
+  "objects": [
+    {
+      "id": "camera_3",
+      "parentId": "",
+      "name": "Camera",
+      "type": "Camera",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 2.01966, 5],
+          "rotationEuler": [-15, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": true,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.1,
+          "farClip": 500,
+          "clearColor": [0.02, 0.02, 0.02, 1]
+        }
+      ]
+    },
+    {
+      "id": "light_4",
+      "parentId": "",
+      "name": "Directional Light",
+      "type": "Light",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-1.07859, 0, 0],
+          "rotationEuler": [-45, -11.1077, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "lightType": "Directional",
+          "color": [1, 1, 1],
+          "intensity": 1.5,
+          "range": 100,
+          "spotAngleDegrees": 30
+        }
+      ]
+    },
+    {
+      "id": "mesh_5",
+      "parentId": "",
+      "name": "Plane",
+      "type": "Mesh",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [10, 1, 10]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/mesh/plane.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "DefaultMaterial",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        },
+        {
+          "type": "BoxCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0, -0.05, 0],
+          "size": [1, 0.101, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_1",
+      "parentId": "",
+      "name": "Wheel",
+      "type": "Mesh",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.374282, 2.38833, 0.188344],
+          "rotationEuler": [7.53372, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+            {
+              "enabled": true,
+              "scriptName": "Test1",
+              "scriptPath": "assets/scripts/Test1.cpp"
+            }
+          ]
+        },
+        {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 1,
+          "useGravity": true,
+          "velocity": [0, 0, 0]
+        },
+        {
+          "type": "SphereCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0.15, 0, 0],
+          "radius": 0.5
+        }
+      ]
+    }
+  ]
+}
