@@ -7,7 +7,11 @@ namespace raceman {
 using namespace scene_editor_internal;
 
 void SceneEditor::RenderScenePanel() {
-    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse)) {
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float topHeight = viewport->WorkSize.y - bottomPanelHeight_;
+    ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(leftPanelWidth_, topHeight), ImGuiCond_Always);
+    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
         // Add button with dropdown (Scene panel)
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("Add")) {
@@ -78,15 +82,21 @@ void SceneEditor::RenderScenePanel() {
             ImGui::SetTooltip("Stop");
         }
         ImGui::SameLine();
-        if (ImGui::RadioButton("Scene", viewportMode_ == SceneEditorViewportMode::Scene)) {
+        if (ImGui::RadioButton("Scene", viewportLayout_ == SceneEditorViewportLayout::Tabs && viewportMode_ == SceneEditorViewportMode::Scene)) {
+            viewportLayout_ = SceneEditorViewportLayout::Tabs;
             viewportMode_ = SceneEditorViewportMode::Scene;
         }
         ImGui::SameLine();
-        if (ImGui::RadioButton("Game", viewportMode_ == SceneEditorViewportMode::Game)) {
+        if (ImGui::RadioButton("Game", viewportLayout_ == SceneEditorViewportLayout::Tabs && viewportMode_ == SceneEditorViewportMode::Game)) {
+            viewportLayout_ = SceneEditorViewportLayout::Tabs;
             viewportMode_ = SceneEditorViewportMode::Game;
         }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Split", viewportLayout_ == SceneEditorViewportLayout::Split)) {
+            viewportLayout_ = SceneEditorViewportLayout::Split;
+        }
         ImGui::Separator();
-        if (viewportMode_ == SceneEditorViewportMode::Game) {
+        if (viewportLayout_ == SceneEditorViewportLayout::Split || viewportMode_ == SceneEditorViewportMode::Game) {
             glm::mat4 view;
             glm::mat4 proj;
             if (!TryGetGameCamera(view, proj, 1.0f)) {
@@ -146,106 +156,123 @@ void SceneEditor::RenderScenePanel() {
             ImGui::EndDragDropTarget();
         }
 
-        bool hierarchyDeleted = false;
-        std::function<void(int)> renderObjectRow = [&](int i) {
-            if (hierarchyDeleted) {
-                return;
-            }
-            const bool selected = IsSelected(i);
-            std::vector<int> children;
-            children.reserve(objects_.size());
-            for (int childIndex = 0; childIndex < static_cast<int>(objects_.size()); ++childIndex) {
-                if (objects_[childIndex].parentId == objects_[i].id) {
-                    children.push_back(childIndex);
+        if (ImGui::BeginChild("SceneHierarchyTree", ImVec2(0.0f, 0.0f), false)) {
+            bool hierarchyDeleted = false;
+            std::function<void(int)> renderObjectRow = [&](int i) {
+                if (hierarchyDeleted) {
+                    return;
                 }
-            }
-
-            ImGui::PushID(i);
-            if (renamingObjectIndex_ == i) {
-                if (focusObjectRename_) {
-                    ImGui::SetKeyboardFocusHere();
-                    focusObjectRename_ = false;
-                }
-                const bool enterPressed = ImGui::InputText("##objectRename", objectRenameBuffer_, sizeof(objectRenameBuffer_), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
-                if (enterPressed || ImGui::IsItemDeactivatedAfterEdit()) {
-                    PushUndoState();
-                    objects_[i].name = objectRenameBuffer_;
-                    renamingObjectIndex_ = -1;
-                    if (onDirty_) onDirty_();
-                } else if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-                    renamingObjectIndex_ = -1;
-                }
-            } else {
-                bool objectEnabled = objects_[i].enabled;
-                if (ImGui::Checkbox("##objectEnabled", &objectEnabled)) {
-                    PushUndoState();
-                    objects_[i].enabled = objectEnabled;
-                    if (onDirty_) onDirty_();
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Enable Object");
-                }
-                ImGui::SameLine();
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-                if (children.empty()) {
-                    flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-                }
-                if (selected) {
-                    flags |= ImGuiTreeNodeFlags_Selected;
-                }
-                const bool open = ImGui::TreeNodeEx(objects_[i].name.c_str(), flags);
-                if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                        Select(i);
-                        RequestFocusSelectedObject();
-                    } else if (ImGui::GetIO().KeyCtrl) {
-                        ToggleSelect(i);
-                    } else {
-                        Select(i);
+                const bool selected = IsSelected(i);
+                std::vector<int> children;
+                children.reserve(objects_.size());
+                for (int childIndex = 0; childIndex < static_cast<int>(objects_.size()); ++childIndex) {
+                    if (objects_[childIndex].parentId == objects_[i].id) {
+                        children.push_back(childIndex);
                     }
                 }
-                if (ImGui::BeginDragDropSource()) {
-                    ImGui::SetDragDropPayload(kHierarchyObjectPayload, &i, sizeof(i));
-                    ImGui::TextUnformatted(objects_[i].name.c_str());
-                    ImGui::EndDragDropSource();
+
+                ImGui::PushID(i);
+                if (renamingObjectIndex_ == i) {
+                    if (focusObjectRename_) {
+                        ImGui::SetKeyboardFocusHere();
+                        focusObjectRename_ = false;
+                    }
+                    const bool enterPressed = ImGui::InputText("##objectRename", objectRenameBuffer_, sizeof(objectRenameBuffer_), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+                    if (enterPressed || ImGui::IsItemDeactivatedAfterEdit()) {
+                        PushUndoState();
+                        objects_[i].name = objectRenameBuffer_;
+                        renamingObjectIndex_ = -1;
+                        if (onDirty_) onDirty_();
+                    } else if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+                        renamingObjectIndex_ = -1;
+                    }
+                } else {
+                    bool objectEnabled = objects_[i].enabled;
+                    if (ImGui::Checkbox("##objectEnabled", &objectEnabled)) {
+                        PushUndoState();
+                        objects_[i].enabled = objectEnabled;
+                        if (onDirty_) onDirty_();
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Enable Object");
+                    }
+                    ImGui::SameLine();
+                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+                    if (children.empty()) {
+                        flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                    }
+                    if (selected) {
+                        flags |= ImGuiTreeNodeFlags_Selected;
+                    }
+                    const bool open = ImGui::TreeNodeEx(objects_[i].name.c_str(), flags);
+                    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+                        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                            Select(i);
+                            RequestFocusSelectedObject();
+                        } else if (ImGui::GetIO().KeyCtrl) {
+                            ToggleSelect(i);
+                        } else {
+                            Select(i);
+                        }
+                    }
+                    if (ImGui::BeginDragDropSource()) {
+                        ImGui::SetDragDropPayload(kHierarchyObjectPayload, &i, sizeof(i));
+                        ImGui::TextUnformatted(objects_[i].name.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
+                            if (payload->DataSize == sizeof(int)) {
+                                int childIndex = *static_cast<const int*>(payload->Data);
+                                SetParent(childIndex, i);
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+                    if (ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_F2)) {
+                        BeginObjectRename(i);
+                    }
+                    if (selected && ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::GetIO().WantTextInput) {
+                        DeleteSelectedObject();
+                        hierarchyDeleted = true;
+                        ImGui::PopID();
+                        return;
+                    }
+                    if (open && !children.empty()) {
+                        for (int childIndex : children) {
+                            renderObjectRow(childIndex);
+                        }
+                        ImGui::TreePop();
+                    }
                 }
+                ImGui::PopID();
+            };
+
+            for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                if (hierarchyDeleted) {
+                    break;
+                }
+                if (!objects_[i].parentId.empty() && FindObjectIndexById(objects_[i].parentId) >= 0) {
+                    continue;
+                }
+                renderObjectRow(i);
+            }
+
+            const ImVec2 emptySpace = ImGui::GetContentRegionAvail();
+            if (emptySpace.y > 0.0f) {
+                ImGui::InvisibleButton("##HierarchyEmptyDropTarget", ImVec2((std::max)(1.0f, emptySpace.x), emptySpace.y));
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
                         if (payload->DataSize == sizeof(int)) {
                             int childIndex = *static_cast<const int*>(payload->Data);
-                            SetParent(childIndex, i);
+                            SetParent(childIndex, -1);
                         }
                     }
                     ImGui::EndDragDropTarget();
                 }
-                if (ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_F2)) {
-                    BeginObjectRename(i);
-                }
-                if (selected && ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::GetIO().WantTextInput) {
-                    DeleteSelectedObject();
-                    hierarchyDeleted = true;
-                    ImGui::PopID();
-                    return;
-                }
-                if (open && !children.empty()) {
-                    for (int childIndex : children) {
-                        renderObjectRow(childIndex);
-                    }
-                    ImGui::TreePop();
-                }
             }
-            ImGui::PopID();
-        };
-
-        for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
-            if (hierarchyDeleted) {
-                break;
-            }
-            if (!objects_[i].parentId.empty() && FindObjectIndexById(objects_[i].parentId) >= 0) {
-                continue;
-            }
-            renderObjectRow(i);
         }
+        ImGui::EndChild();
 
     }
     ImGui::End();

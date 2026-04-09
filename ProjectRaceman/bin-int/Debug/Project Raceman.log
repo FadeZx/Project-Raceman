@@ -1,50 +1,121 @@
 ﻿  Application.cpp
-  Main.cpp
-  InputManager.cpp
-  PhysicsLayer.cpp
-  PhysicsWorld.cpp
-  VehicleConfig.cpp
-  VehiclePhysics.cpp
-  Material.cpp
-  Renderer.cpp
-  Skybox.cpp
-  SkyboxController.cpp
   ObjectScript.cpp
-  ScriptRegistry.cpp
-  Console.cpp
   DebugUI.cpp
-  imgui_impl_glfw.cpp
-  imgui_impl_opengl3.cpp
-  imgui.cpp
-  imgui_demo.cpp
-  imgui_draw.cpp
-  Generating Code...
-  Compiling...
-  imgui_tables.cpp
-  imgui_widgets.cpp
-  MenuController.cpp
-  ObjImport.cpp
   SceneEditor.cpp
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(637,45): error C2065: 'ImGuiWindowFlags_NoDocking': undeclared identifier
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(645,5): error C2065: 'ImGuiDockNodeFlags': undeclared identifier
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(645,24): error C2146: syntax error: missing ';' before identifier 'dockspaceFlags'
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(645,24): error C2065: 'dockspaceFlags': undeclared identifier
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(645,41): error C2065: 'ImGuiDockNodeFlags_PassthruCentralNode': undeclared identifier
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(649,12): error C2039: 'SetNextWindowViewport': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(649,12): error C3861: 'SetNextWindowViewport': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(657,12): error C2039: 'DockSpace': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(657,55): error C2065: 'dockspaceFlags': undeclared identifier
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(657,12): error C3861: 'DockSpace': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(706,5): error C2065: 'ImGuiDockNode': undeclared identifier
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(706,20): error C2065: 'node': undeclared identifier
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(706,34): error C2039: 'DockBuilderGetNode': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(706,34): error C3861: 'DockBuilderGetNode': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(707,35): error C2065: 'node': undeclared identifier
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(712,12): error C2039: 'DockBuilderRemoveNode': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(712,12): error C3861: 'DockBuilderRemoveNode': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(713,12): error C2039: 'DockBuilderAddNode': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(713,44): error C2065: 'ImGuiDockNodeFlags_DockSpace': undeclared identifier
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(713,12): error C3861: 'DockBuilderAddNode': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(714,12): error C2039: 'DockBuilderSetNodeSize': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(714,12): error C3861: 'DockBuilderSetNodeSize': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(717,36): error C2039: 'DockBuilderSplitNode': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(717,36): error C3861: 'DockBuilderSplitNode': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(718,32): error C2039: 'DockBuilderSplitNode': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(718,32): error C3861: 'DockBuilderSplitNode': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(719,34): error C2039: 'DockBuilderSplitNode': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(719,34): error C3861: 'DockBuilderSplitNode': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(721,12): error C2039: 'DockBuilderDockWindow': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(721,12): error C3861: 'DockBuilderDockWindow': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(722,12): error C2039: 'DockBuilderDockWindow': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(722,12): error C3861: 'DockBuilderDockWindow': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(723,12): error C2039: 'DockBuilderDockWindow': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(723,12): error C3861: 'DockBuilderDockWindow': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(724,12): error C2039: 'DockBuilderDockWindow': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(724,12): error C3861: 'DockBuilderDockWindow': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(725,12): error C2039: 'DockBuilderFinish': is not a member of 'ImGui'
+      D:\Project-Raceman\includes\imgui\imgui_internal.h(2982,11):
+      see declaration of 'ImGui'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(725,12): error C3861: 'DockBuilderFinish': identifier not found
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(739,9): error C2679: binary '=': no operator found which takes a right-hand operand of type 'const ImVec2' (or there is no acceptable conversion)
+      D:\Project-Raceman\includes\glm\detail\type_vec2.hpp(143,46):
+      could be 'glm::vec<2,float,glm::packed_highp> &glm::vec<2,float,glm::packed_highp>::operator =(const glm::vec<2,float,glm::packed_highp> &)'
+          D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(739,9):
+          'glm::vec<2,float,glm::packed_highp> &glm::vec<2,float,glm::packed_highp>::operator =(const glm::vec<2,float,glm::packed_highp> &)': cannot convert argument 2 from 'const ImVec2' to 'const glm::vec<2,float,glm::packed_highp> &'
+              D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(739,29):
+              Reason: cannot convert from 'const ImVec2' to 'const glm::vec<2,float,glm::packed_highp>'
+              D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(739,29):
+              No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
+      D:\Project-Raceman\includes\glm\detail\type_vec2.hpp(146,46):
+      or       'glm::vec<2,float,glm::packed_highp> &glm::vec<2,float,glm::packed_highp>::operator =(const glm::vec<2,U,glm::packed_highp> &)'
+          D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(739,9):
+          'glm::vec<2,float,glm::packed_highp> &glm::vec<2,float,glm::packed_highp>::operator =(const glm::vec<2,U,glm::packed_highp> &)': could not deduce template argument for 'const glm::vec<2,U,glm::packed_highp> &' from 'const ImVec2'
+      D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(739,9):
+      while trying to match the argument list '(glm::vec2, const ImVec2)'
+  
+D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(768,9): error C2679: binary '=': no operator found which takes a right-hand operand of type 'ImVec2' (or there is no acceptable conversion)
+      D:\Project-Raceman\includes\glm\detail\type_vec2.hpp(143,46):
+      could be 'glm::vec<2,float,glm::packed_highp> &glm::vec<2,float,glm::packed_highp>::operator =(const glm::vec<2,float,glm::packed_highp> &)'
+          D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(768,9):
+          'glm::vec<2,float,glm::packed_highp> &glm::vec<2,float,glm::packed_highp>::operator =(const glm::vec<2,float,glm::packed_highp> &)': cannot convert argument 2 from 'ImVec2' to 'const glm::vec<2,float,glm::packed_highp> &'
+              D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(768,36):
+              Reason: cannot convert from 'ImVec2' to 'const glm::vec<2,float,glm::packed_highp>'
+              D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(768,36):
+              No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
+      D:\Project-Raceman\includes\glm\detail\type_vec2.hpp(146,46):
+      or       'glm::vec<2,float,glm::packed_highp> &glm::vec<2,float,glm::packed_highp>::operator =(const glm::vec<2,U,glm::packed_highp> &)'
+          D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(768,9):
+          'glm::vec<2,float,glm::packed_highp> &glm::vec<2,float,glm::packed_highp>::operator =(const glm::vec<2,U,glm::packed_highp> &)': could not deduce template argument for 'const glm::vec<2,U,glm::packed_highp> &' from 'ImVec2'
+      D:\Project-Raceman\ProjectRaceman\src\ui\SceneEditor.cpp(768,9):
+      while trying to match the argument list '(glm::vec2, ImVec2)'
+  
   SceneEditorGizmo.cpp
   SceneEditorHierarchy.cpp
   SceneEditorInspector.cpp
   SceneEditorProject.cpp
-  Test1.cpp
   Generating Code...
-  glad.c
-glfw3.lib(init.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(init.obj)' or at ''; linking object as if no debug info
-glfw3.lib(window.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(window.obj)' or at ''; linking object as if no debug info
-glfw3.lib(input.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(input.obj)' or at ''; linking object as if no debug info
-glfw3.lib(context.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(context.obj)' or at ''; linking object as if no debug info
-glfw3.lib(monitor.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(monitor.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_window.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_window.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_init.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_init.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_monitor.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_monitor.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_time.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_time.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_thread.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_thread.obj)' or at ''; linking object as if no debug info
-glfw3.lib(vulkan.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(vulkan.obj)' or at ''; linking object as if no debug info
-glfw3.lib(win32_joystick.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(win32_joystick.obj)' or at ''; linking object as if no debug info
-glfw3.lib(wgl_context.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(wgl_context.obj)' or at ''; linking object as if no debug info
-glfw3.lib(egl_context.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(egl_context.obj)' or at ''; linking object as if no debug info
-glfw3.lib(osmesa_context.obj) : warning LNK4099: PDB '' was not found with 'glfw3.lib(osmesa_context.obj)' or at ''; linking object as if no debug info
-  Project Raceman.vcxproj -> C:\Capt\Project-Raceman\ProjectRaceman\bin\Debug\ProjectRaceman.exe

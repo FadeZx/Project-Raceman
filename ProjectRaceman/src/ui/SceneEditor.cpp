@@ -631,10 +631,334 @@ void SceneEditor::RenderUI(float deltaTime) {
     HandleEditorShortcuts();
     UpdateScripts(deltaTime);
     UpdatePhysics(deltaTime);
+    EnsureDockspaceLayout();
 
     RenderScenePanel();
     RenderInspectorPanel();
     RenderProjectPanel();
+    RenderViewportPanel();
+    RenderLayoutSplitters();
+    viewportFocused_ = viewportHovered_ && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+}
+
+float SceneEditor::GetViewportAspect() const {
+    const glm::vec2 size = viewportMode_ == SceneEditorViewportMode::Game ? gameViewportSize_ : sceneViewportSize_;
+    return size.y > 0.5f ? size.x / size.y : 1.0f;
+}
+
+namespace {
+RendererViewport BuildRenderViewportFromLogicalRect(const glm::vec2& position,
+                                                   const glm::vec2& size,
+                                                   int framebufferWidth,
+                                                   int framebufferHeight) {
+    RendererViewport viewport{};
+    viewport.width = (std::max)(1, framebufferWidth);
+    viewport.height = (std::max)(1, framebufferHeight);
+
+    if (size.x <= 1.0f || size.y <= 1.0f) {
+        return viewport;
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    const float displayWidth = io.DisplaySize.x > 0.0f ? io.DisplaySize.x : static_cast<float>(framebufferWidth);
+    const float displayHeight = io.DisplaySize.y > 0.0f ? io.DisplaySize.y : static_cast<float>(framebufferHeight);
+    const float scaleX = static_cast<float>(framebufferWidth) / displayWidth;
+    const float scaleY = static_cast<float>(framebufferHeight) / displayHeight;
+
+    viewport.x = static_cast<int>(std::round(position.x * scaleX));
+    viewport.y = static_cast<int>(std::round(position.y * scaleY));
+    viewport.width = (std::max)(1, static_cast<int>(std::round(size.x * scaleX)));
+    viewport.height = (std::max)(1, static_cast<int>(std::round(size.y * scaleY)));
+    return viewport;
+}
+
+} // namespace
+
+RendererViewport SceneEditor::GetRenderViewport(int framebufferWidth, int framebufferHeight) const {
+    return viewportMode_ == SceneEditorViewportMode::Game
+        ? GetGameRenderViewport(framebufferWidth, framebufferHeight)
+        : GetSceneRenderViewport(framebufferWidth, framebufferHeight);
+}
+
+RendererViewport SceneEditor::GetSceneRenderViewport(int framebufferWidth, int framebufferHeight) const {
+    return BuildRenderViewportFromLogicalRect(sceneViewportPos_, sceneViewportSize_, framebufferWidth, framebufferHeight);
+}
+
+RendererViewport SceneEditor::GetGameRenderViewport(int framebufferWidth, int framebufferHeight) const {
+    return BuildRenderViewportFromLogicalRect(gameViewportPos_, gameViewportSize_, framebufferWidth, framebufferHeight);
+}
+
+bool SceneEditor::ContainsViewportPoint(float x, float y) const {
+    return ContainsSceneViewportPoint(x, y) || ContainsGameViewportPoint(x, y);
+}
+
+bool SceneEditor::ContainsSceneViewportPoint(float x, float y) const {
+    return sceneViewportSize_.x > 1.0f
+        && sceneViewportSize_.y > 1.0f
+        && x >= sceneViewportPos_.x
+        && y >= sceneViewportPos_.y
+        && x < sceneViewportPos_.x + sceneViewportSize_.x
+        && y < sceneViewportPos_.y + sceneViewportSize_.y;
+}
+
+bool SceneEditor::ContainsGameViewportPoint(float x, float y) const {
+    return gameViewportSize_.x > 1.0f
+        && gameViewportSize_.y > 1.0f
+        && x >= gameViewportPos_.x
+        && y >= gameViewportPos_.y
+        && x < gameViewportPos_.x + gameViewportSize_.x
+        && y < gameViewportPos_.y + gameViewportSize_.y;
+}
+
+void SceneEditor::EnsureDockspaceLayout() {
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float workWidth = viewport->WorkSize.x;
+    const float workHeight = viewport->WorkSize.y;
+    const float minSideWidth = 180.0f;
+    const float minBottomHeight = 140.0f;
+    const float minViewportWidth = 320.0f;
+    const float minViewportHeight = 220.0f;
+
+    if (!dockLayoutInitialized_) {
+        leftPanelWidth_ = workWidth * 0.18f;
+        rightPanelWidth_ = workWidth * 0.22f;
+        bottomPanelHeight_ = workHeight * 0.28f;
+        dockLayoutInitialized_ = true;
+    }
+
+    const float maxCombinedSideWidth = (std::max)(minSideWidth * 2.0f, workWidth - minViewportWidth);
+    const float maxSingleSideWidth = (std::max)(minSideWidth, workWidth - minSideWidth - minViewportWidth);
+    leftPanelWidth_ = (std::clamp)(leftPanelWidth_, minSideWidth, maxSingleSideWidth);
+    rightPanelWidth_ = (std::clamp)(rightPanelWidth_, minSideWidth, maxSingleSideWidth);
+    if (leftPanelWidth_ + rightPanelWidth_ > maxCombinedSideWidth) {
+        const float scale = maxCombinedSideWidth / (leftPanelWidth_ + rightPanelWidth_);
+        leftPanelWidth_ *= scale;
+        rightPanelWidth_ *= scale;
+    }
+
+    const float maxBottomHeight = (std::max)(minBottomHeight, workHeight - minViewportHeight);
+    bottomPanelHeight_ = (std::clamp)(bottomPanelHeight_, minBottomHeight, maxBottomHeight);
+}
+
+void SceneEditor::RenderLayoutSplitters() {
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const ImVec2 workPos = viewport->WorkPos;
+    const ImVec2 workSize = viewport->WorkSize;
+    const float splitterThickness = 6.0f;
+    const float topHeight = workSize.y - bottomPanelHeight_;
+    const float centerX = workPos.x + leftPanelWidth_;
+    const float rightX = workPos.x + workSize.x - rightPanelWidth_;
+    const float bottomY = workPos.y + topHeight;
+
+    auto renderSplitterWindow = [&](const char* name, ImVec2 pos, ImVec2 size, ImGuiMouseCursor cursor, const std::function<void(float, float)>& onDrag) {
+        ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
+            | ImGuiWindowFlags_NoCollapse
+            | ImGuiWindowFlags_NoMove
+            | ImGuiWindowFlags_NoResize
+            | ImGuiWindowFlags_NoScrollbar
+            | ImGuiWindowFlags_NoSavedSettings
+            | ImGuiWindowFlags_NoFocusOnAppearing
+            | ImGuiWindowFlags_NoNav;
+        if (ImGui::Begin(name, nullptr, flags)) {
+            ImGui::InvisibleButton("##splitter", size);
+            if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
+                ImGui::SetMouseCursor(cursor);
+            }
+            if (ImGui::IsItemActive()) {
+                const ImVec2 delta = ImGui::GetIO().MouseDelta;
+                onDrag(delta.x, delta.y);
+            }
+            const ImU32 color = ImGui::GetColorU32(ImGui::IsItemActive() ? ImGuiCol_SeparatorActive
+                : ImGui::IsItemHovered() ? ImGuiCol_SeparatorHovered
+                : ImGuiCol_Separator);
+            ImGui::GetWindowDrawList()->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), color, 2.0f);
+        }
+        ImGui::End();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(2);
+    };
+
+    renderSplitterWindow(
+        "LeftPanelSplitter",
+        ImVec2(centerX - splitterThickness * 0.5f, workPos.y),
+        ImVec2(splitterThickness, topHeight),
+        ImGuiMouseCursor_ResizeEW,
+        [&](float deltaX, float) {
+            leftPanelWidth_ += deltaX;
+            EnsureDockspaceLayout();
+        });
+
+    renderSplitterWindow(
+        "RightPanelSplitter",
+        ImVec2(rightX - splitterThickness * 0.5f, workPos.y),
+        ImVec2(splitterThickness, topHeight),
+        ImGuiMouseCursor_ResizeEW,
+        [&](float deltaX, float) {
+            rightPanelWidth_ -= deltaX;
+            EnsureDockspaceLayout();
+        });
+
+    renderSplitterWindow(
+        "BottomPanelSplitter",
+        ImVec2(workPos.x + leftPanelWidth_, bottomY - splitterThickness * 0.5f),
+        ImVec2(workSize.x - leftPanelWidth_ - rightPanelWidth_, splitterThickness),
+        ImGuiMouseCursor_ResizeNS,
+        [&](float, float deltaY) {
+            bottomPanelHeight_ -= deltaY;
+            EnsureDockspaceLayout();
+        });
+}
+
+void SceneEditor::RenderViewportPanel() {
+    viewportHovered_ = false;
+    viewportFocused_ = false;
+    sceneViewportHovered_ = false;
+    sceneViewportFocused_ = false;
+    gameViewportHovered_ = false;
+    gameViewportFocused_ = false;
+    sceneViewportSize_ = glm::vec2(0.0f);
+    gameViewportSize_ = glm::vec2(0.0f);
+
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float centerWidth = viewport->WorkSize.x - leftPanelWidth_ - rightPanelWidth_;
+    const float topHeight = viewport->WorkSize.y - bottomPanelHeight_;
+
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + leftPanelWidth_, viewport->WorkPos.y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(centerWidth, topHeight), ImGuiCond_Always);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    const ImGuiWindowFlags viewportWindowFlags = ImGuiWindowFlags_NoCollapse
+        | ImGuiWindowFlags_NoScrollbar
+        | ImGuiWindowFlags_NoScrollWithMouse
+        | ImGuiWindowFlags_NoMove
+        | ImGuiWindowFlags_NoResize;
+    if (ImGui::Begin("Viewport", nullptr, viewportWindowFlags)) {
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        if (ImGui::Button("Tabs")) {
+            viewportLayout_ = SceneEditorViewportLayout::Tabs;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Split")) {
+            viewportLayout_ = SceneEditorViewportLayout::Split;
+        }
+
+        if (viewportLayout_ == SceneEditorViewportLayout::Split) {
+            ImGui::Separator();
+            const ImVec2 areaMin = ImGui::GetCursorScreenPos();
+            const ImVec2 areaAvail = ImGui::GetContentRegionAvail();
+            viewportPanelPos_ = {areaMin.x, areaMin.y};
+            viewportPanelSize_ = {areaAvail.x, areaAvail.y};
+
+            const float splitterThickness = 6.0f;
+            const float minPaneWidth = 180.0f;
+            const float availableWidth = (std::max)(1.0f, areaAvail.x);
+            const float availableHeight = (std::max)(1.0f, areaAvail.y);
+            const float effectiveMinPaneWidth = (std::min)(minPaneWidth, (std::max)(40.0f, (availableWidth - splitterThickness) * 0.5f));
+            const float maxLeftWidth = (std::max)(effectiveMinPaneWidth, availableWidth - effectiveMinPaneWidth - splitterThickness);
+            const float leftWidth = (std::clamp)(availableWidth * sceneGameSplitRatio_, effectiveMinPaneWidth, maxLeftWidth);
+            const float rightWidth = (std::max)(effectiveMinPaneWidth, availableWidth - leftWidth - splitterThickness);
+
+            sceneViewportPos_ = {areaMin.x, areaMin.y};
+            sceneViewportSize_ = {leftWidth, availableHeight};
+            gameViewportPos_ = {areaMin.x + leftWidth + splitterThickness, areaMin.y};
+            gameViewportSize_ = {rightWidth, availableHeight};
+
+            const ImVec2 splitterMin{areaMin.x + leftWidth, areaMin.y};
+            const ImVec2 splitterMax{splitterMin.x + splitterThickness, areaMin.y + availableHeight};
+            const bool splitterHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)
+                && ImGui::IsMouseHoveringRect(splitterMin, splitterMax, false);
+            if (splitterHovered || ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+            }
+            if (splitterHovered && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                sceneGameSplitRatio_ += ImGui::GetIO().MouseDelta.x / availableWidth;
+                sceneGameSplitRatio_ = (std::clamp)(sceneGameSplitRatio_, 0.25f, 0.75f);
+            }
+
+            auto drawViewportPane = [&](const char* title, const glm::vec2& pos, const glm::vec2& size, bool isGame) {
+                const ImVec2 min{pos.x, pos.y};
+                const ImVec2 max{pos.x + size.x, pos.y + size.y};
+                drawList->AddRect(min, max, IM_COL32(70, 90, 120, 180));
+                drawList->AddText(ImVec2(min.x + 12.0f, min.y + 10.0f), IM_COL32(210, 220, 235, 255), title);
+                if (isGame) {
+                    glm::mat4 view;
+                    glm::mat4 proj;
+                    const float aspect = size.y > 0.5f ? size.x / size.y : 1.0f;
+                    if (!TryGetGameCamera(view, proj, aspect)) {
+                        const char* noCameraText = "No Camera";
+                        const ImVec2 noCameraSize = ImGui::CalcTextSize(noCameraText);
+                        drawList->AddText(ImVec2((min.x + max.x) * 0.5f - noCameraSize.x * 0.5f, (min.y + max.y) * 0.5f - 8.0f), IM_COL32(255, 200, 96, 255), noCameraText);
+                    }
+                }
+            };
+
+            drawViewportPane("Scene View", sceneViewportPos_, sceneViewportSize_, false);
+            drawViewportPane("Game View", gameViewportPos_, gameViewportSize_, true);
+            drawList->AddRectFilled(splitterMin, splitterMax, IM_COL32(100, 110, 125, 180), 2.0f);
+        } else {
+            if (ImGui::BeginTabBar("ViewportTabs")) {
+                if (ImGui::BeginTabItem("Scene")) {
+                    viewportMode_ = SceneEditorViewportMode::Scene;
+                    const ImVec2 contentMin = ImGui::GetCursorScreenPos();
+                    const ImVec2 contentAvail = ImGui::GetContentRegionAvail();
+                    viewportPanelPos_ = {contentMin.x, contentMin.y};
+                    viewportPanelSize_ = {contentAvail.x, contentAvail.y};
+                    sceneViewportPos_ = viewportPanelPos_;
+                    sceneViewportSize_ = viewportPanelSize_;
+                    const ImVec2 contentMax{contentMin.x + contentAvail.x, contentMin.y + contentAvail.y};
+                    drawList->AddRect(contentMin, contentMax, IM_COL32(70, 90, 120, 180));
+                    drawList->AddText(ImVec2(contentMin.x + 12.0f, contentMin.y + 10.0f), IM_COL32(210, 220, 235, 255), "Scene View");
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Game")) {
+                    viewportMode_ = SceneEditorViewportMode::Game;
+                    const ImVec2 contentMin = ImGui::GetCursorScreenPos();
+                    const ImVec2 contentAvail = ImGui::GetContentRegionAvail();
+                    viewportPanelPos_ = {contentMin.x, contentMin.y};
+                    viewportPanelSize_ = {contentAvail.x, contentAvail.y};
+                    gameViewportPos_ = viewportPanelPos_;
+                    gameViewportSize_ = viewportPanelSize_;
+                    const ImVec2 contentMax{contentMin.x + contentAvail.x, contentMin.y + contentAvail.y};
+                    drawList->AddRect(contentMin, contentMax, IM_COL32(70, 90, 120, 180));
+                    drawList->AddText(ImVec2(contentMin.x + 12.0f, contentMin.y + 10.0f), IM_COL32(210, 220, 235, 255), "Game View");
+
+                    glm::mat4 view;
+                    glm::mat4 proj;
+                    const float aspect = contentAvail.y > 0.5f ? contentAvail.x / contentAvail.y : 1.0f;
+                    if (!TryGetGameCamera(view, proj, aspect)) {
+                        const char* noCameraText = "No Camera";
+                        const char* helperText = "Add a Camera object or Camera component to render Game view.";
+                        const ImVec2 noCameraSize = ImGui::CalcTextSize(noCameraText);
+                        const ImVec2 helperSize = ImGui::CalcTextSize(helperText);
+                        const float centerX = (contentMin.x + contentMax.x) * 0.5f;
+                        const float centerY = (contentMin.y + contentMax.y) * 0.5f;
+                        drawList->AddText(ImVec2(centerX - noCameraSize.x * 0.5f, centerY - 16.0f), IM_COL32(255, 200, 96, 255), noCameraText);
+                        drawList->AddText(ImVec2(centerX - helperSize.x * 0.5f, centerY + 8.0f), IM_COL32(180, 180, 180, 255), helperText);
+                    }
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
+            }
+        }
+
+        const ImVec2 mousePos = ImGui::GetIO().MousePos;
+        sceneViewportHovered_ = ContainsSceneViewportPoint(mousePos.x, mousePos.y);
+        gameViewportHovered_ = ContainsGameViewportPoint(mousePos.x, mousePos.y);
+        sceneViewportFocused_ = sceneViewportHovered_ && (ImGui::IsMouseDown(ImGuiMouseButton_Left) || ImGui::IsMouseDown(ImGuiMouseButton_Right));
+        gameViewportFocused_ = gameViewportHovered_ && (ImGui::IsMouseDown(ImGuiMouseButton_Left) || ImGui::IsMouseDown(ImGuiMouseButton_Right));
+        viewportHovered_ = sceneViewportHovered_ || gameViewportHovered_;
+        viewportFocused_ = sceneViewportFocused_ || gameViewportFocused_;
+    } else {
+        viewportPanelSize_ = glm::vec2(0.0f);
+        sceneViewportSize_ = glm::vec2(0.0f);
+        gameViewportSize_ = glm::vec2(0.0f);
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
 }
 
 void SceneEditor::HandleEditorShortcuts() {
@@ -691,7 +1015,7 @@ void SceneEditor::UpdateScripts(float deltaTime) {
             continue;
         }
 
-        InputManager* scriptInput = viewportMode_ == SceneEditorViewportMode::Game ? inputManager_ : nullptr;
+        InputManager* scriptInput = ShouldRouteInputToGame() ? inputManager_ : nullptr;
         ObjectScriptContext context(*objectIt, console_, scriptInput, physicsWorld_.get());
         if (!runtimeScript.started) {
             runtimeScript.instance->OnStart(context);

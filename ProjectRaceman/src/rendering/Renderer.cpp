@@ -10,6 +10,8 @@
 namespace raceman {
 
 Renderer::Renderer(const RendererConfig& config) : config_(config) {
+    viewport_.width = config.width;
+    viewport_.height = config.height;
     InitializePipelines();
     InitializeQuad();
     BakeBrdfLut();
@@ -48,13 +50,36 @@ Renderer::~Renderer() {
 }
 
 void Renderer::BeginFrame() {
-    glViewport(0, 0, config_.width, config_.height);
+    const int viewportX = (std::max)(0, viewport_.x);
+    const int viewportWidth = (std::max)(1, viewport_.width);
+    const int viewportHeight = (std::max)(1, viewport_.height);
+    const int viewportY = (std::max)(0, config_.height - viewport_.y - viewportHeight);
+
+    glEnable(GL_SCISSOR_TEST);
+    glViewport(viewportX, viewportY, viewportWidth, viewportHeight);
+    glScissor(viewportX, viewportY, viewportWidth, viewportHeight);
     glEnable(GL_DEPTH_TEST);
     glClearColor(settings_.clearColor.r, settings_.clearColor.g, settings_.clearColor.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 void Renderer::EndFrame() { Flush(); }
+
+void Renderer::Resize(int width, int height) {
+    config_.width = (std::max)(1, width);
+    config_.height = (std::max)(1, height);
+    viewport_.x = 0;
+    viewport_.y = 0;
+    viewport_.width = config_.width;
+    viewport_.height = config_.height;
+}
+
+void Renderer::SetViewport(const RendererViewport& viewport) {
+    viewport_.x = (std::max)(0, viewport.x);
+    viewport_.y = (std::max)(0, viewport.y);
+    viewport_.width = (std::max)(1, viewport.width);
+    viewport_.height = (std::max)(1, viewport.height);
+}
 
 void Renderer::SetupEnvironment(const std::string& hdrPath) {
     (void)hdrPath;
@@ -272,6 +297,7 @@ void Renderer::Flush() {
 
     // Restore previous state
     glLineWidth(lineWidth);
+    glDisable(GL_SCISSOR_TEST);
     glDepthMask(depthWriteMask);
     glDepthFunc(depthFunc);
     glCullFace(cullFaceMode);

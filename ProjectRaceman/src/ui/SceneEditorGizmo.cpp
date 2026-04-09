@@ -69,13 +69,15 @@ bool GetObjectLocalBounds(const SceneObject& object, glm::vec3& outMin, glm::vec
 }
 
 bool MakeMouseRay(const Renderer& renderer, const glm::vec2& mouse, glm::vec3& outOrigin, glm::vec3& outDirection) {
-    const auto& cfg = renderer.GetConfig();
-    if (cfg.width <= 0 || cfg.height <= 0) {
+    const auto& viewport = renderer.GetViewport();
+    if (viewport.width <= 0 || viewport.height <= 0) {
         return false;
     }
 
-    const float x = (2.0f * mouse.x) / static_cast<float>(cfg.width) - 1.0f;
-    const float y = 1.0f - (2.0f * mouse.y) / static_cast<float>(cfg.height);
+    const float localMouseX = mouse.x - static_cast<float>(viewport.x);
+    const float localMouseY = mouse.y - static_cast<float>(viewport.y);
+    const float x = (2.0f * localMouseX) / static_cast<float>(viewport.width) - 1.0f;
+    const float y = 1.0f - (2.0f * localMouseY) / static_cast<float>(viewport.height);
     const glm::mat4 invViewProj = glm::inverse(renderer.GetProj() * renderer.GetView());
     glm::vec4 nearPoint = invViewProj * glm::vec4(x, y, -1.0f, 1.0f);
     glm::vec4 farPoint = invViewProj * glm::vec4(x, y, 1.0f, 1.0f);
@@ -358,7 +360,7 @@ void SceneEditor::SelectProjectFile(const std::string& path) {
 
 void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantTextInput || io.WantCaptureMouse || io.MouseDown[1] || !io.MouseClicked[0]) {
+    if (io.WantTextInput || io.MouseDown[1] || !io.MouseClicked[0] || !ContainsSceneViewportPoint(io.MousePos.x, io.MousePos.y)) {
         return;
     }
 
@@ -417,6 +419,7 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
 void SceneEditor::UpdateGizmo(Renderer& renderer) {
     hoveredGizmoAxis_ = -1;
     ImGuiIO& io = ImGui::GetIO();
+    const bool mouseInViewport = ContainsSceneViewportPoint(io.MousePos.x, io.MousePos.y);
 
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
         activeGizmoAxis_ = -1;
@@ -457,7 +460,7 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
     }
 
     if (activeGizmoAxis_ < 0) {
-        if (!io.WantTextInput && !io.WantCaptureMouse && !io.MouseDown[1] && io.MouseClicked[0] && hoveredGizmoAxis_ >= 0) {
+        if (!io.WantTextInput && mouseInViewport && !io.MouseDown[1] && io.MouseClicked[0] && hoveredGizmoAxis_ >= 0) {
             PushUndoState();
             activeGizmoAxis_ = hoveredGizmoAxis_;
             gizmoDragStartMouse_ = mouse;
@@ -465,7 +468,7 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
             gizmoDragStartRotation_ = objects_[selectedIndex_].transform.rotationEuler;
             gizmoDragStartScale_ = objects_[selectedIndex_].transform.scale;
             gizmoDirtyDuringDrag_ = false;
-        } else {
+        } else if (mouseInViewport) {
             TrySelectObjectAtMouse(renderer);
         }
         return;

@@ -2,22 +2,22 @@
   "objects": [
     {
       "id": "camera_3",
-      "parentId": "mesh_1",
+      "parentId": "",
       "name": "Camera",
       "type": "Camera",
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [-0.123696, -2.90014, -3.10507],
-          "rotationEuler": [140.74, 2.62733, -1.23889],
+          "position": [-5.36442e-07, 2.5072, 4.99999],
+          "rotationEuler": [-15.0003, 1.28066e-06, 4.80248e-06],
           "scale": [1, 1, 1]
         },
         {
           "type": "Camera",
           "enabled": true,
           "isMain": true,
-          "fieldOfViewDegrees": 60,
+          "fieldOfViewDegrees": 69.5,
           "nearClip": 0.1,
           "farClip": 500,
           "clearColor": [0.02, 0.02, 0.02, 1]
@@ -134,7 +134,7 @@
           "type": "Rigidbody",
           "enabled": true,
           "bodyType": "Dynamic",
-          "mass": 1,
+          "mass": 22.9,
           "useGravity": true,
           "velocity": [0, 0, 0]
         },
@@ -149,15 +149,15 @@
     },
     {
       "id": "mesh_4",
-      "parentId": "mesh_1",
+      "parentId": "",
       "name": "Chevrolet-nascar-FLWheel",
       "type": "Mesh",
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [-0.96915, -0.666007, -1.03648],
-          "rotationEuler": [174.297, -23.7567, -83.1236],
+          "position": [1.78396, 0.649402, 0.977145],
+          "rotationEuler": [155.77, -2.90415, 179.949],
           "scale": [1, 1, 1]
         },
         {

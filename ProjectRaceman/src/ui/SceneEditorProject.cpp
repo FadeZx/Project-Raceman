@@ -117,7 +117,12 @@ int ProjectDirectoryDepth(const std::string& path) {
 } // namespace
 
 void SceneEditor::RenderProjectPanel() {
-    if (ImGui::Begin("Browser", nullptr, ImGuiWindowFlags_NoCollapse)) {
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float centerX = viewport->WorkPos.x + leftPanelWidth_;
+    const float centerWidth = viewport->WorkSize.x - leftPanelWidth_ - rightPanelWidth_;
+    ImGui::SetNextWindowPos(ImVec2(centerX, viewport->WorkPos.y + viewport->WorkSize.y - bottomPanelHeight_), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(centerWidth, bottomPanelHeight_), ImGuiCond_Always);
+    if (ImGui::Begin("Browser", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
         if (ImGui::BeginTabBar("BrowserTabs")) {
             if (ImGui::BeginTabItem("Project")) {
                 if (ImGui::Button("Refresh")) {

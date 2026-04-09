@@ -175,6 +175,13 @@ void Application::ShutdownGlfw() {
 void Application::PollEvents() {
     glfwPollEvents();
 
+    if (renderer_) {
+        int framebufferWidth = 0;
+        int framebufferHeight = 0;
+        glfwGetFramebufferSize(window_, &framebufferWidth, &framebufferHeight);
+        renderer_->Resize(framebufferWidth, framebufferHeight);
+    }
+
     // Reset per-frame pressed flags after handling
     inputManager_->Update();
 }
@@ -209,12 +216,14 @@ void Application::Update(float deltaTime) {
     // Editor camera controls (Unity-like)
     {
         bool wantCaptureMouse = false;
+        double mouseX = 0.0;
+        double mouseY = 0.0;
+        glfwGetCursorPos(window_, &mouseX, &mouseY);
+        const bool mouseInEditorViewport = sceneEditor_ == nullptr || sceneEditor_->ContainsSceneViewportPoint(static_cast<float>(mouseX), static_cast<float>(mouseY));
 
         // RMB hold toggles free look with cursor disabled. Play mode keeps Scene view editable,
         // but Game view stays controlled by the runtime camera.
-        const bool runMode = sceneEditor_ != nullptr && sceneEditor_->IsRunMode();
-        const bool gameViewActive = sceneEditor_ != nullptr && sceneEditor_->IsGameViewActive();
-        const bool allowEditorCamera = !runMode || !gameViewActive;
+        const bool allowEditorCamera = true;
         if (allowEditorCamera && cameraFocusActive_ && !rmbHeld_) {
             cameraFocusElapsed_ += deltaTime;
             const float t = (std::min)(1.0f, cameraFocusElapsed_ / (std::max)(0.001f, cameraFocusDuration_));
@@ -228,7 +237,7 @@ void Application::Update(float deltaTime) {
             }
         }
         int rmb = glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_RIGHT);
-        if (allowEditorCamera && rmb == GLFW_PRESS && !rmbHeld_) {
+        if (allowEditorCamera && mouseInEditorViewport && rmb == GLFW_PRESS && !rmbHeld_) {
             rmbHeld_ = true;
             cameraFocusActive_ = false;
             firstMouse_ = true;
@@ -337,61 +346,85 @@ void Application::Update(float deltaTime) {
 
 void Application::Render() {
     const auto& cfg = renderer_->GetConfig();
-    const float aspect = (cfg.height != 0) ? (static_cast<float>(cfg.width) / static_cast<float>(cfg.height)) : 1.0f;
-
-    glm::mat4 view{1.0f};
-    glm::mat4 proj{1.0f};
-    glm::vec4 gameClearColor{0.0f};
-    const bool gameViewActive = sceneEditor_ && sceneEditor_->IsGameViewActive();
-    bool usingGameCamera = false;
-    if (gameViewActive) {
-        usingGameCamera = sceneEditor_->TryGetGameCamera(view, proj, aspect, &gameClearColor);
-    }
-
     RendererSettings& rendererSettings = renderer_->GetSettings();
     const glm::vec3 previousClearColor = rendererSettings.clearColor;
-    if (usingGameCamera) {
-        rendererSettings.clearColor = {gameClearColor.r, gameClearColor.g, gameClearColor.b};
-    } else if (gameViewActive) {
-        rendererSettings.clearColor = {0.02f, 0.02f, 0.02f};
-    }
 
-    renderer_->BeginFrame();
+    glDisable(GL_SCISSOR_TEST);
+    glViewport(0, 0, cfg.width, cfg.height);
+    glClearColor(0.02f, 0.02f, 0.02f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    if (!usingGameCamera && !gameViewActive) {
-        float yawRad = glm::radians(camYaw_);
-        float pitchRad = glm::radians(camPitch_);
+    auto renderScenePass = [&](const RendererViewport& viewport) {
+        if (viewport.width <= 1 || viewport.height <= 1) {
+            return;
+        }
+
+        const float aspect = static_cast<float>(viewport.width) / static_cast<float>(viewport.height);
+        const float yawRad = glm::radians(camYaw_);
+        const float pitchRad = glm::radians(camPitch_);
         glm::vec3 front{
             cosf(yawRad) * cosf(pitchRad),
             sinf(pitchRad),
             sinf(yawRad) * cosf(pitchRad)
         };
         front = glm::normalize(front);
-        glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
-        glm::vec3 right = glm::normalize(glm::cross(front, worldUp));
-        glm::vec3 up = glm::normalize(glm::cross(right, front));
+        const glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
+        const glm::vec3 right = glm::normalize(glm::cross(front, worldUp));
+        const glm::vec3 up = glm::normalize(glm::cross(right, front));
 
-        glm::vec3 camPos(camPosX_, camPosY_, camPosZ_);
-        view = glm::lookAt(camPos, camPos + front, up);
-        proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 500.0f);
-    }
-    if (!gameViewActive || usingGameCamera) {
+        const glm::vec3 camPos(camPosX_, camPosY_, camPosZ_);
+        const glm::mat4 view = glm::lookAt(camPos, camPos + front, up);
+        const glm::mat4 proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 500.0f);
+
+        renderer_->SetViewport(viewport);
+        rendererSettings.clearColor = previousClearColor;
+        renderer_->BeginFrame();
         renderer_->SetCamera(view, proj);
         if (skyboxController_) {
             skyboxController_->Draw(view, proj);
         }
+        if (sceneEditor_) {
+            sceneEditor_->SubmitDraws(*renderer_, true);
+        }
+        renderer_->EndFrame();
+    };
+
+    auto renderGamePass = [&](const RendererViewport& viewport) {
+        if (viewport.width <= 1 || viewport.height <= 1) {
+            return;
+        }
+
+        const float aspect = static_cast<float>(viewport.width) / static_cast<float>(viewport.height);
+        glm::mat4 view{1.0f};
+        glm::mat4 proj{1.0f};
+        glm::vec4 gameClearColor{0.02f, 0.02f, 0.02f, 1.0f};
+        const bool usingGameCamera = sceneEditor_ && sceneEditor_->TryGetGameCamera(view, proj, aspect, &gameClearColor);
+
+        renderer_->SetViewport(viewport);
+        rendererSettings.clearColor = usingGameCamera
+            ? glm::vec3(gameClearColor.r, gameClearColor.g, gameClearColor.b)
+            : glm::vec3(0.02f, 0.02f, 0.02f);
+        renderer_->BeginFrame();
+        if (usingGameCamera) {
+            renderer_->SetCamera(view, proj);
+            if (skyboxController_) {
+                skyboxController_->Draw(view, proj);
+            }
+            if (sceneEditor_) {
+                sceneEditor_->SubmitDraws(*renderer_, false);
+            }
+        }
+        renderer_->EndFrame();
+    };
+
+    if (sceneEditor_) {
+        renderScenePass(sceneEditor_->GetSceneRenderViewport(cfg.width, cfg.height));
+        renderGamePass(sceneEditor_->GetGameRenderViewport(cfg.width, cfg.height));
+    } else {
+        renderScenePass(RendererViewport{0, 0, cfg.width, cfg.height});
     }
 
-    // SceneEditor owns editor-created objects. Game view renders those meshes too,
-    // but disables editor selection/gizmos while looking through the runtime camera.
-    if (sceneEditor_ && (!gameViewActive || usingGameCamera)) {
-        sceneEditor_->SubmitDraws(*renderer_, !gameViewActive);
-    }
-
-    renderer_->EndFrame();
-    if (usingGameCamera || gameViewActive) {
-        rendererSettings.clearColor = previousClearColor;
-    }
+    rendererSettings.clearColor = previousClearColor;
 
     if (config_.enableImGui) {
         debugUi_->RenderDrawData();

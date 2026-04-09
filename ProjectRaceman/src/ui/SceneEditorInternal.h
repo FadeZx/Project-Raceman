@@ -237,8 +237,8 @@ inline glm::vec4 GizmoAxisColor(int axis, bool highlighted) {
 }
 
 inline bool ProjectWorldToScreen(const glm::vec3& world, const Renderer& renderer, glm::vec2& outScreen) {
-    const auto& cfg = renderer.GetConfig();
-    if (cfg.width <= 0 || cfg.height <= 0) {
+    const auto& viewport = renderer.GetViewport();
+    if (viewport.width <= 0 || viewport.height <= 0) {
         return false;
     }
 
@@ -248,8 +248,8 @@ inline bool ProjectWorldToScreen(const glm::vec3& world, const Renderer& rendere
     }
 
     glm::vec3 ndc = glm::vec3(clip) / clip.w;
-    outScreen.x = (ndc.x * 0.5f + 0.5f) * static_cast<float>(cfg.width);
-    outScreen.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * static_cast<float>(cfg.height);
+    outScreen.x = static_cast<float>(viewport.x) + (ndc.x * 0.5f + 0.5f) * static_cast<float>(viewport.width);
+    outScreen.y = static_cast<float>(viewport.y) + (1.0f - (ndc.y * 0.5f + 0.5f)) * static_cast<float>(viewport.height);
     return true;
 }
 

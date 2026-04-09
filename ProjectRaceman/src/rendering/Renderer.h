@@ -15,6 +15,13 @@ struct RendererConfig {
     int height{1080};
 };
 
+struct RendererViewport {
+    int x{0};
+    int y{0};
+    int width{1920};
+    int height{1080};
+};
+
 struct RendererSettings {
     float exposure{1.0f};
     float gamma{2.2f};
@@ -80,6 +87,8 @@ public:
 
     void BeginFrame();
     void EndFrame();
+    void Resize(int width, int height);
+    void SetViewport(const RendererViewport& viewport);
 
     void SetupEnvironment(const std::string& hdrPath);
     void BakeBrdfLut();
@@ -99,12 +108,14 @@ public:
     RendererSettings& GetSettings() { return settings_; }
     const RendererSettings& GetSettings() const { return settings_; }
     const RendererConfig& GetConfig() const;
+    const RendererViewport& GetViewport() const { return viewport_; }
 
 private:
     void InitializePipelines();
     void InitializeQuad();
 
     RendererConfig config_{};
+    RendererViewport viewport_{};
     std::vector<MeshDrawCommand> drawList_;
     std::vector<LightDrawCommand> lightDrawList_;
     EnvironmentMaps environmentMaps_{};

@@ -75,6 +75,11 @@
       <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Jolt.lib;Debug\STB_IMAGE.lib;Debug\GLAD.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)../lib</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>if exist "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" copy /Y "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" "$(OutDir)"
+if exist "$(ProjectDir)..\dlls\ikpMP3.dll" copy /Y "$(ProjectDir)..\dlls\ikpMP3.dll" "$(OutDir)"
+if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKlang.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -94,6 +99,11 @@
       <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Jolt_release.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;Debug/STB_IMAGE.lib;Debug/GLAD.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)../lib</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>if exist "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" copy /Y "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" "$(OutDir)"
+if exist "$(ProjectDir)..\dlls\ikpMP3.dll" copy /Y "$(ProjectDir)..\dlls\ikpMP3.dll" "$(OutDir)"
+if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKlang.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="assets\mesh\plane.h" />

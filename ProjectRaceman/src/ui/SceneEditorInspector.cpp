@@ -76,7 +76,11 @@ unsigned int SceneEditor::GetComponentIconTexture(const std::string& filename) {
 }
 
 void SceneEditor::RenderInspectorPanel() {
-    if (ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoCollapse)) {
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float topHeight = viewport->WorkSize.y - bottomPanelHeight_;
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - rightPanelWidth_, viewport->WorkPos.y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(rightPanelWidth_, topHeight), ImGuiCond_Always);
+    if (ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
         if (inspectMaterial_) {
             RenderMaterialInspector();
         } else if (selectedIndices_.size() > 1) {

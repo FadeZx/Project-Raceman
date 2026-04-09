@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include <glm/glm.hpp>
+#include "../rendering/Renderer.h"
 #include "../rendering/Material.h"
 #include "../scripting/ObjectScript.h"
 
@@ -62,6 +63,11 @@ enum class RigidbodyBodyType {
 enum class SceneEditorViewportMode {
     Scene,
     Game
+};
+
+enum class SceneEditorViewportLayout {
+    Tabs,
+    Split
 };
 
 enum class LightType {
@@ -201,8 +207,17 @@ public:
     void SetConsole(Console* console);
     void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
     bool IsRunMode() const { return scriptsRunning_; }
-    bool IsGameViewActive() const { return viewportMode_ == SceneEditorViewportMode::Game; }
+    bool IsGameViewActive() const { return viewportLayout_ == SceneEditorViewportLayout::Split || viewportMode_ == SceneEditorViewportMode::Game; }
     bool TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float aspect, glm::vec4* outClearColor = nullptr) const;
+    float GetViewportAspect() const;
+    RendererViewport GetRenderViewport(int framebufferWidth, int framebufferHeight) const;
+    RendererViewport GetSceneRenderViewport(int framebufferWidth, int framebufferHeight) const;
+    RendererViewport GetGameRenderViewport(int framebufferWidth, int framebufferHeight) const;
+    bool IsViewportHovered() const { return viewportHovered_; }
+    bool ContainsViewportPoint(float x, float y) const;
+    bool ContainsSceneViewportPoint(float x, float y) const;
+    bool ContainsGameViewportPoint(float x, float y) const;
+    bool ShouldRouteInputToGame() const { return gameViewportHovered_ || gameViewportFocused_; }
 
     // Notify app when editor content changes
     void SetOnDirty(std::function<void()> cb) { onDirty_ = std::move(cb); }
@@ -232,6 +247,9 @@ private:
     void RenderInspectorPanel();
     void RenderMultiSelectionInspector();
     void RenderProjectPanel();
+    void RenderViewportPanel();
+    void RenderLayoutSplitters();
+    void EnsureDockspaceLayout();
     void RenderMaterialInspector();
     void RenderMaterialProperties(const std::string& materialId, bool showBackButton);
     void RenderProjectAssetPickerPopup();
@@ -367,6 +385,23 @@ private:
     glm::vec3 gizmoDragStartScale_{1.0f};
     bool gizmoDirtyDuringDrag_{false};
     bool inspectorEditActive_{false};
+    bool dockLayoutInitialized_{false};
+    float leftPanelWidth_{0.0f};
+    float rightPanelWidth_{0.0f};
+    float bottomPanelHeight_{0.0f};
+    float sceneGameSplitRatio_{0.5f};
+    glm::vec2 viewportPanelPos_{0.0f, 0.0f};
+    glm::vec2 viewportPanelSize_{0.0f, 0.0f};
+    glm::vec2 sceneViewportPos_{0.0f, 0.0f};
+    glm::vec2 sceneViewportSize_{0.0f, 0.0f};
+    glm::vec2 gameViewportPos_{0.0f, 0.0f};
+    glm::vec2 gameViewportSize_{0.0f, 0.0f};
+    bool viewportHovered_{false};
+    bool viewportFocused_{false};
+    bool sceneViewportHovered_{false};
+    bool sceneViewportFocused_{false};
+    bool gameViewportHovered_{false};
+    bool gameViewportFocused_{false};
 
     struct HistoryState {
         std::vector<SceneObject> objects;
@@ -378,6 +413,7 @@ private:
     HistoryState playModeSnapshot_{};
     bool hasPlayModeSnapshot_{false};
     SceneEditorViewportMode viewportMode_{SceneEditorViewportMode::Scene};
+    SceneEditorViewportLayout viewportLayout_{SceneEditorViewportLayout::Tabs};
     std::unique_ptr<PhysicsWorld> physicsWorld_;
 
     std::function<void()> onDirty_{};
