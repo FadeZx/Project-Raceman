@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\x64\Debug\ZERO_CHECK</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\Samples.exe</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\FontVertexShader.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\LineVertexShader.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\TriangleDepthVertexShader.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\TriangleVertexShader.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\UIVertexShader.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\FontPixelShader.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\LinePixelShader.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\TriangleDepthPixelShader.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\TrianglePixelShader.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\UIPixelShader.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\UIPixelShaderUntextured.cso</FullPath>
+    </ContentFile>
+  </ContentFiles>
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>

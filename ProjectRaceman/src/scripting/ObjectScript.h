@@ -9,10 +9,40 @@ namespace raceman {
 class Console;
 class InputManager;
 class PhysicsWorld;
+struct CameraComponent;
 struct SceneObject;
 
 class ObjectScriptContext {
 public:
+    class CameraHandle {
+    public:
+        CameraHandle(SceneObject* object, Console* console);
+
+        bool IsValid() const;
+
+        float GetFieldOfView() const;
+        void SetFieldOfView(float degrees) const;
+
+        float GetNearClip() const;
+        void SetNearClip(float value) const;
+
+        float GetFarClip() const;
+        void SetFarClip(float value) const;
+
+        glm::vec4 GetClearColor() const;
+        void SetClearColor(const glm::vec4& value) const;
+
+        bool IsMain() const;
+        void SetMain(bool value) const;
+
+    private:
+        void WarnInvalid(const std::string& action) const;
+
+    private:
+        SceneObject* object_{nullptr};
+        Console* console_{nullptr};
+    };
+
     ObjectScriptContext(SceneObject& object, Console* console, InputManager* inputManager = nullptr, PhysicsWorld* physicsWorld = nullptr);
 
     const std::string& GetObjectId() const;
@@ -37,6 +67,12 @@ public:
     bool IsRigidbodyDynamic() const;
     glm::vec3 GetRigidbodyVelocity() const;
     void SetRigidbodyVelocity(const glm::vec3& value);
+
+    bool HasCamera() const;
+    CameraHandle Camera();
+
+    glm::vec3 GetForwardVector() const;
+    glm::vec3 GetUpVector() const;
 
     bool IsKeyDown(int key) const;
 

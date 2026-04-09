@@ -1,0 +1,52 @@
+﻿  Building Custom Rule C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/CMakeLists.txt
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\FontVertexShader.cso
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\LineVertexShader.cso
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\TriangleDepthVertexShader.cso
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\TriangleVertexShader.cso
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\UIVertexShader.cso
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\FontPixelShader.cso
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\LinePixelShader.cso
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\TriangleDepthPixelShader.cso
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\TrianglePixelShader.cso
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\UIPixelShader.cso
+  compilation object save succeeded; see C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\UIPixelShaderUntextured.cso
+  cmake_pch.cxx
+  Application.cpp
+  DebugUI.cpp
+  Perlin.cpp
+  BlitSurface.cpp
+  LoadBMP.cpp
+  LoadTGA.cpp
+  Surface.cpp
+  ZoomImage.cpp
+  DebugRendererImp.cpp
+  Font.cpp
+  Renderer.cpp
+  RenderPrimitive.cpp
+  UIAnimation.cpp
+  UIAnimationSlide.cpp
+  UIButton.cpp
+  UICheckBox.cpp
+  UIComboBox.cpp
+  UIElement.cpp
+  UIHorizontalStack.cpp
+  UIImage.cpp
+  UIManager.cpp
+  UISlider.cpp
+  UIStaticText.cpp
+  UITextButton.cpp
+  UIVerticalStack.cpp
+  CustomMemoryHook.cpp
+  ReadData.cpp
+  KeyboardWin.cpp
+  MouseWin.cpp
+  AssetStream.cpp
+  Log.cpp
+  ApplicationWindowWin.cpp
+  FatalErrorIfFailedDX12.cpp
+  PipelineStateDX12.cpp
+  RendererDX12.cpp
+  RenderInstancesDX12.cpp
+  RenderPrimitiveDX12.cpp
+  TextureDX12.cpp
+  TestFramework.vcxproj -> C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\Debug\TestFramework.lib

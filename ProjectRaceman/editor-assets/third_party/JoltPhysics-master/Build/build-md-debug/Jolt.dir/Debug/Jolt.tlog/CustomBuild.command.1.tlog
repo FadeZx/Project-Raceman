@@ -1,0 +1,180 @@
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRAPPLYDELTATRANSFORM.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairApplyDeltaTransform.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairApplyDeltaTransform.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRAPPLYGLOBALPOSE.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairApplyGlobalPose.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairApplyGlobalPose.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRCALCULATECOLLISIONPLANES.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairCalculateCollisionPlanes.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairCalculateCollisionPlanes.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRCALCULATERENDERPOSITIONS.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairCalculateRenderPositions.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairCalculateRenderPositions.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRGRIDACCUMULATE.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairGridAccumulate.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairGridAccumulate.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRGRIDCLEAR.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairGridClear.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairGridClear.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRGRIDNORMALIZE.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairGridNormalize.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairGridNormalize.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRINTEGRATE.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairIntegrate.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairIntegrate.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRSKINROOTS.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairSkinRoots.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairSkinRoots.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRSKINVERTICES.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairSkinVertices.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairSkinVertices.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRTELEPORT.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairTeleport.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairTeleport.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRUPDATEROOTS.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairUpdateRoots.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairUpdateRoots.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRUPDATESTRANDS.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairUpdateStrands.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairUpdateStrands.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRUPDATEVELOCITY.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairUpdateVelocity.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairUpdateVelocity.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\HAIRUPDATEVELOCITYINTEGRATE.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairUpdateVelocityIntegrate.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/HairUpdateVelocityIntegrate.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\TESTCOMPUTE.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/TestCompute.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/TestCompute.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\0D1F617C88469CCE9153966D392A1B20\TESTCOMPUTE2.DXIL.RULE
+setlocal
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\dxc.exe" -E main -T cs_6_0 -I Jolt/Shaders -WX -all_resources_bound -O3 C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/TestCompute2.hlsl -Fo C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/..//Jolt/Shaders/TestCompute2.dxil
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build -BC:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/build-md-debug --check-stamp-file C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/build-md-debug/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

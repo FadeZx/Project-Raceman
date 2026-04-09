@@ -5,7 +5,7 @@
   "defaultScene": "assets/scenes/EditorScene.scene.json",
   "lastScene": "assets/scenes/TestScene.scene.json",
   "editorState": {
-    "selectedProjectDirectory": "assets/car",
+    "selectedProjectDirectory": "assets/hdr",
     "viewportMode": "Scene"
   }
 }

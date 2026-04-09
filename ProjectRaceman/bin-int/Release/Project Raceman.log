@@ -1,161 +1,140 @@
-﻿  Application.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  Main.cpp
-  InputManager.cpp
-  PhysicsLayer.cpp
-  PhysicsWorld.cpp
-  VehicleConfig.cpp
-  VehiclePhysics.cpp
-  Material.cpp
-  Renderer.cpp
-  Skybox.cpp
-  SkyboxController.cpp
-  ObjectScript.cpp
-  ScriptRegistry.cpp
-  Console.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  DebugUI.cpp
-D:\Capt\Project-Raceman\ProjectRaceman\src\ui\DebugUI.cpp(5,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  imgui_impl_glfw.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  imgui_impl_opengl3.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  imgui.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  imgui_demo.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  imgui_draw.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  Compiling...
-  imgui_tables.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  imgui_widgets.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  MenuController.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  ObjImport.cpp
-  SceneEditor.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  SceneEditorGizmo.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  SceneEditorHierarchy.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  SceneEditorInspector.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  SceneEditorProject.cpp
-D:\Capt\Project-Raceman\includes\imgui\imconfig.h(17,9): warning C4005: 'IMGUI_IMPL_OPENGL_LOADER_GLAD': macro redefinition
-  Test1.cpp
-  glad.c
+﻿Jolt_release.lib(RotatedTranslatedShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(BoxShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SerializableObject.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(CapsuleShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(BodyManager.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SphereShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Memory.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(JobSystemThreadPool.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(LargeIslandSplitter.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Factory.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Shape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(IslandBuilder.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Profiler.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(ContactConstraintManager.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PhysicsSystem.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(CompoundShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PhysicsMaterial.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(StaticCompoundShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(DecoratedShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(IssueReporting.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(RegisterTypes.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(ConvexShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(BodyInterface.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(cmake_pch.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(CollisionDispatch.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(TypeDeclarations.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(RTTI.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(MassProperties.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Color.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(ObjectStream.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(DebugRenderer.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SoftBodyShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(BodyCreationSettings.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(MotionProperties.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Body.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SoftBodyMotionProperties.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(StringTools.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(JobSystemWithBarrier.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Semaphore.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(ScaledShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(BroadPhase.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(BroadPhaseQuadTree.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PhysicsUpdateContext.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(ConstraintManager.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(ManifoldBetweenTwoFaces.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(TransformedShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PhysicsMaterialSimple.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(MutableCompoundShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(TriangleShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PlaneShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(TaperedCapsuleShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(CylinderShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(TaperedCylinderShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(MeshShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(ConvexHullShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(HeightFieldShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(OffsetCenterOfMassShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(EmptyShape.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SkeletalAnimation.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Skeleton.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Ragdoll.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PointConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SixDOFConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SliderConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SwingTwistConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(DistanceConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(HingeConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(FixedConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(ConeConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PathConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(VehicleConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(WheeledVehicleController.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(TrackedVehicleController.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(MotorcycleController.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PathConstraintPath.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PathConstraintPathHermite.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(RackAndPinionConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(GearConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PulleyConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(MotorSettings.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(PhysicsScene.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(GroupFilter.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(GroupFilterTable.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SoftBodyCreationSettings.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(HairSettings.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(OrientedBox.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Vec3.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(CollisionGroup.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(CollideConvexVsTriangles.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(CollideSphereVsTriangles.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(CastConvexVsTriangles.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(CastSphereVsTriangles.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(QuadTree.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Indexify.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(TriangleSplitterBinning.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(TriangleSplitterMean.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(AABBTreeBuilder.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(ConvexHullBuilder.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Constraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(TwoBodyConstraint.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SpringSettings.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(VehicleAntiRollBar.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(VehicleController.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(Wheel.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(LinearCurve.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(VehicleEngine.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(VehicleTransmission.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(VehicleDifferential.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(VehicleTrack.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(SoftBodySharedSettings.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(TriangleSplitter.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+Jolt_release.lib(ConvexHullBuilder2D.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(raisehan.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(locale0.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(locale.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(iosptrs.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(wlocale.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xlocale.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xstol.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xstoul.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xstoll.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xstoull.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xlock.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xstrcoll.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xdateord.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xwctomb.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xwcscoll.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xwcsxfrm.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xgetwctype.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xtowlower.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xtowupper.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xstrxfrm.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(xmtx.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(StlCompareStringA.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(StlCompareStringW.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(StlLCMapStringW.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
+libcpmt.lib(StlLCMapStringA.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MT_StaticRelease' doesn't match value 'MD_DynamicRelease' in Application.obj
 LINK : warning LNK4098: defaultlib 'MSVCRTD' conflicts with use of other libs; use /NODEFAULTLIB:library
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::Result<class JPH::Ref<class JPH::Shape> > __cdecl JPH::RotatedTranslatedShapeSettings::Create(void)const " (?Create@RotatedTranslatedShapeSettings@JPH@@UEBA?AV?$Result@V?$Ref@VShape@JPH@@@JPH@@@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void const * __cdecl JPH::RotatedTranslatedShapeSettings::CastTo(class JPH::RTTI const *)const " (?CastTo@RotatedTranslatedShapeSettings@JPH@@UEBAPEBXPEBVRTTI@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::RTTI const * __cdecl JPH::RotatedTranslatedShapeSettings::GetRTTI(void)const " (?GetRTTI@RotatedTranslatedShapeSettings@JPH@@UEBAPEBVRTTI@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "protected: virtual void __cdecl JPH::BoxShape::RestoreBinaryState(class JPH::StreamIn &)" (?RestoreBinaryState@BoxShape@JPH@@MEAAXAEAVStreamIn@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::BoxShape::SaveBinaryState(class JPH::StreamOut &)const " (?SaveBinaryState@BoxShape@JPH@@UEBAXAEAVStreamOut@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual int __cdecl JPH::BoxShape::GetTrianglesNext(struct JPH::Shape::GetTrianglesContext &,int,class JPH::Float3 *,class JPH::PhysicsMaterial const * *)const " (?GetTrianglesNext@BoxShape@JPH@@UEBAHAEAUGetTrianglesContext@Shape@2@HPEAVFloat3@2@PEAPEBVPhysicsMaterial@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::BoxShape::GetTrianglesStart(struct JPH::Shape::GetTrianglesContext &,class JPH::AABox const &,class JPH::Vec3,class JPH::Quat,class JPH::Vec3)const " (?GetTrianglesStart@BoxShape@JPH@@UEBAXAEAUGetTrianglesContext@Shape@2@AEBVAABox@2@VVec3@2@VQuat@2@2@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::BoxShape::CollideSoftBodyVertices(class JPH::Mat44 const &,class JPH::Vec3,class JPH::CollideSoftBodyVertexIterator const &,unsigned int,int)const " (?CollideSoftBodyVertices@BoxShape@JPH@@UEBAXAEBVMat44@2@VVec3@2@AEBVCollideSoftBodyVertexIterator@2@IH@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::BoxShape::CollidePoint(class JPH::Vec3,class JPH::SubShapeIDCreator const &,class JPH::CollisionCollector<class JPH::CollidePointResult,class JPH::CollisionCollectorTraitsCollideShape> &,class JPH::ShapeFilter const &)const " (?CollidePoint@BoxShape@JPH@@UEBAXVVec3@2@AEBVSubShapeIDCreator@2@AEAV?$CollisionCollector@VCollidePointResult@JPH@@VCollisionCollectorTraitsCollideShape@2@@2@AEBVShapeFilter@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual bool __cdecl JPH::BoxShape::CastRay(struct JPH::RayCast const &,class JPH::SubShapeIDCreator const &,class JPH::RayCastResult &)const " (?CastRay@BoxShape@JPH@@UEBA_NAEBURayCast@2@AEBVSubShapeIDCreator@2@AEAVRayCastResult@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::BoxShape::CastRay(struct JPH::RayCast const &,class JPH::RayCastSettings const &,class JPH::SubShapeIDCreator const &,class JPH::CollisionCollector<class JPH::RayCastResult,class JPH::CollisionCollectorTraitsCastRay> &,class JPH::ShapeFilter const &)const " (?CastRay@BoxShape@JPH@@UEBAXAEBURayCast@2@AEBVRayCastSettings@2@AEBVSubShapeIDCreator@2@AEAV?$CollisionCollector@VRayCastResult@JPH@@VCollisionCollectorTraitsCastRay@2@@2@AEBVShapeFilter@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::ConvexShape::Support const * __cdecl JPH::BoxShape::GetSupportFunction(enum JPH::ConvexShape::ESupportMode,class JPH::ConvexShape::SupportBuffer &,class JPH::Vec3)const " (?GetSupportFunction@BoxShape@JPH@@UEBAPEBVSupport@ConvexShape@2@W4ESupportMode@42@AEAVSupportBuffer@42@VVec3@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::BoxShape::GetSupportingFace(class JPH::SubShapeID const &,class JPH::Vec3,class JPH::Vec3,class JPH::Mat44 const &,class JPH::StaticArray<class JPH::Vec3,32> &)const " (?GetSupportingFace@BoxShape@JPH@@UEBAXAEBVSubShapeID@2@VVec3@2@1AEBVMat44@2@AEAV?$StaticArray@VVec3@JPH@@$0CA@@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::Vec3 __cdecl JPH::BoxShape::GetSurfaceNormal(class JPH::SubShapeID const &,class JPH::Vec3)const " (?GetSurfaceNormal@BoxShape@JPH@@UEBA?AVVec3@2@AEBVSubShapeID@2@V32@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::MassProperties __cdecl JPH::BoxShape::GetMassProperties(void)const " (?GetMassProperties@BoxShape@JPH@@UEBA?AVMassProperties@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void const * __cdecl JPH::SerializableObject::CastTo(class JPH::RTTI const *)const " (?CastTo@SerializableObject@JPH@@UEBAPEBXPEBVRTTI@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::RTTI const * __cdecl JPH::SerializableObject::GetRTTI(void)const " (?GetRTTI@SerializableObject@JPH@@UEBAPEBVRTTI@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "protected: virtual void __cdecl JPH::CapsuleShape::RestoreBinaryState(class JPH::StreamIn &)" (?RestoreBinaryState@CapsuleShape@JPH@@MEAAXAEAVStreamIn@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::Vec3 __cdecl JPH::CapsuleShape::MakeScaleValid(class JPH::Vec3)const " (?MakeScaleValid@CapsuleShape@JPH@@UEBA?AVVec3@2@V32@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual bool __cdecl JPH::CapsuleShape::IsValidScale(class JPH::Vec3)const " (?IsValidScale@CapsuleShape@JPH@@UEBA_NVVec3@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::CapsuleShape::SaveBinaryState(class JPH::StreamOut &)const " (?SaveBinaryState@CapsuleShape@JPH@@UEBAXAEAVStreamOut@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual int __cdecl JPH::CapsuleShape::GetTrianglesNext(struct JPH::Shape::GetTrianglesContext &,int,class JPH::Float3 *,class JPH::PhysicsMaterial const * *)const " (?GetTrianglesNext@CapsuleShape@JPH@@UEBAHAEAUGetTrianglesContext@Shape@2@HPEAVFloat3@2@PEAPEBVPhysicsMaterial@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::CapsuleShape::GetTrianglesStart(struct JPH::Shape::GetTrianglesContext &,class JPH::AABox const &,class JPH::Vec3,class JPH::Quat,class JPH::Vec3)const " (?GetTrianglesStart@CapsuleShape@JPH@@UEBAXAEAUGetTrianglesContext@Shape@2@AEBVAABox@2@VVec3@2@VQuat@2@2@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::CapsuleShape::CollideSoftBodyVertices(class JPH::Mat44 const &,class JPH::Vec3,class JPH::CollideSoftBodyVertexIterator const &,unsigned int,int)const " (?CollideSoftBodyVertices@CapsuleShape@JPH@@UEBAXAEBVMat44@2@VVec3@2@AEBVCollideSoftBodyVertexIterator@2@IH@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::CapsuleShape::CollidePoint(class JPH::Vec3,class JPH::SubShapeIDCreator const &,class JPH::CollisionCollector<class JPH::CollidePointResult,class JPH::CollisionCollectorTraitsCollideShape> &,class JPH::ShapeFilter const &)const " (?CollidePoint@CapsuleShape@JPH@@UEBAXVVec3@2@AEBVSubShapeIDCreator@2@AEAV?$CollisionCollector@VCollidePointResult@JPH@@VCollisionCollectorTraitsCollideShape@2@@2@AEBVShapeFilter@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual bool __cdecl JPH::CapsuleShape::CastRay(struct JPH::RayCast const &,class JPH::SubShapeIDCreator const &,class JPH::RayCastResult &)const " (?CastRay@CapsuleShape@JPH@@UEBA_NAEBURayCast@2@AEBVSubShapeIDCreator@2@AEAVRayCastResult@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::ConvexShape::Support const * __cdecl JPH::CapsuleShape::GetSupportFunction(enum JPH::ConvexShape::ESupportMode,class JPH::ConvexShape::SupportBuffer &,class JPH::Vec3)const " (?GetSupportFunction@CapsuleShape@JPH@@UEBAPEBVSupport@ConvexShape@2@W4ESupportMode@42@AEAVSupportBuffer@42@VVec3@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::CapsuleShape::GetSupportingFace(class JPH::SubShapeID const &,class JPH::Vec3,class JPH::Vec3,class JPH::Mat44 const &,class JPH::StaticArray<class JPH::Vec3,32> &)const " (?GetSupportingFace@CapsuleShape@JPH@@UEBAXAEBVSubShapeID@2@VVec3@2@1AEBVMat44@2@AEAV?$StaticArray@VVec3@JPH@@$0CA@@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::Vec3 __cdecl JPH::CapsuleShape::GetSurfaceNormal(class JPH::SubShapeID const &,class JPH::Vec3)const " (?GetSurfaceNormal@CapsuleShape@JPH@@UEBA?AVVec3@2@AEBVSubShapeID@2@V32@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::MassProperties __cdecl JPH::CapsuleShape::GetMassProperties(void)const " (?GetMassProperties@CapsuleShape@JPH@@UEBA?AVMassProperties@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::AABox __cdecl JPH::CapsuleShape::GetWorldSpaceBounds(class JPH::Mat44 const &,class JPH::Vec3)const " (?GetWorldSpaceBounds@CapsuleShape@JPH@@UEBA?AVAABox@2@AEBVMat44@2@VVec3@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::AABox __cdecl JPH::CapsuleShape::GetLocalBounds(void)const " (?GetLocalBounds@CapsuleShape@JPH@@UEBA?AVAABox@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: void __cdecl JPH::BodyManager::UnlockWrite(unsigned __int64)const " (?UnlockWrite@BodyManager@JPH@@QEBAX_K@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: void __cdecl JPH::BodyManager::LockWrite(unsigned __int64)const " (?LockWrite@BodyManager@JPH@@QEBAX_K@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: void __cdecl JPH::BodyManager::UnlockRead(unsigned __int64)const " (?UnlockRead@BodyManager@JPH@@QEBAX_K@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: void __cdecl JPH::BodyManager::LockRead(unsigned __int64)const " (?LockRead@BodyManager@JPH@@QEBAX_K@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: unsigned __int64 __cdecl JPH::BodyManager::GetMutexMask(class JPH::BodyID const *,int)const " (?GetMutexMask@BodyManager@JPH@@QEBA_KPEBVBodyID@2@H@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: __cdecl JPH::BodyManager::~BodyManager(void)" (??1BodyManager@JPH@@QEAA@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "protected: virtual void __cdecl JPH::SphereShape::RestoreBinaryState(class JPH::StreamIn &)" (?RestoreBinaryState@SphereShape@JPH@@MEAAXAEAVStreamIn@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::Vec3 __cdecl JPH::SphereShape::MakeScaleValid(class JPH::Vec3)const " (?MakeScaleValid@SphereShape@JPH@@UEBA?AVVec3@2@V32@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual bool __cdecl JPH::SphereShape::IsValidScale(class JPH::Vec3)const " (?IsValidScale@SphereShape@JPH@@UEBA_NVVec3@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::SphereShape::SaveBinaryState(class JPH::StreamOut &)const " (?SaveBinaryState@SphereShape@JPH@@UEBAXAEAVStreamOut@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual int __cdecl JPH::SphereShape::GetTrianglesNext(struct JPH::Shape::GetTrianglesContext &,int,class JPH::Float3 *,class JPH::PhysicsMaterial const * *)const " (?GetTrianglesNext@SphereShape@JPH@@UEBAHAEAUGetTrianglesContext@Shape@2@HPEAVFloat3@2@PEAPEBVPhysicsMaterial@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::SphereShape::GetTrianglesStart(struct JPH::Shape::GetTrianglesContext &,class JPH::AABox const &,class JPH::Vec3,class JPH::Quat,class JPH::Vec3)const " (?GetTrianglesStart@SphereShape@JPH@@UEBAXAEAUGetTrianglesContext@Shape@2@AEBVAABox@2@VVec3@2@VQuat@2@2@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::SphereShape::CollideSoftBodyVertices(class JPH::Mat44 const &,class JPH::Vec3,class JPH::CollideSoftBodyVertexIterator const &,unsigned int,int)const " (?CollideSoftBodyVertices@SphereShape@JPH@@UEBAXAEBVMat44@2@VVec3@2@AEBVCollideSoftBodyVertexIterator@2@IH@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::SphereShape::CollidePoint(class JPH::Vec3,class JPH::SubShapeIDCreator const &,class JPH::CollisionCollector<class JPH::CollidePointResult,class JPH::CollisionCollectorTraitsCollideShape> &,class JPH::ShapeFilter const &)const " (?CollidePoint@SphereShape@JPH@@UEBAXVVec3@2@AEBVSubShapeIDCreator@2@AEAV?$CollisionCollector@VCollidePointResult@JPH@@VCollisionCollectorTraitsCollideShape@2@@2@AEBVShapeFilter@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual bool __cdecl JPH::SphereShape::CastRay(struct JPH::RayCast const &,class JPH::SubShapeIDCreator const &,class JPH::RayCastResult &)const " (?CastRay@SphereShape@JPH@@UEBA_NAEBURayCast@2@AEBVSubShapeIDCreator@2@AEAVRayCastResult@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::SphereShape::CastRay(struct JPH::RayCast const &,class JPH::RayCastSettings const &,class JPH::SubShapeIDCreator const &,class JPH::CollisionCollector<class JPH::RayCastResult,class JPH::CollisionCollectorTraitsCastRay> &,class JPH::ShapeFilter const &)const " (?CastRay@SphereShape@JPH@@UEBAXAEBURayCast@2@AEBVRayCastSettings@2@AEBVSubShapeIDCreator@2@AEAV?$CollisionCollector@VRayCastResult@JPH@@VCollisionCollectorTraitsCastRay@2@@2@AEBVShapeFilter@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::SphereShape::GetSubmergedVolume(class JPH::Mat44 const &,class JPH::Vec3,class JPH::Plane const &,float &,float &,class JPH::Vec3 &)const " (?GetSubmergedVolume@SphereShape@JPH@@UEBAXAEBVMat44@2@VVec3@2@AEBVPlane@2@AEAM3AEAV42@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::ConvexShape::Support const * __cdecl JPH::SphereShape::GetSupportFunction(enum JPH::ConvexShape::ESupportMode,class JPH::ConvexShape::SupportBuffer &,class JPH::Vec3)const " (?GetSupportFunction@SphereShape@JPH@@UEBAPEBVSupport@ConvexShape@2@W4ESupportMode@42@AEAVSupportBuffer@42@VVec3@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::Vec3 __cdecl JPH::SphereShape::GetSurfaceNormal(class JPH::SubShapeID const &,class JPH::Vec3)const " (?GetSurfaceNormal@SphereShape@JPH@@UEBA?AVVec3@2@AEBVSubShapeID@2@V32@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::MassProperties __cdecl JPH::SphereShape::GetMassProperties(void)const " (?GetMassProperties@SphereShape@JPH@@UEBA?AVMassProperties@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::AABox __cdecl JPH::SphereShape::GetWorldSpaceBounds(class JPH::Mat44 const &,class JPH::Vec3)const " (?GetWorldSpaceBounds@SphereShape@JPH@@UEBA?AVAABox@2@AEBVMat44@2@VVec3@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::AABox __cdecl JPH::SphereShape::GetLocalBounds(void)const " (?GetLocalBounds@SphereShape@JPH@@UEBA?AVAABox@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "void (__cdecl* JPH::AlignedFree)(void *)" (?AlignedFree@JPH@@3P6AXPEAX@ZEA)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual __cdecl JPH::JobSystemThreadPool::~JobSystemThreadPool(void)" (??1JobSystemThreadPool@JPH@@UEAA@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: __cdecl JPH::JobSystemThreadPool::JobSystemThreadPool(unsigned int,unsigned int,int)" (??0JobSystemThreadPool@JPH@@QEAA@IIH@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "void __cdecl JPH::RegisterDefaultAllocator(void)" (?RegisterDefaultAllocator@JPH@@YAXXZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: __cdecl JPH::LargeIslandSplitter::~LargeIslandSplitter(void)" (??1LargeIslandSplitter@JPH@@QEAA@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: static class JPH::Factory * JPH::Factory::sInstance" (?sInstance@Factory@JPH@@2PEAV12@EA)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void const * __cdecl JPH::ShapeSettings::CastTo(class JPH::RTTI const *)const " (?CastTo@ShapeSettings@JPH@@UEBAPEBXPEBVRTTI@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::RTTI const * __cdecl JPH::ShapeSettings::GetRTTI(void)const " (?GetRTTI@ShapeSettings@JPH@@UEBAPEBVRTTI@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: __cdecl JPH::IslandBuilder::~IslandBuilder(void)" (??1IslandBuilder@JPH@@QEAA@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: __cdecl JPH::ContactConstraintManager::~ContactConstraintManager(void)" (??1ContactConstraintManager@JPH@@QEAA@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: __cdecl JPH::ContactConstraintManager::ContactConstraintManager(struct JPH::PhysicsSettings const &)" (??0ContactConstraintManager@JPH@@QEAA@AEBUPhysicsSettings@1@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: enum JPH::EPhysicsUpdateError __cdecl JPH::PhysicsSystem::Update(float,int,class JPH::TempAllocator *,class JPH::JobSystem *)" (?Update@PhysicsSystem@JPH@@QEAA?AW4EPhysicsUpdateError@2@MHPEAVTempAllocator@2@PEAVJobSystem@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: void __cdecl JPH::PhysicsSystem::OptimizeBroadPhase(void)" (?OptimizeBroadPhase@PhysicsSystem@JPH@@QEAAXXZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: static void __cdecl JPH::PhysicsSystem::sDefaultSimCollideBodyVsBody(class JPH::Body const &,class JPH::Body const &,class JPH::Mat44 const &,class JPH::Mat44 const &,class JPH::CollideShapeSettings &,class JPH::CollisionCollector<class JPH::CollideShapeResult,class JPH::CollisionCollectorTraitsCollideShape> &,class JPH::ShapeFilter const &)" (?sDefaultSimCollideBodyVsBody@PhysicsSystem@JPH@@SAXAEBVBody@2@0AEBVMat44@2@1AEAVCollideShapeSettings@2@AEAV?$CollisionCollector@VCollideShapeResult@JPH@@VCollisionCollectorTraitsCollideShape@2@@2@AEBVShapeFilter@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: void __cdecl JPH::PhysicsSystem::Init(unsigned int,unsigned int,unsigned int,unsigned int,class JPH::BroadPhaseLayerInterface const &,class JPH::ObjectVsBroadPhaseLayerFilter const &,class JPH::ObjectLayerPairFilter const &)" (?Init@PhysicsSystem@JPH@@QEAAXIIIIAEBVBroadPhaseLayerInterface@2@AEBVObjectVsBroadPhaseLayerFilter@2@AEBVObjectLayerPairFilter@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: __cdecl JPH::PhysicsSystem::~PhysicsSystem(void)" (??1PhysicsSystem@JPH@@QEAA@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: void __cdecl JPH::CompoundShapeSettings::AddShape(class JPH::Vec3,class JPH::Quat,class JPH::Shape const *,unsigned int)" (?AddShape@CompoundShapeSettings@JPH@@QEAAXVVec3@2@VQuat@2@PEBVShape@2@I@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void const * __cdecl JPH::CompoundShapeSettings::CastTo(class JPH::RTTI const *)const " (?CastTo@CompoundShapeSettings@JPH@@UEBAPEBXPEBVRTTI@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::RTTI const * __cdecl JPH::CompoundShapeSettings::GetRTTI(void)const " (?GetRTTI@CompoundShapeSettings@JPH@@UEBAPEBVRTTI@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: static class JPH::RefConst<class JPH::PhysicsMaterial> JPH::PhysicsMaterial::sDefault" (?sDefault@PhysicsMaterial@JPH@@2V?$RefConst@VPhysicsMaterial@JPH@@@2@A)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::Result<class JPH::Ref<class JPH::Shape> > __cdecl JPH::StaticCompoundShapeSettings::Create(void)const " (?Create@StaticCompoundShapeSettings@JPH@@UEBA?AV?$Result@V?$Ref@VShape@JPH@@@JPH@@@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void const * __cdecl JPH::StaticCompoundShapeSettings::CastTo(class JPH::RTTI const *)const " (?CastTo@StaticCompoundShapeSettings@JPH@@UEBAPEBXPEBVRTTI@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::RTTI const * __cdecl JPH::StaticCompoundShapeSettings::GetRTTI(void)const " (?GetRTTI@StaticCompoundShapeSettings@JPH@@UEBAPEBVRTTI@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void const * __cdecl JPH::DecoratedShapeSettings::CastTo(class JPH::RTTI const *)const " (?CastTo@DecoratedShapeSettings@JPH@@UEBAPEBXPEBVRTTI@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::RTTI const * __cdecl JPH::DecoratedShapeSettings::GetRTTI(void)const " (?GetRTTI@DecoratedShapeSettings@JPH@@UEBAPEBVRTTI@2@XZ)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "bool (__cdecl* JPH::AssertFailed)(char const *,char const *,char const *,unsigned int)" (?AssertFailed@JPH@@3P6A_NPEBD00I@ZEA)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "void (__cdecl* JPH::Trace)(char const *,...)" (?Trace@JPH@@3P6AXPEBDZZEA)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "void * (__cdecl* JPH::Allocate)(unsigned __int64)" (?Allocate@JPH@@3P6APEAX_K@ZEA)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "protected: virtual void __cdecl JPH::Shape::RestoreBinaryState(class JPH::StreamIn &)" (?RestoreBinaryState@Shape@JPH@@MEAAXAEAVStreamIn@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::Vec3 __cdecl JPH::Shape::MakeScaleValid(class JPH::Vec3)const " (?MakeScaleValid@Shape@JPH@@UEBA?AVVec3@2@V32@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual bool __cdecl JPH::Shape::IsValidScale(class JPH::Vec3)const " (?IsValidScale@Shape@JPH@@UEBA_NVVec3@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual struct JPH::Shape::Stats __cdecl JPH::Shape::GetStatsRecursive(class JPH::UnorderedSet<class JPH::Shape const *,struct JPH::Hash<class JPH::Shape const *>,struct std::equal_to<class JPH::Shape const *> > &)const " (?GetStatsRecursive@Shape@JPH@@UEBA?AUStats@12@AEAV?$UnorderedSet@PEBVShape@JPH@@U?$Hash@PEBVShape@JPH@@@2@U?$equal_to@PEBVShape@JPH@@@std@@@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::Shape::SaveBinaryState(class JPH::StreamOut &)const " (?SaveBinaryState@Shape@JPH@@UEBAXAEAVStreamOut@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::Shape::TransformShape(class JPH::Mat44 const &,class JPH::CollisionCollector<class JPH::TransformedShape,class JPH::CollisionCollectorTraitsCollideShape> &)const " (?TransformShape@Shape@JPH@@UEBAXAEBVMat44@2@AEAV?$CollisionCollector@VTransformedShape@JPH@@VCollisionCollectorTraitsCollideShape@2@@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::Shape::CollectTransformedShapes(class JPH::AABox const &,class JPH::Vec3,class JPH::Quat,class JPH::Vec3,class JPH::SubShapeIDCreator const &,class JPH::CollisionCollector<class JPH::TransformedShape,class JPH::CollisionCollectorTraitsCollideShape> &,class JPH::ShapeFilter const &)const " (?CollectTransformedShapes@Shape@JPH@@UEBAXAEBVAABox@2@VVec3@2@VQuat@2@1AEBVSubShapeIDCreator@2@AEAV?$CollisionCollector@VTransformedShape@JPH@@VCollisionCollectorTraitsCollideShape@2@@2@AEBVShapeFilter@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::TransformedShape __cdecl JPH::Shape::GetSubShapeTransformedShape(class JPH::SubShapeID const &,class JPH::Vec3,class JPH::Quat,class JPH::Vec3,class JPH::SubShapeID &)const " (?GetSubShapeTransformedShape@Shape@JPH@@UEBA?AVTransformedShape@2@AEBVSubShapeID@2@VVec3@2@VQuat@2@1AEAV42@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual class JPH::Shape const * __cdecl JPH::Shape::GetLeafShape(class JPH::SubShapeID const &,class JPH::SubShapeID &)const " (?GetLeafShape@Shape@JPH@@UEBAPEBV12@AEBVSubShapeID@2@AEAV32@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "void __cdecl JPH::RegisterTypesInternal(unsigned __int64)" (?RegisterTypesInternal@JPH@@YAX_K@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "void * (__cdecl* JPH::AlignedAllocate)(unsigned __int64,unsigned __int64)" (?AlignedAllocate@JPH@@3P6APEAX_K0@ZEA)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "void (__cdecl* JPH::Free)(void *)" (?Free@JPH@@3P6AXPEAX@ZEA)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "protected: virtual void __cdecl JPH::ConvexShape::RestoreBinaryState(class JPH::StreamIn &)" (?RestoreBinaryState@ConvexShape@JPH@@MEAAXAEAVStreamIn@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::ConvexShape::RestoreMaterialState(class JPH::RefConst<class JPH::PhysicsMaterial> const *,unsigned int)" (?RestoreMaterialState@ConvexShape@JPH@@UEAAXPEBV?$RefConst@VPhysicsMaterial@JPH@@@2@I@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::ConvexShape::SaveMaterialState(class JPH::Array<class JPH::RefConst<class JPH::PhysicsMaterial>,class JPH::STLAllocator<class JPH::RefConst<class JPH::PhysicsMaterial> > > &)const " (?SaveMaterialState@ConvexShape@JPH@@UEBAXAEAV?$Array@V?$RefConst@VPhysicsMaterial@JPH@@@JPH@@V?$STLAllocator@V?$RefConst@VPhysicsMaterial@JPH@@@JPH@@@2@@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::ConvexShape::SaveBinaryState(class JPH::StreamOut &)const " (?SaveBinaryState@ConvexShape@JPH@@UEBAXAEAVStreamOut@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::ConvexShape::GetSubmergedVolume(class JPH::Mat44 const &,class JPH::Vec3,class JPH::Plane const &,float &,float &,class JPH::Vec3 &)const " (?GetSubmergedVolume@ConvexShape@JPH@@UEBAXAEBVMat44@2@VVec3@2@AEBVPlane@2@AEAM3AEAV42@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual int __cdecl JPH::ConvexShape::GetTrianglesNext(struct JPH::Shape::GetTrianglesContext &,int,class JPH::Float3 *,class JPH::PhysicsMaterial const * *)const " (?GetTrianglesNext@ConvexShape@JPH@@UEBAHAEAUGetTrianglesContext@Shape@2@HPEAVFloat3@2@PEAPEBVPhysicsMaterial@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::ConvexShape::GetTrianglesStart(struct JPH::Shape::GetTrianglesContext &,class JPH::AABox const &,class JPH::Vec3,class JPH::Quat,class JPH::Vec3)const " (?GetTrianglesStart@ConvexShape@JPH@@UEBAXAEAUGetTrianglesContext@Shape@2@AEBVAABox@2@VVec3@2@VQuat@2@2@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::ConvexShape::CollidePoint(class JPH::Vec3,class JPH::SubShapeIDCreator const &,class JPH::CollisionCollector<class JPH::CollidePointResult,class JPH::CollisionCollectorTraitsCollideShape> &,class JPH::ShapeFilter const &)const " (?CollidePoint@ConvexShape@JPH@@UEBAXVVec3@2@AEBVSubShapeIDCreator@2@AEAV?$CollisionCollector@VCollidePointResult@JPH@@VCollisionCollectorTraitsCollideShape@2@@2@AEBVShapeFilter@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual bool __cdecl JPH::ConvexShape::CastRay(struct JPH::RayCast const &,class JPH::SubShapeIDCreator const &,class JPH::RayCastResult &)const " (?CastRay@ConvexShape@JPH@@UEBA_NAEBURayCast@2@AEBVSubShapeIDCreator@2@AEAVRayCastResult@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl JPH::ConvexShape::CastRay(struct JPH::RayCast const &,class JPH::RayCastSettings const &,class JPH::SubShapeIDCreator const &,class JPH::CollisionCollector<class JPH::RayCastResult,class JPH::CollisionCollectorTraitsCastRay> &,class JPH::ShapeFilter const &)const " (?CastRay@ConvexShape@JPH@@UEBAXAEBURayCast@2@AEBVRayCastSettings@2@AEBVSubShapeIDCreator@2@AEAV?$CollisionCollector@VRayCastResult@JPH@@VCollisionCollectorTraitsCastRay@2@@2@AEBVShapeFilter@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: class JPH::Vec3 __cdecl JPH::BodyInterface::GetLinearVelocity(class JPH::BodyID const &)const " (?GetLinearVelocity@BodyInterface@JPH@@QEBA?AVVec3@2@AEBVBodyID@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: void __cdecl JPH::BodyInterface::SetLinearVelocity(class JPH::BodyID const &,class JPH::Vec3)" (?SetLinearVelocity@BodyInterface@JPH@@QEAAXAEBVBodyID@2@VVec3@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: class JPH::Quat __cdecl JPH::BodyInterface::GetRotation(class JPH::BodyID const &)const " (?GetRotation@BodyInterface@JPH@@QEBA?AVQuat@2@AEBVBodyID@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: class JPH::Vec3 __cdecl JPH::BodyInterface::GetPosition(class JPH::BodyID const &)const " (?GetPosition@BodyInterface@JPH@@QEBA?AVVec3@2@AEBVBodyID@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: class JPH::BodyID __cdecl JPH::BodyInterface::CreateAndAddBody(class JPH::BodyCreationSettings const &,enum JPH::EActivation)" (?CreateAndAddBody@BodyInterface@JPH@@QEAA?AVBodyID@2@AEBVBodyCreationSettings@2@W4EActivation@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: void __cdecl JPH::BodyInterface::RemoveBody(class JPH::BodyID const &)" (?RemoveBody@BodyInterface@JPH@@QEAAXAEBVBodyID@2@@Z)
-PhysicsWorld.obj : error LNK2001: unresolved external symbol "public: void __cdecl JPH::BodyInterface::DestroyBody(class JPH::BodyID const &)" (?DestroyBody@BodyInterface@JPH@@QEAAXAEBVBodyID@2@@Z)
-D:\Capt\Project-Raceman\ProjectRaceman\bin\Release\ProjectRaceman.exe : fatal error LNK1120: 111 unresolved externals
+LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
+C:\Capt\Project-Raceman\ProjectRaceman\bin\Release\ProjectRaceman.exe : fatal error LNK1319: 137 mismatches detected

@@ -1,0 +1,997 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-debug\CMakeFiles\Samples.dir\cmake_pch.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\SamplesApp.cpp" />
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\BroadPhase\BroadPhaseCastRayTest.cpp">
+      <Filter>Tests\BroadPhase</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\BroadPhase\BroadPhaseInsertionTest.cpp">
+      <Filter>Tests\BroadPhase</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\BroadPhase\BroadPhaseTest.cpp">
+      <Filter>Tests\BroadPhase</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Character\CharacterBaseTest.cpp">
+      <Filter>Tests\Character</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Character\CharacterPlanetTest.cpp">
+      <Filter>Tests\Character</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Character\CharacterTest.cpp">
+      <Filter>Tests\Character</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Character\CharacterVirtualTest.cpp">
+      <Filter>Tests\Character</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Character\CharacterSpaceShipTest.cpp">
+      <Filter>Tests\Character</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\ConeConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\ConstraintPriorityTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\ConstraintSingularityTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\ConstraintVsCOMChangeTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\DistanceConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\FixedConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\GearConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\HingeConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PointConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PathConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PoweredHingeConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PoweredSwingTwistConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PoweredSliderConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PulleyConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\RackAndPinionConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\SwingTwistConstraintFrictionTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\SwingTwistConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\SixDOFConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\SliderConstraintTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\SpringTest.cpp">
+      <Filter>Tests\Constraints</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\CapsuleVsBoxTest.cpp">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\ClosestPointTest.cpp">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\ConvexHullTest.cpp">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\ConvexHullShrinkTest.cpp">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\EPATest.cpp">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\InteractivePairsTest.cpp">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\RandomRayTest.cpp">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ActiveEdgesTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\AllowedDOFsTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\BigVsSmallTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\EnhancedInternalEdgeRemovalTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ShapeFilterTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\SimCollideBodyVsBodyTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\SimShapeFilterTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\CenterOfMassTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ChangeMotionQualityTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ChangeMotionTypeTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ChangeShapeTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ChangeObjectLayerTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ContactListenerTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ContactManifoldTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ConveyorBeltTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\DampingTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\DynamicMeshTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\FrictionTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\FrictionPerTriangleTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\FunnelTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\GravityFactorTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\GyroscopicForceTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\HeavyOnLightTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\HighSpeedTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\IslandTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\KinematicTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\LoadSaveBinaryTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\LoadSaveSceneTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ManifoldReductionTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ModifyMassTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\MultithreadedTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\PyramidTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\RestitutionTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\SensorTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\SimpleTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\StackTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\TwoDFunnelTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\WallTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ActivateDuringUpdateTest.cpp">
+      <Filter>Tests\General</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Hair\HairCollisionTest.cpp">
+      <Filter>Tests\Hair</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Hair\HairGravityPreloadTest.cpp">
+      <Filter>Tests\Hair</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Hair\HairTest.cpp">
+      <Filter>Tests\Hair</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\CreateRigTest.cpp">
+      <Filter>Tests\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyBendConstraintTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyContactListenerTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyCosseratRodConstraintTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyCustomUpdateTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyForceTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyFrictionTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyGravityFactorTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyKinematicTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyLRAConstraintTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyPressureTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyRestitutionTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyShapesTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodySkinnedConstraintTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodySensorTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyStressTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyUpdatePositionTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyVertexRadiusTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyVsFastMovingTest.cpp">
+      <Filter>Tests\SoftBody</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Test.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Tools\LoadSnapshotTest.cpp">
+      <Filter>Tests\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\DynamicScaledShape.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledBoxShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledCapsuleShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledStaticCompoundShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledMutableCompoundShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledOffsetCenterOfMassShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledConvexHullShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledCylinderShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledHeightFieldShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledMeshShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledPlaneShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledSphereShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledTaperedCapsuleShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledTaperedCylinderShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledTriangleShapeTest.cpp">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\BoxShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\CapsuleShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\DeformedHeightFieldShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\EmptyShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\StaticCompoundShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\MutableCompoundShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\OffsetCenterOfMassShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\ConvexHullShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\CylinderShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\HeightFieldShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\MeshShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\MeshShapeUserDataTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\SphereShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\PlaneShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\RotatedTranslatedShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\TaperedCapsuleShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\TaperedCylinderShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\TriangleShapeTest.cpp">
+      <Filter>Tests\Shapes</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\MotorcycleTest.cpp">
+      <Filter>Tests\Vehicle</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\TankTest.cpp">
+      <Filter>Tests\Vehicle</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\VehicleConstraintTest.cpp">
+      <Filter>Tests\Vehicle</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\VehicleSixDOFTest.cpp">
+      <Filter>Tests\Vehicle</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\VehicleStressTest.cpp">
+      <Filter>Tests\Vehicle</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\VehicleTest.cpp">
+      <Filter>Tests\Vehicle</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Water\BoatTest.cpp">
+      <Filter>Tests\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Water\WaterShapeTest.cpp">
+      <Filter>Tests\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Utils\ContactListenerImpl.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Utils\RagdollLoader.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Utils\ShapeCreator.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Utils\SoftBodyCreator.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\BigWorldTest.cpp">
+      <Filter>Tests\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\KinematicRigTest.cpp">
+      <Filter>Tests\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\LoadSaveBinaryRigTest.cpp">
+      <Filter>Tests\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\LoadSaveRigTest.cpp">
+      <Filter>Tests\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\LoadRigTest.cpp">
+      <Filter>Tests\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\PoweredRigTest.cpp">
+      <Filter>Tests\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\RigPileTest.cpp">
+      <Filter>Tests\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\SkeletonMapperTest.cpp">
+      <Filter>Tests\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\SoftKeyframedRigTest.cpp">
+      <Filter>Tests\Rig</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Layers.h" />
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Samples.h" />
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\SamplesApp.h" />
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\BroadPhase\BroadPhaseCastRayTest.h">
+      <Filter>Tests\BroadPhase</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\BroadPhase\BroadPhaseInsertionTest.h">
+      <Filter>Tests\BroadPhase</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\BroadPhase\BroadPhaseTest.h">
+      <Filter>Tests\BroadPhase</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Character\CharacterBaseTest.h">
+      <Filter>Tests\Character</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Character\CharacterPlanetTest.h">
+      <Filter>Tests\Character</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Character\CharacterTest.h">
+      <Filter>Tests\Character</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Character\CharacterVirtualTest.h">
+      <Filter>Tests\Character</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Character\CharacterSpaceShipTest.h">
+      <Filter>Tests\Character</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\ConeConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\ConstraintPriorityTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\ConstraintSingularityTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\ConstraintVsCOMChangeTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\DistanceConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\FixedConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\GearConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\HingeConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PointConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PathConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PoweredHingeConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PoweredSwingTwistConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PoweredSliderConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\PulleyConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\RackAndPinionConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\SwingTwistConstraintFrictionTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\SwingTwistConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\SixDOFConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\SliderConstraintTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Constraints\SpringTest.h">
+      <Filter>Tests\Constraints</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\CapsuleVsBoxTest.h">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\ClosestPointTest.h">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\ConvexHullTest.h">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\ConvexHullShrinkTest.h">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\EPATest.h">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\InteractivePairsTest.h">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ConvexCollision\RandomRayTest.h">
+      <Filter>Tests\ConvexCollision</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ActiveEdgesTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\AllowedDOFsTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\BigVsSmallTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\EnhancedInternalEdgeRemovalTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ShapeFilterTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\SimCollideBodyVsBodyTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\SimShapeFilterTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\CenterOfMassTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ChangeMotionQualityTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ChangeMotionTypeTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ChangeShapeTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ChangeObjectLayerTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ContactListenerTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ContactManifoldTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ConveyorBeltTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\DampingTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\DynamicMeshTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\FrictionTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\FrictionPerTriangleTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\FunnelTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\GravityFactorTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\GyroscopicForceTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\HeavyOnLightTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\HighSpeedTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\IslandTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\KinematicTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\LoadSaveBinaryTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\LoadSaveSceneTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ManifoldReductionTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ModifyMassTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\MultithreadedTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\PyramidTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\RestitutionTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\SensorTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\SimpleTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\StackTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\TwoDFunnelTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\WallTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\General\ActivateDuringUpdateTest.h">
+      <Filter>Tests\General</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Hair\HairCollisionTest.h">
+      <Filter>Tests\Hair</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Hair\HairGravityPreloadTest.h">
+      <Filter>Tests\Hair</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Hair\HairTest.h">
+      <Filter>Tests\Hair</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\CreateRigTest.h">
+      <Filter>Tests\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyBendConstraintTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyContactListenerTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyCosseratRodConstraintTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyCustomUpdateTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyForceTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyFrictionTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyGravityFactorTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyKinematicTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyLRAConstraintTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyPressureTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyRestitutionTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyShapesTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodySkinnedConstraintTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodySensorTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyStressTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyUpdatePositionTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyVertexRadiusTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\SoftBody\SoftBodyVsFastMovingTest.h">
+      <Filter>Tests\SoftBody</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Test.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Tools\LoadSnapshotTest.h">
+      <Filter>Tests\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\DynamicScaledShape.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledBoxShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledCapsuleShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledStaticCompoundShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledMutableCompoundShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledOffsetCenterOfMassShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledConvexHullShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledCylinderShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledHeightFieldShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledMeshShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledPlaneShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledSphereShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledTaperedCapsuleShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledTaperedCylinderShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\ScaledShapes\ScaledTriangleShapeTest.h">
+      <Filter>Tests\ScaledShapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\BoxShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\CapsuleShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\DeformedHeightFieldShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\EmptyShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\StaticCompoundShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\MutableCompoundShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\OffsetCenterOfMassShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\ConvexHullShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\CylinderShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\HeightFieldShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\MeshShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\MeshShapeUserDataTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\SphereShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\PlaneShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\RotatedTranslatedShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\TaperedCapsuleShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\TaperedCylinderShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Shapes\TriangleShapeTest.h">
+      <Filter>Tests\Shapes</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\MotorcycleTest.h">
+      <Filter>Tests\Vehicle</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\TankTest.h">
+      <Filter>Tests\Vehicle</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\VehicleConstraintTest.h">
+      <Filter>Tests\Vehicle</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\VehicleSixDOFTest.h">
+      <Filter>Tests\Vehicle</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\VehicleStressTest.h">
+      <Filter>Tests\Vehicle</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Vehicle\VehicleTest.h">
+      <Filter>Tests\Vehicle</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Water\BoatTest.h">
+      <Filter>Tests\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Water\WaterShapeTest.h">
+      <Filter>Tests\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Utils\ContactListenerImpl.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Utils\DebugRendererSP.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Utils\RagdollLoader.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Utils\ShapeCreator.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Utils\SoftBodyCreator.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\BigWorldTest.h">
+      <Filter>Tests\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\KinematicRigTest.h">
+      <Filter>Tests\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\LoadSaveBinaryRigTest.h">
+      <Filter>Tests\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\LoadSaveRigTest.h">
+      <Filter>Tests\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\LoadRigTest.h">
+      <Filter>Tests\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\PoweredRigTest.h">
+      <Filter>Tests\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\RigPileTest.h">
+      <Filter>Tests\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\SkeletonMapperTest.h">
+      <Filter>Tests\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Tests\Rig\SoftKeyframedRigTest.h">
+      <Filter>Tests\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-debug\CMakeFiles\Samples.dir\Debug\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-debug\CMakeFiles\Samples.dir\Release\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-debug\CMakeFiles\Samples.dir\Distribution\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Samples\Samples.cmake" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Precompile Header File">
+      <UniqueIdentifier>{6A2A66A8-2A79-3384-8202-AF981D99714E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{EA1F6A0A-1775-3D28-98D5-F5E64C51F494}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests">
+      <UniqueIdentifier>{5E49F8AD-AB50-34D1-9FC7-8D84C4EB9706}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\BroadPhase">
+      <UniqueIdentifier>{CA809603-A65A-3C04-8D5E-8EDF7E5A8CEB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Character">
+      <UniqueIdentifier>{3EF25674-7AD5-3DA9-BCDC-54A3E9F1F45D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Constraints">
+      <UniqueIdentifier>{7F2A6B58-41BD-3319-872F-4EB6C679EF9B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\ConvexCollision">
+      <UniqueIdentifier>{4DDD3F71-5FFC-34F1-B3CA-7511D7846A63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\General">
+      <UniqueIdentifier>{A56D6BCA-F1A8-396C-9C88-8A948102695F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Hair">
+      <UniqueIdentifier>{19A07652-A7F9-31FF-87BD-2C1A4AF4AA5B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Rig">
+      <UniqueIdentifier>{B2FBDBB8-E8F4-3F67-9393-1E65E6CA7783}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\ScaledShapes">
+      <UniqueIdentifier>{02F686E5-3E96-39F2-9569-41D0CD9BE33E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Shapes">
+      <UniqueIdentifier>{24175966-F8B8-3A92-B2F4-95EE35061E56}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\SoftBody">
+      <UniqueIdentifier>{AAC804A0-4A8E-30F9-AD05-E1F8443E7572}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Tools">
+      <UniqueIdentifier>{DE011BB9-EE54-3BF3-8256-8ACC82DDF340}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Vehicle">
+      <UniqueIdentifier>{C8747C31-545E-31F9-BB03-6E6A1FAB3B7E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Water">
+      <UniqueIdentifier>{AAC5B011-5D51-340D-BF43-D774313AA55C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{DA814004-2FCE-3E61-BFBC-4DA2A39A7CAA}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

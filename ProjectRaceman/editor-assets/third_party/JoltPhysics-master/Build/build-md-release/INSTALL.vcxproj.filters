@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\CMakeFiles\91066ab7639c10f31fcf865c8a677a04\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{E085FE84-0129-3185-862C-B6F3B71670F2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

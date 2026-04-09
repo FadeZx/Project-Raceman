@@ -5,10 +5,90 @@
 #include "../ui/Console.h"
 #include "../ui/SceneEditor.h"
 
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
+#include <glm/gtx/euler_angles.hpp>
+
 namespace raceman {
 
 ObjectScriptContext::ObjectScriptContext(SceneObject& object, Console* console, InputManager* inputManager, PhysicsWorld* physicsWorld)
     : object_(object), console_(console), inputManager_(inputManager), physicsWorld_(physicsWorld) {}
+
+// CameraHandle ----------------------------------------------------------------
+
+ObjectScriptContext::CameraHandle::CameraHandle(SceneObject* object, Console* console)
+    : object_(object), console_(console) {}
+
+bool ObjectScriptContext::CameraHandle::IsValid() const {
+    return object_ != nullptr && object_->hasCamera && object_->camera.enabled;
+}
+
+float ObjectScriptContext::CameraHandle::GetFieldOfView() const {
+    return IsValid() ? object_->camera.fieldOfViewDegrees : 0.0f;
+}
+
+void ObjectScriptContext::CameraHandle::SetFieldOfView(float degrees) const {
+    if (!IsValid()) {
+        WarnInvalid("SetFieldOfView");
+        return;
+    }
+    object_->camera.fieldOfViewDegrees = degrees;
+}
+
+float ObjectScriptContext::CameraHandle::GetNearClip() const {
+    return IsValid() ? object_->camera.nearClip : 0.0f;
+}
+
+void ObjectScriptContext::CameraHandle::SetNearClip(float value) const {
+    if (!IsValid()) {
+        WarnInvalid("SetNearClip");
+        return;
+    }
+    object_->camera.nearClip = value;
+}
+
+float ObjectScriptContext::CameraHandle::GetFarClip() const {
+    return IsValid() ? object_->camera.farClip : 0.0f;
+}
+
+void ObjectScriptContext::CameraHandle::SetFarClip(float value) const {
+    if (!IsValid()) {
+        WarnInvalid("SetFarClip");
+        return;
+    }
+    object_->camera.farClip = value;
+}
+
+glm::vec4 ObjectScriptContext::CameraHandle::GetClearColor() const {
+    return IsValid() ? object_->camera.clearColor : glm::vec4(0.0f);
+}
+
+void ObjectScriptContext::CameraHandle::SetClearColor(const glm::vec4& value) const {
+    if (!IsValid()) {
+        WarnInvalid("SetClearColor");
+        return;
+    }
+    object_->camera.clearColor = value;
+}
+
+bool ObjectScriptContext::CameraHandle::IsMain() const {
+    return IsValid() ? object_->camera.isMain : false;
+}
+
+void ObjectScriptContext::CameraHandle::SetMain(bool value) const {
+    if (!IsValid()) {
+        WarnInvalid("SetMain");
+        return;
+    }
+    object_->camera.isMain = value;
+}
+
+void ObjectScriptContext::CameraHandle::WarnInvalid(const std::string& action) const {
+    if (console_) {
+        console_->AddWarning("[Script:" + (object_ ? object_->name : std::string("unknown")) + "] Camera unavailable for " + action);
+    }
+}
 
 const std::string& ObjectScriptContext::GetObjectId() const {
     return object_.id;
@@ -56,6 +136,26 @@ bool ObjectScriptContext::IsEnabled() const {
 
 void ObjectScriptContext::SetEnabled(bool value) {
     object_.enabled = value;
+}
+
+bool ObjectScriptContext::HasCamera() const {
+    return object_.hasCamera && object_.camera.enabled;
+}
+
+ObjectScriptContext::CameraHandle ObjectScriptContext::Camera() {
+    return CameraHandle(&object_, console_);
+}
+
+glm::vec3 ObjectScriptContext::GetForwardVector() const {
+    const glm::vec3 r = glm::radians(object_.transform.rotationEuler);
+    const glm::mat4 rot = glm::yawPitchRoll(r.y, r.x, r.z);
+    return glm::normalize(glm::vec3(rot * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+}
+
+glm::vec3 ObjectScriptContext::GetUpVector() const {
+    const glm::vec3 r = glm::radians(object_.transform.rotationEuler);
+    const glm::mat4 rot = glm::yawPitchRoll(r.y, r.x, r.z);
+    return glm::normalize(glm::vec3(rot * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
 }
 
 bool ObjectScriptContext::HasRigidbody() const {

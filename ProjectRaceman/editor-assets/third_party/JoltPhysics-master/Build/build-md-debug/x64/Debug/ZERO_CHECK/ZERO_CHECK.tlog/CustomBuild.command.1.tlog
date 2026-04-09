@@ -1,0 +1,10 @@
+^C:\CAPT\PROJECT-RACEMAN\PROJECTRACEMAN\EDITOR-ASSETS\THIRD_PARTY\JOLTPHYSICS-MASTER\BUILD\BUILD-MD-DEBUG\CMAKEFILES\412915C1AF15116FFB9A5BFAF94924CD\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build -BC:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/build-md-debug --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Capt/Project-Raceman/ProjectRaceman/editor-assets/third_party/JoltPhysics-master/Build/build-md-debug/JoltPhysics.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

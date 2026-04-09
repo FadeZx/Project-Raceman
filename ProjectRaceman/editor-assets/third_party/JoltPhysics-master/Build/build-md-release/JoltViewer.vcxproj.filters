@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\CMakeFiles\JoltViewer.dir\cmake_pch.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\JoltViewer\JoltViewer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\JoltViewer\JoltViewer.h" />
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\CMakeFiles\JoltViewer.dir\Debug\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\CMakeFiles\JoltViewer.dir\Release\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-release\CMakeFiles\JoltViewer.dir\Distribution\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\JoltViewer\JoltViewer.cmake" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Precompile Header File">
+      <UniqueIdentifier>{3DF60FAC-1B5C-3965-A82B-ADF920DC6988}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{30677C37-E28F-3C7F-9965-0B76317803BA}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

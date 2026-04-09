@@ -2,15 +2,15 @@
   "objects": [
     {
       "id": "camera_3",
-      "parentId": "",
+      "parentId": "mesh_1",
       "name": "Camera",
       "type": "Camera",
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [0, 2.01966, 5],
-          "rotationEuler": [-15, 0, 0],
+          "position": [-0.123696, -2.90014, -3.10507],
+          "rotationEuler": [140.74, 2.62733, -1.23889],
           "scale": [1, 1, 1]
         },
         {
@@ -100,8 +100,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.374282, 2.38833, 0.188344],
-          "rotationEuler": [7.53372, 0, 0],
+          "position": [-0.0814361, 0.649402, 0.977145],
+          "rotationEuler": [-155.77, 2.90415, -0.0505905],
           "scale": [1, 1, 1]
         },
         {
@@ -144,6 +144,42 @@
           "isTrigger": false,
           "center": [0.15, 0, 0],
           "radius": 0.5
+        }
+      ]
+    },
+    {
+      "id": "mesh_4",
+      "parentId": "mesh_1",
+      "name": "Chevrolet-nascar-FLWheel",
+      "type": "Mesh",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.96915, -0.666007, -1.03648],
+          "rotationEuler": [174.297, -23.7567, -83.1236],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
         }
       ]
     }

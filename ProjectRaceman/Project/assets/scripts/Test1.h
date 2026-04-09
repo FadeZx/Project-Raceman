@@ -11,7 +11,7 @@ public:
 
 private:
     float moveSpeed_{5.0f};
-    float rotationSpeed_{200.0f}; // degrees per second
+    float rotationSpeed_{500.0f}; // degrees per second
     bool warnedMissingDynamicRigidbody_{false};
 };
 

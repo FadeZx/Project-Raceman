@@ -1,0 +1,390 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-debug\CMakeFiles\TestFramework.dir\cmake_pch.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Application\Application.cpp">
+      <Filter>Application</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Application\DebugUI.cpp">
+      <Filter>Application</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\External\Perlin.cpp">
+      <Filter>External</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Image\BlitSurface.cpp">
+      <Filter>Image</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Image\LoadBMP.cpp">
+      <Filter>Image</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Image\LoadTGA.cpp">
+      <Filter>Image</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Image\Surface.cpp">
+      <Filter>Image</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Image\ZoomImage.cpp">
+      <Filter>Image</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DebugRendererImp.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\Font.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\Renderer.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\RenderPrimitive.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIAnimation.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIAnimationSlide.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIButton.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UICheckBox.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIComboBox.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIElement.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIHorizontalStack.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIImage.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIManager.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UISlider.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIStaticText.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UITextButton.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIVerticalStack.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Utils\CustomMemoryHook.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Utils\ReadData.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Input\Win\KeyboardWin.cpp">
+      <Filter>Input\Win</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Input\Win\MouseWin.cpp">
+      <Filter>Input\Win</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Utils\AssetStream.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Utils\Log.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Window\ApplicationWindowWin.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\FatalErrorIfFailedDX12.cpp">
+      <Filter>Renderer\DX12</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\PipelineStateDX12.cpp">
+      <Filter>Renderer\DX12</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\RendererDX12.cpp">
+      <Filter>Renderer\DX12</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\RenderInstancesDX12.cpp">
+      <Filter>Renderer\DX12</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\RenderPrimitiveDX12.cpp">
+      <Filter>Renderer\DX12</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\TextureDX12.cpp">
+      <Filter>Renderer\DX12</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Application\Application.h">
+      <Filter>Application</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Application\DebugUI.h">
+      <Filter>Application</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Application\EntryPoint.h">
+      <Filter>Application</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\External\Perlin.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\External\stb_truetype.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Image\BlitSurface.h">
+      <Filter>Image</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Image\LoadBMP.h">
+      <Filter>Image</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Image\LoadTGA.h">
+      <Filter>Image</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Image\Surface.h">
+      <Filter>Image</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Image\ZoomImage.h">
+      <Filter>Image</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Input\Keyboard.h">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Input\Mouse.h">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\CameraState.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DebugRendererImp.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\Font.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\Frustum.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\PipelineState.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\PixelShader.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\Renderer.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\RenderInstances.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\RenderPrimitive.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\Texture.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\VertexShader.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\TestFramework.h" />
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIAnimation.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIAnimationSlide.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIButton.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UICheckBox.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIComboBox.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIElement.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIEventListener.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIHorizontalStack.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIImage.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIManager.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UISlider.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIStaticText.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UITextButton.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UITexturedQuad.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\UI\UIVerticalStack.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Utils\CustomMemoryHook.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Utils\AssetStream.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Utils\Log.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Utils\ReadData.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Window\ApplicationWindow.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Input\Win\KeyboardWin.h">
+      <Filter>Input\Win</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Input\Win\MouseWin.h">
+      <Filter>Input\Win</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Window\ApplicationWindowWin.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\DescriptorHeapDX12.h">
+      <Filter>Renderer\DX12</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\FatalErrorIfFailedDX12.h">
+      <Filter>Renderer\DX12</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\PipelineStateDX12.h">
+      <Filter>Renderer\DX12</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\PixelShaderDX12.h">
+      <Filter>Renderer\DX12</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\RendererDX12.h">
+      <Filter>Renderer\DX12</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\RenderInstancesDX12.h">
+      <Filter>Renderer\DX12</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\RenderPrimitiveDX12.h">
+      <Filter>Renderer\DX12</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\TextureDX12.h">
+      <Filter>Renderer\DX12</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\Renderer\DX12\VertexShaderDX12.h">
+      <Filter>Renderer\DX12</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\VertexConstants.h">
+      <Filter>Assets\Shaders\DX</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-debug\CMakeFiles\TestFramework.dir\Debug\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-debug\CMakeFiles\TestFramework.dir\Release\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\build-md-debug\CMakeFiles\TestFramework.dir\Distribution\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Build\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\FontVertexShader.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\LineVertexShader.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\TriangleDepthVertexShader.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\TriangleVertexShader.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\UIVertexShader.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\FontPixelShader.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\LinePixelShader.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\TriangleDepthPixelShader.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\TrianglePixelShader.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\UIPixelShader.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+    <FXCompile Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\Assets\Shaders\DX\UIPixelShaderUntextured.hlsl">
+      <Filter>Assets\Shaders\DX</Filter>
+    </FXCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\JoltPhysics-master\TestFramework\TestFramework.cmake" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Application">
+      <UniqueIdentifier>{25521A1C-3203-3D28-B177-A093588AF2F2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets">
+      <UniqueIdentifier>{2D121ECF-B480-37AE-A225-50B448B2C595}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets\Shaders">
+      <UniqueIdentifier>{1A1E0986-749C-354E-AB14-7581B20F8077}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets\Shaders\DX">
+      <UniqueIdentifier>{FC61ADAB-36E3-30A8-AC8E-74CE7A83C5B5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External">
+      <UniqueIdentifier>{0E24B04F-B9DD-3FEA-AC7D-F1761B348AB4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Image">
+      <UniqueIdentifier>{6ED5352D-9870-39E2-8C99-2871E1F665A2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Input">
+      <UniqueIdentifier>{8B49F018-5D4F-3EB6-9013-D851474A56D7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Input\Win">
+      <UniqueIdentifier>{1799A083-E605-3C86-AC0F-E7430406956F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Precompile Header File">
+      <UniqueIdentifier>{6A2A66A8-2A79-3384-8202-AF981D99714E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer">
+      <UniqueIdentifier>{D96E3463-4632-3C24-8FFD-EEE6958562BE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\DX12">
+      <UniqueIdentifier>{00606086-D611-3796-B961-DD20C7F537D9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{EA1F6A0A-1775-3D28-98D5-F5E64C51F494}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UI">
+      <UniqueIdentifier>{D57C9D4C-DC18-3416-ADCE-4F5563EF7310}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{DA814004-2FCE-3E61-BFBC-4DA2A39A7CAA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Window">
+      <UniqueIdentifier>{4F03453A-1F00-331D-A098-C59E6F5BABD7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
