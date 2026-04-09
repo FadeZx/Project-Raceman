@@ -64,7 +64,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)../includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)../includes;$(ProjectDir)editor-assets/third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -88,7 +88,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)../includes;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)../includes;$(ProjectDir)editor-assets/third_party;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -127,7 +127,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="src\scripting\ScriptRegistry.h" />
     <ClInclude Include="src\ui\Console.h" />
     <ClInclude Include="src\ui\DebugUI.h" />
-    <ClInclude Include="..\includes\imgui\backends\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="editor-assets\third_party\imgui\backends\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="src\ui\MenuController.h" />
     <ClInclude Include="src\ui\ObjImport.h" />
     <ClInclude Include="src\ui\SceneEditor.h" />
@@ -150,13 +150,13 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\scripting\ScriptRegistry.cpp" />
     <ClCompile Include="src\ui\Console.cpp" />
     <ClCompile Include="src\ui\DebugUI.cpp" />
-    <ClCompile Include="..\includes\imgui\backends\imgui_impl_glfw.cpp" />
-    <ClCompile Include="..\includes\imgui\backends\imgui_impl_opengl3.cpp" />
-    <ClCompile Include="..\includes\imgui\imgui.cpp" />
-    <ClCompile Include="..\includes\imgui\imgui_demo.cpp" />
-    <ClCompile Include="..\includes\imgui\imgui_draw.cpp" />
-    <ClCompile Include="..\includes\imgui\imgui_tables.cpp" />
-    <ClCompile Include="..\includes\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="editor-assets\third_party\imgui\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="editor-assets\third_party\imgui\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="editor-assets\third_party\imgui\imgui.cpp" />
+    <ClCompile Include="editor-assets\third_party\imgui\imgui_demo.cpp" />
+    <ClCompile Include="editor-assets\third_party\imgui\imgui_draw.cpp" />
+    <ClCompile Include="editor-assets\third_party\imgui\imgui_tables.cpp" />
+    <ClCompile Include="editor-assets\third_party\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\ui\MenuController.cpp" />
     <ClCompile Include="src\ui\ObjImport.cpp" />
     <ClCompile Include="src\ui\SceneEditor.cpp" />
