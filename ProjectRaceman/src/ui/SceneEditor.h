@@ -48,9 +48,11 @@ enum class SceneComponentType {
     MeshRenderer,
     Script,
     Rigidbody,
+    CharacterController,
     BoxCollider,
     SphereCollider,
     CapsuleCollider,
+    PlaneCollider,
     Camera,
     Light
 };
@@ -60,14 +62,10 @@ enum class RigidbodyBodyType {
     Dynamic
 };
 
-enum class SceneEditorViewportMode {
+enum class SceneEditorActiveViewport {
+    None,
     Scene,
     Game
-};
-
-enum class SceneEditorViewportLayout {
-    Tabs,
-    Split
 };
 
 enum class LightType {
@@ -122,6 +120,21 @@ struct RigidbodyComponent {
     glm::vec3 velocity{0.0f, 0.0f, 0.0f};
 };
 
+struct CharacterControllerComponent {
+    bool enabled{true};
+    float height{1.8f};
+    float radius{0.4f};
+    float stepHeight{0.35f};
+    float slopeLimitDegrees{50.0f};
+    float maxStrength{100.0f};
+    float mass{70.0f};
+    bool grounded{false};
+    glm::vec3 velocity{0.0f, 0.0f, 0.0f};
+    glm::vec3 groundVelocity{0.0f, 0.0f, 0.0f};
+    glm::vec3 moveInput{0.0f, 0.0f, 0.0f};
+    float pendingJumpImpulse{0.0f};
+};
+
 struct BoxColliderComponent {
     bool enabled{true};
     bool isTrigger{false};
@@ -142,6 +155,15 @@ struct CapsuleColliderComponent {
     glm::vec3 center{0.0f, 0.0f, 0.0f};
     float radius{0.5f};
     float height{2.0f};
+};
+
+struct PlaneColliderComponent {
+    bool enabled{true};
+    bool isTrigger{false};
+    glm::vec3 normal{0.0f, 1.0f, 0.0f};
+    float offset{0.0f};
+    bool infinite{true};
+    float halfExtent{1000.0f};
 };
 
 struct CameraComponent {
@@ -173,18 +195,22 @@ struct SceneObject {
     bool hasMeshRenderer{true};
     bool hasScriptComponent{true};
     bool hasRigidbody{false};
+    bool hasCharacterController{false};
     bool hasBoxCollider{false};
     bool hasSphereCollider{false};
     bool hasCapsuleCollider{false};
+    bool hasPlaneCollider{false};
     bool hasCamera{false};
     bool hasLight{false};
     MeshFilterComponent meshFilter;
     MeshRendererComponent meshRenderer;
     ScriptComponent scriptComponent;
     RigidbodyComponent rigidbody;
+    CharacterControllerComponent characterController;
     BoxColliderComponent boxCollider;
     SphereColliderComponent sphereCollider;
     CapsuleColliderComponent capsuleCollider;
+    PlaneColliderComponent planeCollider;
     CameraComponent camera;
     LightComponent light;
 };
@@ -207,7 +233,7 @@ public:
     void SetConsole(Console* console);
     void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
     bool IsRunMode() const { return scriptsRunning_; }
-    bool IsGameViewActive() const { return viewportLayout_ == SceneEditorViewportLayout::Split || viewportMode_ == SceneEditorViewportMode::Game; }
+    bool IsGameViewActive() const { return true; }
     bool TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float aspect, glm::vec4* outClearColor = nullptr) const;
     float GetViewportAspect() const;
     RendererViewport GetRenderViewport(int framebufferWidth, int framebufferHeight) const;
@@ -217,7 +243,10 @@ public:
     bool ContainsViewportPoint(float x, float y) const;
     bool ContainsSceneViewportPoint(float x, float y) const;
     bool ContainsGameViewportPoint(float x, float y) const;
-    bool ShouldRouteInputToGame() const { return gameViewportHovered_ || gameViewportFocused_; }
+    bool ShouldRouteInputToGame() const { return activeViewport_ == SceneEditorActiveViewport::Game; }
+    bool IsSceneViewportActiveForEditorControls() const { return activeViewport_ == SceneEditorActiveViewport::Scene; }
+    void SetSceneViewportTexture(unsigned int textureId) { sceneViewportTextureId_ = textureId; }
+    void SetGameViewportTexture(unsigned int textureId) { gameViewportTextureId_ = textureId; }
 
     // Notify app when editor content changes
     void SetOnDirty(std::function<void()> cb) { onDirty_ = std::move(cb); }
@@ -248,8 +277,7 @@ private:
     void RenderMultiSelectionInspector();
     void RenderProjectPanel();
     void RenderViewportPanel();
-    void RenderLayoutSplitters();
-    void EnsureDockspaceLayout();
+    void RenderDockspaceHost();
     void RenderMaterialInspector();
     void RenderMaterialProperties(const std::string& materialId, bool showBackButton);
     void RenderProjectAssetPickerPopup();
@@ -386,22 +414,21 @@ private:
     bool gizmoDirtyDuringDrag_{false};
     bool inspectorEditActive_{false};
     bool dockLayoutInitialized_{false};
-    float leftPanelWidth_{0.0f};
-    float rightPanelWidth_{0.0f};
-    float bottomPanelHeight_{0.0f};
-    float sceneGameSplitRatio_{0.5f};
     glm::vec2 viewportPanelPos_{0.0f, 0.0f};
     glm::vec2 viewportPanelSize_{0.0f, 0.0f};
     glm::vec2 sceneViewportPos_{0.0f, 0.0f};
     glm::vec2 sceneViewportSize_{0.0f, 0.0f};
     glm::vec2 gameViewportPos_{0.0f, 0.0f};
     glm::vec2 gameViewportSize_{0.0f, 0.0f};
+    unsigned int sceneViewportTextureId_{0};
+    unsigned int gameViewportTextureId_{0};
     bool viewportHovered_{false};
     bool viewportFocused_{false};
     bool sceneViewportHovered_{false};
     bool sceneViewportFocused_{false};
     bool gameViewportHovered_{false};
     bool gameViewportFocused_{false};
+    SceneEditorActiveViewport activeViewport_{SceneEditorActiveViewport::Scene};
 
     struct HistoryState {
         std::vector<SceneObject> objects;
@@ -412,8 +439,6 @@ private:
     std::vector<HistoryState> redoStack_;
     HistoryState playModeSnapshot_{};
     bool hasPlayModeSnapshot_{false};
-    SceneEditorViewportMode viewportMode_{SceneEditorViewportMode::Scene};
-    SceneEditorViewportLayout viewportLayout_{SceneEditorViewportLayout::Tabs};
     std::unique_ptr<PhysicsWorld> physicsWorld_;
 
     std::function<void()> onDirty_{};

@@ -7,11 +7,7 @@ namespace raceman {
 using namespace scene_editor_internal;
 
 void SceneEditor::RenderScenePanel() {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const float topHeight = viewport->WorkSize.y - bottomPanelHeight_;
-    ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(leftPanelWidth_, topHeight), ImGuiCond_Always);
-    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
+    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse)) {
         // Add button with dropdown (Scene panel)
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("Add")) {
@@ -81,22 +77,8 @@ void SceneEditor::RenderScenePanel() {
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip("Stop");
         }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("Scene", viewportLayout_ == SceneEditorViewportLayout::Tabs && viewportMode_ == SceneEditorViewportMode::Scene)) {
-            viewportLayout_ = SceneEditorViewportLayout::Tabs;
-            viewportMode_ = SceneEditorViewportMode::Scene;
-        }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("Game", viewportLayout_ == SceneEditorViewportLayout::Tabs && viewportMode_ == SceneEditorViewportMode::Game)) {
-            viewportLayout_ = SceneEditorViewportLayout::Tabs;
-            viewportMode_ = SceneEditorViewportMode::Game;
-        }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("Split", viewportLayout_ == SceneEditorViewportLayout::Split)) {
-            viewportLayout_ = SceneEditorViewportLayout::Split;
-        }
         ImGui::Separator();
-        if (viewportLayout_ == SceneEditorViewportLayout::Split || viewportMode_ == SceneEditorViewportMode::Game) {
+        if (IsGameViewActive()) {
             glm::mat4 view;
             glm::mat4 proj;
             if (!TryGetGameCamera(view, proj, 1.0f)) {

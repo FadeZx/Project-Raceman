@@ -49,49 +49,6 @@
       ]
     },
     {
-      "id": "mesh_5",
-      "parentId": "",
-      "name": "Plane",
-      "type": "Mesh",
-      "enabled": true,
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [10, 1, 10]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/mesh/plane.obj",
-          "meshIndex": 0,
-          "importedMaterialName": "DefaultMaterial",
-          "diffuseTexturePath": ""
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "pbr_default",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        },
-        {
-          "type": "BoxCollider",
-          "enabled": true,
-          "isTrigger": false,
-          "center": [0, -0.05, 0],
-          "size": [1, 0.101, 1]
-        }
-      ]
-    },
-    {
       "id": "mesh_1",
       "parentId": "",
       "name": "Wheel",
@@ -100,8 +57,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.0814361, 0.649402, 0.977145],
-          "rotationEuler": [-155.77, 2.90415, -0.0505905],
+          "position": [-1.73467, -2.09788, 0],
+          "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -125,25 +82,20 @@
           "attachments": [
             {
               "enabled": true,
-              "scriptName": "Test1",
-              "scriptPath": "assets/scripts/Test1.cpp"
+              "scriptName": "CharacterControllerTest",
+              "scriptPath": "assets/scripts/CharacterControllerTest.cpp"
             }
           ]
         },
         {
-          "type": "Rigidbody",
+          "type": "CharacterController",
           "enabled": true,
-          "bodyType": "Dynamic",
-          "mass": 22.9,
-          "useGravity": true,
-          "velocity": [0, 0, 0]
-        },
-        {
-          "type": "SphereCollider",
-          "enabled": true,
-          "isTrigger": false,
-          "center": [0.15, 0, 0],
-          "radius": 0.5
+          "height": 1.84,
+          "radius": 0.55,
+          "stepHeight": 0.35,
+          "slopeLimitDegrees": 50,
+          "maxStrength": 100,
+          "mass": 70
         }
       ]
     },
@@ -156,7 +108,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [1.78396, 0.649402, 0.977145],
+          "position": [1.78396, -1.92794, 0.977145],
           "rotationEuler": [155.77, -2.90415, 179.949],
           "scale": [1, 1, 1]
         },
@@ -180,6 +132,66 @@
           "enabled": true,
           "attachments": [
           ]
+        },
+        {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 1,
+          "useGravity": true,
+          "velocity": [0, 0, 0]
+        },
+        {
+          "type": "SphereCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0, 0, 0],
+          "radius": 0.5
+        }
+      ]
+    },
+    {
+      "id": "mesh_1",
+      "parentId": "",
+      "name": "Plane",
+      "type": "Mesh",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, -2.63226, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [60.9, 1, 81.3]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/mesh/plane.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "DefaultMaterial",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        },
+        {
+          "type": "PlaneCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "normal": [0, 1, 0],
+          "offset": 0,
+          "infinite": true,
+          "halfExtent": 1000
         }
       ]
     }

@@ -186,6 +186,53 @@ void ObjectScriptContext::SetRigidbodyVelocity(const glm::vec3& value) {
     }
 }
 
+bool ObjectScriptContext::HasCharacterController() const {
+    return object_.hasCharacterController && object_.characterController.enabled;
+}
+
+bool ObjectScriptContext::IsCharacterGrounded() const {
+    if (!HasCharacterController()) {
+        return false;
+    }
+    if (physicsWorld_ && physicsWorld_->HasCharacter(object_.id)) {
+        PhysicsCharacterState state;
+        if (physicsWorld_->GetCharacterState(object_.id, state)) {
+            return state.grounded;
+        }
+    }
+    return object_.characterController.grounded;
+}
+
+glm::vec3 ObjectScriptContext::GetCharacterVelocity() const {
+    if (!HasCharacterController()) {
+        return {0.0f, 0.0f, 0.0f};
+    }
+    if (physicsWorld_ && physicsWorld_->HasCharacter(object_.id)) {
+        return physicsWorld_->GetCharacterVelocity(object_.id);
+    }
+    return object_.characterController.velocity;
+}
+
+void ObjectScriptContext::SetCharacterMoveInput(const glm::vec3& value) {
+    if (!HasCharacterController()) {
+        return;
+    }
+    object_.characterController.moveInput = value;
+    if (physicsWorld_ && physicsWorld_->HasCharacter(object_.id)) {
+        physicsWorld_->SetCharacterDesiredVelocity(object_.id, value);
+    }
+}
+
+void ObjectScriptContext::Jump(float impulse) {
+    if (!HasCharacterController()) {
+        return;
+    }
+    object_.characterController.pendingJumpImpulse += impulse;
+    if (physicsWorld_ && physicsWorld_->HasCharacter(object_.id)) {
+        physicsWorld_->AddCharacterJumpImpulse(object_.id, impulse);
+    }
+}
+
 bool ObjectScriptContext::IsKeyDown(int key) const {
     return inputManager_ != nullptr && inputManager_->IsKeyDown(key);
 }

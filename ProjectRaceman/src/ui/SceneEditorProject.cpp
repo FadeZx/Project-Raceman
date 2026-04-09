@@ -117,12 +117,7 @@ int ProjectDirectoryDepth(const std::string& path) {
 } // namespace
 
 void SceneEditor::RenderProjectPanel() {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const float centerX = viewport->WorkPos.x + leftPanelWidth_;
-    const float centerWidth = viewport->WorkSize.x - leftPanelWidth_ - rightPanelWidth_;
-    ImGui::SetNextWindowPos(ImVec2(centerX, viewport->WorkPos.y + viewport->WorkSize.y - bottomPanelHeight_), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(centerWidth, bottomPanelHeight_), ImGuiCond_Always);
-    if (ImGui::Begin("Browser", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
+    if (ImGui::Begin("Browser", nullptr, ImGuiWindowFlags_NoCollapse)) {
         if (ImGui::BeginTabBar("BrowserTabs")) {
             if (ImGui::BeginTabItem("Project")) {
                 if (ImGui::Button("Refresh")) {
@@ -268,7 +263,7 @@ void SceneEditor::RenderProjectPanel() {
                     const ImVec2 iconMin(pos.x + (tileWidth - iconSize) * 0.5f, pos.y + 8.0f);
                     const ImVec2 iconMax(iconMin.x + iconSize, iconMin.y + iconSize);
                     if (icon != 0) {
-                        drawList->AddImage(reinterpret_cast<ImTextureID>(static_cast<intptr_t>(icon)), iconMin, iconMax);
+                        drawList->AddImage(static_cast<ImTextureID>(icon), iconMin, iconMax);
                     } else {
                         drawList->AddRect(iconMin, iconMax, ImGui::GetColorU32(ImGuiCol_TextDisabled), 4.0f);
                         drawList->AddText(ImVec2(iconMin.x + 8.0f, iconMin.y + 14.0f), ImGui::GetColorU32(ImGuiCol_TextDisabled), isFolder ? "DIR" : "FILE");

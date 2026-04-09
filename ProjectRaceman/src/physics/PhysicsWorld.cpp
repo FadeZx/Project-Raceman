@@ -10,6 +10,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #endif
 #include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/norm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
 #include <Jolt/Jolt.h>
@@ -19,9 +20,11 @@
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/PlaneShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
@@ -148,6 +151,13 @@ glm::vec3 FromJoltQuat(JPH::QuatArg quat) {
     return glm::degrees(glm::eulerAngles(glmQuat));
 }
 
+JPH::ShapeRefC CreateCharacterShape(float height, float radius) {
+    const float clampedRadius = (std::max)(0.001f, radius);
+    const float clampedHeight = (std::max)(clampedRadius * 2.0f, height);
+    const float halfCylinderHeight = (std::max)(0.001f, clampedHeight * 0.5f - clampedRadius);
+    return new JPH::CapsuleShape(halfCylinderHeight, clampedRadius);
+}
+
 JPH::ShapeRefC CreateBaseShape(const PhysicsColliderDesc& collider, const glm::vec3& scale) {
     if (collider.type == PhysicsColliderType::Box) {
         const glm::vec3 halfExtent = glm::max(glm::abs(collider.size * scale) * 0.5f, glm::vec3(0.001f));
@@ -155,6 +165,19 @@ JPH::ShapeRefC CreateBaseShape(const PhysicsColliderDesc& collider, const glm::v
     }
     if (collider.type == PhysicsColliderType::Sphere) {
         return new JPH::SphereShape((std::max)(0.001f, collider.radius * MaxAbsComponent(scale)));
+    }
+    if (collider.type == PhysicsColliderType::Plane) {
+        glm::vec3 normal = collider.normal;
+        if (glm::length2(normal) <= 0.000001f) {
+            normal = {0.0f, 1.0f, 0.0f};
+        } else {
+            normal = glm::normalize(normal);
+        }
+        const JPH::Plane plane(ToJoltVec3(normal), -collider.offset);
+        const float halfExtent = collider.infinite
+            ? JPH::PlaneShapeSettings::cDefaultHalfExtent
+            : (std::max)(0.001f, collider.halfExtent);
+        return new JPH::PlaneShape(plane, nullptr, halfExtent);
     }
 
     const float radius = (std::max)(0.001f, collider.radius * (std::max)(std::abs(scale.x), std::abs(scale.z)));
@@ -198,7 +221,20 @@ JPH::ShapeRefC CreateShape(const PhysicsBodyDesc& body, bool sensorOnly) {
 
 class PhysicsWorld::Impl {
 public:
+    struct CharacterRecord {
+        PhysicsCharacterDesc desc;
+        PhysicsCharacterState state;
+        JPH::Ref<JPH::CharacterVirtual> character;
+        JPH::CharacterVirtual::ExtendedUpdateSettings updateSettings;
+        glm::vec3 desiredVelocity{0.0f};
+        float pendingJumpImpulse{0.0f};
+    };
+
     void Build(const std::vector<PhysicsBodyDesc>& inputBodies) {
+        Build(inputBodies, {});
+    }
+
+    void Build(const std::vector<PhysicsBodyDesc>& inputBodies, const std::vector<PhysicsCharacterDesc>& inputCharacters) {
         Clear();
         EnsureJoltInitialized();
 
@@ -215,6 +251,9 @@ public:
 
         JPH::BodyInterface& bodyInterface = physicsSystem_->GetBodyInterface();
         for (const PhysicsBodyDesc& body : bodies_) {
+            const bool hasPlaneCollider = std::any_of(body.colliders.begin(), body.colliders.end(), [](const PhysicsColliderDesc& collider) {
+                return collider.type == PhysicsColliderType::Plane;
+            });
             const bool hasSolidCollider = std::any_of(body.colliders.begin(), body.colliders.end(), [](const PhysicsColliderDesc& collider) {
                 return !collider.isTrigger;
             });
@@ -224,7 +263,7 @@ public:
                 continue;
             }
 
-            const bool dynamic = body.bodyType == PhysicsBodyType::Dynamic;
+            const bool dynamic = body.bodyType == PhysicsBodyType::Dynamic && !hasPlaneCollider;
             const JPH::EMotionType motionType = dynamic ? JPH::EMotionType::Dynamic : JPH::EMotionType::Static;
             const JPH::ObjectLayer layer = sensorOnly ? Layers::Sensor : (dynamic ? Layers::Moving : Layers::NonMoving);
             JPH::BodyCreationSettings settings(shape, ToJoltRVec3(body.position), ToJoltQuat(body.rotationEuler), motionType, layer);
@@ -244,9 +283,41 @@ public:
         }
 
         physicsSystem_->OptimizeBroadPhase();
+
+        const JPH::DefaultBroadPhaseLayerFilter broadPhaseFilter(objectVsBroadPhaseLayerFilter_, Layers::Moving);
+        const JPH::DefaultObjectLayerFilter objectLayerFilter(objectLayerPairFilter_, Layers::Moving);
+        const JPH::BodyFilter bodyFilter;
+        const JPH::ShapeFilter shapeFilter;
+        for (const PhysicsCharacterDesc& desc : inputCharacters) {
+            CharacterRecord record;
+            record.desc = desc;
+            record.state.objectId = desc.objectId;
+            record.state.position = desc.position;
+            record.state.rotationEuler = desc.rotationEuler;
+
+            JPH::Ref<JPH::CharacterVirtualSettings> settings = new JPH::CharacterVirtualSettings();
+            settings->mMass = (std::max)(0.001f, desc.mass);
+            settings->mMaxStrength = (std::max)(0.0f, desc.maxStrength);
+            settings->mMaxSlopeAngle = JPH::DegreesToRadians((std::max)(1.0f, (std::min)(89.0f, desc.slopeLimitDegrees)));
+            settings->mShape = CreateCharacterShape(desc.height, desc.radius);
+            settings->mShapeOffset = JPH::Vec3(0.0f, (std::max)(desc.height, desc.radius * 2.0f) * 0.5f, 0.0f);
+
+            record.updateSettings.mStickToFloorStepDown = JPH::Vec3(0.0f, -(std::max)(0.05f, desc.stepHeight + 0.05f), 0.0f);
+            record.updateSettings.mWalkStairsStepUp = JPH::Vec3(0.0f, (std::max)(0.0f, desc.stepHeight), 0.0f);
+
+            record.character = new JPH::CharacterVirtual(settings.GetPtr(), ToJoltRVec3(desc.position), ToJoltQuat(desc.rotationEuler), physicsSystem_.get());
+            record.character->SetCharacterVsCharacterCollision(&characterVsCharacterCollision_);
+            characterVsCharacterCollision_.Add(record.character.GetPtr());
+            record.character->RefreshContacts(broadPhaseFilter, objectLayerFilter, bodyFilter, shapeFilter, *tempAllocator_);
+            characterStates_[desc.objectId] = record.state;
+            characters_[desc.objectId] = std::move(record);
+        }
     }
 
     void Clear() {
+        characterVsCharacterCollision_.mCharacters.clear();
+        characters_.clear();
+        characterStates_.clear();
         if (physicsSystem_) {
             JPH::BodyInterface& bodyInterface = physicsSystem_->GetBodyInterface();
             for (auto& [objectId, bodyId] : bodyIds_) {
@@ -293,6 +364,42 @@ public:
             stateIt->second.rotationEuler = FromJoltQuat(bodyInterface.GetRotation(bodyIt->second));
             stateIt->second.velocity = FromJoltVec3(bodyInterface.GetLinearVelocity(bodyIt->second));
         }
+
+        const JPH::Vec3 gravity = JPH::Vec3(0.0f, -9.81f, 0.0f);
+        const JPH::DefaultBroadPhaseLayerFilter broadPhaseFilter(objectVsBroadPhaseLayerFilter_, Layers::Moving);
+        const JPH::DefaultObjectLayerFilter objectLayerFilter(objectLayerPairFilter_, Layers::Moving);
+        const JPH::BodyFilter bodyFilter;
+        const JPH::ShapeFilter shapeFilter;
+        for (auto& [objectId, record] : characters_) {
+            JPH::CharacterVirtual* character = record.character.GetPtr();
+            if (character == nullptr) {
+                continue;
+            }
+
+            const glm::vec3 currentVelocity = FromJoltVec3(character->GetLinearVelocity());
+            const glm::vec3 groundVelocity = FromJoltVec3(character->GetGroundVelocity());
+            const bool supported = character->IsSupported();
+            glm::vec3 nextVelocity = record.desiredVelocity;
+            nextVelocity.y = supported ? 0.0f : currentVelocity.y + gravity.GetY() * step;
+            if (supported) {
+                nextVelocity += groundVelocity;
+            }
+            if (record.pendingJumpImpulse > 0.0f && supported) {
+                nextVelocity.y = record.pendingJumpImpulse;
+            }
+
+            character->SetRotation(ToJoltQuat(record.state.rotationEuler));
+            character->SetLinearVelocity(ToJoltVec3(nextVelocity));
+            character->ExtendedUpdate(step, gravity, record.updateSettings, broadPhaseFilter, objectLayerFilter, bodyFilter, shapeFilter, *tempAllocator_);
+
+            record.pendingJumpImpulse = 0.0f;
+            record.state.position = FromJoltRVec3(character->GetPosition());
+            record.state.rotationEuler = FromJoltQuat(character->GetRotation());
+            record.state.velocity = FromJoltVec3(character->GetLinearVelocity());
+            record.state.groundVelocity = FromJoltVec3(character->GetGroundVelocity());
+            record.state.grounded = character->IsSupported();
+            characterStates_[objectId] = record.state;
+        }
     }
 
     bool HasBody(const std::string& objectId) const {
@@ -327,11 +434,60 @@ public:
         }
     }
 
+    bool HasCharacter(const std::string& objectId) const {
+        return characters_.find(objectId) != characters_.end();
+    }
+
+    bool GetCharacterState(const std::string& objectId, PhysicsCharacterState& outState) const {
+        auto it = characterStates_.find(objectId);
+        if (it == characterStates_.end()) {
+            return false;
+        }
+        outState = it->second;
+        return true;
+    }
+
+    glm::vec3 GetCharacterVelocity(const std::string& objectId) const {
+        auto it = characterStates_.find(objectId);
+        return it == characterStates_.end() ? glm::vec3{0.0f} : it->second.velocity;
+    }
+
+    void SetCharacterTransform(const std::string& objectId, const glm::vec3& position, const glm::vec3& rotationEuler) {
+        auto it = characters_.find(objectId);
+        if (it == characters_.end() || it->second.character == nullptr) {
+            return;
+        }
+        it->second.state.position = position;
+        it->second.state.rotationEuler = rotationEuler;
+        it->second.character->SetPosition(ToJoltRVec3(position));
+        it->second.character->SetRotation(ToJoltQuat(rotationEuler));
+        characterStates_[objectId] = it->second.state;
+    }
+
+    void SetCharacterDesiredVelocity(const std::string& objectId, const glm::vec3& velocity) {
+        auto it = characters_.find(objectId);
+        if (it == characters_.end()) {
+            return;
+        }
+        it->second.desiredVelocity = velocity;
+    }
+
+    void AddCharacterJumpImpulse(const std::string& objectId, float impulse) {
+        auto it = characters_.find(objectId);
+        if (it == characters_.end()) {
+            return;
+        }
+        it->second.pendingJumpImpulse += impulse;
+    }
+
 private:
     std::vector<PhysicsBodyDesc> bodies_;
     std::unordered_map<std::string, PhysicsBodyState> states_;
     std::unordered_map<std::string, JPH::BodyID> bodyIds_;
     std::unordered_set<std::string> dynamicBodies_;
+    std::unordered_map<std::string, CharacterRecord> characters_;
+    std::unordered_map<std::string, PhysicsCharacterState> characterStates_;
+    JPH::CharacterVsCharacterCollisionSimple characterVsCharacterCollision_;
 
     BroadPhaseLayerInterfaceImpl broadPhaseLayerInterface_;
     ObjectVsBroadPhaseLayerFilterImpl objectVsBroadPhaseLayerFilter_;
@@ -348,6 +504,10 @@ PhysicsWorld::~PhysicsWorld() = default;
 
 void PhysicsWorld::Build(const std::vector<PhysicsBodyDesc>& bodies) {
     impl_->Build(bodies);
+}
+
+void PhysicsWorld::Build(const std::vector<PhysicsBodyDesc>& bodies, const std::vector<PhysicsCharacterDesc>& characters) {
+    impl_->Build(bodies, characters);
 }
 
 void PhysicsWorld::Clear() {
@@ -372,6 +532,30 @@ glm::vec3 PhysicsWorld::GetBodyVelocity(const std::string& objectId) const {
 
 void PhysicsWorld::SetBodyVelocity(const std::string& objectId, const glm::vec3& velocity) {
     impl_->SetBodyVelocity(objectId, velocity);
+}
+
+bool PhysicsWorld::HasCharacter(const std::string& objectId) const {
+    return impl_->HasCharacter(objectId);
+}
+
+bool PhysicsWorld::GetCharacterState(const std::string& objectId, PhysicsCharacterState& outState) const {
+    return impl_->GetCharacterState(objectId, outState);
+}
+
+glm::vec3 PhysicsWorld::GetCharacterVelocity(const std::string& objectId) const {
+    return impl_->GetCharacterVelocity(objectId);
+}
+
+void PhysicsWorld::SetCharacterTransform(const std::string& objectId, const glm::vec3& position, const glm::vec3& rotationEuler) {
+    impl_->SetCharacterTransform(objectId, position, rotationEuler);
+}
+
+void PhysicsWorld::SetCharacterDesiredVelocity(const std::string& objectId, const glm::vec3& velocity) {
+    impl_->SetCharacterDesiredVelocity(objectId, velocity);
+}
+
+void PhysicsWorld::AddCharacterJumpImpulse(const std::string& objectId, float impulse) {
+    impl_->AddCharacterJumpImpulse(objectId, impulse);
 }
 
 } // namespace raceman

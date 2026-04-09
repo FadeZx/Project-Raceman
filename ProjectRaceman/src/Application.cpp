@@ -223,7 +223,7 @@ void Application::Update(float deltaTime) {
 
         // RMB hold toggles free look with cursor disabled. Play mode keeps Scene view editable,
         // but Game view stays controlled by the runtime camera.
-        const bool allowEditorCamera = true;
+        const bool allowEditorCamera = sceneEditor_ == nullptr || sceneEditor_->IsSceneViewportActiveForEditorControls();
         if (allowEditorCamera && cameraFocusActive_ && !rmbHeld_) {
             cameraFocusElapsed_ += deltaTime;
             const float t = (std::min)(1.0f, cameraFocusElapsed_ / (std::max)(0.001f, cameraFocusDuration_));
@@ -304,6 +304,8 @@ void Application::Update(float deltaTime) {
 
         // Unity-like Scene Editor panels (Scene hierarchy + Inspector)
         if (sceneEditor_) {
+            sceneEditor_->SetSceneViewportTexture(renderer_->GetViewportRenderTargetTexture(ViewportRenderTarget::Scene));
+            sceneEditor_->SetGameViewportTexture(renderer_->GetViewportRenderTargetTexture(ViewportRenderTarget::Game));
             sceneEditor_->RenderUI(deltaTime);
         }
 
@@ -377,8 +379,8 @@ void Application::Render() {
         const glm::mat4 proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 500.0f);
 
         renderer_->SetViewport(viewport);
-        rendererSettings.clearColor = previousClearColor;
-        renderer_->BeginFrame();
+        renderer_->EnsureViewportRenderTarget(ViewportRenderTarget::Scene, viewport.width, viewport.height);
+        renderer_->BeginFrameToViewportTarget(ViewportRenderTarget::Scene, previousClearColor);
         renderer_->SetCamera(view, proj);
         if (skyboxController_) {
             skyboxController_->Draw(view, proj);
@@ -386,7 +388,7 @@ void Application::Render() {
         if (sceneEditor_) {
             sceneEditor_->SubmitDraws(*renderer_, true);
         }
-        renderer_->EndFrame();
+        renderer_->EndFrameToViewportTarget();
     };
 
     auto renderGamePass = [&](const RendererViewport& viewport) {
@@ -401,10 +403,11 @@ void Application::Render() {
         const bool usingGameCamera = sceneEditor_ && sceneEditor_->TryGetGameCamera(view, proj, aspect, &gameClearColor);
 
         renderer_->SetViewport(viewport);
-        rendererSettings.clearColor = usingGameCamera
+        const glm::vec3 passClearColor = usingGameCamera
             ? glm::vec3(gameClearColor.r, gameClearColor.g, gameClearColor.b)
             : glm::vec3(0.02f, 0.02f, 0.02f);
-        renderer_->BeginFrame();
+        renderer_->EnsureViewportRenderTarget(ViewportRenderTarget::Game, viewport.width, viewport.height);
+        renderer_->BeginFrameToViewportTarget(ViewportRenderTarget::Game, passClearColor);
         if (usingGameCamera) {
             renderer_->SetCamera(view, proj);
             if (skyboxController_) {
@@ -414,7 +417,7 @@ void Application::Render() {
                 sceneEditor_->SubmitDraws(*renderer_, false);
             }
         }
-        renderer_->EndFrame();
+        renderer_->EndFrameToViewportTarget();
     };
 
     if (sceneEditor_) {

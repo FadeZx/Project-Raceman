@@ -7,6 +7,11 @@
 
 #include <cstdint>
 
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
+#include <glm/gtx/norm.hpp>
+
 namespace fs = std::filesystem;
 
 namespace raceman {
@@ -14,11 +19,57 @@ using namespace scene_editor_internal;
 
 namespace {
 
+bool IsNarrowInspectorLayout() {
+    return ImGui::GetContentRegionAvail().x < 260.0f;
+}
+
+void RenderInspectorLabel(const char* label) {
+    ImGui::TextUnformatted(label);
+}
+
+bool RenderInspectorInputText(const char* label, const char* id, char* buffer, std::size_t bufferSize) {
+    if (IsNarrowInspectorLayout()) {
+        RenderInspectorLabel(label);
+        ImGui::SetNextItemWidth(-1.0f);
+        return ImGui::InputText(id, buffer, bufferSize);
+    }
+    return ImGui::InputText(label, buffer, bufferSize);
+}
+
+bool RenderInspectorDragFloat3(const char* label, const char* id, float* values, float speed, float min = 0.0f, float max = 0.0f) {
+    if (IsNarrowInspectorLayout()) {
+        RenderInspectorLabel(label);
+        ImGui::SetNextItemWidth(-1.0f);
+        return ImGui::DragFloat3(id, values, speed, min, max);
+    }
+    return ImGui::DragFloat3(label, values, speed, min, max);
+}
+
+bool RenderInspectorDragFloat(const char* label, const char* id, float* value, float speed, float min = 0.0f, float max = 0.0f) {
+    if (IsNarrowInspectorLayout()) {
+        RenderInspectorLabel(label);
+        ImGui::SetNextItemWidth(-1.0f);
+        return ImGui::DragFloat(id, value, speed, min, max);
+    }
+    return ImGui::DragFloat(label, value, speed, min, max);
+}
+
+void RenderInspectorWrappedValue(const char* label, const std::string& value) {
+    if (IsNarrowInspectorLayout()) {
+        ImGui::TextDisabled("%s", label);
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextUnformatted(value.c_str());
+        ImGui::PopTextWrapPos();
+    } else {
+        ImGui::TextWrapped("%s %s", label, value.c_str());
+    }
+}
+
 void RenderComponentIcon(unsigned int textureId) {
     if (textureId == 0) {
         return;
     }
-    ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<intptr_t>(textureId)), ImVec2(18.0f, 18.0f));
+    ImGui::Image(static_cast<ImTextureID>(textureId), ImVec2(18.0f, 18.0f));
     ImGui::SameLine();
 }
 
@@ -76,11 +127,7 @@ unsigned int SceneEditor::GetComponentIconTexture(const std::string& filename) {
 }
 
 void SceneEditor::RenderInspectorPanel() {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const float topHeight = viewport->WorkSize.y - bottomPanelHeight_;
-    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - rightPanelWidth_, viewport->WorkPos.y), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(rightPanelWidth_, topHeight), ImGuiCond_Always);
-    if (ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
+    if (ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoCollapse)) {
         if (inspectMaterial_) {
             RenderMaterialInspector();
         } else if (selectedIndices_.size() > 1) {
@@ -112,7 +159,7 @@ void SceneEditor::RenderInspectorPanel() {
             ImGui::SameLine();
             char nameBuf[128];
             std::snprintf(nameBuf, sizeof(nameBuf), "%s", obj.name.c_str());
-            if (ImGui::InputText("Object Name##objectName", nameBuf, sizeof(nameBuf))) {
+            if (RenderInspectorInputText("Object Name", "##objectName", nameBuf, sizeof(nameBuf))) {
                 if (!inspectorEditActive_) {
                     PushUndoState();
                     inspectorEditActive_ = true;
@@ -161,12 +208,29 @@ void SceneEditor::RenderInspectorPanel() {
                     anyAvailable = true;
                     if (ImGui::MenuItem("Rigidbody")) {
                         PushUndoState();
+                        if (obj.hasCharacterController) {
+                            obj.hasCharacterController = false;
+                            obj.characterController = CharacterControllerComponent{};
+                        }
                         obj.hasRigidbody = true;
                         obj.rigidbody = RigidbodyComponent{};
                         if (onDirty_) onDirty_();
                     }
                 }
-                const bool hasAvailableCollider = !obj.hasBoxCollider || !obj.hasSphereCollider || !obj.hasCapsuleCollider;
+                if (!obj.hasCharacterController) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Character Controller")) {
+                        PushUndoState();
+                        if (obj.hasRigidbody) {
+                            obj.hasRigidbody = false;
+                            obj.rigidbody = RigidbodyComponent{};
+                        }
+                        obj.hasCharacterController = true;
+                        obj.characterController = CharacterControllerComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
+                const bool hasAvailableCollider = !obj.hasBoxCollider || !obj.hasSphereCollider || !obj.hasCapsuleCollider || !obj.hasPlaneCollider;
                 if (hasAvailableCollider) {
                     anyAvailable = true;
                     if (ImGui::BeginMenu("Collider")) {
@@ -186,6 +250,12 @@ void SceneEditor::RenderInspectorPanel() {
                             PushUndoState();
                             obj.hasCapsuleCollider = true;
                             obj.capsuleCollider = CapsuleColliderComponent{};
+                            if (onDirty_) onDirty_();
+                        }
+                        if (!obj.hasPlaneCollider && ImGui::MenuItem("Plane")) {
+                            PushUndoState();
+                            obj.hasPlaneCollider = true;
+                            obj.planeCollider = PlaneColliderComponent{};
                             if (onDirty_) onDirty_();
                         }
                         ImGui::EndMenu();
@@ -268,7 +338,7 @@ void SceneEditor::RenderInspectorPanel() {
             RenderComponentIcon(GetComponentIconTexture("component-transform.png"));
             if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
                 Transform before = obj.transform;
-                if (ImGui::DragFloat3("Position", &obj.transform.position.x, 0.1f)) {
+                if (RenderInspectorDragFloat3("Position", "##position", &obj.transform.position.x, 0.1f)) {
                     const glm::vec3 after = obj.transform.position;
                     if (!inspectorEditActive_) {
                         obj.transform = before;
@@ -283,7 +353,7 @@ void SceneEditor::RenderInspectorPanel() {
                 }
 
                 before = obj.transform;
-                if (ImGui::DragFloat3("Rotation (deg)", &obj.transform.rotationEuler.x, 0.5f)) {
+                if (RenderInspectorDragFloat3("Rotation (deg)", "##rotation", &obj.transform.rotationEuler.x, 0.5f)) {
                     const glm::vec3 after = obj.transform.rotationEuler;
                     if (!inspectorEditActive_) {
                         obj.transform = before;
@@ -298,7 +368,7 @@ void SceneEditor::RenderInspectorPanel() {
                 }
 
                 before = obj.transform;
-                if (ImGui::DragFloat3("Scale", &obj.transform.scale.x, 0.1f)) {
+                if (RenderInspectorDragFloat3("Scale", "##scale", &obj.transform.scale.x, 0.1f)) {
                     const glm::vec3 after{
                         (std::max)(obj.transform.scale.x, 0.01f),
                         (std::max)(obj.transform.scale.y, 0.01f),
@@ -361,10 +431,10 @@ void SceneEditor::RenderInspectorPanel() {
                     ImGui::EndDragDropTarget();
                 }
                 if (meshType == "Mesh") {
-                    ImGui::TextWrapped("Source: %s", obj.meshFilter.sourcePath.empty() ? "(none)" : obj.meshFilter.sourcePath.c_str());
+                    RenderInspectorWrappedValue("Source:", obj.meshFilter.sourcePath.empty() ? "(none)" : obj.meshFilter.sourcePath);
                     ImGui::TextDisabled("Submesh Index: %d", obj.meshFilter.meshIndex);
-                    ImGui::TextWrapped("Imported Material: %s", obj.meshFilter.importedMaterialName.empty() ? "(none)" : obj.meshFilter.importedMaterialName.c_str());
-                    ImGui::TextWrapped("OBJ Diffuse: %s", obj.meshFilter.diffuseTexturePath.empty() ? "(none)" : obj.meshFilter.diffuseTexturePath.c_str());
+                    RenderInspectorWrappedValue("Imported Material:", obj.meshFilter.importedMaterialName.empty() ? "(none)" : obj.meshFilter.importedMaterialName);
+                    RenderInspectorWrappedValue("OBJ Diffuse:", obj.meshFilter.diffuseTexturePath.empty() ? "(none)" : obj.meshFilter.diffuseTexturePath);
                 } else {
                     ImGui::TextDisabled("Built-in mesh: %s", meshType.c_str());
                 }
@@ -627,12 +697,87 @@ void SceneEditor::RenderInspectorPanel() {
                 }
 
                 glm::vec3 velocity = obj.rigidbody.velocity;
-                if (ImGui::DragFloat3("Velocity", &velocity.x, 0.1f)) {
+                if (RenderInspectorDragFloat3("Velocity", "##rigidbodyVelocity", &velocity.x, 0.1f)) {
                     beginInspectorContinuousEdit();
                     obj.rigidbody.velocity = velocity;
                     if (onDirty_) onDirty_();
                 }
                 endInspectorContinuousEdit();
+            }
+
+            bool removeCharacterController = false;
+            bool characterControllerOpen = false;
+            bool characterControllerEnabledChanged = false;
+            const bool characterControllerEnabledBefore = obj.characterController.enabled;
+            if (obj.hasCharacterController) {
+                characterControllerOpen = RenderRemovableComponentHeader("Character Controller", "CharacterControllerHeader", GetComponentIconTexture("component-capsule-collider.png"), &obj.characterController.enabled, characterControllerEnabledChanged, removeCharacterController);
+            }
+            if (removeCharacterController) {
+                PushUndoState();
+                obj.hasCharacterController = false;
+                obj.characterController = CharacterControllerComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasCharacterController && characterControllerEnabledChanged) {
+                const bool enabledAfter = obj.characterController.enabled;
+                obj.characterController.enabled = characterControllerEnabledBefore;
+                PushUndoState();
+                obj.characterController.enabled = enabledAfter;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasCharacterController && characterControllerOpen) {
+                ImGui::TextDisabled("Capsule-based Jolt CharacterVirtual controller.");
+
+                float radius = obj.characterController.radius;
+                if (ImGui::DragFloat("Radius##CharacterController", &radius, 0.01f, 0.001f, 100000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.characterController.radius = (std::max)(0.001f, radius);
+                    obj.characterController.height = (std::max)(obj.characterController.height, obj.characterController.radius * 2.0f);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float height = obj.characterController.height;
+                if (ImGui::DragFloat("Height##CharacterController", &height, 0.01f, 0.001f, 100000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.characterController.height = (std::max)(obj.characterController.radius * 2.0f, height);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float stepHeight = obj.characterController.stepHeight;
+                if (ImGui::DragFloat("Step Height##CharacterController", &stepHeight, 0.01f, 0.0f, 100000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.characterController.stepHeight = (std::max)(0.0f, stepHeight);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float slopeLimit = obj.characterController.slopeLimitDegrees;
+                if (ImGui::DragFloat("Slope Limit##CharacterController", &slopeLimit, 0.5f, 1.0f, 89.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.characterController.slopeLimitDegrees = (std::max)(1.0f, (std::min)(89.0f, slopeLimit));
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float maxStrength = obj.characterController.maxStrength;
+                if (ImGui::DragFloat("Max Strength##CharacterController", &maxStrength, 1.0f, 0.0f, 1000000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.characterController.maxStrength = (std::max)(0.0f, maxStrength);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float mass = obj.characterController.mass;
+                if (ImGui::DragFloat("Mass##CharacterController", &mass, 0.1f, 0.001f, 100000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.characterController.mass = (std::max)(0.001f, mass);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                ImGui::TextDisabled("Grounded: %s", obj.characterController.grounded ? "Yes" : "No");
+                ImGui::TextDisabled("Velocity: %.2f, %.2f, %.2f", obj.characterController.velocity.x, obj.characterController.velocity.y, obj.characterController.velocity.z);
             }
 
             bool removeBoxCollider = false;
@@ -668,7 +813,7 @@ void SceneEditor::RenderInspectorPanel() {
                 }
 
                 glm::vec3 center = obj.boxCollider.center;
-                if (ImGui::DragFloat3("Center", &center.x, 0.05f)) {
+                if (RenderInspectorDragFloat3("Center", "##boxColliderCenter", &center.x, 0.05f)) {
                     beginInspectorContinuousEdit();
                     obj.boxCollider.center = center;
                     if (onDirty_) onDirty_();
@@ -676,7 +821,7 @@ void SceneEditor::RenderInspectorPanel() {
                 endInspectorContinuousEdit();
 
                 glm::vec3 size = obj.boxCollider.size;
-                if (ImGui::DragFloat3("Size", &size.x, 0.05f, 0.001f, 100000.0f)) {
+                if (RenderInspectorDragFloat3("Size", "##boxColliderSize", &size.x, 0.05f, 0.001f, 100000.0f)) {
                     beginInspectorContinuousEdit();
                     obj.boxCollider.size = {
                         (std::max)(0.001f, size.x),
@@ -721,7 +866,7 @@ void SceneEditor::RenderInspectorPanel() {
                 }
 
                 glm::vec3 center = obj.sphereCollider.center;
-                if (ImGui::DragFloat3("Center##SphereCollider", &center.x, 0.05f)) {
+                if (RenderInspectorDragFloat3("Center", "##sphereColliderCenter", &center.x, 0.05f)) {
                     beginInspectorContinuousEdit();
                     obj.sphereCollider.center = center;
                     if (onDirty_) onDirty_();
@@ -770,7 +915,7 @@ void SceneEditor::RenderInspectorPanel() {
                 }
 
                 glm::vec3 center = obj.capsuleCollider.center;
-                if (ImGui::DragFloat3("Center##CapsuleCollider", &center.x, 0.05f)) {
+                if (RenderInspectorDragFloat3("Center", "##capsuleColliderCenter", &center.x, 0.05f)) {
                     beginInspectorContinuousEdit();
                     obj.capsuleCollider.center = center;
                     if (onDirty_) onDirty_();
@@ -793,6 +938,78 @@ void SceneEditor::RenderInspectorPanel() {
                     if (onDirty_) onDirty_();
                 }
                 endInspectorContinuousEdit();
+            }
+
+            bool removePlaneCollider = false;
+            bool planeColliderOpen = false;
+            bool planeColliderEnabledChanged = false;
+            const bool planeColliderEnabledBefore = obj.planeCollider.enabled;
+            if (obj.hasPlaneCollider) {
+                planeColliderOpen = RenderRemovableComponentHeader("Plane Collider", "PlaneColliderHeader", GetComponentIconTexture("component-box-collider.png"), &obj.planeCollider.enabled, planeColliderEnabledChanged, removePlaneCollider);
+            }
+            if (removePlaneCollider) {
+                PushUndoState();
+                obj.hasPlaneCollider = false;
+                obj.planeCollider = PlaneColliderComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasPlaneCollider && planeColliderEnabledChanged) {
+                const bool colliderEnabledAfter = obj.planeCollider.enabled;
+                obj.planeCollider.enabled = planeColliderEnabledBefore;
+                PushUndoState();
+                obj.planeCollider.enabled = colliderEnabledAfter;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasPlaneCollider && planeColliderOpen) {
+                const bool isTriggerBefore = obj.planeCollider.isTrigger;
+                if (ImGui::Checkbox("Is Trigger##PlaneCollider", &obj.planeCollider.isTrigger)) {
+                    const bool isTriggerAfter = obj.planeCollider.isTrigger;
+                    obj.planeCollider.isTrigger = isTriggerBefore;
+                    PushUndoState();
+                    obj.planeCollider.isTrigger = isTriggerAfter;
+                    if (onDirty_) onDirty_();
+                }
+
+                const bool infiniteBefore = obj.planeCollider.infinite;
+                if (ImGui::Checkbox("Infinite Plane##PlaneCollider", &obj.planeCollider.infinite)) {
+                    const bool infiniteAfter = obj.planeCollider.infinite;
+                    obj.planeCollider.infinite = infiniteBefore;
+                    PushUndoState();
+                    obj.planeCollider.infinite = infiniteAfter;
+                    if (onDirty_) onDirty_();
+                }
+
+                glm::vec3 normal = obj.planeCollider.normal;
+                if (RenderInspectorDragFloat3("Normal", "##planeColliderNormal", &normal.x, 0.05f)) {
+                    beginInspectorContinuousEdit();
+                    if (glm::length2(normal) <= 0.000001f) {
+                        normal = {0.0f, 1.0f, 0.0f};
+                    } else {
+                        normal = glm::normalize(normal);
+                    }
+                    obj.planeCollider.normal = normal;
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float offset = obj.planeCollider.offset;
+                if (RenderInspectorDragFloat("Offset", "##planeColliderOffset", &offset, 0.05f, -100000.0f, 100000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.planeCollider.offset = offset;
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                if (!obj.planeCollider.infinite) {
+                    float halfExtent = obj.planeCollider.halfExtent;
+                    if (RenderInspectorDragFloat("Half Extent", "##planeColliderHalfExtent", &halfExtent, 0.5f, 0.001f, 100000.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.planeCollider.halfExtent = (std::max)(0.001f, halfExtent);
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                }
+
+                ImGui::TextDisabled("Jolt plane shapes stay static.");
             }
 
             bool removeCamera = false;
@@ -1023,7 +1240,7 @@ void SceneEditor::RenderMultiSelectionInspector() {
 
     if (renderSharedHeader("Transform", "component-transform.png")) {
         glm::vec3 position = active.transform.position;
-        if (ImGui::DragFloat3("Position##multi", &position.x, 0.1f)) {
+        if (RenderInspectorDragFloat3("Position", "##multiPosition", &position.x, 0.1f)) {
             beginInspectorContinuousEdit();
             forEachSelected([&](SceneObject& object) { object.transform.position = position; });
             markDirty();
@@ -1031,7 +1248,7 @@ void SceneEditor::RenderMultiSelectionInspector() {
         endInspectorContinuousEdit();
 
         glm::vec3 rotation = active.transform.rotationEuler;
-        if (ImGui::DragFloat3("Rotation (deg)##multi", &rotation.x, 0.5f)) {
+        if (RenderInspectorDragFloat3("Rotation (deg)", "##multiRotation", &rotation.x, 0.5f)) {
             beginInspectorContinuousEdit();
             forEachSelected([&](SceneObject& object) { object.transform.rotationEuler = rotation; });
             markDirty();
@@ -1039,7 +1256,7 @@ void SceneEditor::RenderMultiSelectionInspector() {
         endInspectorContinuousEdit();
 
         glm::vec3 scale = active.transform.scale;
-        if (ImGui::DragFloat3("Scale##multi", &scale.x, 0.1f)) {
+        if (RenderInspectorDragFloat3("Scale", "##multiScale", &scale.x, 0.1f)) {
             beginInspectorContinuousEdit();
             scale = {
                 (std::max)(scale.x, 0.01f),
@@ -1117,7 +1334,7 @@ void SceneEditor::RenderMultiSelectionInspector() {
             }
 
             glm::vec3 velocity = active.rigidbody.velocity;
-            if (ImGui::DragFloat3("Velocity##multiRigidbody", &velocity.x, 0.1f)) {
+            if (RenderInspectorDragFloat3("Velocity", "##multiRigidbodyVelocity", &velocity.x, 0.1f)) {
                 beginInspectorContinuousEdit();
                 forEachSelected([&](SceneObject& object) { object.rigidbody.velocity = velocity; });
                 markDirty();
@@ -1136,14 +1353,14 @@ void SceneEditor::RenderMultiSelectionInspector() {
                 markDirty();
             }
             glm::vec3 center = active.boxCollider.center;
-            if (ImGui::DragFloat3("Center##multiBoxCollider", &center.x, 0.05f)) {
+            if (RenderInspectorDragFloat3("Center", "##multiBoxColliderCenter", &center.x, 0.05f)) {
                 beginInspectorContinuousEdit();
                 forEachSelected([&](SceneObject& object) { object.boxCollider.center = center; });
                 markDirty();
             }
             endInspectorContinuousEdit();
             glm::vec3 size = active.boxCollider.size;
-            if (ImGui::DragFloat3("Size##multiBoxCollider", &size.x, 0.05f, 0.001f, 100000.0f)) {
+            if (RenderInspectorDragFloat3("Size", "##multiBoxColliderSize", &size.x, 0.05f, 0.001f, 100000.0f)) {
                 beginInspectorContinuousEdit();
                 size = {(std::max)(0.001f, size.x), (std::max)(0.001f, size.y), (std::max)(0.001f, size.z)};
                 forEachSelected([&](SceneObject& object) { object.boxCollider.size = size; });
@@ -1163,7 +1380,7 @@ void SceneEditor::RenderMultiSelectionInspector() {
                 markDirty();
             }
             glm::vec3 center = active.sphereCollider.center;
-            if (ImGui::DragFloat3("Center##multiSphereCollider", &center.x, 0.05f)) {
+            if (RenderInspectorDragFloat3("Center", "##multiSphereColliderCenter", &center.x, 0.05f)) {
                 beginInspectorContinuousEdit();
                 forEachSelected([&](SceneObject& object) { object.sphereCollider.center = center; });
                 markDirty();
@@ -1190,7 +1407,7 @@ void SceneEditor::RenderMultiSelectionInspector() {
                 markDirty();
             }
             glm::vec3 center = active.capsuleCollider.center;
-            if (ImGui::DragFloat3("Center##multiCapsuleCollider", &center.x, 0.05f)) {
+            if (RenderInspectorDragFloat3("Center", "##multiCapsuleColliderCenter", &center.x, 0.05f)) {
                 beginInspectorContinuousEdit();
                 forEachSelected([&](SceneObject& object) { object.capsuleCollider.center = center; });
                 markDirty();
@@ -1215,6 +1432,54 @@ void SceneEditor::RenderMultiSelectionInspector() {
                 markDirty();
             }
             endInspectorContinuousEdit();
+        }
+    }
+
+    if (allSelected([](const SceneObject& object) { return object.hasPlaneCollider; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Plane Collider", "MultiPlaneColliderHeader", "component-box-collider.png", active.planeCollider.enabled, [](SceneObject& object, bool value) { object.planeCollider.enabled = value; })) {
+            bool isTrigger = active.planeCollider.isTrigger;
+            if (ImGui::Checkbox("Is Trigger##multiPlaneCollider", &isTrigger)) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) { object.planeCollider.isTrigger = isTrigger; });
+                markDirty();
+            }
+            bool infinite = active.planeCollider.infinite;
+            if (ImGui::Checkbox("Infinite Plane##multiPlaneCollider", &infinite)) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) { object.planeCollider.infinite = infinite; });
+                markDirty();
+            }
+            glm::vec3 normal = active.planeCollider.normal;
+            if (RenderInspectorDragFloat3("Normal", "##multiPlaneColliderNormal", &normal.x, 0.05f)) {
+                beginInspectorContinuousEdit();
+                if (glm::length2(normal) <= 0.000001f) {
+                    normal = {0.0f, 1.0f, 0.0f};
+                } else {
+                    normal = glm::normalize(normal);
+                }
+                forEachSelected([&](SceneObject& object) { object.planeCollider.normal = normal; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            float offset = active.planeCollider.offset;
+            if (RenderInspectorDragFloat("Offset", "##multiPlaneColliderOffset", &offset, 0.05f, -100000.0f, 100000.0f)) {
+                beginInspectorContinuousEdit();
+                forEachSelected([&](SceneObject& object) { object.planeCollider.offset = offset; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+            if (!active.planeCollider.infinite) {
+                float halfExtent = active.planeCollider.halfExtent;
+                if (RenderInspectorDragFloat("Half Extent", "##multiPlaneColliderHalfExtent", &halfExtent, 0.5f, 0.001f, 100000.0f)) {
+                    beginInspectorContinuousEdit();
+                    halfExtent = (std::max)(0.001f, halfExtent);
+                    forEachSelected([&](SceneObject& object) { object.planeCollider.halfExtent = halfExtent; });
+                    markDirty();
+                }
+                endInspectorContinuousEdit();
+            }
+            ImGui::TextDisabled("Jolt plane shapes stay static.");
         }
     }
 

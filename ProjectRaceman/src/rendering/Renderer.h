@@ -80,6 +80,11 @@ struct EnvironmentMaps {
     unsigned int brdfLut{0};
 };
 
+enum class ViewportRenderTarget {
+    Scene,
+    Game
+};
+
 class Renderer {
 public:
     explicit Renderer(const RendererConfig& config);
@@ -89,6 +94,10 @@ public:
     void EndFrame();
     void Resize(int width, int height);
     void SetViewport(const RendererViewport& viewport);
+    void EnsureViewportRenderTarget(ViewportRenderTarget target, int width, int height);
+    void BeginFrameToViewportTarget(ViewportRenderTarget target, const glm::vec3& clearColor);
+    void EndFrameToViewportTarget();
+    unsigned int GetViewportRenderTargetTexture(ViewportRenderTarget target) const;
 
     void SetupEnvironment(const std::string& hdrPath);
     void BakeBrdfLut();
@@ -111,8 +120,19 @@ public:
     const RendererViewport& GetViewport() const { return viewport_; }
 
 private:
+    struct ViewportTarget {
+        unsigned int framebuffer{0};
+        unsigned int colorTexture{0};
+        unsigned int depthRenderbuffer{0};
+        int width{0};
+        int height{0};
+    };
+
     void InitializePipelines();
     void InitializeQuad();
+    void DestroyViewportTarget(ViewportTarget& target);
+    ViewportTarget& GetViewportTarget(ViewportRenderTarget target);
+    const ViewportTarget& GetViewportTarget(ViewportRenderTarget target) const;
 
     RendererConfig config_{};
     RendererViewport viewport_{};
@@ -125,6 +145,8 @@ private:
     unsigned int fullscreenQuad_{0};
     unsigned int lineVao_{0};
     unsigned int lineVbo_{0};
+    ViewportTarget sceneViewportTarget_{};
+    ViewportTarget gameViewportTarget_{};
     std::vector<unsigned int> shadowMaps_;
     std::vector<DebugLineCommand> lineDrawList_;
 

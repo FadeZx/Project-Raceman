@@ -16,7 +16,8 @@ enum class PhysicsBodyType {
 enum class PhysicsColliderType {
     Box,
     Sphere,
-    Capsule
+    Capsule,
+    Plane
 };
 
 struct PhysicsColliderDesc {
@@ -26,6 +27,10 @@ struct PhysicsColliderDesc {
     glm::vec3 size{1.0f};
     float radius{0.5f};
     float height{2.0f};
+    glm::vec3 normal{0.0f, 1.0f, 0.0f};
+    float offset{0.0f};
+    bool infinite{true};
+    float halfExtent{1000.0f};
 };
 
 struct PhysicsBodyDesc {
@@ -47,6 +52,27 @@ struct PhysicsBodyState {
     glm::vec3 velocity{0.0f};
 };
 
+struct PhysicsCharacterDesc {
+    std::string objectId;
+    glm::vec3 position{0.0f};
+    glm::vec3 rotationEuler{0.0f};
+    float height{1.8f};
+    float radius{0.4f};
+    float stepHeight{0.35f};
+    float slopeLimitDegrees{50.0f};
+    float maxStrength{100.0f};
+    float mass{70.0f};
+};
+
+struct PhysicsCharacterState {
+    std::string objectId;
+    glm::vec3 position{0.0f};
+    glm::vec3 rotationEuler{0.0f};
+    glm::vec3 velocity{0.0f};
+    glm::vec3 groundVelocity{0.0f};
+    bool grounded{false};
+};
+
 class PhysicsWorld {
 public:
     PhysicsWorld();
@@ -56,6 +82,7 @@ public:
     PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
     void Build(const std::vector<PhysicsBodyDesc>& bodies);
+    void Build(const std::vector<PhysicsBodyDesc>& bodies, const std::vector<PhysicsCharacterDesc>& characters);
     void Clear();
     void Step(float deltaTime);
 
@@ -63,6 +90,13 @@ public:
     bool GetBodyState(const std::string& objectId, PhysicsBodyState& outState) const;
     glm::vec3 GetBodyVelocity(const std::string& objectId) const;
     void SetBodyVelocity(const std::string& objectId, const glm::vec3& velocity);
+
+    bool HasCharacter(const std::string& objectId) const;
+    bool GetCharacterState(const std::string& objectId, PhysicsCharacterState& outState) const;
+    glm::vec3 GetCharacterVelocity(const std::string& objectId) const;
+    void SetCharacterTransform(const std::string& objectId, const glm::vec3& position, const glm::vec3& rotationEuler);
+    void SetCharacterDesiredVelocity(const std::string& objectId, const glm::vec3& velocity);
+    void AddCharacterJumpImpulse(const std::string& objectId, float impulse);
 
 private:
     class Impl;

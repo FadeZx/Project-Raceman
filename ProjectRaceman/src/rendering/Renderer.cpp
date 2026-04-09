@@ -47,6 +47,9 @@ Renderer::~Renderer() {
     if (!shadowMaps_.empty()) {
         glDeleteTextures(static_cast<GLsizei>(shadowMaps_.size()), shadowMaps_.data());
     }
+
+    DestroyViewportTarget(sceneViewportTarget_);
+    DestroyViewportTarget(gameViewportTarget_);
 }
 
 void Renderer::BeginFrame() {
@@ -79,6 +82,68 @@ void Renderer::SetViewport(const RendererViewport& viewport) {
     viewport_.y = (std::max)(0, viewport.y);
     viewport_.width = (std::max)(1, viewport.width);
     viewport_.height = (std::max)(1, viewport.height);
+}
+
+void Renderer::EnsureViewportRenderTarget(ViewportRenderTarget target, int width, int height) {
+    ViewportTarget& renderTarget = GetViewportTarget(target);
+    width = (std::max)(1, width);
+    height = (std::max)(1, height);
+
+    if (renderTarget.framebuffer == 0) {
+        glGenFramebuffers(1, &renderTarget.framebuffer);
+    }
+    if (renderTarget.colorTexture == 0) {
+        glGenTextures(1, &renderTarget.colorTexture);
+    }
+    if (renderTarget.depthRenderbuffer == 0) {
+        glGenRenderbuffers(1, &renderTarget.depthRenderbuffer);
+    }
+
+    if (renderTarget.width == width && renderTarget.height == height) {
+        return;
+    }
+
+    renderTarget.width = width;
+    renderTarget.height = height;
+
+    glBindTexture(GL_TEXTURE_2D, renderTarget.colorTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glBindRenderbuffer(GL_RENDERBUFFER, renderTarget.depthRenderbuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, renderTarget.framebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTarget.colorTexture, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderTarget.depthRenderbuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::BeginFrameToViewportTarget(ViewportRenderTarget target, const glm::vec3& clearColor) {
+    const ViewportTarget& renderTarget = GetViewportTarget(target);
+    if (renderTarget.framebuffer == 0 || renderTarget.width <= 0 || renderTarget.height <= 0) {
+        return;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, renderTarget.framebuffer);
+    glEnable(GL_SCISSOR_TEST);
+    glViewport(0, 0, renderTarget.width, renderTarget.height);
+    glScissor(0, 0, renderTarget.width, renderTarget.height);
+    glEnable(GL_DEPTH_TEST);
+    glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void Renderer::EndFrameToViewportTarget() {
+    Flush();
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+unsigned int Renderer::GetViewportRenderTargetTexture(ViewportRenderTarget target) const {
+    return GetViewportTarget(target).colorTexture;
 }
 
 void Renderer::SetupEnvironment(const std::string& hdrPath) {
@@ -137,6 +202,31 @@ void Renderer::CreateShadowMaps(int resolution) {
 
     // Attach to FBO as needed per-light; omitted for brevity.
     shadowMaps_.push_back(shadowMap);
+}
+
+void Renderer::DestroyViewportTarget(ViewportTarget& target) {
+    if (target.depthRenderbuffer != 0) {
+        glDeleteRenderbuffers(1, &target.depthRenderbuffer);
+        target.depthRenderbuffer = 0;
+    }
+    if (target.colorTexture != 0) {
+        glDeleteTextures(1, &target.colorTexture);
+        target.colorTexture = 0;
+    }
+    if (target.framebuffer != 0) {
+        glDeleteFramebuffers(1, &target.framebuffer);
+        target.framebuffer = 0;
+    }
+    target.width = 0;
+    target.height = 0;
+}
+
+Renderer::ViewportTarget& Renderer::GetViewportTarget(ViewportRenderTarget target) {
+    return target == ViewportRenderTarget::Game ? gameViewportTarget_ : sceneViewportTarget_;
+}
+
+const Renderer::ViewportTarget& Renderer::GetViewportTarget(ViewportRenderTarget target) const {
+    return target == ViewportRenderTarget::Game ? gameViewportTarget_ : sceneViewportTarget_;
 }
 
 void Renderer::SubmitMesh(const MeshDrawCommand& cmd) { drawList_.push_back(cmd); }

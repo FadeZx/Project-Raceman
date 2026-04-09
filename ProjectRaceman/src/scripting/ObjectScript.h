@@ -68,6 +68,12 @@ public:
     glm::vec3 GetRigidbodyVelocity() const;
     void SetRigidbodyVelocity(const glm::vec3& value);
 
+    bool HasCharacterController() const;
+    bool IsCharacterGrounded() const;
+    glm::vec3 GetCharacterVelocity() const;
+    void SetCharacterMoveInput(const glm::vec3& value);
+    void Jump(float impulse);
+
     bool HasCamera() const;
     CameraHandle Camera();
 

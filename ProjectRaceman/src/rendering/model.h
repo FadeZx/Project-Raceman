@@ -256,7 +256,7 @@ private:
             }
 
             // Debugging: Output the texture type and path
-            std::cout << "Checking texture: " << texturePath << " for type: " << typeName << std::endl;
+            //std::cout << "Checking texture: " << texturePath << " for type: " << typeName << std::endl;
 
             bool skip = false;
             for (unsigned int j = 0; j < textures_loaded.size(); j++) {
@@ -282,7 +282,7 @@ private:
                 textures_loaded.push_back(texture);
 
                 // Debugging: Notify that this texture was successfully loaded
-                std::cout << "Loaded texture: " << texturePath << " as type: " << typeName << std::endl;
+                //std::cout << "Loaded texture: " << texturePath << " as type: " << typeName << std::endl;
             }
         }
         return textures;

@@ -28,7 +28,7 @@ void DebugUI::Initialize(GLFWwindow* window) {
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = "config/imgui.ini"; // ImGui will auto-load/save this
     io.ConfigWindowsResizeFromEdges = true;
-
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 450");
 }

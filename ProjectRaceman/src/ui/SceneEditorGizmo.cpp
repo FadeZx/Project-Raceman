@@ -5,6 +5,11 @@
 #include <limits>
 #include <vector>
 
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
+#include <glm/gtx/norm.hpp>
+
 namespace fs = std::filesystem;
 
 namespace raceman {
@@ -30,6 +35,13 @@ glm::mat4 BuildRotationMatrix(const SceneObject& object) {
     rotation = glm::rotate(rotation, rads.y, glm::vec3(0.0f, 1.0f, 0.0f));
     rotation = glm::rotate(rotation, rads.x, glm::vec3(1.0f, 0.0f, 0.0f));
     return rotation;
+}
+
+glm::mat4 BuildObjectMatrixNoScale(const SceneObject& object) {
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, object.transform.position);
+    model *= BuildRotationMatrix(object);
+    return model;
 }
 
 glm::vec3 TransformDirection(const glm::mat4& transform, const glm::vec3& direction) {
@@ -259,6 +271,44 @@ void SubmitWireCapsuleY(Renderer& renderer, const glm::mat4& transform, const gl
         }
     }
 }
+
+void SubmitWirePlane(Renderer& renderer, const glm::mat4& transform, const glm::vec3& localNormal, float offset, float halfExtent, bool infinite, const glm::vec4& color, float width, DebugLineDepthMode depthMode = DebugLineDepthMode::AlwaysOnTop) {
+    glm::vec3 normal = localNormal;
+    if (glm::length2(normal) <= 0.000001f) {
+        normal = {0.0f, 1.0f, 0.0f};
+    } else {
+        normal = glm::normalize(normal);
+    }
+
+    const glm::vec3 planeOrigin = TransformPoint(transform, normal * offset);
+    const glm::vec3 worldNormal = glm::normalize(TransformDirection(transform, normal));
+    const glm::vec3 reference = std::abs(worldNormal.y) < 0.99f ? glm::vec3{0.0f, 1.0f, 0.0f} : glm::vec3{1.0f, 0.0f, 0.0f};
+    const glm::vec3 tangent = glm::normalize(glm::cross(reference, worldNormal));
+    const glm::vec3 bitangent = glm::normalize(glm::cross(worldNormal, tangent));
+    const float previewExtent = infinite ? 10.0f : (std::max)(0.001f, halfExtent);
+
+    const glm::vec3 corners[4] = {
+        planeOrigin + (-tangent - bitangent) * previewExtent,
+        planeOrigin + ( tangent - bitangent) * previewExtent,
+        planeOrigin + ( tangent + bitangent) * previewExtent,
+        planeOrigin + (-tangent + bitangent) * previewExtent
+    };
+    for (int i = 0; i < 4; ++i) {
+        renderer.SubmitLine({corners[i], corners[(i + 1) % 4], color, width, depthMode});
+    }
+
+    const float crossExtent = previewExtent * 0.35f;
+    renderer.SubmitLine({planeOrigin - tangent * crossExtent, planeOrigin + tangent * crossExtent, color, width, depthMode});
+    renderer.SubmitLine({planeOrigin - bitangent * crossExtent, planeOrigin + bitangent * crossExtent, color, width, depthMode});
+
+    const glm::vec3 arrowEnd = planeOrigin + worldNormal * (previewExtent * 0.4f);
+    renderer.SubmitLine({planeOrigin, arrowEnd, color, width, depthMode});
+    const glm::vec3 arrowSideA = glm::normalize(worldNormal + tangent * 0.35f) * (previewExtent * 0.12f);
+    const glm::vec3 arrowSideB = glm::normalize(worldNormal - tangent * 0.35f) * (previewExtent * 0.12f);
+    renderer.SubmitLine({arrowEnd, arrowEnd - arrowSideA, color, width, depthMode});
+    renderer.SubmitLine({arrowEnd, arrowEnd - arrowSideB, color, width, depthMode});
+}
+
 void SubmitCameraFrustum(Renderer& renderer, const SceneObject& object, const glm::mat4& worldMatrix, const glm::vec4& color, float width, DebugLineDepthMode depthMode = DebugLineDepthMode::AlwaysOnTop) {
     if (!object.hasCamera || !object.camera.enabled) {
         return;
@@ -643,6 +693,27 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
         const float radius = object.capsuleCollider.radius;
         const float height = (std::max)(object.capsuleCollider.height, radius * 2.0f);
         SubmitWireCapsuleY(renderer, objectMatrix, object.capsuleCollider.center, radius, height, colliderColor, colliderWidth, helperDepthMode);
+    }
+    if (object.hasPlaneCollider && object.planeCollider.enabled) {
+        const glm::mat4 planeMatrix = BuildObjectMatrixNoScale(object);
+        SubmitWirePlane(
+            renderer,
+            planeMatrix,
+            object.planeCollider.normal,
+            object.planeCollider.offset,
+            object.planeCollider.halfExtent,
+            object.planeCollider.infinite,
+            glm::vec4{0.45f, 0.8f, 1.0f, 1.0f},
+            colliderWidth,
+            helperDepthMode);
+    }
+    if (object.hasCharacterController && object.characterController.enabled) {
+        const float radius = (std::max)(0.001f, object.characterController.radius);
+        const float height = (std::max)(radius * 2.0f, object.characterController.height);
+        const glm::mat4 controllerMatrix = BuildObjectMatrixNoScale(object);
+        const glm::vec4 controllerColor{0.2f, 0.75f, 1.0f, 1.0f};
+        const glm::vec3 controllerCenter{0.0f, height * 0.5f, 0.0f};
+        SubmitWireCapsuleY(renderer, controllerMatrix, controllerCenter, radius, height, controllerColor, colliderWidth, helperDepthMode);
     }
     if (object.hasCamera && object.camera.enabled) {
         SubmitCameraFrustum(renderer, object, objectMatrix, glm::vec4{1.0f, 0.85f, 0.2f, 1.0f}, 2.0f, helperDepthMode);

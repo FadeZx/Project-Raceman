@@ -4,6 +4,7 @@
 #include "../scripting/ScriptRegistry.h"
 
 #include <glad/glad.h>
+#include <imgui/imgui_internal.h>
 
 #include <cmath>
 #include <iostream>
@@ -11,6 +12,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #endif
 #include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/norm.hpp>
 
 namespace fs = std::filesystem;
 
@@ -280,10 +282,47 @@ bool ContainsText(const std::string& text, const std::string& needle) {
     return text.find(needle) != std::string::npos;
 }
 
-void AddDefaultBoxColliderToPlane(SceneObject& object) {
-    object.hasBoxCollider = true;
+bool LoadBuiltInPlaneMesh(SceneObject& object) {
+    auto model = raceman::LoadModelFromFile(ProjectAssetPathToAbsolute(kPlaneObjAssetPath).string());
+    const auto infos = raceman::GetMeshInfos(model);
+    if (infos.empty()) {
+        return false;
+    }
+
+    object.type = "Mesh";
+    object.hasMeshFilter = true;
+    object.hasMeshRenderer = true;
+    object.meshRenderer.color = {1.0f, 1.0f, 1.0f, 1.0f};
+    if (object.meshRenderer.materialId.empty()) {
+        object.meshRenderer.materialId = "pbr_default";
+    }
+    object.meshFilter.sourcePath = kPlaneObjAssetPath;
+    ApplyMeshInfoToSceneObject(object, infos.front(), model);
+    return true;
+}
+
+bool ShouldFallbackToBuiltInPlane(const SceneObject& object) {
+    if (!object.hasMeshFilter || object.meshFilter.meshType != "Mesh") {
+        return false;
+    }
+    const std::string sourcePath = ToLowerCopy(NormalizeSlashes(object.meshFilter.sourcePath));
+    return sourcePath == "assets/mesh/plane.obj" ||
+           (ContainsText(sourcePath, "assets/imports/plane_") && EndsWith(sourcePath, "/plane.obj"));
+}
+
+void AddDefaultPlaneColliderToPlane(SceneObject& object) {
+    object.hasBoxCollider = false;
+    object.hasSphereCollider = false;
+    object.hasCapsuleCollider = false;
+    object.hasPlaneCollider = true;
     object.boxCollider = BoxColliderComponent{};
-    object.boxCollider.size = {1.0f, 0.1f, 1.0f};
+    object.sphereCollider = SphereColliderComponent{};
+    object.capsuleCollider = CapsuleColliderComponent{};
+    object.planeCollider = PlaneColliderComponent{};
+    object.planeCollider.normal = {0.0f, 1.0f, 0.0f};
+    object.planeCollider.offset = 0.0f;
+    object.planeCollider.infinite = true;
+    object.planeCollider.halfExtent = 1000.0f;
 }
 
 void WriteTextFile(const fs::path& path, const std::string& content) {
@@ -363,14 +402,6 @@ void MigrateLegacyProjectLayout() {
             fs::copy_file(legacyProjectFile, projectFile, fs::copy_options::skip_existing);
         }
     } catch (...) {}
-}
-
-std::string ViewportModeToString(SceneEditorViewportMode mode) {
-    return mode == SceneEditorViewportMode::Game ? "Game" : "Scene";
-}
-
-SceneEditorViewportMode ViewportModeFromString(const std::string& value) {
-    return value == "Game" ? SceneEditorViewportMode::Game : SceneEditorViewportMode::Scene;
 }
 
 void InsertBeforeClosingItemGroup(const fs::path& projectPath, const std::string& entry) {
@@ -631,18 +662,16 @@ void SceneEditor::RenderUI(float deltaTime) {
     HandleEditorShortcuts();
     UpdateScripts(deltaTime);
     UpdatePhysics(deltaTime);
-    EnsureDockspaceLayout();
 
+    RenderDockspaceHost();
     RenderScenePanel();
     RenderInspectorPanel();
     RenderProjectPanel();
     RenderViewportPanel();
-    RenderLayoutSplitters();
-    viewportFocused_ = viewportHovered_ && ImGui::IsMouseDown(ImGuiMouseButton_Left);
 }
 
 float SceneEditor::GetViewportAspect() const {
-    const glm::vec2 size = viewportMode_ == SceneEditorViewportMode::Game ? gameViewportSize_ : sceneViewportSize_;
+    const glm::vec2 size = activeViewport_ == SceneEditorActiveViewport::Game ? gameViewportSize_ : sceneViewportSize_;
     return size.y > 0.5f ? size.x / size.y : 1.0f;
 }
 
@@ -652,8 +681,6 @@ RendererViewport BuildRenderViewportFromLogicalRect(const glm::vec2& position,
                                                    int framebufferWidth,
                                                    int framebufferHeight) {
     RendererViewport viewport{};
-    viewport.width = (std::max)(1, framebufferWidth);
-    viewport.height = (std::max)(1, framebufferHeight);
 
     if (size.x <= 1.0f || size.y <= 1.0f) {
         return viewport;
@@ -675,7 +702,7 @@ RendererViewport BuildRenderViewportFromLogicalRect(const glm::vec2& position,
 } // namespace
 
 RendererViewport SceneEditor::GetRenderViewport(int framebufferWidth, int framebufferHeight) const {
-    return viewportMode_ == SceneEditorViewportMode::Game
+    return activeViewport_ == SceneEditorActiveViewport::Game
         ? GetGameRenderViewport(framebufferWidth, framebufferHeight)
         : GetSceneRenderViewport(framebufferWidth, framebufferHeight);
 }
@@ -710,110 +737,6 @@ bool SceneEditor::ContainsGameViewportPoint(float x, float y) const {
         && y < gameViewportPos_.y + gameViewportSize_.y;
 }
 
-void SceneEditor::EnsureDockspaceLayout() {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const float workWidth = viewport->WorkSize.x;
-    const float workHeight = viewport->WorkSize.y;
-    const float minSideWidth = 180.0f;
-    const float minBottomHeight = 140.0f;
-    const float minViewportWidth = 320.0f;
-    const float minViewportHeight = 220.0f;
-
-    if (!dockLayoutInitialized_) {
-        leftPanelWidth_ = workWidth * 0.18f;
-        rightPanelWidth_ = workWidth * 0.22f;
-        bottomPanelHeight_ = workHeight * 0.28f;
-        dockLayoutInitialized_ = true;
-    }
-
-    const float maxCombinedSideWidth = (std::max)(minSideWidth * 2.0f, workWidth - minViewportWidth);
-    const float maxSingleSideWidth = (std::max)(minSideWidth, workWidth - minSideWidth - minViewportWidth);
-    leftPanelWidth_ = (std::clamp)(leftPanelWidth_, minSideWidth, maxSingleSideWidth);
-    rightPanelWidth_ = (std::clamp)(rightPanelWidth_, minSideWidth, maxSingleSideWidth);
-    if (leftPanelWidth_ + rightPanelWidth_ > maxCombinedSideWidth) {
-        const float scale = maxCombinedSideWidth / (leftPanelWidth_ + rightPanelWidth_);
-        leftPanelWidth_ *= scale;
-        rightPanelWidth_ *= scale;
-    }
-
-    const float maxBottomHeight = (std::max)(minBottomHeight, workHeight - minViewportHeight);
-    bottomPanelHeight_ = (std::clamp)(bottomPanelHeight_, minBottomHeight, maxBottomHeight);
-}
-
-void SceneEditor::RenderLayoutSplitters() {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const ImVec2 workPos = viewport->WorkPos;
-    const ImVec2 workSize = viewport->WorkSize;
-    const float splitterThickness = 6.0f;
-    const float topHeight = workSize.y - bottomPanelHeight_;
-    const float centerX = workPos.x + leftPanelWidth_;
-    const float rightX = workPos.x + workSize.x - rightPanelWidth_;
-    const float bottomY = workPos.y + topHeight;
-
-    auto renderSplitterWindow = [&](const char* name, ImVec2 pos, ImVec2 size, ImGuiMouseCursor cursor, const std::function<void(float, float)>& onDrag) {
-        ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
-        ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
-            | ImGuiWindowFlags_NoCollapse
-            | ImGuiWindowFlags_NoMove
-            | ImGuiWindowFlags_NoResize
-            | ImGuiWindowFlags_NoScrollbar
-            | ImGuiWindowFlags_NoSavedSettings
-            | ImGuiWindowFlags_NoFocusOnAppearing
-            | ImGuiWindowFlags_NoNav;
-        if (ImGui::Begin(name, nullptr, flags)) {
-            ImGui::InvisibleButton("##splitter", size);
-            if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
-                ImGui::SetMouseCursor(cursor);
-            }
-            if (ImGui::IsItemActive()) {
-                const ImVec2 delta = ImGui::GetIO().MouseDelta;
-                onDrag(delta.x, delta.y);
-            }
-            const ImU32 color = ImGui::GetColorU32(ImGui::IsItemActive() ? ImGuiCol_SeparatorActive
-                : ImGui::IsItemHovered() ? ImGuiCol_SeparatorHovered
-                : ImGuiCol_Separator);
-            ImGui::GetWindowDrawList()->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), color, 2.0f);
-        }
-        ImGui::End();
-        ImGui::PopStyleColor();
-        ImGui::PopStyleVar(2);
-    };
-
-    renderSplitterWindow(
-        "LeftPanelSplitter",
-        ImVec2(centerX - splitterThickness * 0.5f, workPos.y),
-        ImVec2(splitterThickness, topHeight),
-        ImGuiMouseCursor_ResizeEW,
-        [&](float deltaX, float) {
-            leftPanelWidth_ += deltaX;
-            EnsureDockspaceLayout();
-        });
-
-    renderSplitterWindow(
-        "RightPanelSplitter",
-        ImVec2(rightX - splitterThickness * 0.5f, workPos.y),
-        ImVec2(splitterThickness, topHeight),
-        ImGuiMouseCursor_ResizeEW,
-        [&](float deltaX, float) {
-            rightPanelWidth_ -= deltaX;
-            EnsureDockspaceLayout();
-        });
-
-    renderSplitterWindow(
-        "BottomPanelSplitter",
-        ImVec2(workPos.x + leftPanelWidth_, bottomY - splitterThickness * 0.5f),
-        ImVec2(workSize.x - leftPanelWidth_ - rightPanelWidth_, splitterThickness),
-        ImGuiMouseCursor_ResizeNS,
-        [&](float, float deltaY) {
-            bottomPanelHeight_ -= deltaY;
-            EnsureDockspaceLayout();
-        });
-}
-
 void SceneEditor::RenderViewportPanel() {
     viewportHovered_ = false;
     viewportFocused_ = false;
@@ -821,144 +744,162 @@ void SceneEditor::RenderViewportPanel() {
     sceneViewportFocused_ = false;
     gameViewportHovered_ = false;
     gameViewportFocused_ = false;
+    sceneViewportPos_ = glm::vec2(0.0f);
     sceneViewportSize_ = glm::vec2(0.0f);
+    gameViewportPos_ = glm::vec2(0.0f);
     gameViewportSize_ = glm::vec2(0.0f);
 
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const float centerWidth = viewport->WorkSize.x - leftPanelWidth_ - rightPanelWidth_;
-    const float topHeight = viewport->WorkSize.y - bottomPanelHeight_;
-
-    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + leftPanelWidth_, viewport->WorkPos.y), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(centerWidth, topHeight), ImGuiCond_Always);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.09f, 0.11f, 1.0f));
     const ImGuiWindowFlags viewportWindowFlags = ImGuiWindowFlags_NoCollapse
         | ImGuiWindowFlags_NoScrollbar
-        | ImGuiWindowFlags_NoScrollWithMouse
-        | ImGuiWindowFlags_NoMove
-        | ImGuiWindowFlags_NoResize;
-    if (ImGui::Begin("Viewport", nullptr, viewportWindowFlags)) {
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-        if (ImGui::Button("Tabs")) {
-            viewportLayout_ = SceneEditorViewportLayout::Tabs;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Split")) {
-            viewportLayout_ = SceneEditorViewportLayout::Split;
-        }
+        | ImGuiWindowFlags_NoScrollWithMouse;
+    auto renderViewportSurface = [&](const char* childName,
+                                     SceneEditorActiveViewport viewportType,
+                                     unsigned int textureId,
+                                     glm::vec2& outPos,
+                                     glm::vec2& outSize,
+                                     bool& outHovered) {
+        const ImGuiWindowFlags childFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+        if (ImGui::BeginChild(childName, ImVec2(0.0f, 0.0f), false, childFlags)) {
+            const ImVec2 contentMin = ImGui::GetCursorScreenPos();
+            const ImVec2 contentAvail = ImGui::GetContentRegionAvail();
+            outPos = {contentMin.x, contentMin.y};
+            outSize = {contentAvail.x, contentAvail.y};
+            outHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)
+                && ImRect(contentMin, ImVec2(contentMin.x + contentAvail.x, contentMin.y + contentAvail.y)).Contains(ImGui::GetIO().MousePos);
 
-        if (viewportLayout_ == SceneEditorViewportLayout::Split) {
-            ImGui::Separator();
-            const ImVec2 areaMin = ImGui::GetCursorScreenPos();
-            const ImVec2 areaAvail = ImGui::GetContentRegionAvail();
-            viewportPanelPos_ = {areaMin.x, areaMin.y};
-            viewportPanelSize_ = {areaAvail.x, areaAvail.y};
-
-            const float splitterThickness = 6.0f;
-            const float minPaneWidth = 180.0f;
-            const float availableWidth = (std::max)(1.0f, areaAvail.x);
-            const float availableHeight = (std::max)(1.0f, areaAvail.y);
-            const float effectiveMinPaneWidth = (std::min)(minPaneWidth, (std::max)(40.0f, (availableWidth - splitterThickness) * 0.5f));
-            const float maxLeftWidth = (std::max)(effectiveMinPaneWidth, availableWidth - effectiveMinPaneWidth - splitterThickness);
-            const float leftWidth = (std::clamp)(availableWidth * sceneGameSplitRatio_, effectiveMinPaneWidth, maxLeftWidth);
-            const float rightWidth = (std::max)(effectiveMinPaneWidth, availableWidth - leftWidth - splitterThickness);
-
-            sceneViewportPos_ = {areaMin.x, areaMin.y};
-            sceneViewportSize_ = {leftWidth, availableHeight};
-            gameViewportPos_ = {areaMin.x + leftWidth + splitterThickness, areaMin.y};
-            gameViewportSize_ = {rightWidth, availableHeight};
-
-            const ImVec2 splitterMin{areaMin.x + leftWidth, areaMin.y};
-            const ImVec2 splitterMax{splitterMin.x + splitterThickness, areaMin.y + availableHeight};
-            const bool splitterHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)
-                && ImGui::IsMouseHoveringRect(splitterMin, splitterMax, false);
-            if (splitterHovered || ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            const ImVec2 contentMax{contentMin.x + contentAvail.x, contentMin.y + contentAvail.y};
+            if (textureId != 0) {
+                ImGui::Image(static_cast<ImTextureID>(textureId),
+                    contentAvail,
+                    ImVec2(0.0f, 1.0f),
+                    ImVec2(1.0f, 0.0f));
+            } else {
+                drawList->AddRectFilled(contentMin, contentMax, IM_COL32(24, 28, 34, 255));
             }
-            if (splitterHovered && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-                sceneGameSplitRatio_ += ImGui::GetIO().MouseDelta.x / availableWidth;
-                sceneGameSplitRatio_ = (std::clamp)(sceneGameSplitRatio_, 0.25f, 0.75f);
+            drawList->AddRect(contentMin, contentMax, IM_COL32(70, 90, 120, 180));
+
+            if (viewportType == SceneEditorActiveViewport::Game) {
+                glm::mat4 view;
+                glm::mat4 proj;
+                const float aspect = contentAvail.y > 0.5f ? contentAvail.x / contentAvail.y : 1.0f;
+                if (!TryGetGameCamera(view, proj, aspect)) {
+                    const char* noCameraText = "No Camera";
+                    const ImVec2 noCameraSize = ImGui::CalcTextSize(noCameraText);
+                    drawList->AddText(ImVec2((contentMin.x + contentMax.x) * 0.5f - noCameraSize.x * 0.5f, (contentMin.y + contentMax.y) * 0.5f - 8.0f), IM_COL32(255, 200, 96, 255), noCameraText);
+                }
+                ImGui::Dummy(contentAvail);
             }
 
-            auto drawViewportPane = [&](const char* title, const glm::vec2& pos, const glm::vec2& size, bool isGame) {
-                const ImVec2 min{pos.x, pos.y};
-                const ImVec2 max{pos.x + size.x, pos.y + size.y};
-                drawList->AddRect(min, max, IM_COL32(70, 90, 120, 180));
-                drawList->AddText(ImVec2(min.x + 12.0f, min.y + 10.0f), IM_COL32(210, 220, 235, 255), title);
-                if (isGame) {
-                    glm::mat4 view;
-                    glm::mat4 proj;
-                    const float aspect = size.y > 0.5f ? size.x / size.y : 1.0f;
-                    if (!TryGetGameCamera(view, proj, aspect)) {
-                        const char* noCameraText = "No Camera";
-                        const ImVec2 noCameraSize = ImGui::CalcTextSize(noCameraText);
-                        drawList->AddText(ImVec2((min.x + max.x) * 0.5f - noCameraSize.x * 0.5f, (min.y + max.y) * 0.5f - 8.0f), IM_COL32(255, 200, 96, 255), noCameraText);
-                    }
-                }
-            };
-
-            drawViewportPane("Scene View", sceneViewportPos_, sceneViewportSize_, false);
-            drawViewportPane("Game View", gameViewportPos_, gameViewportSize_, true);
-            drawList->AddRectFilled(splitterMin, splitterMax, IM_COL32(100, 110, 125, 180), 2.0f);
-        } else {
-            if (ImGui::BeginTabBar("ViewportTabs")) {
-                if (ImGui::BeginTabItem("Scene")) {
-                    viewportMode_ = SceneEditorViewportMode::Scene;
-                    const ImVec2 contentMin = ImGui::GetCursorScreenPos();
-                    const ImVec2 contentAvail = ImGui::GetContentRegionAvail();
-                    viewportPanelPos_ = {contentMin.x, contentMin.y};
-                    viewportPanelSize_ = {contentAvail.x, contentAvail.y};
-                    sceneViewportPos_ = viewportPanelPos_;
-                    sceneViewportSize_ = viewportPanelSize_;
-                    const ImVec2 contentMax{contentMin.x + contentAvail.x, contentMin.y + contentAvail.y};
-                    drawList->AddRect(contentMin, contentMax, IM_COL32(70, 90, 120, 180));
-                    drawList->AddText(ImVec2(contentMin.x + 12.0f, contentMin.y + 10.0f), IM_COL32(210, 220, 235, 255), "Scene View");
-                    ImGui::EndTabItem();
-                }
-                if (ImGui::BeginTabItem("Game")) {
-                    viewportMode_ = SceneEditorViewportMode::Game;
-                    const ImVec2 contentMin = ImGui::GetCursorScreenPos();
-                    const ImVec2 contentAvail = ImGui::GetContentRegionAvail();
-                    viewportPanelPos_ = {contentMin.x, contentMin.y};
-                    viewportPanelSize_ = {contentAvail.x, contentAvail.y};
-                    gameViewportPos_ = viewportPanelPos_;
-                    gameViewportSize_ = viewportPanelSize_;
-                    const ImVec2 contentMax{contentMin.x + contentAvail.x, contentMin.y + contentAvail.y};
-                    drawList->AddRect(contentMin, contentMax, IM_COL32(70, 90, 120, 180));
-                    drawList->AddText(ImVec2(contentMin.x + 12.0f, contentMin.y + 10.0f), IM_COL32(210, 220, 235, 255), "Game View");
-
-                    glm::mat4 view;
-                    glm::mat4 proj;
-                    const float aspect = contentAvail.y > 0.5f ? contentAvail.x / contentAvail.y : 1.0f;
-                    if (!TryGetGameCamera(view, proj, aspect)) {
-                        const char* noCameraText = "No Camera";
-                        const char* helperText = "Add a Camera object or Camera component to render Game view.";
-                        const ImVec2 noCameraSize = ImGui::CalcTextSize(noCameraText);
-                        const ImVec2 helperSize = ImGui::CalcTextSize(helperText);
-                        const float centerX = (contentMin.x + contentMax.x) * 0.5f;
-                        const float centerY = (contentMin.y + contentMax.y) * 0.5f;
-                        drawList->AddText(ImVec2(centerX - noCameraSize.x * 0.5f, centerY - 16.0f), IM_COL32(255, 200, 96, 255), noCameraText);
-                        drawList->AddText(ImVec2(centerX - helperSize.x * 0.5f, centerY + 8.0f), IM_COL32(180, 180, 180, 255), helperText);
-                    }
-                    ImGui::EndTabItem();
-                }
-                ImGui::EndTabBar();
+            if ((ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)) && outHovered) {
+                activeViewport_ = viewportType;
             }
         }
+        ImGui::EndChild();
+    };
 
-        const ImVec2 mousePos = ImGui::GetIO().MousePos;
-        sceneViewportHovered_ = ContainsSceneViewportPoint(mousePos.x, mousePos.y);
-        gameViewportHovered_ = ContainsGameViewportPoint(mousePos.x, mousePos.y);
-        sceneViewportFocused_ = sceneViewportHovered_ && (ImGui::IsMouseDown(ImGuiMouseButton_Left) || ImGui::IsMouseDown(ImGuiMouseButton_Right));
-        gameViewportFocused_ = gameViewportHovered_ && (ImGui::IsMouseDown(ImGuiMouseButton_Left) || ImGui::IsMouseDown(ImGuiMouseButton_Right));
-        viewportHovered_ = sceneViewportHovered_ || gameViewportHovered_;
-        viewportFocused_ = sceneViewportFocused_ || gameViewportFocused_;
+    bool sceneWindowOpen = ImGui::Begin("Scene View", nullptr, viewportWindowFlags);
+    if (sceneWindowOpen) {
+        renderViewportSurface("SceneViewportSurface", SceneEditorActiveViewport::Scene, sceneViewportTextureId_, sceneViewportPos_, sceneViewportSize_, sceneViewportHovered_);
     } else {
-        viewportPanelSize_ = glm::vec2(0.0f);
         sceneViewportSize_ = glm::vec2(0.0f);
+    }
+    ImGui::End();
+
+    bool gameWindowOpen = ImGui::Begin("Game View", nullptr, viewportWindowFlags);
+    if (gameWindowOpen) {
+        renderViewportSurface("GameViewportSurface", SceneEditorActiveViewport::Game, gameViewportTextureId_, gameViewportPos_, gameViewportSize_, gameViewportHovered_);
+    } else {
         gameViewportSize_ = glm::vec2(0.0f);
     }
     ImGui::End();
+
+    const bool hasSceneViewport = sceneViewportSize_.x > 1.0f && sceneViewportSize_.y > 1.0f;
+    const bool hasGameViewport = gameViewportSize_.x > 1.0f && gameViewportSize_.y > 1.0f;
+    if (hasSceneViewport && hasGameViewport) {
+        viewportPanelPos_ = glm::vec2(
+            (std::min)(sceneViewportPos_.x, gameViewportPos_.x),
+            (std::min)(sceneViewportPos_.y, gameViewportPos_.y));
+        viewportPanelSize_ = glm::vec2(
+            (std::max)(sceneViewportPos_.x + sceneViewportSize_.x, gameViewportPos_.x + gameViewportSize_.x) - viewportPanelPos_.x,
+            (std::max)(sceneViewportPos_.y + sceneViewportSize_.y, gameViewportPos_.y + gameViewportSize_.y) - viewportPanelPos_.y);
+    } else if (hasSceneViewport) {
+        viewportPanelPos_ = sceneViewportPos_;
+        viewportPanelSize_ = sceneViewportSize_;
+    } else if (hasGameViewport) {
+        viewportPanelPos_ = gameViewportPos_;
+        viewportPanelSize_ = gameViewportSize_;
+    } else {
+        viewportPanelPos_ = glm::vec2(0.0f);
+        viewportPanelSize_ = glm::vec2(0.0f);
+        activeViewport_ = SceneEditorActiveViewport::None;
+    }
+
+    viewportHovered_ = sceneViewportHovered_ || gameViewportHovered_;
+    sceneViewportFocused_ = activeViewport_ == SceneEditorActiveViewport::Scene;
+    gameViewportFocused_ = activeViewport_ == SceneEditorActiveViewport::Game;
+    viewportFocused_ = sceneViewportFocused_ || gameViewportFocused_;
     ImGui::PopStyleColor();
+}
+
+void SceneEditor::RenderDockspaceHost() {
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(viewport->WorkSize, ImGuiCond_Always);
+    ImGui::SetNextWindowViewport(viewport->ID);
+
+    const ImGuiWindowFlags hostFlags = ImGuiWindowFlags_NoDocking
+        | ImGuiWindowFlags_NoTitleBar
+        | ImGuiWindowFlags_NoCollapse
+        | ImGuiWindowFlags_NoResize
+        | ImGuiWindowFlags_NoMove
+        | ImGuiWindowFlags_NoBringToFrontOnFocus
+        | ImGuiWindowFlags_NoNavFocus
+        | ImGuiWindowFlags_NoBackground;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    if (ImGui::Begin("EditorDockspaceHost", nullptr, hostFlags)) {
+        const ImGuiID dockspaceId = ImGui::GetID("EditorDockspace");
+        ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+
+        if (!dockLayoutInitialized_) {
+            dockLayoutInitialized_ = true;
+            const char* dockedWindows[] = {"Scene", "Inspector", "Browser", "Scene View", "Game View"};
+            bool hasSavedDockLayout = false;
+            for (const char* windowName : dockedWindows) {
+                if (ImGuiWindowSettings* settings = ImGui::FindWindowSettingsByID(ImHashStr(windowName))) {
+                    if (settings->DockId != 0) {
+                        hasSavedDockLayout = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasSavedDockLayout) {
+                ImGui::DockBuilderRemoveNode(dockspaceId);
+                ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+                ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
+
+                ImGuiID centerId = dockspaceId;
+                ImGuiID leftId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Left, 0.18f, nullptr, &centerId);
+                ImGuiID rightId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Right, 0.2682927f, nullptr, &centerId);
+                ImGuiID bottomId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Down, 0.28f, nullptr, &centerId);
+                ImGuiID gameViewId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Right, 0.5f, nullptr, &centerId);
+
+                ImGui::DockBuilderDockWindow("Scene", leftId);
+                ImGui::DockBuilderDockWindow("Inspector", rightId);
+                ImGui::DockBuilderDockWindow("Browser", bottomId);
+                ImGui::DockBuilderDockWindow("Scene View", centerId);
+                ImGui::DockBuilderDockWindow("Game View", gameViewId);
+                ImGui::DockBuilderFinish(dockspaceId);
+            }
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleVar(3);
 }
 
 void SceneEditor::HandleEditorShortcuts() {
@@ -1040,6 +981,20 @@ void SceneEditor::UpdatePhysics(float deltaTime) {
         }
     }
 
+    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
+        const SceneObject& object = objects_[objectIndex];
+        if (!object.hasCharacterController || !object.characterController.enabled || !physicsWorld_->HasCharacter(object.id)) {
+            continue;
+        }
+
+        const Transform worldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
+        physicsWorld_->SetCharacterTransform(object.id, worldTransform.position, worldTransform.rotationEuler);
+        physicsWorld_->SetCharacterDesiredVelocity(object.id, object.characterController.moveInput);
+        if (object.characterController.pendingJumpImpulse > 0.0f) {
+            physicsWorld_->AddCharacterJumpImpulse(object.id, object.characterController.pendingJumpImpulse);
+        }
+    }
+
     physicsWorld_->Step(deltaTime);
 
     for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
@@ -1070,12 +1025,52 @@ void SceneEditor::UpdatePhysics(float deltaTime) {
         }
         object.transform.scale = previousLocal.scale;
     }
+
+    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
+        SceneObject& object = objects_[objectIndex];
+        if (!object.hasCharacterController || !physicsWorld_->HasCharacter(object.id)) {
+            continue;
+        }
+
+        PhysicsCharacterState state;
+        if (!physicsWorld_->GetCharacterState(object.id, state)) {
+            continue;
+        }
+
+        object.characterController.velocity = state.velocity;
+        object.characterController.groundVelocity = state.groundVelocity;
+        object.characterController.grounded = state.grounded;
+        object.characterController.pendingJumpImpulse = 0.0f;
+
+        const Transform previousLocal = object.transform;
+        Transform worldTransform;
+        worldTransform.position = state.position;
+        worldTransform.rotationEuler = state.rotationEuler;
+        worldTransform.scale = glm::vec3(1.0f);
+
+        glm::mat4 worldMatrix = BuildTransformMatrix(worldTransform);
+        worldMatrix = glm::scale(worldMatrix, previousLocal.scale);
+        const int parentIndex = FindObjectIndexById(object.parentId);
+        if (parentIndex >= 0 && parentIndex != objectIndex) {
+            object.transform = TransformFromMatrix(glm::inverse(GetObjectWorldMatrix(parentIndex)) * worldMatrix);
+        } else {
+            object.transform = TransformFromMatrix(worldMatrix);
+        }
+        object.transform.scale = previousLocal.scale;
+    }
 }
 
 void SceneEditor::ResetPhysicsVelocities() {
     for (SceneObject& object : objects_) {
         if (object.hasRigidbody) {
             object.rigidbody.velocity = {0.0f, 0.0f, 0.0f};
+        }
+        if (object.hasCharacterController) {
+            object.characterController.velocity = {0.0f, 0.0f, 0.0f};
+            object.characterController.groundVelocity = {0.0f, 0.0f, 0.0f};
+            object.characterController.moveInput = {0.0f, 0.0f, 0.0f};
+            object.characterController.pendingJumpImpulse = 0.0f;
+            object.characterController.grounded = false;
         }
     }
 }
@@ -1089,19 +1084,35 @@ void SceneEditor::SetScriptsRunning(bool running) {
         SaveCurrentScene();
         playModeSnapshot_ = {objects_, selectedIndex_, selectedIndices_};
         hasPlayModeSnapshot_ = true;
-        viewportMode_ = SceneEditorViewportMode::Game;
+        activeViewport_ = SceneEditorActiveViewport::Game;
         scriptsRunning_ = true;
         scriptsPaused_ = false;
         std::vector<PhysicsBodyDesc> physicsBodies;
+        std::vector<PhysicsCharacterDesc> physicsCharacters;
         for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
             const SceneObject& object = objects_[objectIndex];
             if (!IsObjectEffectivelyEnabled(objectIndex)) {
                 continue;
             }
 
+            const Transform worldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
+            if (object.hasCharacterController && object.characterController.enabled) {
+                PhysicsCharacterDesc character;
+                character.objectId = object.id;
+                character.position = worldTransform.position;
+                character.rotationEuler = worldTransform.rotationEuler;
+                character.height = object.characterController.height;
+                character.radius = object.characterController.radius;
+                character.stepHeight = object.characterController.stepHeight;
+                character.slopeLimitDegrees = object.characterController.slopeLimitDegrees;
+                character.maxStrength = object.characterController.maxStrength;
+                character.mass = object.characterController.mass;
+                physicsCharacters.push_back(std::move(character));
+                continue;
+            }
+
             PhysicsBodyDesc body;
             body.objectId = object.id;
-            const Transform worldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
             body.position = worldTransform.position;
             body.rotationEuler = worldTransform.rotationEuler;
             body.scale = worldTransform.scale;
@@ -1137,12 +1148,22 @@ void SceneEditor::SetScriptsRunning(bool running) {
                 collider.height = object.capsuleCollider.height;
                 body.colliders.push_back(collider);
             }
+            if (object.hasPlaneCollider && object.planeCollider.enabled) {
+                PhysicsColliderDesc collider;
+                collider.type = PhysicsColliderType::Plane;
+                collider.isTrigger = object.planeCollider.isTrigger;
+                collider.normal = object.planeCollider.normal;
+                collider.offset = object.planeCollider.offset;
+                collider.infinite = object.planeCollider.infinite;
+                collider.halfExtent = object.planeCollider.halfExtent;
+                body.colliders.push_back(collider);
+            }
             if (!body.colliders.empty()) {
                 physicsBodies.push_back(std::move(body));
             }
         }
         physicsWorld_ = std::make_unique<PhysicsWorld>();
-        physicsWorld_->Build(physicsBodies);
+        physicsWorld_->Build(physicsBodies, physicsCharacters);
         RebuildScriptRuntime();
         if (console_) {
             console_->AddLog("Play mode started.");
@@ -1165,7 +1186,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
         } else {
             ResetPhysicsVelocities();
         }
-        viewportMode_ = SceneEditorViewportMode::Scene;
+        activeViewport_ = SceneEditorActiveViewport::Scene;
         activeGizmoAxis_ = -1;
         hoveredGizmoAxis_ = -1;
         if (console_) {
@@ -1181,7 +1202,7 @@ void SceneEditor::SetScriptsPaused(bool paused) {
 
     scriptsPaused_ = paused;
     if (!scriptsPaused_) {
-        viewportMode_ = SceneEditorViewportMode::Game;
+        activeViewport_ = SceneEditorActiveViewport::Game;
     }
     if (console_) {
         console_->AddLog(scriptsPaused_ ? "Play mode paused." : "Play mode resumed.");
@@ -1273,17 +1294,27 @@ void SceneEditor::HandleConsoleCommand(const std::string& command) {
 
 
 void SceneEditor::AddPlane() {
-    const int previousCount = static_cast<int>(objects_.size());
-    ImportObj(kPlaneObjAssetPath);
-    if (static_cast<int>(objects_.size()) > previousCount && selectedIndex_ >= previousCount && selectedIndex_ < static_cast<int>(objects_.size())) {
-        SceneObject& object = objects_[selectedIndex_];
+    try {
+        PushUndoState();
+        SceneObject object;
+        object.id = MakeId("mesh");
         object.name = "Plane";
         object.type = "Mesh";
-        object.meshFilter.meshType = "Mesh";
         object.transform.scale = {10.0f, 1.0f, 10.0f};
-        AddDefaultBoxColliderToPlane(object);
+        object.meshRenderer.materialId = "pbr_default";
+        if (!LoadBuiltInPlaneMesh(object)) {
+            throw std::runtime_error("plane mesh");
+        }
+        AddDefaultPlaneColliderToPlane(object);
+        objects_.push_back(std::move(object));
+        Select(static_cast<int>(objects_.size()) - 1);
+        if (onDirty_) onDirty_();
         if (console_) {
-            console_->AddLog(std::string("Added Plane: ") + object.id + " (" + object.name + ")");
+            console_->AddLog(std::string("Added Plane: ") + objects_.back().id + " (" + objects_.back().name + ")");
+        }
+    } catch (...) {
+        if (console_) {
+            console_->AddWarning("Failed to add Plane object.");
         }
     }
 }
@@ -1692,7 +1723,7 @@ void SceneEditor::RequestFocusSelectedObject() {
         radius = (std::max)(0.5f, glm::length(object.transform.scale));
     }
 
-    viewportMode_ = SceneEditorViewportMode::Scene;
+    activeViewport_ = SceneEditorActiveViewport::Scene;
     onFocusObject_(center, (std::max)(0.5f, radius));
 }
 
@@ -1843,6 +1874,19 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"velocity\": [" << o.rigidbody.velocity.x << ", " << o.rigidbody.velocity.y << ", " << o.rigidbody.velocity.z << "]\n";
             out << "        }";
         }
+        if (o.hasCharacterController) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"CharacterController\",\n";
+            out << "          \"enabled\": " << (o.characterController.enabled ? "true" : "false") << ",\n";
+            out << "          \"height\": " << o.characterController.height << ",\n";
+            out << "          \"radius\": " << o.characterController.radius << ",\n";
+            out << "          \"stepHeight\": " << o.characterController.stepHeight << ",\n";
+            out << "          \"slopeLimitDegrees\": " << o.characterController.slopeLimitDegrees << ",\n";
+            out << "          \"maxStrength\": " << o.characterController.maxStrength << ",\n";
+            out << "          \"mass\": " << o.characterController.mass << "\n";
+            out << "        }";
+        }
         if (o.hasBoxCollider) {
             out << ",\n";
             out << "        {\n";
@@ -1872,6 +1916,18 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"center\": [" << o.capsuleCollider.center.x << ", " << o.capsuleCollider.center.y << ", " << o.capsuleCollider.center.z << "],\n";
             out << "          \"radius\": " << o.capsuleCollider.radius << ",\n";
             out << "          \"height\": " << o.capsuleCollider.height << "\n";
+            out << "        }";
+        }
+        if (o.hasPlaneCollider) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"PlaneCollider\",\n";
+            out << "          \"enabled\": " << (o.planeCollider.enabled ? "true" : "false") << ",\n";
+            out << "          \"isTrigger\": " << (o.planeCollider.isTrigger ? "true" : "false") << ",\n";
+            out << "          \"normal\": [" << o.planeCollider.normal.x << ", " << o.planeCollider.normal.y << ", " << o.planeCollider.normal.z << "],\n";
+            out << "          \"offset\": " << o.planeCollider.offset << ",\n";
+            out << "          \"infinite\": " << (o.planeCollider.infinite ? "true" : "false") << ",\n";
+            out << "          \"halfExtent\": " << o.planeCollider.halfExtent << "\n";
             out << "        }";
         }
         if (o.hasCamera) {
@@ -2075,9 +2131,11 @@ void SceneEditor::Load(const std::string& path) {
                 so.hasMeshRenderer = false;
                 so.hasScriptComponent = false;
                 so.hasRigidbody = false;
+                so.hasCharacterController = false;
                 so.hasBoxCollider = false;
                 so.hasSphereCollider = false;
                 so.hasCapsuleCollider = false;
+                so.hasPlaneCollider = false;
                 so.hasCamera = false;
                 so.hasLight = false;
 
@@ -2155,6 +2213,35 @@ void SceneEditor::Load(const std::string& path) {
 
                         ReadBool(component, "useGravity", so.rigidbody.useGravity);
                         ReadVec3(component, "velocity", so.rigidbody.velocity);
+                    } else if (componentType == "CharacterController") {
+                        so.hasCharacterController = true;
+                        ReadBool(component, "enabled", so.characterController.enabled);
+
+                        auto heightIt = component.find("height");
+                        if (heightIt != component.end() && heightIt->second.is_number()) {
+                            so.characterController.height = (std::max)(0.001f, static_cast<float>(heightIt->second.as_number()));
+                        }
+                        auto radiusIt = component.find("radius");
+                        if (radiusIt != component.end() && radiusIt->second.is_number()) {
+                            so.characterController.radius = (std::max)(0.001f, static_cast<float>(radiusIt->second.as_number()));
+                        }
+                        so.characterController.height = (std::max)(so.characterController.radius * 2.0f, so.characterController.height);
+                        auto stepHeightIt = component.find("stepHeight");
+                        if (stepHeightIt != component.end() && stepHeightIt->second.is_number()) {
+                            so.characterController.stepHeight = (std::max)(0.0f, static_cast<float>(stepHeightIt->second.as_number()));
+                        }
+                        auto slopeLimitIt = component.find("slopeLimitDegrees");
+                        if (slopeLimitIt != component.end() && slopeLimitIt->second.is_number()) {
+                            so.characterController.slopeLimitDegrees = (std::max)(1.0f, (std::min)(89.0f, static_cast<float>(slopeLimitIt->second.as_number())));
+                        }
+                        auto maxStrengthIt = component.find("maxStrength");
+                        if (maxStrengthIt != component.end() && maxStrengthIt->second.is_number()) {
+                            so.characterController.maxStrength = (std::max)(0.0f, static_cast<float>(maxStrengthIt->second.as_number()));
+                        }
+                        auto massIt = component.find("mass");
+                        if (massIt != component.end() && massIt->second.is_number()) {
+                            so.characterController.mass = (std::max)(0.001f, static_cast<float>(massIt->second.as_number()));
+                        }
                     } else if (componentType == "BoxCollider") {
                         so.hasBoxCollider = true;
                         ReadBool(component, "enabled", so.boxCollider.enabled);
@@ -2189,6 +2276,25 @@ void SceneEditor::Load(const std::string& path) {
                         auto heightIt = component.find("height");
                         if (heightIt != component.end() && heightIt->second.is_number()) {
                             so.capsuleCollider.height = (std::max)(so.capsuleCollider.radius * 2.0f, static_cast<float>(heightIt->second.as_number()));
+                        }
+                    } else if (componentType == "PlaneCollider") {
+                        so.hasPlaneCollider = true;
+                        ReadBool(component, "enabled", so.planeCollider.enabled);
+                        ReadBool(component, "isTrigger", so.planeCollider.isTrigger);
+                        ReadVec3(component, "normal", so.planeCollider.normal);
+                        if (glm::length2(so.planeCollider.normal) <= 0.000001f) {
+                            so.planeCollider.normal = {0.0f, 1.0f, 0.0f};
+                        } else {
+                            so.planeCollider.normal = glm::normalize(so.planeCollider.normal);
+                        }
+                        auto offsetIt = component.find("offset");
+                        if (offsetIt != component.end() && offsetIt->second.is_number()) {
+                            so.planeCollider.offset = static_cast<float>(offsetIt->second.as_number());
+                        }
+                        ReadBool(component, "infinite", so.planeCollider.infinite);
+                        auto halfExtentIt = component.find("halfExtent");
+                        if (halfExtentIt != component.end() && halfExtentIt->second.is_number()) {
+                            so.planeCollider.halfExtent = (std::max)(0.001f, static_cast<float>(halfExtentIt->second.as_number()));
                         }
                     } else if (componentType == "Camera") {
                         so.hasCamera = true;
@@ -2240,6 +2346,11 @@ void SceneEditor::Load(const std::string& path) {
                 so.type = so.meshFilter.meshType;
             }
 
+            if (so.hasCharacterController && so.hasRigidbody) {
+                so.hasRigidbody = false;
+                so.rigidbody = RigidbodyComponent{};
+            }
+
             // attach render info for known types
             const std::string meshType = so.meshFilter.meshType.empty() ? so.type : so.meshFilter.meshType;
             if (so.hasMeshFilter && meshType == "Plane") {
@@ -2256,15 +2367,21 @@ void SceneEditor::Load(const std::string& path) {
             }
             else if (so.hasMeshFilter && meshType == "Mesh" && !so.meshFilter.sourcePath.empty()) {
                 try {
-                    auto model = raceman::LoadModelFromFile(ProjectAssetPathToAbsolute(so.meshFilter.sourcePath).string());
-                    const auto infos = raceman::GetMeshInfos(model);
-                    if (so.meshFilter.meshIndex >= 0 && so.meshFilter.meshIndex < static_cast<int>(infos.size())) {
-                        so.type = "Mesh";
-                        so.meshFilter.meshType = "Mesh";
-                        ApplyMeshInfoToSceneObject(so, infos[static_cast<std::size_t>(so.meshFilter.meshIndex)], model);
+                    if (ShouldFallbackToBuiltInPlane(so)) {
+                        LoadBuiltInPlaneMesh(so);
+                    } else {
+                        auto model = raceman::LoadModelFromFile(ProjectAssetPathToAbsolute(so.meshFilter.sourcePath).string());
+                        const auto infos = raceman::GetMeshInfos(model);
+                        if (so.meshFilter.meshIndex >= 0 && so.meshFilter.meshIndex < static_cast<int>(infos.size())) {
+                            so.type = "Mesh";
+                            so.meshFilter.meshType = "Mesh";
+                            ApplyMeshInfoToSceneObject(so, infos[static_cast<std::size_t>(so.meshFilter.meshIndex)], model);
+                        }
                     }
                 } catch (...) {
-                    if (console_) {
+                    if (ShouldFallbackToBuiltInPlane(so) && LoadBuiltInPlaneMesh(so)) {
+                        AddDefaultPlaneColliderToPlane(so);
+                    } else if (console_) {
                         console_->AddLog("Failed to reload mesh source: " + so.meshFilter.sourcePath);
                     }
                 }
@@ -2298,7 +2415,7 @@ void SceneEditor::LoadProject() {
     defaultScenePath_ = "assets/scenes/EditorScene.scene.json";
     lastScenePath_ = defaultScenePath_;
     selectedProjectDirectory_ = "assets";
-    viewportMode_ = SceneEditorViewportMode::Scene;
+    activeViewport_ = SceneEditorActiveViewport::Scene;
 
     const fs::path assetsRoot = FindAssetsRoot();
     const fs::path scenesRoot = assetsRoot / "scenes";
@@ -2324,10 +2441,6 @@ void SceneEditor::LoadProject() {
                 if (editorIt != object.end() && editorIt->second.is_object()) {
                     const auto& editorState = editorIt->second.as_object();
                     ReadString(editorState, "selectedProjectDirectory", selectedProjectDirectory_);
-                    std::string viewportModeValue;
-                    if (ReadString(editorState, "viewportMode", viewportModeValue)) {
-                        viewportMode_ = ViewportModeFromString(viewportModeValue);
-                    }
                 }
             }
         } catch (...) {
@@ -2396,8 +2509,7 @@ void SceneEditor::SaveProject() {
         out << "  \"defaultScene\": \"" << JsonEscape(NormalizeSlashes(defaultScenePath_)) << "\",\n";
         out << "  \"lastScene\": \"" << JsonEscape(NormalizeSlashes(lastScenePath_)) << "\",\n";
         out << "  \"editorState\": {\n";
-        out << "    \"selectedProjectDirectory\": \"" << JsonEscape(NormalizeSlashes(selectedProjectDirectory_)) << "\",\n";
-        out << "    \"viewportMode\": \"" << ViewportModeToString(viewportMode_) << "\"\n";
+        out << "    \"selectedProjectDirectory\": \"" << JsonEscape(NormalizeSlashes(selectedProjectDirectory_)) << "\"\n";
         out << "  }\n";
         out << "}\n";
         if (console_) {
@@ -2416,20 +2528,14 @@ void SceneEditor::NewScene() {
 
 void SceneEditor::CreateDefaultSceneObjects() {
     try {
-        auto model = raceman::LoadModelFromFile(ProjectAssetPathToAbsolute(kPlaneObjAssetPath).string());
-        const auto infos = raceman::GetMeshInfos(model);
-        if (!infos.empty()) {
-            SceneObject planeObject;
-            planeObject.id = MakeId("mesh");
-            planeObject.name = "Plane";
-            planeObject.type = "Mesh";
-            planeObject.transform.scale = {10.0f, 1.0f, 10.0f};
-            planeObject.hasMeshRenderer = true;
-            planeObject.meshRenderer.color = {1.0f, 1.0f, 1.0f, 1.0f};
-            planeObject.meshRenderer.materialId = "pbr_default";
-            planeObject.meshFilter.sourcePath = kPlaneObjAssetPath;
-            ApplyMeshInfoToSceneObject(planeObject, infos.front(), model);
-            AddDefaultBoxColliderToPlane(planeObject);
+        SceneObject planeObject;
+        planeObject.id = MakeId("mesh");
+        planeObject.name = "Plane";
+        planeObject.type = "Mesh";
+        planeObject.transform.scale = {10.0f, 1.0f, 10.0f};
+        planeObject.meshRenderer.materialId = "pbr_default";
+        if (LoadBuiltInPlaneMesh(planeObject)) {
+            AddDefaultPlaneColliderToPlane(planeObject);
             objects_.push_back(std::move(planeObject));
         }
     } catch (...) {
@@ -2490,7 +2596,7 @@ void SceneEditor::NewScene(const std::string& sceneName) {
     CreateDefaultSceneObjects();
     savePath_ = MakeUniqueSceneAssetPath(sceneName.empty() ? "Untitled" : sceneName);
     lastScenePath_ = savePath_;
-    viewportMode_ = SceneEditorViewportMode::Scene;
+    activeViewport_ = SceneEditorActiveViewport::Scene;
     SaveProject();
     RefreshProjectFiles();
     if (console_) {
