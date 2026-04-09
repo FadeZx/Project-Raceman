@@ -3,8 +3,8 @@
   "projectName": "Project Raceman",
   "assetsRoot": "assets",
   "defaultScene": "assets/scenes/EditorScene.scene.json",
-  "lastScene": "assets/scenes/TestScene.scene.json",
+  "lastScene": "assets/scenes/Test2.scene.json",
   "editorState": {
-    "selectedProjectDirectory": "assets/hdr"
+    "selectedProjectDirectory": "assets/mesh"
   }
 }

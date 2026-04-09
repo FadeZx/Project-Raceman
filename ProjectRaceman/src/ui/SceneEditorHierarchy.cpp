@@ -1,13 +1,79 @@
 #include "SceneEditorInternal.h"
 #include "../physics/SimpleJson.h"
 
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
+#include <glm/gtx/matrix_decompose.hpp>
+#include <unordered_set>
+
 namespace fs = std::filesystem;
 
 namespace raceman {
 using namespace scene_editor_internal;
 
+namespace {
+
+Transform TransformFromMatrixLocal(const glm::mat4& matrix) {
+    Transform transform;
+    glm::vec3 skew;
+    glm::vec4 perspective;
+    glm::quat orientation;
+    if (glm::decompose(matrix, transform.scale, orientation, transform.position, skew, perspective)) {
+        transform.rotationEuler = glm::degrees(glm::eulerAngles(orientation));
+    }
+    return transform;
+}
+
+} // namespace
+
 void SceneEditor::RenderScenePanel() {
     if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse)) {
+        auto sanitizeHierarchyCycles = [&]() {
+            bool changed = false;
+            bool warned = false;
+            for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                if (objects_[i].parentId.empty()) {
+                    continue;
+                }
+
+                std::unordered_set<std::string> ancestry;
+                ancestry.insert(objects_[i].id);
+                std::string currentParentId = objects_[i].parentId;
+                while (!currentParentId.empty()) {
+                    if (!ancestry.insert(currentParentId).second) {
+                        objects_[i].parentId.clear();
+                        changed = true;
+                        warned = true;
+                        break;
+                    }
+
+                    const int parentIndex = FindObjectIndexById(currentParentId);
+                    if (parentIndex < 0 || parentIndex >= static_cast<int>(objects_.size())) {
+                        break;
+                    }
+                    currentParentId = objects_[parentIndex].parentId;
+                }
+            }
+
+            if (changed && onDirty_) {
+                onDirty_();
+            }
+            if (warned && console_) {
+                console_->AddWarning("Detected and removed an invalid hierarchy cycle.");
+            }
+        };
+        sanitizeHierarchyCycles();
+
+        auto getObjStartDirectory = [&]() {
+            std::string directory = selectedProjectDirectory_.empty() ? std::string("assets") : NormalizeSlashes(selectedProjectDirectory_);
+            const fs::path absoluteDirectory = ProjectAssetPathToAbsolute(directory);
+            if (fs::exists(absoluteDirectory) && fs::is_directory(absoluteDirectory)) {
+                return absoluteDirectory.string();
+            }
+            return ProjectAssetPathToAbsolute("assets").string();
+        };
+
         // Add button with dropdown (Scene panel)
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("Add")) {
@@ -39,14 +105,14 @@ void SceneEditor::RenderScenePanel() {
                     if (ImGui::MenuItem(".obj")) {
 #if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
                         // Use native Windows file dialog
-                        std::string selected = OpenObjFileDialogWin32();
+                        std::string selected = OpenObjFileDialogWin32(getObjStartDirectory());
                         if (!selected.empty()) {
                             ImportObj(selected);
                         }
 #else
                         // Fallback: existing ImGui-based directory scanner
-                        importPath_[0] = '\0';
-                        objScanDir_ = "assets/mesh";
+                        objScanDir_ = NormalizeSlashes(selectedProjectDirectory_.empty() ? std::string("assets") : selectedProjectDirectory_);
+                        std::snprintf(importPath_, sizeof(importPath_), "%s", objScanDir_.c_str());
                         ScanObjDir(objScanDir_);
                         objSelectIndex_ = objFiles_.empty() ? -1 : 0;
                         showImportObjPopup_ = true;
@@ -128,11 +194,19 @@ void SceneEditor::RenderScenePanel() {
 
         constexpr const char* kHierarchyObjectPayload = "SCENE_HIERARCHY_OBJECT_INDEX";
         ImGui::TextDisabled("Drag an object onto another object to parent it.");
+        bool hierarchyChanged = false;
         if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
+                const char* projectObjPath = static_cast<const char*>(payload->Data);
+                if (projectObjPath != nullptr && projectObjPath[0] != '\0') {
+                    ImportObj(projectObjPath);
+                }
+            }
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
                 if (payload->DataSize == sizeof(int)) {
                     int childIndex = *static_cast<const int*>(payload->Data);
                     SetParent(childIndex, -1);
+                    hierarchyChanged = true;
                 }
             }
             ImGui::EndDragDropTarget();
@@ -140,8 +214,15 @@ void SceneEditor::RenderScenePanel() {
 
         if (ImGui::BeginChild("SceneHierarchyTree", ImVec2(0.0f, 0.0f), false)) {
             bool hierarchyDeleted = false;
-            std::function<void(int)> renderObjectRow = [&](int i) {
-                if (hierarchyDeleted) {
+            std::function<void(int, std::unordered_set<std::string>&)> renderObjectRow = [&](int i, std::unordered_set<std::string>& renderPath) {
+                if (hierarchyDeleted || hierarchyChanged) {
+                    return;
+                }
+                const std::string objectId = objects_[i].id;
+                if (!renderPath.insert(objectId).second) {
+                    if (console_) {
+                        console_->AddWarning("Skipped rendering an invalid recursive hierarchy branch.");
+                    }
                     return;
                 }
                 const bool selected = IsSelected(i);
@@ -207,6 +288,7 @@ void SceneEditor::RenderScenePanel() {
                             if (payload->DataSize == sizeof(int)) {
                                 int childIndex = *static_cast<const int*>(payload->Data);
                                 SetParent(childIndex, i);
+                                hierarchyChanged = true;
                             }
                         }
                         ImGui::EndDragDropTarget();
@@ -217,37 +299,50 @@ void SceneEditor::RenderScenePanel() {
                     if (selected && ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::GetIO().WantTextInput) {
                         DeleteSelectedObject();
                         hierarchyDeleted = true;
+                        renderPath.erase(objectId);
                         ImGui::PopID();
                         return;
                     }
-                    if (open && !children.empty()) {
+                    if (open && !children.empty() && !hierarchyChanged) {
                         for (int childIndex : children) {
-                            renderObjectRow(childIndex);
+                            renderObjectRow(childIndex, renderPath);
+                            if (hierarchyChanged) {
+                                break;
+                            }
                         }
                         ImGui::TreePop();
                     }
                 }
                 ImGui::PopID();
+                renderPath.erase(objectId);
             };
 
             for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
-                if (hierarchyDeleted) {
+                if (hierarchyDeleted || hierarchyChanged) {
                     break;
                 }
                 if (!objects_[i].parentId.empty() && FindObjectIndexById(objects_[i].parentId) >= 0) {
                     continue;
                 }
-                renderObjectRow(i);
+                std::unordered_set<std::string> renderPath;
+                renderObjectRow(i, renderPath);
             }
 
             const ImVec2 emptySpace = ImGui::GetContentRegionAvail();
             if (emptySpace.y > 0.0f) {
                 ImGui::InvisibleButton("##HierarchyEmptyDropTarget", ImVec2((std::max)(1.0f, emptySpace.x), emptySpace.y));
                 if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
+                        const char* projectObjPath = static_cast<const char*>(payload->Data);
+                        if (projectObjPath != nullptr && projectObjPath[0] != '\0') {
+                            ImportObj(projectObjPath);
+                        }
+                    }
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
                         if (payload->DataSize == sizeof(int)) {
                             int childIndex = *static_cast<const int*>(payload->Data);
                             SetParent(childIndex, -1);
+                            hierarchyChanged = true;
                         }
                     }
                     ImGui::EndDragDropTarget();
@@ -275,18 +370,9 @@ void SceneEditor::DeleteSelectedObject() {
         }
     }
     std::vector<int> indices;
-    for (int index = 0; index < static_cast<int>(objects_.size()); ++index) {
-        const std::string& id = objects_[index].id;
-        bool shouldDelete = std::find(deleteIds.begin(), deleteIds.end(), id) != deleteIds.end();
-        if (!shouldDelete) {
-            for (const std::string& deleteId : deleteIds) {
-                if (IsDescendantOf(id, deleteId)) {
-                    shouldDelete = true;
-                    break;
-                }
-            }
-        }
-        if (shouldDelete) {
+    indices.reserve(deleteIds.size());
+    for (int index : selectedIndices_) {
+        if (index >= 0 && index < static_cast<int>(objects_.size())) {
             indices.push_back(index);
         }
     }
@@ -294,6 +380,31 @@ void SceneEditor::DeleteSelectedObject() {
     if (indices.empty()) {
         return;
     }
+
+    for (int deleteIndex : indices) {
+        if (deleteIndex < 0 || deleteIndex >= static_cast<int>(objects_.size())) {
+            continue;
+        }
+        const SceneObject& deletingObject = objects_[deleteIndex];
+        const std::string parentId = deletingObject.parentId;
+        const int parentIndex = FindObjectIndexById(parentId);
+        const glm::mat4 parentWorld = parentIndex >= 0 ? GetObjectWorldMatrix(parentIndex) : glm::mat4(1.0f);
+
+        for (int childIndex = 0; childIndex < static_cast<int>(objects_.size()); ++childIndex) {
+            if (childIndex == deleteIndex || objects_[childIndex].parentId != deletingObject.id) {
+                continue;
+            }
+
+            const glm::mat4 childWorld = GetObjectWorldMatrix(childIndex);
+            objects_[childIndex].parentId = parentId;
+            if (parentIndex >= 0) {
+                objects_[childIndex].transform = TransformFromMatrixLocal(glm::inverse(parentWorld) * childWorld);
+            } else {
+                objects_[childIndex].transform = TransformFromMatrixLocal(childWorld);
+            }
+        }
+    }
+
     for (int index : indices) {
         if (index >= 0 && index < static_cast<int>(objects_.size())) {
             objects_.erase(objects_.begin() + index);

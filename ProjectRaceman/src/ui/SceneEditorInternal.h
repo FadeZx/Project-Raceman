@@ -34,7 +34,7 @@ namespace raceman::scene_editor_internal {
 
 namespace fs = std::filesystem;
 
-inline std::string OpenObjFileDialogWin32() {
+inline std::string OpenObjFileDialogWin32(const std::string& initialDirectory = {}) {
 #if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
     char fileBuffer[MAX_PATH] = {0};
     OPENFILENAMEA ofn{};
@@ -44,6 +44,7 @@ inline std::string OpenObjFileDialogWin32() {
     ofn.nMaxFile = MAX_PATH;
     ofn.lpstrFilter = "Wavefront OBJ (*.obj)\0*.obj\0All Files (*.*)\0*.*\0";
     ofn.nFilterIndex = 1;
+    ofn.lpstrInitialDir = initialDirectory.empty() ? nullptr : initialDirectory.c_str();
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
     if (GetOpenFileNameA(&ofn) == TRUE) {
         return std::string(fileBuffer);
@@ -139,6 +140,22 @@ inline fs::path FindAssetsRoot() {
 
 inline fs::path EditorAssetPathToAbsolute(const std::string& relativePath) {
     return (FindEngineRoot() / "editor-assets" / fs::path(NormalizeSlashes(relativePath))).lexically_normal();
+}
+
+inline bool IsEditorAssetPath(const std::string& path) {
+    const std::string normalized = ToLowerCopy(NormalizeSlashes(path));
+    return normalized == "editor-assets" || normalized.rfind("editor-assets/", 0) == 0;
+}
+
+inline fs::path EngineAssetPathToAbsolute(const std::string& path) {
+    std::string normalized = NormalizeSlashes(path);
+    if (IsEditorAssetPath(normalized)) {
+        normalized = normalized.substr(std::string("editor-assets").size());
+        if (!normalized.empty() && normalized.front() == '/') {
+            normalized.erase(normalized.begin());
+        }
+    }
+    return EditorAssetPathToAbsolute(normalized);
 }
 
 inline fs::path LegacyAssetsRoot() {
@@ -386,6 +403,74 @@ inline void ApplyMeshInfoToSceneObject(SceneObject& object, const ImportedMeshIn
     object.meshFilter.modelRef = model;
 }
 
+inline bool TryLoadObjAsset(const std::string& inputPath,
+                            std::string& outResolvedPath,
+                            std::shared_ptr<::Model>& outModel,
+                            std::vector<ImportedMeshInfo>& outInfos) {
+    outResolvedPath.clear();
+    outModel.reset();
+    outInfos.clear();
+
+    if (inputPath.empty()) {
+        return false;
+    }
+
+    std::vector<std::string> candidatePaths;
+    const std::string normalizedInput = NormalizeSlashes(inputPath);
+    candidatePaths.push_back(normalizedInput);
+
+    const std::string preparedPath = PrepareObjImportPath(inputPath);
+    if (!preparedPath.empty() && preparedPath != normalizedInput) {
+        candidatePaths.push_back(preparedPath);
+    }
+
+    const fs::path assetsRoot = FindAssetsRoot();
+    const fs::path inputAbsolute = IsEditorAssetPath(normalizedInput)
+        ? EngineAssetPathToAbsolute(normalizedInput)
+        : ProjectAssetPathToAbsolute(normalizedInput);
+    if (!fs::exists(inputAbsolute)) {
+        const std::string targetFilename = ToLowerCopy(fs::path(normalizedInput).filename().string());
+        if (!targetFilename.empty() && fs::exists(assetsRoot)) {
+            for (const auto& entry : fs::recursive_directory_iterator(assetsRoot)) {
+                if (!entry.is_regular_file()) {
+                    continue;
+                }
+                const std::string candidateFilename = ToLowerCopy(entry.path().filename().string());
+                const std::string candidateExtension = ToLowerCopy(entry.path().extension().string());
+                if (candidateExtension == ".obj" && candidateFilename == targetFilename) {
+                    const std::string candidateProjectPath = ToProjectAssetPath(entry.path(), assetsRoot);
+                    if (std::find(candidatePaths.begin(), candidatePaths.end(), candidateProjectPath) == candidatePaths.end()) {
+                        candidatePaths.push_back(candidateProjectPath);
+                    }
+                }
+            }
+        }
+    }
+
+    for (const std::string& candidatePath : candidatePaths) {
+        try {
+            const fs::path absolutePath = IsEditorAssetPath(candidatePath)
+                ? EngineAssetPathToAbsolute(candidatePath)
+                : ProjectAssetPathToAbsolute(candidatePath);
+            if (!fs::exists(absolutePath)) {
+                continue;
+            }
+            auto model = raceman::LoadModelFromFile(absolutePath.string());
+            auto infos = raceman::GetMeshInfos(model);
+            if (infos.empty()) {
+                continue;
+            }
+            outResolvedPath = candidatePath;
+            outModel = std::move(model);
+            outInfos = std::move(infos);
+            return true;
+        } catch (...) {
+        }
+    }
+
+    return false;
+}
+
 inline void BeginProjectAssetDrag(const std::string& payloadType, const std::string& payloadValue, const std::string& label) {
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
         ImGui::SetDragDropPayload(payloadType.c_str(), payloadValue.c_str(), payloadValue.size() + 1);
@@ -412,6 +497,6 @@ inline bool IsCtrlYPressed() {
 inline constexpr const char* kObjAssetPayload = "RACEMAN_PROJECT_OBJ";
 inline constexpr const char* kMaterialAssetPayload = "RACEMAN_PROJECT_MATERIAL";
 inline constexpr const char* kProjectFilePayload = "RACEMAN_PROJECT_FILE";
-inline constexpr const char* kPlaneObjAssetPath = "assets/mesh/plane.obj";
+inline constexpr const char* kPlaneObjAssetPath = "editor-assets/mesh/plane.obj";
 
 } // namespace raceman::scene_editor_internal

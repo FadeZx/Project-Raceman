@@ -17,5 +17,6 @@ struct ScriptDescriptor {
 const std::vector<ScriptDescriptor>& GetRegisteredScripts();
 const ScriptDescriptor* FindRegisteredScript(const std::string& name);
 std::unique_ptr<IObjectScript> CreateRegisteredScript(const std::string& name);
+std::vector<ScriptFieldDefinition> GetRegisteredScriptFieldDefinitions(const std::string& name);
 
 } // namespace raceman

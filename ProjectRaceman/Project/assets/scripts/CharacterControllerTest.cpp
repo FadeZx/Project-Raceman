@@ -18,6 +18,9 @@ void CharacterControllerTest::OnUpdate(raceman::ObjectScriptContext& context, fl
         return;
     }
 
+    const float moveSpeed = context.GetFloatField("moveSpeed", 6.0f);
+    const float jumpImpulse = context.GetFloatField("jumpImpulse", 1.5f);
+
     glm::vec3 moveDirection{0.0f};
     if (context.IsKeyDown(GLFW_KEY_W)) {
         moveDirection.z -= 1.0f;
@@ -33,23 +36,16 @@ void CharacterControllerTest::OnUpdate(raceman::ObjectScriptContext& context, fl
     }
 
     if (glm::dot(moveDirection, moveDirection) > 0.0001f) {
-        moveDirection = glm::normalize(moveDirection) * moveSpeed_;
+        moveDirection = glm::normalize(moveDirection) * moveSpeed;
     }
 
     context.SetCharacterMoveInput(moveDirection);
 
     const bool jumpDown = context.IsKeyDown(GLFW_KEY_SPACE);
     if (jumpDown && !jumpHeld_ && context.IsCharacterGrounded()) {
-        context.Jump(jumpImpulse_);
+        context.Jump(jumpImpulse);
     }
     jumpHeld_ = jumpDown;
-
-    if (glm::dot(moveDirection, moveDirection) > 0.0001f) {
-        const float yawDegrees = glm::degrees(atan2f(moveDirection.x, -moveDirection.z));
-        glm::vec3 rotation = context.GetRotationEuler();
-        rotation.y = yawDegrees;
-        context.SetRotationEuler(rotation);
-    }
 
     (void)context.GetCharacterVelocity();
 }

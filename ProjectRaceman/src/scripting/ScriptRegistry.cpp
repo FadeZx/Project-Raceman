@@ -41,4 +41,12 @@ std::unique_ptr<IObjectScript> CreateRegisteredScript(const std::string& name) {
     return script->create();
 }
 
+std::vector<ScriptFieldDefinition> GetRegisteredScriptFieldDefinitions(const std::string& name) {
+    std::unique_ptr<IObjectScript> script = CreateRegisteredScript(name);
+    if (!script) {
+        return {};
+    }
+    return script->GetFieldDefinitions();
+}
+
 } // namespace raceman

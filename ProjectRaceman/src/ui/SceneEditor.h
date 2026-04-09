@@ -105,6 +105,7 @@ struct ObjectScriptAttachment {
     bool enabled{true};
     std::string scriptName;
     std::string scriptPath;
+    std::vector<ScriptFieldEntry> fields;
 };
 
 struct ScriptComponent {
@@ -124,6 +125,7 @@ struct CharacterControllerComponent {
     bool enabled{true};
     float height{1.8f};
     float radius{0.4f};
+    glm::vec3 center{0.0f, 0.0f, 0.0f};
     float stepHeight{0.35f};
     float slopeLimitDegrees{50.0f};
     float maxStrength{100.0f};
@@ -310,6 +312,7 @@ private:
     bool AssignMaterialToSelected(const std::string& materialId);
     bool AttachScriptToSelected(const std::string& scriptName, const std::string& scriptPath);
     bool CreateScriptAsset(const std::string& requestedName, bool attachToSelected = true);
+    bool SyncAttachmentScriptFields(ObjectScriptAttachment& attachment);
     bool CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId = nullptr);
     bool CreateSceneAsset(const std::string& requestedName, std::string* outScenePath = nullptr);
     bool CreateProjectFolder(const std::string& requestedName);
@@ -340,7 +343,7 @@ private:
     glm::vec3 GetObjectWorldPosition(int index) const;
 
     // Utils
-    static std::string MakeId(const std::string& base);
+    std::string MakeId(const std::string& base);
 
 private:
     std::vector<SceneObject> objects_;

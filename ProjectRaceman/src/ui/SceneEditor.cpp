@@ -26,6 +26,24 @@ struct ColliderWorldAabb {
     glm::vec3 max{0.0f};
 };
 
+bool ReadVec2(const raceman::physics::json::Object& object, const std::string& key, glm::vec2& out) {
+    auto it = object.find(key);
+    if (it == object.end() || !it->second.is_array()) {
+        return false;
+    }
+
+    const auto& a = it->second.as_array();
+    if (a.size() != 2 || !a[0].is_number() || !a[1].is_number()) {
+        return false;
+    }
+
+    out = {
+        static_cast<float>(a[0].as_number()),
+        static_cast<float>(a[1].as_number())
+    };
+    return true;
+}
+
 bool ReadVec3(const raceman::physics::json::Object& object, const std::string& key, glm::vec3& out) {
     auto it = object.find(key);
     if (it == object.end() || !it->second.is_array()) {
@@ -283,15 +301,16 @@ bool ContainsText(const std::string& text, const std::string& needle) {
 }
 
 bool LoadBuiltInPlaneMesh(SceneObject& object) {
-    auto model = raceman::LoadModelFromFile(ProjectAssetPathToAbsolute(kPlaneObjAssetPath).string());
+    auto model = raceman::LoadModelFromFile(EngineAssetPathToAbsolute(kPlaneObjAssetPath).string());
     const auto infos = raceman::GetMeshInfos(model);
     if (infos.empty()) {
         return false;
     }
 
-    object.type = "Mesh";
+    object.type = "GameObject";
     object.hasMeshFilter = true;
     object.hasMeshRenderer = true;
+    object.meshFilter.meshType = "Mesh";
     object.meshRenderer.color = {1.0f, 1.0f, 1.0f, 1.0f};
     if (object.meshRenderer.materialId.empty()) {
         object.meshRenderer.materialId = "pbr_default";
@@ -301,12 +320,158 @@ bool LoadBuiltInPlaneMesh(SceneObject& object) {
     return true;
 }
 
+std::string ScriptFieldTypeToString(ScriptFieldType type) {
+    switch (type) {
+    case ScriptFieldType::Bool: return "Bool";
+    case ScriptFieldType::Int: return "Int";
+    case ScriptFieldType::Float: return "Float";
+    case ScriptFieldType::String: return "String";
+    case ScriptFieldType::Vec2: return "Vec2";
+    case ScriptFieldType::Vec3: return "Vec3";
+    case ScriptFieldType::Vec4: return "Vec4";
+    }
+    return "Float";
+}
+
+ScriptFieldType ScriptFieldTypeFromString(const std::string& value) {
+    if (value == "Bool") return ScriptFieldType::Bool;
+    if (value == "Int") return ScriptFieldType::Int;
+    if (value == "String") return ScriptFieldType::String;
+    if (value == "Vec2") return ScriptFieldType::Vec2;
+    if (value == "Vec3") return ScriptFieldType::Vec3;
+    if (value == "Vec4") return ScriptFieldType::Vec4;
+    return ScriptFieldType::Float;
+}
+
+ScriptFieldEntry MakeScriptFieldEntry(const ScriptFieldDefinition& definition) {
+    return {definition.name, definition.type, definition.defaultValue};
+}
+
+bool IsScriptFieldValueCompatible(ScriptFieldType type, const ScriptFieldValue& value) {
+    switch (type) {
+    case ScriptFieldType::Bool: return std::holds_alternative<bool>(value);
+    case ScriptFieldType::Int: return std::holds_alternative<int>(value);
+    case ScriptFieldType::Float: return std::holds_alternative<float>(value);
+    case ScriptFieldType::String: return std::holds_alternative<std::string>(value);
+    case ScriptFieldType::Vec2: return std::holds_alternative<glm::vec2>(value);
+    case ScriptFieldType::Vec3: return std::holds_alternative<glm::vec3>(value);
+    case ScriptFieldType::Vec4: return std::holds_alternative<glm::vec4>(value);
+    }
+    return false;
+}
+
+bool SyncScriptAttachmentFields(ObjectScriptAttachment& attachment, const std::vector<ScriptFieldDefinition>& definitions) {
+    bool changed = false;
+    std::vector<ScriptFieldEntry> synced;
+    synced.reserve(definitions.size());
+
+    for (const ScriptFieldDefinition& definition : definitions) {
+        auto existing = std::find_if(attachment.fields.begin(), attachment.fields.end(), [&](const ScriptFieldEntry& field) {
+            return field.name == definition.name;
+        });
+
+        if (existing != attachment.fields.end() && existing->type == definition.type && IsScriptFieldValueCompatible(existing->type, existing->value)) {
+            synced.push_back(*existing);
+        } else {
+            synced.push_back(MakeScriptFieldEntry(definition));
+            changed = true;
+        }
+    }
+
+    if (attachment.fields.size() != synced.size()) {
+        changed = true;
+    }
+    attachment.fields = std::move(synced);
+    return changed;
+}
+
+void WriteScriptFieldValue(std::ostream& out, const ScriptFieldEntry& field) {
+    switch (field.type) {
+    case ScriptFieldType::Bool:
+        out << "                \"value\": " << (std::get<bool>(field.value) ? "true" : "false") << "\n";
+        break;
+    case ScriptFieldType::Int:
+        out << "                \"value\": " << std::get<int>(field.value) << "\n";
+        break;
+    case ScriptFieldType::Float:
+        out << "                \"value\": " << std::get<float>(field.value) << "\n";
+        break;
+    case ScriptFieldType::String:
+        out << "                \"value\": \"" << JsonEscape(std::get<std::string>(field.value)) << "\"\n";
+        break;
+    case ScriptFieldType::Vec2: {
+        const glm::vec2 value = std::get<glm::vec2>(field.value);
+        out << "                \"value\": [" << value.x << ", " << value.y << "]\n";
+        break;
+    }
+    case ScriptFieldType::Vec3: {
+        const glm::vec3 value = std::get<glm::vec3>(field.value);
+        out << "                \"value\": [" << value.x << ", " << value.y << ", " << value.z << "]\n";
+        break;
+    }
+    case ScriptFieldType::Vec4: {
+        const glm::vec4 value = std::get<glm::vec4>(field.value);
+        out << "                \"value\": [" << value.x << ", " << value.y << ", " << value.z << ", " << value.w << "]\n";
+        break;
+    }
+    }
+}
+
+bool TryReadScriptFieldValue(const raceman::physics::json::Object& object, ScriptFieldType type, ScriptFieldValue& outValue) {
+    switch (type) {
+    case ScriptFieldType::Bool: {
+        bool value = false;
+        if (!ReadBool(object, "value", value)) return false;
+        outValue = value;
+        return true;
+    }
+    case ScriptFieldType::Int: {
+        auto it = object.find("value");
+        if (it == object.end() || !it->second.is_number()) return false;
+        outValue = static_cast<int>(it->second.as_number());
+        return true;
+    }
+    case ScriptFieldType::Float: {
+        auto it = object.find("value");
+        if (it == object.end() || !it->second.is_number()) return false;
+        outValue = static_cast<float>(it->second.as_number());
+        return true;
+    }
+    case ScriptFieldType::String: {
+        std::string value;
+        if (!ReadString(object, "value", value)) return false;
+        outValue = value;
+        return true;
+    }
+    case ScriptFieldType::Vec2: {
+        glm::vec2 value{0.0f};
+        if (!ReadVec2(object, "value", value)) return false;
+        outValue = value;
+        return true;
+    }
+    case ScriptFieldType::Vec3: {
+        glm::vec3 value{0.0f};
+        if (!ReadVec3(object, "value", value)) return false;
+        outValue = value;
+        return true;
+    }
+    case ScriptFieldType::Vec4: {
+        glm::vec4 value{0.0f};
+        if (!ReadVec4(object, "value", value)) return false;
+        outValue = value;
+        return true;
+    }
+    }
+    return false;
+}
+
 bool ShouldFallbackToBuiltInPlane(const SceneObject& object) {
     if (!object.hasMeshFilter || object.meshFilter.meshType != "Mesh") {
         return false;
     }
     const std::string sourcePath = ToLowerCopy(NormalizeSlashes(object.meshFilter.sourcePath));
-    return sourcePath == "assets/mesh/plane.obj" ||
+    return sourcePath == "editor-assets/mesh/plane.obj" ||
+           sourcePath == "assets/mesh/plane.obj" ||
            (ContainsText(sourcePath, "assets/imports/plane_") && EndsWith(sourcePath, "/plane.obj"));
 }
 
@@ -353,6 +518,10 @@ fs::path EngineRootPath() {
 fs::path ResolveEditorPath(const std::string& path) {
     if (path.empty()) {
         return {};
+    }
+
+    if (IsEditorAssetPath(path)) {
+        return EngineAssetPathToAbsolute(path);
     }
 
     const fs::path normalized = fs::path(NormalizeSlashes(path));
@@ -957,7 +1126,7 @@ void SceneEditor::UpdateScripts(float deltaTime) {
         }
 
         InputManager* scriptInput = ShouldRouteInputToGame() ? inputManager_ : nullptr;
-        ObjectScriptContext context(*objectIt, console_, scriptInput, physicsWorld_.get());
+        ObjectScriptContext context(*objectIt, &attachment, console_, scriptInput, physicsWorld_.get());
         if (!runtimeScript.started) {
             runtimeScript.instance->OnStart(context);
             runtimeScript.started = true;
@@ -1103,6 +1272,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
                 character.rotationEuler = worldTransform.rotationEuler;
                 character.height = object.characterController.height;
                 character.radius = object.characterController.radius;
+                character.center = object.characterController.center;
                 character.stepHeight = object.characterController.stepHeight;
                 character.slopeLimitDegrees = object.characterController.slopeLimitDegrees;
                 character.maxStrength = object.characterController.maxStrength;
@@ -1213,6 +1383,22 @@ void SceneEditor::ClearScriptRuntime() {
     runtimeScripts_.clear();
 }
 
+bool SceneEditor::SyncAttachmentScriptFields(ObjectScriptAttachment& attachment) {
+    if (attachment.scriptName.empty()) {
+        return false;
+    }
+    if (FindRegisteredScript(attachment.scriptName) == nullptr) {
+        return false;
+    }
+    const std::vector<ScriptFieldDefinition> definitions = GetRegisteredScriptFieldDefinitions(attachment.scriptName);
+    if (definitions.empty()) {
+        const bool changed = !attachment.fields.empty();
+        attachment.fields.clear();
+        return changed;
+    }
+    return SyncScriptAttachmentFields(attachment, definitions);
+}
+
 void SceneEditor::RebuildScriptRuntime() {
     ClearScriptRuntime();
 
@@ -1234,6 +1420,7 @@ void SceneEditor::RebuildScriptRuntime() {
                 }
                 continue;
             }
+            SyncAttachmentScriptFields(object.scriptComponent.attachments[i]);
 
             RuntimeScriptInstance runtimeScript;
             runtimeScript.objectId = object.id;
@@ -1299,7 +1486,7 @@ void SceneEditor::AddPlane() {
         SceneObject object;
         object.id = MakeId("mesh");
         object.name = "Plane";
-        object.type = "Mesh";
+        object.type = "GameObject";
         object.transform.scale = {10.0f, 1.0f, 10.0f};
         object.meshRenderer.materialId = "pbr_default";
         if (!LoadBuiltInPlaneMesh(object)) {
@@ -1334,7 +1521,7 @@ void SceneEditor::AddCameraObject() {
     SceneObject cameraObject;
     cameraObject.id = MakeId("camera");
     cameraObject.name = "Camera";
-    cameraObject.type = "Camera";
+    cameraObject.type = "GameObject";
     cameraObject.transform.position = {0.0f, 2.0f, 5.0f};
     cameraObject.transform.rotationEuler = {-15.0f, 0.0f, 0.0f};
     cameraObject.hasMeshFilter = false;
@@ -1360,7 +1547,7 @@ void SceneEditor::AddLightObject(LightType type) {
 
     SceneObject lightObject;
     lightObject.id = MakeId("light");
-    lightObject.type = "Light";
+    lightObject.type = "GameObject";
     lightObject.hasMeshFilter = false;
     lightObject.hasMeshRenderer = false;
     lightObject.hasScriptComponent = false;
@@ -1409,6 +1596,7 @@ bool SceneEditor::AttachScriptToSelected(const std::string& scriptName, const st
     attachment.enabled = true;
     attachment.scriptName = scriptName;
     attachment.scriptPath = NormalizeSlashes(scriptPath);
+    SyncAttachmentScriptFields(attachment);
     obj.scriptComponent.attachments.push_back(std::move(attachment));
     if (scriptsRunning_) {
         RebuildScriptRuntime();
@@ -1527,6 +1715,7 @@ bool SceneEditor::CreateScriptAsset(const std::string& requestedName, bool attac
             attachment.enabled = true;
             attachment.scriptName = className;
             attachment.scriptPath = scriptPath;
+            SyncAttachmentScriptFields(attachment);
             obj.scriptComponent.attachments.push_back(std::move(attachment));
             if (scriptsRunning_) {
                 RebuildScriptRuntime();
@@ -1857,8 +2046,25 @@ void SceneEditor::Save(const std::string& path) {
                 out << "            {\n";
                 out << "              \"enabled\": " << (script.enabled ? "true" : "false") << ",\n";
                 out << "              \"scriptName\": \"" << JsonEscape(script.scriptName) << "\",\n";
-                out << "              \"scriptPath\": \"" << JsonEscape(NormalizeSlashes(script.scriptPath)) << "\"\n";
-                out << "            }" << (scriptIndex + 1 < o.scriptComponent.attachments.size() ? ",\n" : "\n");
+                out << "              \"scriptPath\": \"" << JsonEscape(NormalizeSlashes(script.scriptPath)) << "\"";
+                if (!script.fields.empty()) {
+                    out << ",\n";
+                    out << "              \"fields\": [\n";
+                    for (std::size_t fieldIndex = 0; fieldIndex < script.fields.size(); ++fieldIndex) {
+                        const ScriptFieldEntry& field = script.fields[fieldIndex];
+                        out << "                {\n";
+                        out << "                  \"name\": \"" << JsonEscape(field.name) << "\",\n";
+                        out << "                  \"type\": \"" << ScriptFieldTypeToString(field.type) << "\",\n";
+                        WriteScriptFieldValue(out, field);
+                        out << "                }" << (fieldIndex + 1 < script.fields.size() ? ",\n" : "\n");
+                    }
+                    out << "              ]\n";
+                    out << "            }";
+                } else {
+                    out << "\n";
+                    out << "            }";
+                }
+                out << (scriptIndex + 1 < o.scriptComponent.attachments.size() ? ",\n" : "\n");
             }
             out << "          ]\n";
             out << "        }";
@@ -1881,6 +2087,7 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"enabled\": " << (o.characterController.enabled ? "true" : "false") << ",\n";
             out << "          \"height\": " << o.characterController.height << ",\n";
             out << "          \"radius\": " << o.characterController.radius << ",\n";
+            out << "          \"center\": [" << o.characterController.center.x << ", " << o.characterController.center.y << ", " << o.characterController.center.z << "],\n";
             out << "          \"stepHeight\": " << o.characterController.stepHeight << ",\n";
             out << "          \"slopeLimitDegrees\": " << o.characterController.slopeLimitDegrees << ",\n";
             out << "          \"maxStrength\": " << o.characterController.maxStrength << ",\n";
@@ -2013,13 +2220,12 @@ void SceneEditor::Load(const std::string& path) {
             }
 
             // type
+            std::string legacyType = "GameObject";
             auto typeIt = o.find("type");
             if (typeIt != o.end() && typeIt->second.is_string()) {
-                so.type = typeIt->second.as_string();
+                legacyType = typeIt->second.as_string();
             }
-            else {
-                so.type = "Unknown";
-            }
+            so.type = "GameObject";
 
             // transform
             auto trIt = o.find("transform");
@@ -2119,7 +2325,27 @@ void SceneEditor::Load(const std::string& path) {
                     ReadString(scriptObject, "scriptName", script.scriptName);
                     ReadString(scriptObject, "scriptPath", script.scriptPath);
                     script.scriptPath = NormalizeSlashes(script.scriptPath);
+                    auto fieldsIt = scriptObject.find("fields");
+                    if (fieldsIt != scriptObject.end() && fieldsIt->second.is_array()) {
+                        for (const auto& fieldValue : fieldsIt->second.as_array()) {
+                            if (!fieldValue.is_object()) {
+                                continue;
+                            }
+                            const auto& fieldObject = fieldValue.as_object();
+                            ScriptFieldEntry field;
+                            std::string typeName;
+                            if (!ReadString(fieldObject, "name", field.name) || !ReadString(fieldObject, "type", typeName)) {
+                                continue;
+                            }
+                            field.type = ScriptFieldTypeFromString(typeName);
+                            if (!TryReadScriptFieldValue(fieldObject, field.type, field.value)) {
+                                continue;
+                            }
+                            script.fields.push_back(std::move(field));
+                        }
+                    }
                     if (!script.scriptName.empty()) {
+                        SyncAttachmentScriptFields(script);
                         so.scriptComponent.attachments.push_back(script);
                     }
                 }
@@ -2192,7 +2418,27 @@ void SceneEditor::Load(const std::string& path) {
                                 ReadString(scriptObject, "scriptName", script.scriptName);
                                 ReadString(scriptObject, "scriptPath", script.scriptPath);
                                 script.scriptPath = NormalizeSlashes(script.scriptPath);
+                                auto fieldsIt = scriptObject.find("fields");
+                                if (fieldsIt != scriptObject.end() && fieldsIt->second.is_array()) {
+                                    for (const auto& fieldValue : fieldsIt->second.as_array()) {
+                                        if (!fieldValue.is_object()) {
+                                            continue;
+                                        }
+                                        const auto& fieldObject = fieldValue.as_object();
+                                        ScriptFieldEntry field;
+                                        std::string typeName;
+                                        if (!ReadString(fieldObject, "name", field.name) || !ReadString(fieldObject, "type", typeName)) {
+                                            continue;
+                                        }
+                                        field.type = ScriptFieldTypeFromString(typeName);
+                                        if (!TryReadScriptFieldValue(fieldObject, field.type, field.value)) {
+                                            continue;
+                                        }
+                                        script.fields.push_back(std::move(field));
+                                    }
+                                }
                                 if (!script.scriptName.empty()) {
+                                    SyncAttachmentScriptFields(script);
                                     so.scriptComponent.attachments.push_back(script);
                                 }
                             }
@@ -2226,6 +2472,7 @@ void SceneEditor::Load(const std::string& path) {
                             so.characterController.radius = (std::max)(0.001f, static_cast<float>(radiusIt->second.as_number()));
                         }
                         so.characterController.height = (std::max)(so.characterController.radius * 2.0f, so.characterController.height);
+                        ReadVec3(component, "center", so.characterController.center);
                         auto stepHeightIt = component.find("stepHeight");
                         if (stepHeightIt != component.end() && stepHeightIt->second.is_number()) {
                             so.characterController.stepHeight = (std::max)(0.0f, static_cast<float>(stepHeightIt->second.as_number()));
@@ -2341,9 +2588,11 @@ void SceneEditor::Load(const std::string& path) {
             }
 
             if (so.meshFilter.meshType.empty()) {
-                so.meshFilter.meshType = so.type;
-            } else if (so.type == "Unknown") {
-                so.type = so.meshFilter.meshType;
+                if (legacyType == "Plane" || legacyType == "Mesh") {
+                    so.meshFilter.meshType = legacyType;
+                } else if (so.hasMeshFilter) {
+                    so.meshFilter.meshType = !so.meshFilter.sourcePath.empty() ? std::string("Mesh") : std::string("Plane");
+                }
             }
 
             if (so.hasCharacterController && so.hasRigidbody) {
@@ -2352,12 +2601,11 @@ void SceneEditor::Load(const std::string& path) {
             }
 
             // attach render info for known types
-            const std::string meshType = so.meshFilter.meshType.empty() ? so.type : so.meshFilter.meshType;
+            const std::string meshType = so.meshFilter.meshType.empty() ? std::string("Mesh") : so.meshFilter.meshType;
             if (so.hasMeshFilter && meshType == "Plane") {
                 if (!planePrim_) {
                     planePrim_ = std::make_unique<PrimitivePlane>();
                 }
-                so.type = "Plane";
                 so.meshFilter.meshType = "Plane";
                 so.meshFilter.vao = planePrim_->vao();
                 so.meshFilter.indexCount = planePrim_->indexCount();
@@ -2370,11 +2618,14 @@ void SceneEditor::Load(const std::string& path) {
                     if (ShouldFallbackToBuiltInPlane(so)) {
                         LoadBuiltInPlaneMesh(so);
                     } else {
-                        auto model = raceman::LoadModelFromFile(ProjectAssetPathToAbsolute(so.meshFilter.sourcePath).string());
-                        const auto infos = raceman::GetMeshInfos(model);
-                        if (so.meshFilter.meshIndex >= 0 && so.meshFilter.meshIndex < static_cast<int>(infos.size())) {
-                            so.type = "Mesh";
+                        std::string resolvedPath;
+                        std::shared_ptr<::Model> model;
+                        std::vector<ImportedMeshInfo> infos;
+                        if (TryLoadObjAsset(so.meshFilter.sourcePath, resolvedPath, model, infos) &&
+                            so.meshFilter.meshIndex >= 0 &&
+                            so.meshFilter.meshIndex < static_cast<int>(infos.size())) {
                             so.meshFilter.meshType = "Mesh";
+                            so.meshFilter.sourcePath = resolvedPath;
                             ApplyMeshInfoToSceneObject(so, infos[static_cast<std::size_t>(so.meshFilter.meshIndex)], model);
                         }
                     }
@@ -2388,6 +2639,32 @@ void SceneEditor::Load(const std::string& path) {
             }
 
             objects_.push_back(std::move(so));
+        }
+
+        std::vector<std::string> seenIds;
+        std::vector<std::pair<std::string, std::string>> remappedIds;
+        for (SceneObject& object : objects_) {
+            const bool missingId = object.id.empty();
+            const bool duplicateId = !missingId && std::find(seenIds.begin(), seenIds.end(), object.id) != seenIds.end();
+            if (!missingId && !duplicateId) {
+                seenIds.push_back(object.id);
+                continue;
+            }
+
+            const std::string oldId = object.id;
+            object.id = MakeId("gameobject");
+            seenIds.push_back(object.id);
+            if (!oldId.empty()) {
+                remappedIds.emplace_back(oldId, object.id);
+            }
+        }
+
+        for (SceneObject& object : objects_) {
+            for (const auto& remap : remappedIds) {
+                if (object.parentId == remap.first) {
+                    object.parentId = remap.second;
+                }
+            }
         }
 
         // Select first object if available
@@ -2531,7 +2808,7 @@ void SceneEditor::CreateDefaultSceneObjects() {
         SceneObject planeObject;
         planeObject.id = MakeId("mesh");
         planeObject.name = "Plane";
-        planeObject.type = "Mesh";
+        planeObject.type = "GameObject";
         planeObject.transform.scale = {10.0f, 1.0f, 10.0f};
         planeObject.meshRenderer.materialId = "pbr_default";
         if (LoadBuiltInPlaneMesh(planeObject)) {
@@ -2547,7 +2824,7 @@ void SceneEditor::CreateDefaultSceneObjects() {
     SceneObject cameraObject;
     cameraObject.id = MakeId("camera");
     cameraObject.name = "Camera";
-    cameraObject.type = "Camera";
+    cameraObject.type = "GameObject";
     cameraObject.transform.position = {0.0f, 2.0f, 5.0f};
     cameraObject.transform.rotationEuler = {-15.0f, 0.0f, 0.0f};
     cameraObject.hasMeshFilter = false;
@@ -2561,7 +2838,7 @@ void SceneEditor::CreateDefaultSceneObjects() {
     SceneObject lightObject;
     lightObject.id = MakeId("light");
     lightObject.name = "Directional Light";
-    lightObject.type = "Light";
+    lightObject.type = "GameObject";
     lightObject.transform.rotationEuler = {-45.0f, 35.0f, 0.0f};
     lightObject.hasMeshFilter = false;
     lightObject.hasMeshRenderer = false;
@@ -2809,7 +3086,16 @@ std::string SceneEditor::MakeUniqueSceneAssetPath(const std::string& baseName) c
 
 std::string SceneEditor::MakeId(const std::string& base) {
     static int counter = 0;
-    return base + "_" + std::to_string(++counter);
+    std::string prefix = base.empty() ? std::string("obj") : base;
+    for (;;) {
+        const std::string candidate = prefix + "_" + std::to_string(++counter);
+        const auto existing = std::find_if(objects_.begin(), objects_.end(), [&](const SceneObject& object) {
+            return object.id == candidate;
+        });
+        if (existing == objects_.end()) {
+            return candidate;
+        }
+    }
 }
 
 void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {

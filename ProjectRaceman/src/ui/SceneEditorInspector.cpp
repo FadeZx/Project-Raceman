@@ -5,6 +5,7 @@
 #include <glad/glad.h>
 #include <stb_image.h>
 
+#include <cstdio>
 #include <cstdint>
 
 #ifndef GLM_ENABLE_EXPERIMENTAL
@@ -45,6 +46,24 @@ bool RenderInspectorDragFloat3(const char* label, const char* id, float* values,
     return ImGui::DragFloat3(label, values, speed, min, max);
 }
 
+bool RenderInspectorDragFloat2(const char* label, const char* id, float* values, float speed, float min = 0.0f, float max = 0.0f) {
+    if (IsNarrowInspectorLayout()) {
+        RenderInspectorLabel(label);
+        ImGui::SetNextItemWidth(-1.0f);
+        return ImGui::DragFloat2(id, values, speed, min, max);
+    }
+    return ImGui::DragFloat2(label, values, speed, min, max);
+}
+
+bool RenderInspectorDragFloat4(const char* label, const char* id, float* values, float speed, float min = 0.0f, float max = 0.0f) {
+    if (IsNarrowInspectorLayout()) {
+        RenderInspectorLabel(label);
+        ImGui::SetNextItemWidth(-1.0f);
+        return ImGui::DragFloat4(id, values, speed, min, max);
+    }
+    return ImGui::DragFloat4(label, values, speed, min, max);
+}
+
 bool RenderInspectorDragFloat(const char* label, const char* id, float* value, float speed, float min = 0.0f, float max = 0.0f) {
     if (IsNarrowInspectorLayout()) {
         RenderInspectorLabel(label);
@@ -52,6 +71,15 @@ bool RenderInspectorDragFloat(const char* label, const char* id, float* value, f
         return ImGui::DragFloat(id, value, speed, min, max);
     }
     return ImGui::DragFloat(label, value, speed, min, max);
+}
+
+bool RenderInspectorDragInt(const char* label, const char* id, int* value, float speed, int min = 0, int max = 0) {
+    if (IsNarrowInspectorLayout()) {
+        RenderInspectorLabel(label);
+        ImGui::SetNextItemWidth(-1.0f);
+        return ImGui::DragInt(id, value, speed, min, max);
+    }
+    return ImGui::DragInt(label, value, speed, min, max);
 }
 
 void RenderInspectorWrappedValue(const char* label, const std::string& value) {
@@ -71,6 +99,72 @@ void RenderComponentIcon(unsigned int textureId) {
     }
     ImGui::Image(static_cast<ImTextureID>(textureId), ImVec2(18.0f, 18.0f));
     ImGui::SameLine();
+}
+
+bool RenderScriptFieldEditor(const ScriptFieldDefinition& definition, ScriptFieldEntry& field) {
+    const char* label = definition.label.empty() ? definition.name.c_str() : definition.label.c_str();
+    const std::string id = "##scriptField_" + definition.name;
+    switch (definition.type) {
+    case ScriptFieldType::Bool: {
+        bool value = std::get<bool>(field.value);
+        if (ImGui::Checkbox(label, &value)) {
+            field.value = value;
+            return true;
+        }
+        return false;
+    }
+    case ScriptFieldType::Int: {
+        int value = std::get<int>(field.value);
+        if (RenderInspectorDragInt(label, id.c_str(), &value, 1.0f)) {
+            field.value = value;
+            return true;
+        }
+        return false;
+    }
+    case ScriptFieldType::Float: {
+        float value = std::get<float>(field.value);
+        if (RenderInspectorDragFloat(label, id.c_str(), &value, 0.05f)) {
+            field.value = value;
+            return true;
+        }
+        return false;
+    }
+    case ScriptFieldType::String: {
+        std::string value = std::get<std::string>(field.value);
+        char buffer[256]{};
+        std::snprintf(buffer, sizeof(buffer), "%s", value.c_str());
+        if (RenderInspectorInputText(label, id.c_str(), buffer, sizeof(buffer))) {
+            field.value = std::string(buffer);
+            return true;
+        }
+        return false;
+    }
+    case ScriptFieldType::Vec2: {
+        glm::vec2 value = std::get<glm::vec2>(field.value);
+        if (RenderInspectorDragFloat2(label, id.c_str(), &value.x, 0.05f)) {
+            field.value = value;
+            return true;
+        }
+        return false;
+    }
+    case ScriptFieldType::Vec3: {
+        glm::vec3 value = std::get<glm::vec3>(field.value);
+        if (RenderInspectorDragFloat3(label, id.c_str(), &value.x, 0.05f)) {
+            field.value = value;
+            return true;
+        }
+        return false;
+    }
+    case ScriptFieldType::Vec4: {
+        glm::vec4 value = std::get<glm::vec4>(field.value);
+        if (RenderInspectorDragFloat4(label, id.c_str(), &value.x, 0.05f)) {
+            field.value = value;
+            return true;
+        }
+        return false;
+    }
+    }
+    return false;
 }
 
 bool RenderRemovableComponentHeader(const char* label, const char* id, unsigned int textureId, bool* enabled, bool& enabledChanged, bool& removeRequested) {
@@ -171,8 +265,17 @@ void SceneEditor::RenderInspectorPanel() {
                 inspectorEditActive_ = false;
             }
 
-            // Type (read-only)
-            ImGui::TextDisabled("Type: %s", obj.type.c_str());
+            // Type / Id (read-only)
+            ImGui::TextDisabled("Type: GameObject");
+            if (IsNarrowInspectorLayout()) {
+                ImGui::TextDisabled("ID:");
+                ImGui::PushTextWrapPos(0.0f);
+                ImGui::TextUnformatted(obj.id.c_str());
+                ImGui::PopTextWrapPos();
+            } else {
+                ImGui::SameLine();
+                ImGui::TextDisabled("| ID: %s", obj.id.c_str());
+            }
 
             auto renderAddComponentMenu = [&]() {
                 bool anyAvailable = false;
@@ -182,7 +285,7 @@ void SceneEditor::RenderInspectorPanel() {
                         PushUndoState();
                         obj.hasMeshFilter = true;
                         obj.meshFilter = MeshFilterComponent{};
-                        obj.meshFilter.meshType = obj.type.empty() ? std::string("Mesh") : obj.type;
+                        obj.meshFilter.meshType = "Mesh";
                         if (onDirty_) onDirty_();
                     }
                 }
@@ -411,7 +514,7 @@ void SceneEditor::RenderInspectorPanel() {
                 }
             }
             if (obj.hasMeshFilter && meshFilterOpen) {
-                const std::string meshType = obj.meshFilter.meshType.empty() ? obj.type : obj.meshFilter.meshType;
+                const std::string meshType = obj.meshFilter.meshType.empty() ? std::string("Mesh") : obj.meshFilter.meshType;
                 const std::string meshButtonLabel = (meshType == "Mesh" && !obj.meshFilter.sourcePath.empty())
                     ? (fs::path(obj.meshFilter.sourcePath).filename().string() + "##selectMeshFilter")
                     : (meshType + "##selectMeshFilter");
@@ -419,7 +522,6 @@ void SceneEditor::RenderInspectorPanel() {
                 ImGui::SameLine();
                 if (ImGui::Button(meshButtonLabel.c_str(), ImVec2(-1.0f, 0.0f))) {
                     assetPickerMode_ = ProjectAssetPickerMode::ReplaceMesh;
-                    ImGui::OpenPopup("Select Project Asset");
                 }
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
@@ -478,7 +580,6 @@ void SceneEditor::RenderInspectorPanel() {
                 const float materialButtonWidth = (std::max)(1.0f, ImGui::GetContentRegionAvail().x - editButtonWidth - ImGui::GetStyle().ItemSpacing.x);
                 if (ImGui::Button(materialButtonLabel.c_str(), ImVec2(materialButtonWidth, 0.0f))) {
                     assetPickerMode_ = ProjectAssetPickerMode::AssignMaterial;
-                    ImGui::OpenPopup("Select Project Asset");
                 }
                 if (ImGui::BeginPopupContextItem("MaterialFieldContext")) {
                     if (ImGui::MenuItem("Edit")) {
@@ -595,26 +696,37 @@ void SceneEditor::RenderInspectorPanel() {
                     ImGui::PushID(scriptIndex);
 
                     const std::string header = std::string("Script: ") + (script.scriptName.empty() ? "(missing)" : script.scriptName);
-                    const bool scriptTreeOpen = ImGui::TreeNodeEx(header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-                    if (ImGui::IsItemHovered() && !script.scriptPath.empty()) {
-                        ImGui::SetTooltip("Click to show in Browser: %s", script.scriptPath.c_str());
-                        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                            SelectProjectFile(script.scriptPath);
+                    bool removeScript = false;
+                    bool scriptEnabledChanged = false;
+                    const bool scriptEnabledBefore = script.enabled;
+                    const bool scriptTreeOpen = RenderRemovableComponentHeader(header.c_str(), "ScriptAttachmentHeader", GetComponentIconTexture("component-script.png"), &script.enabled, scriptEnabledChanged, removeScript);
+                    if (removeScript) {
+                        PushUndoState();
+                        obj.scriptComponent.attachments.erase(obj.scriptComponent.attachments.begin() + scriptIndex);
+                        if (scriptsRunning_) {
+                            RebuildScriptRuntime();
                         }
+                        if (onDirty_) onDirty_();
+                        ImGui::PopID();
+                        break;
+                    }
+                    if (scriptEnabledChanged) {
+                        const bool scriptEnabledAfter = script.enabled;
+                        script.enabled = scriptEnabledBefore;
+                        PushUndoState();
+                        script.enabled = scriptEnabledAfter;
+                        if (scriptsRunning_) {
+                            RebuildScriptRuntime();
+                        }
+                        if (onDirty_) onDirty_();
                     }
                     if (scriptTreeOpen) {
-                        const bool enabledBefore = script.enabled;
-                        if (ImGui::Checkbox("Enabled", &script.enabled)) {
-                            const bool enabledAfter = script.enabled;
-                            script.enabled = enabledBefore;
-                            PushUndoState();
-                            script.enabled = enabledAfter;
-                            if (scriptsRunning_) {
-                                RebuildScriptRuntime();
+                        if (ImGui::IsItemHovered() && !script.scriptPath.empty()) {
+                            ImGui::SetTooltip("Click to show in Browser: %s", script.scriptPath.c_str());
+                            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                                SelectProjectFile(script.scriptPath);
                             }
-                            if (onDirty_) onDirty_();
                         }
-
                         ImGui::TextWrapped("Class: %s", script.scriptName.empty() ? "(missing)" : script.scriptName.c_str());
                         ImGui::TextWrapped("Source: %s", script.scriptPath.empty() ? "(none)" : script.scriptPath.c_str());
                         if (ImGui::IsItemHovered() && !script.scriptPath.empty()) {
@@ -623,23 +735,35 @@ void SceneEditor::RenderInspectorPanel() {
                                 SelectProjectFile(script.scriptPath);
                             }
                         }
-                        if (FindRegisteredScript(script.scriptName) == nullptr) {
+                        const bool scriptRegistered = FindRegisteredScript(script.scriptName) != nullptr;
+                        if (!scriptRegistered) {
                             ImGui::TextDisabled("Not registered in this build. Rebuild after creating or editing scripts.");
-                        }
-
-                        if (ImGui::Button("Remove Script")) {
-                            PushUndoState();
-                            obj.scriptComponent.attachments.erase(obj.scriptComponent.attachments.begin() + scriptIndex);
-                            if (scriptsRunning_) {
-                                RebuildScriptRuntime();
+                        } else {
+                            const std::vector<ScriptFieldDefinition> fieldDefinitions = GetRegisteredScriptFieldDefinitions(script.scriptName);
+                            if (!fieldDefinitions.empty()) {
+                                if (SyncAttachmentScriptFields(script) && onDirty_) {
+                                    onDirty_();
+                                }
+                                ImGui::Separator();
+                                ImGui::TextUnformatted("Fields");
+                                for (const ScriptFieldDefinition& definition : fieldDefinitions) {
+                                    auto fieldIt = std::find_if(script.fields.begin(), script.fields.end(), [&](const ScriptFieldEntry& field) {
+                                        return field.name == definition.name;
+                                    });
+                                    if (fieldIt == script.fields.end()) {
+                                        continue;
+                                    }
+                                    const ScriptFieldEntry fieldBefore = *fieldIt;
+                                    if (RenderScriptFieldEditor(definition, *fieldIt)) {
+                                        const ScriptFieldEntry fieldAfter = *fieldIt;
+                                        *fieldIt = fieldBefore;
+                                        PushUndoState();
+                                        *fieldIt = fieldAfter;
+                                        if (onDirty_) onDirty_();
+                                    }
+                                }
                             }
-                            if (onDirty_) onDirty_();
-                            ImGui::TreePop();
-                            ImGui::PopID();
-                            break;
                         }
-
-                        ImGui::TreePop();
                     }
                     ImGui::PopID();
                 }
@@ -740,6 +864,14 @@ void SceneEditor::RenderInspectorPanel() {
                 if (ImGui::DragFloat("Height##CharacterController", &height, 0.01f, 0.001f, 100000.0f)) {
                     beginInspectorContinuousEdit();
                     obj.characterController.height = (std::max)(obj.characterController.radius * 2.0f, height);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                glm::vec3 center = obj.characterController.center;
+                if (RenderInspectorDragFloat3("Center", "##characterControllerCenter", &center.x, 0.05f)) {
+                    beginInspectorContinuousEdit();
+                    obj.characterController.center = center;
                     if (onDirty_) onDirty_();
                 }
                 endInspectorContinuousEdit();
@@ -1290,7 +1422,6 @@ void SceneEditor::RenderMultiSelectionInspector() {
             }
             if (ImGui::Button((materialFilename + "##multiSelectMaterial").c_str(), ImVec2(-1.0f, 0.0f))) {
                 assetPickerMode_ = ProjectAssetPickerMode::AssignMaterial;
-                ImGui::OpenPopup("Select Project Asset");
             }
             if (ImGui::BeginDragDropTarget()) {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMaterialAssetPayload)) {
@@ -1594,76 +1725,76 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
     }
 
     const bool pickingMesh = (assetPickerMode_ == ProjectAssetPickerMode::ReplaceMesh);
-    if (ImGui::BeginPopupModal("Select Project Asset", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+    ImGui::SetNextWindowSize(ImVec2(460.0f, 360.0f), ImGuiCond_FirstUseEver);
+    const char* windowTitle = pickingMesh ? "Select Project Mesh" : "Select Project Material";
+    bool pickerOpen = true;
+    if (ImGui::Begin(windowTitle, &pickerOpen, ImGuiWindowFlags_NoCollapse)) {
+        if (!pickerOpen || (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape))) {
             assetPickerMode_ = ProjectAssetPickerMode::None;
-            ImGui::CloseCurrentPopup();
-        }
+            pickerOpen = false;
+        } else {
+            ImGui::TextUnformatted(pickingMesh ? "Select an OBJ from the project" : "Select a material from the project");
+            ImGui::Separator();
 
-        ImGui::TextUnformatted(pickingMesh ? "Select an OBJ from the project" : "Select a material from the project");
-        ImGui::Separator();
-
-        if (ImGui::Button("Refresh")) {
-            RefreshProjectFiles();
-        }
-
-        if (!pickingMesh) {
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(190.0f);
-            ImGui::InputText("##newMaterialName", createMaterialNameBuffer_, sizeof(createMaterialNameBuffer_));
-            ImGui::SameLine();
-            if (ImGui::Button("Add Material")) {
-                std::string newMaterialId;
-                if (CreateMaterialAsset(createMaterialNameBuffer_, &newMaterialId)) {
-                    createMaterialNameBuffer_[0] = '\0';
-                    AssignMaterialToSelected(newMaterialId);
-                    assetPickerMode_ = ProjectAssetPickerMode::None;
-                    ImGui::CloseCurrentPopup();
-                }
+            if (ImGui::Button("Refresh")) {
+                RefreshProjectFiles();
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Create a material and assign it to the selected object.");
-            }
-        }
 
-        bool found = false;
-        if (ImGui::BeginChild("ProjectAssetPickerList", ImVec2(420.0f, 260.0f), true)) {
-            for (const std::string& file : projectFiles_) {
-                const bool matches = pickingMesh ? IsObjAssetPath(file) : IsMaterialAssetPath(file);
-                if (!matches) {
-                    continue;
-                }
-
-                found = true;
-                const std::string label = ProjectAssetDisplayFilename(file) + "##" + file;
-                if (ImGui::Selectable(label.c_str())) {
-                    if (pickingMesh) {
-                        ReplaceSelectedMeshFromObj(file);
-                    } else {
-                        AssignMaterialToSelected(MaterialIdFromAssetPath(file));
+            if (!pickingMesh) {
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(190.0f);
+                ImGui::InputText("##newMaterialName", createMaterialNameBuffer_, sizeof(createMaterialNameBuffer_));
+                ImGui::SameLine();
+                if (ImGui::Button("Add Material")) {
+                    std::string newMaterialId;
+                    if (CreateMaterialAsset(createMaterialNameBuffer_, &newMaterialId)) {
+                        createMaterialNameBuffer_[0] = '\0';
+                        AssignMaterialToSelected(newMaterialId);
+                        assetPickerMode_ = ProjectAssetPickerMode::None;
+                        pickerOpen = false;
                     }
-                    assetPickerMode_ = ProjectAssetPickerMode::None;
-                    ImGui::CloseCurrentPopup();
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("%s", file.c_str());
+                    ImGui::SetTooltip("Create a material and assign it to the selected object.");
                 }
             }
 
-            if (!found) {
-                ImGui::TextDisabled("%s", pickingMesh ? "No OBJ files found in project assets." : "No material files found in project assets.");
+            bool found = false;
+            if (ImGui::BeginChild("ProjectAssetPickerList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing() * 2.0f), true)) {
+                for (const std::string& file : projectFiles_) {
+                    const bool matches = pickingMesh ? IsObjAssetPath(file) : IsMaterialAssetPath(file);
+                    if (!matches) {
+                        continue;
+                    }
+
+                    found = true;
+                    const std::string label = ProjectAssetDisplayFilename(file) + "##" + file;
+                    if (ImGui::Selectable(label.c_str())) {
+                        if (pickingMesh) {
+                            ReplaceSelectedMeshFromObj(file);
+                        } else {
+                            AssignMaterialToSelected(MaterialIdFromAssetPath(file));
+                        }
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s", file.c_str());
+                    }
+                }
+
+                if (!found) {
+                    ImGui::TextDisabled("%s", pickingMesh ? "No OBJ files found in project assets." : "No material files found in project assets.");
+                }
+            }
+            ImGui::EndChild();
+
+            ImGui::Separator();
+            if (ImGui::Button("Close")) {
+                assetPickerMode_ = ProjectAssetPickerMode::None;
+                pickerOpen = false;
             }
         }
-        ImGui::EndChild();
-
-        ImGui::Separator();
-        if (ImGui::Button("Cancel")) {
-            assetPickerMode_ = ProjectAssetPickerMode::None;
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
     }
+    ImGui::End();
 }
 
 void SceneEditor::RenderMaterialInspector() {

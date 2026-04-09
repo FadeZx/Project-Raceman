@@ -300,7 +300,7 @@ public:
             settings->mMaxStrength = (std::max)(0.0f, desc.maxStrength);
             settings->mMaxSlopeAngle = JPH::DegreesToRadians((std::max)(1.0f, (std::min)(89.0f, desc.slopeLimitDegrees)));
             settings->mShape = CreateCharacterShape(desc.height, desc.radius);
-            settings->mShapeOffset = JPH::Vec3(0.0f, (std::max)(desc.height, desc.radius * 2.0f) * 0.5f, 0.0f);
+            settings->mShapeOffset = ToJoltVec3(desc.center + glm::vec3(0.0f, (std::max)(desc.height, desc.radius * 2.0f) * 0.5f, 0.0f));
 
             record.updateSettings.mStickToFloorStepDown = JPH::Vec3(0.0f, -(std::max)(0.05f, desc.stepHeight + 0.05f), 0.0f);
             record.updateSettings.mWalkStairsStepUp = JPH::Vec3(0.0f, (std::max)(0.0f, desc.stepHeight), 0.0f);

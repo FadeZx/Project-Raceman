@@ -12,8 +12,57 @@
 
 namespace raceman {
 
-ObjectScriptContext::ObjectScriptContext(SceneObject& object, Console* console, InputManager* inputManager, PhysicsWorld* physicsWorld)
-    : object_(object), console_(console), inputManager_(inputManager), physicsWorld_(physicsWorld) {}
+namespace {
+
+ScriptFieldEntry* FindAttachmentField(ObjectScriptAttachment* attachment, const std::string& name) {
+    if (attachment == nullptr) {
+        return nullptr;
+    }
+    for (ScriptFieldEntry& field : attachment->fields) {
+        if (field.name == name) {
+            return &field;
+        }
+    }
+    return nullptr;
+}
+
+const ScriptFieldEntry* FindAttachmentField(const ObjectScriptAttachment* attachment, const std::string& name) {
+    if (attachment == nullptr) {
+        return nullptr;
+    }
+    for (const ScriptFieldEntry& field : attachment->fields) {
+        if (field.name == name) {
+            return &field;
+        }
+    }
+    return nullptr;
+}
+
+template <typename T>
+T GetTypedFieldValue(const ObjectScriptAttachment* attachment, const std::string& name, const T& fallback) {
+    const ScriptFieldEntry* field = FindAttachmentField(attachment, name);
+    if (field == nullptr) {
+        return fallback;
+    }
+    if (const T* value = std::get_if<T>(&field->value)) {
+        return *value;
+    }
+    return fallback;
+}
+
+template <typename T>
+void SetTypedFieldValue(ObjectScriptAttachment* attachment, const std::string& name, ScriptFieldType expectedType, const T& value) {
+    ScriptFieldEntry* field = FindAttachmentField(attachment, name);
+    if (field == nullptr || field->type != expectedType) {
+        return;
+    }
+    field->value = value;
+}
+
+} // namespace
+
+ObjectScriptContext::ObjectScriptContext(SceneObject& object, ObjectScriptAttachment* attachment, Console* console, InputManager* inputManager, PhysicsWorld* physicsWorld)
+    : object_(object), attachment_(attachment), console_(console), inputManager_(inputManager), physicsWorld_(physicsWorld) {}
 
 // CameraHandle ----------------------------------------------------------------
 
@@ -237,6 +286,62 @@ bool ObjectScriptContext::IsKeyDown(int key) const {
     return inputManager_ != nullptr && inputManager_->IsKeyDown(key);
 }
 
+bool ObjectScriptContext::GetBoolField(const std::string& name, bool fallback) const {
+    return GetTypedFieldValue<bool>(attachment_, name, fallback);
+}
+
+int ObjectScriptContext::GetIntField(const std::string& name, int fallback) const {
+    return GetTypedFieldValue<int>(attachment_, name, fallback);
+}
+
+float ObjectScriptContext::GetFloatField(const std::string& name, float fallback) const {
+    return GetTypedFieldValue<float>(attachment_, name, fallback);
+}
+
+std::string ObjectScriptContext::GetStringField(const std::string& name, const std::string& fallback) const {
+    return GetTypedFieldValue<std::string>(attachment_, name, fallback);
+}
+
+glm::vec2 ObjectScriptContext::GetVec2Field(const std::string& name, const glm::vec2& fallback) const {
+    return GetTypedFieldValue<glm::vec2>(attachment_, name, fallback);
+}
+
+glm::vec3 ObjectScriptContext::GetVec3Field(const std::string& name, const glm::vec3& fallback) const {
+    return GetTypedFieldValue<glm::vec3>(attachment_, name, fallback);
+}
+
+glm::vec4 ObjectScriptContext::GetVec4Field(const std::string& name, const glm::vec4& fallback) const {
+    return GetTypedFieldValue<glm::vec4>(attachment_, name, fallback);
+}
+
+void ObjectScriptContext::SetBoolField(const std::string& name, bool value) {
+    SetTypedFieldValue<bool>(attachment_, name, ScriptFieldType::Bool, value);
+}
+
+void ObjectScriptContext::SetIntField(const std::string& name, int value) {
+    SetTypedFieldValue<int>(attachment_, name, ScriptFieldType::Int, value);
+}
+
+void ObjectScriptContext::SetFloatField(const std::string& name, float value) {
+    SetTypedFieldValue<float>(attachment_, name, ScriptFieldType::Float, value);
+}
+
+void ObjectScriptContext::SetStringField(const std::string& name, const std::string& value) {
+    SetTypedFieldValue<std::string>(attachment_, name, ScriptFieldType::String, value);
+}
+
+void ObjectScriptContext::SetVec2Field(const std::string& name, const glm::vec2& value) {
+    SetTypedFieldValue<glm::vec2>(attachment_, name, ScriptFieldType::Vec2, value);
+}
+
+void ObjectScriptContext::SetVec3Field(const std::string& name, const glm::vec3& value) {
+    SetTypedFieldValue<glm::vec3>(attachment_, name, ScriptFieldType::Vec3, value);
+}
+
+void ObjectScriptContext::SetVec4Field(const std::string& name, const glm::vec4& value) {
+    SetTypedFieldValue<glm::vec4>(attachment_, name, ScriptFieldType::Vec4, value);
+}
+
 void ObjectScriptContext::Log(const std::string& message) const {
     if (console_) {
         console_->AddLog("[Script:" + object_.name + "] " + message);
@@ -253,6 +358,11 @@ void ObjectScriptContext::Error(const std::string& message) const {
     if (console_) {
         console_->AddError("[Script:" + object_.name + "] " + message);
     }
+}
+
+const std::vector<ScriptFieldDefinition>& IObjectScript::GetFieldDefinitions() const {
+    static const std::vector<ScriptFieldDefinition> kNoFields;
+    return kNoFields;
 }
 
 } // namespace raceman

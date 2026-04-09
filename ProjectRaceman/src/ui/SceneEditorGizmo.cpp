@@ -50,7 +50,7 @@ glm::vec3 TransformDirection(const glm::mat4& transform, const glm::vec3& direct
 
 bool GetObjectLocalBounds(const SceneObject& object, glm::vec3& outMin, glm::vec3& outMax) {
     if (!object.hasMeshFilter) {
-        if (object.hasCamera || object.hasLight || object.type == "GameObject") {
+        if (object.hasCamera || object.hasLight) {
             outMin = {-0.25f, -0.25f, -0.25f};
             outMax = {0.25f, 0.25f, 0.25f};
             return true;
@@ -58,13 +58,14 @@ bool GetObjectLocalBounds(const SceneObject& object, glm::vec3& outMin, glm::vec
         return false;
     }
 
-    if (object.type == "Plane") {
+    const std::string meshType = object.meshFilter.meshType.empty() ? std::string("Mesh") : object.meshFilter.meshType;
+    if (meshType == "Plane") {
         outMin = {-0.5f, -0.05f, -0.5f};
         outMax = {0.5f, 0.05f, 0.5f};
         return true;
     }
 
-    if (object.type == "Mesh") {
+    if (meshType == "Mesh") {
         outMin = object.meshFilter.localBoundsMin;
         outMax = object.meshFilter.localBoundsMax;
         constexpr float minThickness = 0.05f;
@@ -712,7 +713,7 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
         const float height = (std::max)(radius * 2.0f, object.characterController.height);
         const glm::mat4 controllerMatrix = BuildObjectMatrixNoScale(object);
         const glm::vec4 controllerColor{0.2f, 0.75f, 1.0f, 1.0f};
-        const glm::vec3 controllerCenter{0.0f, height * 0.5f, 0.0f};
+        const glm::vec3 controllerCenter = object.characterController.center + glm::vec3{0.0f, height * 0.5f, 0.0f};
         SubmitWireCapsuleY(renderer, controllerMatrix, controllerCenter, radius, height, controllerColor, colliderWidth, helperDepthMode);
     }
     if (object.hasCamera && object.camera.enabled) {

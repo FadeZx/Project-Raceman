@@ -58,6 +58,7 @@ struct PhysicsCharacterDesc {
     glm::vec3 rotationEuler{0.0f};
     float height{1.8f};
     float radius{0.4f};
+    glm::vec3 center{0.0f};
     float stepHeight{0.35f};
     float slopeLimitDegrees{50.0f};
     float maxStrength{100.0f};

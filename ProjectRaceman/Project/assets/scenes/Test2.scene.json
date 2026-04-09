@@ -1,0 +1,215 @@
+{
+  "objects": [
+    {
+      "id": "mesh_1",
+      "parentId": "",
+      "name": "Plane",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [10, 1, 10]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "editor-assets/mesh/plane.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "DefaultMaterial",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "PlaneCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "normal": [0, 1, 0],
+          "offset": 0,
+          "infinite": true,
+          "halfExtent": 1000
+        }
+      ]
+    },
+    {
+      "id": "camera_2",
+      "parentId": "mesh_4",
+      "name": "Camera",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 2, 5],
+          "rotationEuler": [-15, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": true,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.1,
+          "farClip": 500,
+          "clearColor": [0.02, 0.02, 0.02, 1]
+        }
+      ]
+    },
+    {
+      "id": "light_3",
+      "parentId": "",
+      "name": "Directional Light",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [-45, 35, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "lightType": "Directional",
+          "color": [1, 1, 1],
+          "intensity": 1.5,
+          "range": 100,
+          "spotAngleDegrees": 30
+        }
+      ]
+    },
+    {
+      "id": "mesh_4",
+      "parentId": "",
+      "name": "Chevrolet-nascar-FLWheel",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0.503275, 0],
+          "rotationEuler": [0, -0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+            {
+              "enabled": true,
+              "scriptName": "CharacterControllerTest",
+              "scriptPath": "assets/scripts/CharacterControllerTest.cpp",
+              "fields": [
+                {
+                  "name": "moveSpeed",
+                  "type": "Float",
+                "value": 6
+                },
+                {
+                  "name": "jumpImpulse",
+                  "type": "Float",
+                "value": 1.5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "CharacterController",
+          "enabled": true,
+          "height": 1.18,
+          "radius": 0.4,
+          "center": [0.15, -0.65, 0],
+          "stepHeight": 0.08,
+          "slopeLimitDegrees": 36.5,
+          "maxStrength": 100,
+          "mass": 70
+        }
+      ]
+    },
+    {
+      "id": "gameobject_1",
+      "parentId": "mesh_4",
+      "name": "Chevrolet-nascar-FLWheel2",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-1.50558, -0.0147386, 0],
+          "rotationEuler": [0, -0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "camera_3",
+      "parentId": "",
+      "name": "Camera",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 2, 5],
+          "rotationEuler": [-15, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": false,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.1,
+          "farClip": 500,
+          "clearColor": [0.02, 0.02, 0.02, 1]
+        }
+      ]
+    }
+  ]
+}

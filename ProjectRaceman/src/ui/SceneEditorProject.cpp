@@ -576,24 +576,21 @@ void SceneEditor::ImportObj(const std::string& path) {
     namespace fs = std::filesystem;
     if (path.empty()) return;
     try {
-        const std::string importPath = PrepareObjImportPath(path);
-        if (importPath.empty()) return;
-
-        auto model = raceman::LoadModelFromFile(ProjectAssetPathToAbsolute(importPath).string());
-        std::string baseName;
-        try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Mesh"; }
-
-        const auto infos = raceman::GetMeshInfos(model);
-        if (infos.empty()) {
+        std::string importPath;
+        std::shared_ptr<::Model> model;
+        std::vector<ImportedMeshInfo> infos;
+        if (!TryLoadObjAsset(path, importPath, model, infos)) {
             return;
         }
+        std::string baseName;
+        try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Mesh"; }
         PushUndoState();
         for (size_t i = 0; i < infos.size(); ++i) {
             const auto& info = infos[i];
             SceneObject o;
             o.id = MakeId("mesh");
             o.name = baseName + (infos.size() > 1 ? ("_" + std::to_string(i)) : "");
-            o.type = "Mesh";
+            o.type = "GameObject";
             o.transform.position = {0.0f, 0.0f, 0.0f};
             o.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
             o.transform.scale = {1.0f, 1.0f, 1.0f};
@@ -624,14 +621,10 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
     }
 
     try {
-        const std::string importPath = PrepareObjImportPath(path);
-        if (importPath.empty()) {
-            return false;
-        }
-
-        auto model = raceman::LoadModelFromFile(ProjectAssetPathToAbsolute(importPath).string());
-        const auto infos = raceman::GetMeshInfos(model);
-        if (infos.empty()) {
+        std::string importPath;
+        std::shared_ptr<::Model> model;
+        std::vector<ImportedMeshInfo> infos;
+        if (!TryLoadObjAsset(path, importPath, model, infos)) {
             return false;
         }
 
