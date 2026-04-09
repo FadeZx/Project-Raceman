@@ -132,8 +132,7 @@
               "RelativeToolTip": "Project\\assets\\scripts\\Test1.h",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2026-04-08T16:53:28.507Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-08T16:53:28.507Z"
             },
             {
               "$type": "Document",
@@ -191,8 +190,7 @@
               "RelativeToolTip": "src\\Application.cpp",
               "ViewState": "AgIAAMMAAAAAAAAAAAAAAG8BAAAKAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-07T07:43:14.247Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T07:43:14.247Z"
             },
             {
               "$type": "Document",
@@ -234,9 +232,10 @@
               "RelativeDocumentMoniker": "src\\scenes\\Scene.cpp",
               "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\scenes\\Scene.cpp",
               "RelativeToolTip": "src\\scenes\\Scene.cpp",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-09T10:31:08.74Z"
+              "WhenOpened": "2025-10-09T10:31:08.74Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -359,9 +358,10 @@
               "RelativeDocumentMoniker": "src\\scenes\\Scene.h",
               "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\scenes\\Scene.h",
               "RelativeToolTip": "src\\scenes\\Scene.h",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T09:39:07.245Z"
+              "WhenOpened": "2025-10-09T09:39:07.245Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -395,9 +395,10 @@
               "RelativeDocumentMoniker": "src\\scenes\\SimulationScene.cpp",
               "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\scenes\\SimulationScene.cpp",
               "RelativeToolTip": "src\\scenes\\SimulationScene.cpp",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAqwAgAAAAAAAAA",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAgAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-10-09T07:59:36.964Z"
+              "WhenOpened": "2025-10-09T07:59:36.964Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -407,9 +408,10 @@
               "RelativeDocumentMoniker": "src\\scenes\\SimulationScene.h",
               "ToolTip": "C:\\Capt\\Project-Raceman\\ProjectRaceman\\src\\scenes\\SimulationScene.h",
               "RelativeToolTip": "src\\scenes\\SimulationScene.h",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T07:59:23.75Z"
+              "WhenOpened": "2025-10-09T07:59:23.75Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
