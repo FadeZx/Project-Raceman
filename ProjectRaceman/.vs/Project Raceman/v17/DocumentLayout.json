@@ -3,7 +3,7 @@
   "WorkspaceRootPath": "D:\\Capt\\Project-Raceman\\ProjectRaceman\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|C:\\PROGRAM FILES\\MICROSOFT VISUAL STUDIO\\2022\\COMMUNITY\\VC\\TOOLS\\MSVC\\14.40.33807\\INCLUDE\\VECTOR||{3B902123-F8A7-4915-9F01-361F908088D0}|"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.40.33807\\include\\vector||{3B902123-F8A7-4915-9F01-361F908088D0}|"
     },
     {
       "AbsoluteMoniker": "D:0:0:{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}|Project Raceman.vcxproj|D:\\Capt\\Project-Raceman\\ProjectRaceman\\Project\\assets\\scripts\\CharacterControllerTest.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
@@ -154,8 +154,7 @@
               "RelativeToolTip": "Project\\assets\\scripts\\CharacterControllerTest.h",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAkAAAAtAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2026-04-09T16:12:22.233Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-09T16:12:22.233Z"
             },
             {
               "$type": "Document",
@@ -167,8 +166,7 @@
               "RelativeToolTip": "Project\\assets\\scripts\\CharacterControllerTest.cpp",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAhAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-04-09T16:12:00.493Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-09T16:12:00.493Z"
             },
             {
               "$type": "Document",
@@ -441,8 +439,7 @@
               "RelativeToolTip": "src\\rendering\\model.h",
               "ViewState": "AQIAACIAAAAAAAAAAAAQwCsAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-10-09T09:08:57.621Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T09:08:57.621Z"
             },
             {
               "$type": "Document",

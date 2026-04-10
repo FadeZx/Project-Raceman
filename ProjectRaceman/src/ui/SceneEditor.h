@@ -59,6 +59,7 @@ enum class SceneComponentType {
 
 enum class RigidbodyBodyType {
     Static,
+    Kinematic,
     Dynamic
 };
 
@@ -118,7 +119,16 @@ struct RigidbodyComponent {
     RigidbodyBodyType bodyType{RigidbodyBodyType::Dynamic};
     float mass{1.0f};
     bool useGravity{true};
+    float linearDamping{0.05f};
+    float angularDamping{0.05f};
     glm::vec3 velocity{0.0f, 0.0f, 0.0f};
+    glm::vec3 angularVelocity{0.0f, 0.0f, 0.0f};
+    bool freezePositionX{false};
+    bool freezePositionY{false};
+    bool freezePositionZ{false};
+    bool freezeRotationX{false};
+    bool freezeRotationY{false};
+    bool freezeRotationZ{false};
 };
 
 struct CharacterControllerComponent {

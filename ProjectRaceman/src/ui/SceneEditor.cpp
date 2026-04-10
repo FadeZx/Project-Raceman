@@ -102,11 +102,15 @@ bool ReadString(const raceman::physics::json::Object& object, const std::string&
 }
 
 std::string RigidbodyBodyTypeToString(RigidbodyBodyType bodyType) {
-    return bodyType == RigidbodyBodyType::Static ? "Static" : "Dynamic";
+    if (bodyType == RigidbodyBodyType::Static) return "Static";
+    if (bodyType == RigidbodyBodyType::Kinematic) return "Kinematic";
+    return "Dynamic";
 }
 
 RigidbodyBodyType RigidbodyBodyTypeFromString(const std::string& value) {
-    return value == "Static" ? RigidbodyBodyType::Static : RigidbodyBodyType::Dynamic;
+    if (value == "Static") return RigidbodyBodyType::Static;
+    if (value == "Kinematic") return RigidbodyBodyType::Kinematic;
+    return RigidbodyBodyType::Dynamic;
 }
 
 std::string LightTypeToString(LightType type) {
@@ -1145,8 +1149,11 @@ void SceneEditor::UpdatePhysics(float deltaTime) {
     }
 
     for (const SceneObject& object : objects_) {
-        if (object.hasRigidbody && object.rigidbody.enabled && object.rigidbody.bodyType == RigidbodyBodyType::Dynamic) {
+        if (object.hasRigidbody &&
+            object.rigidbody.enabled &&
+            object.rigidbody.bodyType != RigidbodyBodyType::Static) {
             physicsWorld_->SetBodyVelocity(object.id, object.rigidbody.velocity);
+            physicsWorld_->SetBodyAngularVelocity(object.id, object.rigidbody.angularVelocity);
         }
     }
 
@@ -1168,7 +1175,7 @@ void SceneEditor::UpdatePhysics(float deltaTime) {
 
     for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
         SceneObject& object = objects_[objectIndex];
-        if (!object.hasRigidbody || object.rigidbody.bodyType != RigidbodyBodyType::Dynamic) {
+        if (!object.hasRigidbody || object.rigidbody.bodyType == RigidbodyBodyType::Static) {
             continue;
         }
 
@@ -1178,6 +1185,7 @@ void SceneEditor::UpdatePhysics(float deltaTime) {
         }
 
         object.rigidbody.velocity = state.velocity;
+        object.rigidbody.angularVelocity = state.angularVelocity;
         const Transform previousLocal = object.transform;
         Transform worldTransform;
         worldTransform.position = state.position;
@@ -1233,6 +1241,7 @@ void SceneEditor::ResetPhysicsVelocities() {
     for (SceneObject& object : objects_) {
         if (object.hasRigidbody) {
             object.rigidbody.velocity = {0.0f, 0.0f, 0.0f};
+            object.rigidbody.angularVelocity = {0.0f, 0.0f, 0.0f};
         }
         if (object.hasCharacterController) {
             object.characterController.velocity = {0.0f, 0.0f, 0.0f};
@@ -1286,12 +1295,24 @@ void SceneEditor::SetScriptsRunning(bool running) {
             body.position = worldTransform.position;
             body.rotationEuler = worldTransform.rotationEuler;
             body.scale = worldTransform.scale;
-            body.bodyType = object.hasRigidbody && object.rigidbody.enabled && object.rigidbody.bodyType == RigidbodyBodyType::Dynamic
-                ? PhysicsBodyType::Dynamic
-                : PhysicsBodyType::Static;
+            body.bodyType = PhysicsBodyType::Static;
+            if (object.hasRigidbody && object.rigidbody.enabled) {
+                body.bodyType = object.rigidbody.bodyType == RigidbodyBodyType::Dynamic
+                    ? PhysicsBodyType::Dynamic
+                    : (object.rigidbody.bodyType == RigidbodyBodyType::Kinematic ? PhysicsBodyType::Kinematic : PhysicsBodyType::Static);
+            }
             body.mass = object.hasRigidbody ? object.rigidbody.mass : 1.0f;
             body.useGravity = object.hasRigidbody ? object.rigidbody.useGravity : false;
+            body.linearDamping = object.hasRigidbody ? object.rigidbody.linearDamping : 0.05f;
+            body.angularDamping = object.hasRigidbody ? object.rigidbody.angularDamping : 0.05f;
             body.velocity = object.hasRigidbody ? object.rigidbody.velocity : glm::vec3{0.0f};
+            body.angularVelocity = object.hasRigidbody ? object.rigidbody.angularVelocity : glm::vec3{0.0f};
+            body.freezePositionX = object.hasRigidbody ? object.rigidbody.freezePositionX : false;
+            body.freezePositionY = object.hasRigidbody ? object.rigidbody.freezePositionY : false;
+            body.freezePositionZ = object.hasRigidbody ? object.rigidbody.freezePositionZ : false;
+            body.freezeRotationX = object.hasRigidbody ? object.rigidbody.freezeRotationX : false;
+            body.freezeRotationY = object.hasRigidbody ? object.rigidbody.freezeRotationY : false;
+            body.freezeRotationZ = object.hasRigidbody ? object.rigidbody.freezeRotationZ : false;
 
             if (object.hasBoxCollider && object.boxCollider.enabled) {
                 PhysicsColliderDesc collider;
@@ -2077,7 +2098,12 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"bodyType\": \"" << RigidbodyBodyTypeToString(o.rigidbody.bodyType) << "\",\n";
             out << "          \"mass\": " << o.rigidbody.mass << ",\n";
             out << "          \"useGravity\": " << (o.rigidbody.useGravity ? "true" : "false") << ",\n";
-            out << "          \"velocity\": [" << o.rigidbody.velocity.x << ", " << o.rigidbody.velocity.y << ", " << o.rigidbody.velocity.z << "]\n";
+            out << "          \"linearDamping\": " << o.rigidbody.linearDamping << ",\n";
+            out << "          \"angularDamping\": " << o.rigidbody.angularDamping << ",\n";
+            out << "          \"velocity\": [" << o.rigidbody.velocity.x << ", " << o.rigidbody.velocity.y << ", " << o.rigidbody.velocity.z << "],\n";
+            out << "          \"angularVelocity\": [" << o.rigidbody.angularVelocity.x << ", " << o.rigidbody.angularVelocity.y << ", " << o.rigidbody.angularVelocity.z << "],\n";
+            out << "          \"freezePosition\": [" << (o.rigidbody.freezePositionX ? "true" : "false") << ", " << (o.rigidbody.freezePositionY ? "true" : "false") << ", " << (o.rigidbody.freezePositionZ ? "true" : "false") << "],\n";
+            out << "          \"freezeRotation\": [" << (o.rigidbody.freezeRotationX ? "true" : "false") << ", " << (o.rigidbody.freezeRotationY ? "true" : "false") << ", " << (o.rigidbody.freezeRotationZ ? "true" : "false") << "]\n";
             out << "        }";
         }
         if (o.hasCharacterController) {
@@ -2458,7 +2484,30 @@ void SceneEditor::Load(const std::string& path) {
                         }
 
                         ReadBool(component, "useGravity", so.rigidbody.useGravity);
+                        if (auto linearDampingIt = component.find("linearDamping"); linearDampingIt != component.end() && linearDampingIt->second.is_number()) {
+                            so.rigidbody.linearDamping = (std::max)(0.0f, static_cast<float>(linearDampingIt->second.as_number()));
+                        }
+                        if (auto angularDampingIt = component.find("angularDamping"); angularDampingIt != component.end() && angularDampingIt->second.is_number()) {
+                            so.rigidbody.angularDamping = (std::max)(0.0f, static_cast<float>(angularDampingIt->second.as_number()));
+                        }
                         ReadVec3(component, "velocity", so.rigidbody.velocity);
+                        ReadVec3(component, "angularVelocity", so.rigidbody.angularVelocity);
+                        if (auto freezePositionIt = component.find("freezePosition"); freezePositionIt != component.end() && freezePositionIt->second.is_array()) {
+                            const auto& value = freezePositionIt->second.as_array();
+                            if (value.size() == 3 && value[0].is_bool() && value[1].is_bool() && value[2].is_bool()) {
+                                so.rigidbody.freezePositionX = value[0].as_bool();
+                                so.rigidbody.freezePositionY = value[1].as_bool();
+                                so.rigidbody.freezePositionZ = value[2].as_bool();
+                            }
+                        }
+                        if (auto freezeRotationIt = component.find("freezeRotation"); freezeRotationIt != component.end() && freezeRotationIt->second.is_array()) {
+                            const auto& value = freezeRotationIt->second.as_array();
+                            if (value.size() == 3 && value[0].is_bool() && value[1].is_bool() && value[2].is_bool()) {
+                                so.rigidbody.freezeRotationX = value[0].as_bool();
+                                so.rigidbody.freezeRotationY = value[1].as_bool();
+                                so.rigidbody.freezeRotationZ = value[2].as_bool();
+                            }
+                        }
                     } else if (componentType == "CharacterController") {
                         so.hasCharacterController = true;
                         ReadBool(component, "enabled", so.characterController.enabled);

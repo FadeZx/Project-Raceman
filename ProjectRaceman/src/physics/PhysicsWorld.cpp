@@ -19,6 +19,7 @@
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Body/AllowedDOFs.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
@@ -158,6 +159,17 @@ JPH::ShapeRefC CreateCharacterShape(float height, float radius) {
     return new JPH::CapsuleShape(halfCylinderHeight, clampedRadius);
 }
 
+JPH::EAllowedDOFs ToAllowedDOFs(const PhysicsBodyDesc& body) {
+    JPH::EAllowedDOFs allowed = JPH::EAllowedDOFs::All;
+    if (body.freezePositionX) allowed &= ~JPH::EAllowedDOFs::TranslationX;
+    if (body.freezePositionY) allowed &= ~JPH::EAllowedDOFs::TranslationY;
+    if (body.freezePositionZ) allowed &= ~JPH::EAllowedDOFs::TranslationZ;
+    if (body.freezeRotationX) allowed &= ~JPH::EAllowedDOFs::RotationX;
+    if (body.freezeRotationY) allowed &= ~JPH::EAllowedDOFs::RotationY;
+    if (body.freezeRotationZ) allowed &= ~JPH::EAllowedDOFs::RotationZ;
+    return allowed == JPH::EAllowedDOFs::None ? JPH::EAllowedDOFs::All : allowed;
+}
+
 JPH::ShapeRefC CreateBaseShape(const PhysicsColliderDesc& collider, const glm::vec3& scale) {
     if (collider.type == PhysicsColliderType::Box) {
         const glm::vec3 halfExtent = glm::max(glm::abs(collider.size * scale) * 0.5f, glm::vec3(0.001f));
@@ -240,7 +252,7 @@ public:
 
         bodies_ = inputBodies;
         for (const PhysicsBodyDesc& body : bodies_) {
-            states_[body.objectId] = {body.objectId, body.position, body.rotationEuler, body.velocity};
+            states_[body.objectId] = {body.objectId, body.position, body.rotationEuler, body.velocity, body.angularVelocity};
         }
 
         tempAllocator_ = std::make_unique<JPH::TempAllocatorImpl>(10 * 1024 * 1024);
@@ -263,22 +275,32 @@ public:
                 continue;
             }
 
+            const bool movable = body.bodyType != PhysicsBodyType::Static && !hasPlaneCollider;
             const bool dynamic = body.bodyType == PhysicsBodyType::Dynamic && !hasPlaneCollider;
-            const JPH::EMotionType motionType = dynamic ? JPH::EMotionType::Dynamic : JPH::EMotionType::Static;
-            const JPH::ObjectLayer layer = sensorOnly ? Layers::Sensor : (dynamic ? Layers::Moving : Layers::NonMoving);
+            const JPH::EMotionType motionType = dynamic
+                ? JPH::EMotionType::Dynamic
+                : (movable ? JPH::EMotionType::Kinematic : JPH::EMotionType::Static);
+            const JPH::ObjectLayer layer = sensorOnly ? Layers::Sensor : (movable ? Layers::Moving : Layers::NonMoving);
             JPH::BodyCreationSettings settings(shape, ToJoltRVec3(body.position), ToJoltQuat(body.rotationEuler), motionType, layer);
             settings.mIsSensor = sensorOnly;
             settings.mGravityFactor = body.useGravity ? 1.0f : 0.0f;
+            settings.mLinearDamping = (std::max)(0.0f, body.linearDamping);
+            settings.mAngularDamping = (std::max)(0.0f, body.angularDamping);
+            settings.mAllowedDOFs = ToAllowedDOFs(body);
+            settings.mLinearVelocity = ToJoltVec3(body.velocity);
+            settings.mAngularVelocity = ToJoltVec3(body.angularVelocity);
+            if (movable) {
+                settings.mAllowDynamicOrKinematic = true;
+            }
             if (dynamic) {
                 settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
                 settings.mMassPropertiesOverride.mMass = (std::max)(0.001f, body.mass);
-                settings.mLinearVelocity = ToJoltVec3(body.velocity);
             }
 
-            JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(settings, dynamic ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+            JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(settings, movable ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
             bodyIds_[body.objectId] = bodyId;
-            if (dynamic) {
-                dynamicBodies_.insert(body.objectId);
+            if (movable) {
+                activeBodies_.insert(body.objectId);
             }
         }
 
@@ -329,7 +351,7 @@ public:
         }
 
         bodyIds_.clear();
-        dynamicBodies_.clear();
+        activeBodies_.clear();
         physicsSystem_.reset();
         jobSystem_.reset();
         tempAllocator_.reset();
@@ -344,17 +366,18 @@ public:
 
         const float step = (std::min)(deltaTime, 0.05f);
         JPH::BodyInterface& bodyInterface = physicsSystem_->GetBodyInterface();
-        for (const std::string& objectId : dynamicBodies_) {
+        for (const std::string& objectId : activeBodies_) {
             auto stateIt = states_.find(objectId);
             auto bodyIt = bodyIds_.find(objectId);
             if (stateIt == states_.end() || bodyIt == bodyIds_.end()) {
                 continue;
             }
             bodyInterface.SetLinearVelocity(bodyIt->second, ToJoltVec3(stateIt->second.velocity));
+            bodyInterface.SetAngularVelocity(bodyIt->second, ToJoltVec3(stateIt->second.angularVelocity));
         }
 
         physicsSystem_->Update(step, 1, tempAllocator_.get(), jobSystem_.get());
-        for (const std::string& objectId : dynamicBodies_) {
+        for (const std::string& objectId : activeBodies_) {
             auto stateIt = states_.find(objectId);
             auto bodyIt = bodyIds_.find(objectId);
             if (stateIt == states_.end() || bodyIt == bodyIds_.end()) {
@@ -363,6 +386,7 @@ public:
             stateIt->second.position = FromJoltRVec3(bodyInterface.GetPosition(bodyIt->second));
             stateIt->second.rotationEuler = FromJoltQuat(bodyInterface.GetRotation(bodyIt->second));
             stateIt->second.velocity = FromJoltVec3(bodyInterface.GetLinearVelocity(bodyIt->second));
+            stateIt->second.angularVelocity = FromJoltVec3(bodyInterface.GetAngularVelocity(bodyIt->second));
         }
 
         const JPH::Vec3 gravity = JPH::Vec3(0.0f, -9.81f, 0.0f);
@@ -425,12 +449,31 @@ public:
         if (stateIt != states_.end()) {
             stateIt->second.velocity = velocity;
         }
-        if (!physicsSystem_ || dynamicBodies_.find(objectId) == dynamicBodies_.end()) {
+        if (!physicsSystem_ || activeBodies_.find(objectId) == activeBodies_.end()) {
             return;
         }
         auto bodyIt = bodyIds_.find(objectId);
         if (bodyIt != bodyIds_.end()) {
             physicsSystem_->GetBodyInterface().SetLinearVelocity(bodyIt->second, ToJoltVec3(velocity));
+        }
+    }
+
+    glm::vec3 GetBodyAngularVelocity(const std::string& objectId) const {
+        auto it = states_.find(objectId);
+        return it == states_.end() ? glm::vec3{0.0f} : it->second.angularVelocity;
+    }
+
+    void SetBodyAngularVelocity(const std::string& objectId, const glm::vec3& velocity) {
+        auto stateIt = states_.find(objectId);
+        if (stateIt != states_.end()) {
+            stateIt->second.angularVelocity = velocity;
+        }
+        if (!physicsSystem_ || activeBodies_.find(objectId) == activeBodies_.end()) {
+            return;
+        }
+        auto bodyIt = bodyIds_.find(objectId);
+        if (bodyIt != bodyIds_.end()) {
+            physicsSystem_->GetBodyInterface().SetAngularVelocity(bodyIt->second, ToJoltVec3(velocity));
         }
     }
 
@@ -484,7 +527,7 @@ private:
     std::vector<PhysicsBodyDesc> bodies_;
     std::unordered_map<std::string, PhysicsBodyState> states_;
     std::unordered_map<std::string, JPH::BodyID> bodyIds_;
-    std::unordered_set<std::string> dynamicBodies_;
+    std::unordered_set<std::string> activeBodies_;
     std::unordered_map<std::string, CharacterRecord> characters_;
     std::unordered_map<std::string, PhysicsCharacterState> characterStates_;
     JPH::CharacterVsCharacterCollisionSimple characterVsCharacterCollision_;
@@ -532,6 +575,14 @@ glm::vec3 PhysicsWorld::GetBodyVelocity(const std::string& objectId) const {
 
 void PhysicsWorld::SetBodyVelocity(const std::string& objectId, const glm::vec3& velocity) {
     impl_->SetBodyVelocity(objectId, velocity);
+}
+
+glm::vec3 PhysicsWorld::GetBodyAngularVelocity(const std::string& objectId) const {
+    return impl_->GetBodyAngularVelocity(objectId);
+}
+
+void PhysicsWorld::SetBodyAngularVelocity(const std::string& objectId, const glm::vec3& velocity) {
+    impl_->SetBodyAngularVelocity(objectId, velocity);
 }
 
 bool PhysicsWorld::HasCharacter(const std::string& objectId) const {

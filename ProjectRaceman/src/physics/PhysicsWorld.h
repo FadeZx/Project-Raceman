@@ -10,6 +10,7 @@ namespace raceman {
 
 enum class PhysicsBodyType {
     Static,
+    Kinematic,
     Dynamic
 };
 
@@ -41,7 +42,16 @@ struct PhysicsBodyDesc {
     glm::vec3 scale{1.0f};
     float mass{1.0f};
     bool useGravity{true};
+    float linearDamping{0.05f};
+    float angularDamping{0.05f};
     glm::vec3 velocity{0.0f};
+    glm::vec3 angularVelocity{0.0f};
+    bool freezePositionX{false};
+    bool freezePositionY{false};
+    bool freezePositionZ{false};
+    bool freezeRotationX{false};
+    bool freezeRotationY{false};
+    bool freezeRotationZ{false};
     std::vector<PhysicsColliderDesc> colliders;
 };
 
@@ -50,6 +60,7 @@ struct PhysicsBodyState {
     glm::vec3 position{0.0f};
     glm::vec3 rotationEuler{0.0f};
     glm::vec3 velocity{0.0f};
+    glm::vec3 angularVelocity{0.0f};
 };
 
 struct PhysicsCharacterDesc {
@@ -91,6 +102,8 @@ public:
     bool GetBodyState(const std::string& objectId, PhysicsBodyState& outState) const;
     glm::vec3 GetBodyVelocity(const std::string& objectId) const;
     void SetBodyVelocity(const std::string& objectId, const glm::vec3& velocity);
+    glm::vec3 GetBodyAngularVelocity(const std::string& objectId) const;
+    void SetBodyAngularVelocity(const std::string& objectId, const glm::vec3& velocity);
 
     bool HasCharacter(const std::string& objectId) const;
     bool GetCharacterState(const std::string& objectId, PhysicsCharacterState& outState) const;

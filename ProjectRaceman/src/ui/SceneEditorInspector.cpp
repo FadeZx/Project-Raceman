@@ -82,6 +82,19 @@ bool RenderInspectorDragInt(const char* label, const char* id, int* value, float
     return ImGui::DragInt(label, value, speed, min, max);
 }
 
+bool RenderInspectorAxisToggles(const char* label, const char* idPrefix, bool& x, bool& y, bool& z) {
+    bool changed = false;
+    RenderInspectorLabel(label);
+    ImGui::PushID(idPrefix);
+    changed |= ImGui::Checkbox("X", &x);
+    ImGui::SameLine();
+    changed |= ImGui::Checkbox("Y", &y);
+    ImGui::SameLine();
+    changed |= ImGui::Checkbox("Z", &z);
+    ImGui::PopID();
+    return changed;
+}
+
 void RenderInspectorWrappedValue(const char* label, const std::string& value) {
     if (IsNarrowInspectorLayout()) {
         ImGui::TextDisabled("%s", label);
@@ -792,13 +805,18 @@ void SceneEditor::RenderInspectorPanel() {
             }
             if (obj.hasRigidbody && rigidbodyOpen) {
 
-                int bodyTypeIndex = obj.rigidbody.bodyType == RigidbodyBodyType::Static ? 0 : 1;
-                const char* bodyTypes[] = {"Static", "Dynamic"};
-                if (ImGui::Combo("Body Type", &bodyTypeIndex, bodyTypes, 2)) {
+                int bodyTypeIndex = obj.rigidbody.bodyType == RigidbodyBodyType::Static
+                    ? 0
+                    : (obj.rigidbody.bodyType == RigidbodyBodyType::Kinematic ? 1 : 2);
+                const char* bodyTypes[] = {"Static", "Kinematic", "Dynamic"};
+                if (ImGui::Combo("Body Type", &bodyTypeIndex, bodyTypes, 3)) {
                     PushUndoState();
-                    obj.rigidbody.bodyType = bodyTypeIndex == 0 ? RigidbodyBodyType::Static : RigidbodyBodyType::Dynamic;
+                    obj.rigidbody.bodyType = bodyTypeIndex == 0
+                        ? RigidbodyBodyType::Static
+                        : (bodyTypeIndex == 1 ? RigidbodyBodyType::Kinematic : RigidbodyBodyType::Dynamic);
                     if (obj.rigidbody.bodyType == RigidbodyBodyType::Static) {
                         obj.rigidbody.velocity = {0.0f, 0.0f, 0.0f};
+                        obj.rigidbody.angularVelocity = {0.0f, 0.0f, 0.0f};
                     }
                     if (onDirty_) onDirty_();
                 }
@@ -820,6 +838,22 @@ void SceneEditor::RenderInspectorPanel() {
                     if (onDirty_) onDirty_();
                 }
 
+                float linearDamping = obj.rigidbody.linearDamping;
+                if (ImGui::DragFloat("Linear Damping", &linearDamping, 0.01f, 0.0f, 1000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.rigidbody.linearDamping = (std::max)(0.0f, linearDamping);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float angularDamping = obj.rigidbody.angularDamping;
+                if (ImGui::DragFloat("Angular Damping", &angularDamping, 0.01f, 0.0f, 1000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.rigidbody.angularDamping = (std::max)(0.0f, angularDamping);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
                 glm::vec3 velocity = obj.rigidbody.velocity;
                 if (RenderInspectorDragFloat3("Velocity", "##rigidbodyVelocity", &velocity.x, 0.1f)) {
                     beginInspectorContinuousEdit();
@@ -827,6 +861,35 @@ void SceneEditor::RenderInspectorPanel() {
                     if (onDirty_) onDirty_();
                 }
                 endInspectorContinuousEdit();
+
+                glm::vec3 angularVelocity = obj.rigidbody.angularVelocity;
+                if (RenderInspectorDragFloat3("Angular Velocity", "##rigidbodyAngularVelocity", &angularVelocity.x, 0.1f)) {
+                    beginInspectorContinuousEdit();
+                    obj.rigidbody.angularVelocity = angularVelocity;
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                bool freezePositionX = obj.rigidbody.freezePositionX;
+                bool freezePositionY = obj.rigidbody.freezePositionY;
+                bool freezePositionZ = obj.rigidbody.freezePositionZ;
+                if (RenderInspectorAxisToggles("Freeze Position", "rigidbodyFreezePosition", freezePositionX, freezePositionY, freezePositionZ)) {
+                    PushUndoState();
+                    obj.rigidbody.freezePositionX = freezePositionX;
+                    obj.rigidbody.freezePositionY = freezePositionY;
+                    obj.rigidbody.freezePositionZ = freezePositionZ;
+                    if (onDirty_) onDirty_();
+                }
+                bool freezeRotationX = obj.rigidbody.freezeRotationX;
+                bool freezeRotationY = obj.rigidbody.freezeRotationY;
+                bool freezeRotationZ = obj.rigidbody.freezeRotationZ;
+                if (RenderInspectorAxisToggles("Freeze Rotation", "rigidbodyFreezeRotation", freezeRotationX, freezeRotationY, freezeRotationZ)) {
+                    PushUndoState();
+                    obj.rigidbody.freezeRotationX = freezeRotationX;
+                    obj.rigidbody.freezeRotationY = freezeRotationY;
+                    obj.rigidbody.freezeRotationZ = freezeRotationZ;
+                    if (onDirty_) onDirty_();
+                }
             }
 
             bool removeCharacterController = false;
@@ -1439,12 +1502,22 @@ void SceneEditor::RenderMultiSelectionInspector() {
     if (allSelected([](const SceneObject& object) { return object.hasRigidbody; })) {
         showedSharedComponent = true;
         if (renderSharedEnabledHeader("Rigidbody", "MultiRigidbodyHeader", "component-rigidbody.png", active.rigidbody.enabled, [](SceneObject& object, bool value) { object.rigidbody.enabled = value; })) {
-            int bodyTypeIndex = active.rigidbody.bodyType == RigidbodyBodyType::Static ? 0 : 1;
-            const char* bodyTypes[] = {"Static", "Dynamic"};
-            if (ImGui::Combo("Body Type##multiRigidbody", &bodyTypeIndex, bodyTypes, 2)) {
+            int bodyTypeIndex = active.rigidbody.bodyType == RigidbodyBodyType::Static
+                ? 0
+                : (active.rigidbody.bodyType == RigidbodyBodyType::Kinematic ? 1 : 2);
+            const char* bodyTypes[] = {"Static", "Kinematic", "Dynamic"};
+            if (ImGui::Combo("Body Type##multiRigidbody", &bodyTypeIndex, bodyTypes, 3)) {
                 PushUndoState();
-                const RigidbodyBodyType bodyType = bodyTypeIndex == 0 ? RigidbodyBodyType::Static : RigidbodyBodyType::Dynamic;
-                forEachSelected([&](SceneObject& object) { object.rigidbody.bodyType = bodyType; });
+                const RigidbodyBodyType bodyType = bodyTypeIndex == 0
+                    ? RigidbodyBodyType::Static
+                    : (bodyTypeIndex == 1 ? RigidbodyBodyType::Kinematic : RigidbodyBodyType::Dynamic);
+                forEachSelected([&](SceneObject& object) {
+                    object.rigidbody.bodyType = bodyType;
+                    if (bodyType == RigidbodyBodyType::Static) {
+                        object.rigidbody.velocity = glm::vec3{0.0f};
+                        object.rigidbody.angularVelocity = glm::vec3{0.0f};
+                    }
+                });
                 markDirty();
             }
 
@@ -1464,6 +1537,24 @@ void SceneEditor::RenderMultiSelectionInspector() {
                 markDirty();
             }
 
+            float linearDamping = active.rigidbody.linearDamping;
+            if (ImGui::DragFloat("Linear Damping##multiRigidbody", &linearDamping, 0.01f, 0.0f, 1000.0f)) {
+                beginInspectorContinuousEdit();
+                linearDamping = (std::max)(0.0f, linearDamping);
+                forEachSelected([&](SceneObject& object) { object.rigidbody.linearDamping = linearDamping; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+
+            float angularDamping = active.rigidbody.angularDamping;
+            if (ImGui::DragFloat("Angular Damping##multiRigidbody", &angularDamping, 0.01f, 0.0f, 1000.0f)) {
+                beginInspectorContinuousEdit();
+                angularDamping = (std::max)(0.0f, angularDamping);
+                forEachSelected([&](SceneObject& object) { object.rigidbody.angularDamping = angularDamping; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+
             glm::vec3 velocity = active.rigidbody.velocity;
             if (RenderInspectorDragFloat3("Velocity", "##multiRigidbodyVelocity", &velocity.x, 0.1f)) {
                 beginInspectorContinuousEdit();
@@ -1471,6 +1562,39 @@ void SceneEditor::RenderMultiSelectionInspector() {
                 markDirty();
             }
             endInspectorContinuousEdit();
+
+            glm::vec3 angularVelocity = active.rigidbody.angularVelocity;
+            if (RenderInspectorDragFloat3("Angular Velocity", "##multiRigidbodyAngularVelocity", &angularVelocity.x, 0.1f)) {
+                beginInspectorContinuousEdit();
+                forEachSelected([&](SceneObject& object) { object.rigidbody.angularVelocity = angularVelocity; });
+                markDirty();
+            }
+            endInspectorContinuousEdit();
+
+            bool freezePositionX = active.rigidbody.freezePositionX;
+            bool freezePositionY = active.rigidbody.freezePositionY;
+            bool freezePositionZ = active.rigidbody.freezePositionZ;
+            if (RenderInspectorAxisToggles("Freeze Position", "multiRigidbodyFreezePosition", freezePositionX, freezePositionY, freezePositionZ)) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) {
+                    object.rigidbody.freezePositionX = freezePositionX;
+                    object.rigidbody.freezePositionY = freezePositionY;
+                    object.rigidbody.freezePositionZ = freezePositionZ;
+                });
+                markDirty();
+            }
+            bool freezeRotationX = active.rigidbody.freezeRotationX;
+            bool freezeRotationY = active.rigidbody.freezeRotationY;
+            bool freezeRotationZ = active.rigidbody.freezeRotationZ;
+            if (RenderInspectorAxisToggles("Freeze Rotation", "multiRigidbodyFreezeRotation", freezeRotationX, freezeRotationY, freezeRotationZ)) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) {
+                    object.rigidbody.freezeRotationX = freezeRotationX;
+                    object.rigidbody.freezeRotationY = freezeRotationY;
+                    object.rigidbody.freezeRotationZ = freezeRotationZ;
+                });
+                markDirty();
+            }
         }
     }
 
