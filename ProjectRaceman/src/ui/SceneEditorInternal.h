@@ -16,6 +16,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -34,7 +35,7 @@ namespace raceman::scene_editor_internal {
 
 namespace fs = std::filesystem;
 
-inline std::string OpenObjFileDialogWin32(const std::string& initialDirectory = {}) {
+inline std::string OpenMeshFileDialogWin32(const std::string& initialDirectory = {}) {
 #if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
     char fileBuffer[MAX_PATH] = {0};
     OPENFILENAMEA ofn{};
@@ -42,7 +43,7 @@ inline std::string OpenObjFileDialogWin32(const std::string& initialDirectory = 
     ofn.hwndOwner = nullptr;
     ofn.lpstrFile = fileBuffer;
     ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrFilter = "Wavefront OBJ (*.obj)\0*.obj\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFilter = "Supported Meshes (*.obj;*.gltf;*.glb;*.fbx)\0*.obj;*.gltf;*.glb;*.fbx\0Wavefront OBJ (*.obj)\0*.obj\0glTF (*.gltf;*.glb)\0*.gltf;*.glb\0FBX (*.fbx)\0*.fbx\0All Files (*.*)\0*.*\0";
     ofn.nFilterIndex = 1;
     ofn.lpstrInitialDir = initialDirectory.empty() ? nullptr : initialDirectory.c_str();
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
@@ -71,6 +72,30 @@ inline std::string ToLowerCopy(std::string s) {
     return s;
 }
 
+inline std::string OpenTextureFileDialogWin32(const std::string& initialDirectory = {}) {
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+    char fileBuffer[MAX_PATH] = {0};
+    OPENFILENAMEA ofn{};
+    ofn.lStructSize = sizeof(OPENFILENAMEA);
+    ofn.hwndOwner = nullptr;
+    ofn.lpstrFile = fileBuffer;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFilter = "Image Files (*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.dds;*.webp)\0*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.dds;*.webp\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrInitialDir = initialDirectory.empty() ? nullptr : initialDirectory.c_str();
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+    if (GetOpenFileNameA(&ofn) == TRUE) {
+        return std::string(fileBuffer);
+    }
+#endif
+    return std::string();
+}
+
+inline bool IsSupportedMeshExtension(const std::string& extension) {
+    const std::string lower = ToLowerCopy(extension);
+    return lower == ".obj" || lower == ".gltf" || lower == ".glb" || lower == ".fbx";
+}
+
 inline bool EndsWith(const std::string& value, const std::string& suffix) {
     if (suffix.size() > value.size()) {
         return false;
@@ -82,8 +107,16 @@ inline bool IsObjAssetPath(const std::string& path) {
     return ToLowerCopy(fs::path(path).extension().string()) == ".obj";
 }
 
+inline bool IsMeshAssetPath(const std::string& path) {
+    return IsSupportedMeshExtension(fs::path(path).extension().string());
+}
+
 inline bool IsMaterialAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".mat.json");
+}
+
+inline bool IsVehicleConfigAssetPath(const std::string& path) {
+    return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".vehicle.json");
 }
 
 inline bool IsSceneAssetPath(const std::string& path) {
@@ -111,6 +144,15 @@ inline std::string ProjectAssetDisplayFilename(const std::string& path) {
     }
     if (IsMaterialAssetPath(path)) {
         return MaterialIdFromAssetPath(path) + ".mat";
+    }
+    if (IsVehicleConfigAssetPath(path)) {
+        std::string filename = fs::path(path).filename().string();
+        const std::string suffix = ".vehicle.json";
+        if (EndsWith(ToLowerCopy(filename), suffix)) {
+            filename.resize(filename.size() - suffix.size());
+            filename += ".vehicle";
+        }
+        return filename;
     }
     return fs::path(path).filename().string();
 }
@@ -336,7 +378,7 @@ inline std::vector<std::string> ReadDiffuseTextureRefs(const fs::path& mtlPath) 
     return textures;
 }
 
-inline std::string PrepareObjImportPath(const std::string& inputPath) {
+inline std::string PrepareMeshImportPath(const std::string& inputPath) {
     fs::path sourcePath(inputPath);
     if (sourcePath.empty()) {
         return {};
@@ -354,7 +396,7 @@ inline std::string PrepareObjImportPath(const std::string& inputPath) {
 
     std::string stem = absoluteSource.stem().string();
     if (stem.empty()) {
-        stem = "imported_obj";
+        stem = "imported_mesh";
     }
 
     fs::path importsRoot = assetsRoot / "imports";
@@ -367,25 +409,38 @@ inline std::string PrepareObjImportPath(const std::string& inputPath) {
     }
     fs::create_directories(destDir);
 
-    fs::path destObj = destDir / absoluteSource.filename();
-    CopyFileCreatingDirs(absoluteSource, destObj);
+    fs::path destAsset = destDir / absoluteSource.filename();
+    CopyFileCreatingDirs(absoluteSource, destAsset);
 
-    for (const std::string& mtlRef : ReadMaterialLibraries(absoluteSource)) {
-        fs::path sourceMtl = absoluteSource.parent_path() / fs::path(mtlRef);
-        fs::path destMtl = destDir / fs::path(mtlRef);
-        CopyFileCreatingDirs(sourceMtl, destMtl);
+    if (ToLowerCopy(absoluteSource.extension().string()) == ".obj") {
+        for (const std::string& mtlRef : ReadMaterialLibraries(absoluteSource)) {
+            fs::path sourceMtl = absoluteSource.parent_path() / fs::path(mtlRef);
+            fs::path destMtl = destDir / fs::path(mtlRef);
+            CopyFileCreatingDirs(sourceMtl, destMtl);
 
-        if (!fs::exists(sourceMtl)) {
-            continue;
-        }
-        for (const std::string& texRef : ReadDiffuseTextureRefs(sourceMtl)) {
-            fs::path sourceTexture = sourceMtl.parent_path() / fs::path(texRef);
-            fs::path destTexture = destMtl.parent_path() / fs::path(texRef);
-            CopyFileCreatingDirs(sourceTexture, destTexture);
+            if (!fs::exists(sourceMtl)) {
+                continue;
+            }
+            for (const std::string& texRef : ReadDiffuseTextureRefs(sourceMtl)) {
+                fs::path sourceTexture = sourceMtl.parent_path() / fs::path(texRef);
+                fs::path destTexture = destMtl.parent_path() / fs::path(texRef);
+                CopyFileCreatingDirs(sourceTexture, destTexture);
+            }
         }
     }
 
-    return ToProjectAssetPath(destObj, assetsRoot);
+    return ToProjectAssetPath(destAsset, assetsRoot);
+}
+
+inline bool RevealAbsolutePathInExplorer(const fs::path& absolutePath) {
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+    const std::string command = "/select,\"" + absolutePath.string() + "\"";
+    HINSTANCE result = ShellExecuteA(nullptr, "open", "explorer.exe", command.c_str(), nullptr, SW_SHOWNORMAL);
+    return reinterpret_cast<INT_PTR>(result) > 32;
+#else
+    (void)absolutePath;
+    return false;
+#endif
 }
 
 inline void ApplyMeshInfoToSceneObject(SceneObject& object, const ImportedMeshInfo& info, const std::shared_ptr<::Model>& model) {
@@ -403,10 +458,62 @@ inline void ApplyMeshInfoToSceneObject(SceneObject& object, const ImportedMeshIn
     object.meshFilter.modelRef = model;
 }
 
-inline bool TryLoadObjAsset(const std::string& inputPath,
-                            std::string& outResolvedPath,
-                            std::shared_ptr<::Model>& outModel,
-                            std::vector<ImportedMeshInfo>& outInfos) {
+inline bool IsBuiltInPrimitiveMeshType(const std::string& meshType) {
+    return meshType == "Plane" || meshType == "Cube" || meshType == "Sphere" || meshType == "Cone" || meshType == "Cylinder";
+}
+
+inline bool ConfigureBuiltInPrimitive(SceneObject& object, const std::string& meshType, std::unordered_map<std::string, PrimitiveMesh>& primitiveCache) {
+    if (!IsBuiltInPrimitiveMeshType(meshType)) {
+        return false;
+    }
+
+    auto existing = primitiveCache.find(meshType);
+    if (existing == primitiveCache.end()) {
+        PrimitiveMesh primitive;
+        if (meshType == "Plane") {
+            primitive = CreatePlanePrimitiveMesh();
+        } else if (meshType == "Cube") {
+            primitive = CreateCubePrimitiveMesh();
+        } else if (meshType == "Sphere") {
+            primitive = CreateSpherePrimitiveMesh();
+        } else if (meshType == "Cone") {
+            primitive = CreateConePrimitiveMesh();
+        } else if (meshType == "Cylinder") {
+            primitive = CreateCylinderPrimitiveMesh();
+        }
+        existing = primitiveCache.emplace(meshType, std::move(primitive)).first;
+    }
+
+    object.type = "GameObject";
+    object.hasMeshFilter = true;
+    object.hasMeshRenderer = true;
+    object.meshFilter.enabled = true;
+    object.meshFilter.meshType = meshType;
+    object.meshFilter.sourcePath.clear();
+    object.meshFilter.meshIndex = 0;
+    object.meshFilter.importedMaterialName.clear();
+    object.meshFilter.diffuseTexturePath.clear();
+    object.meshFilter.diffuseTextureId = 0;
+    object.meshFilter.vao = existing->second.vao();
+    object.meshFilter.indexCount = existing->second.indexCount();
+    object.meshFilter.modelRef.reset();
+    object.meshFilter.localBoundsMin = {-0.5f, -0.5f, -0.5f};
+    object.meshFilter.localBoundsMax = {0.5f, 0.5f, 0.5f};
+    if (meshType == "Plane") {
+        object.meshFilter.localBoundsMin = {-0.5f, 0.0f, -0.5f};
+        object.meshFilter.localBoundsMax = {0.5f, 0.0f, 0.5f};
+    }
+    object.meshRenderer.color = {1.0f, 1.0f, 1.0f, 1.0f};
+    if (object.meshRenderer.materialId.empty()) {
+        object.meshRenderer.materialId = "pbr_default";
+    }
+    return true;
+}
+
+inline bool TryLoadMeshAsset(const std::string& inputPath,
+                             std::string& outResolvedPath,
+                             std::shared_ptr<::Model>& outModel,
+                             std::vector<ImportedMeshInfo>& outInfos) {
     outResolvedPath.clear();
     outModel.reset();
     outInfos.clear();
@@ -419,7 +526,7 @@ inline bool TryLoadObjAsset(const std::string& inputPath,
     const std::string normalizedInput = NormalizeSlashes(inputPath);
     candidatePaths.push_back(normalizedInput);
 
-    const std::string preparedPath = PrepareObjImportPath(inputPath);
+    const std::string preparedPath = PrepareMeshImportPath(inputPath);
     if (!preparedPath.empty() && preparedPath != normalizedInput) {
         candidatePaths.push_back(preparedPath);
     }
@@ -430,6 +537,7 @@ inline bool TryLoadObjAsset(const std::string& inputPath,
         : ProjectAssetPathToAbsolute(normalizedInput);
     if (!fs::exists(inputAbsolute)) {
         const std::string targetFilename = ToLowerCopy(fs::path(normalizedInput).filename().string());
+        const std::string targetExtension = ToLowerCopy(fs::path(normalizedInput).extension().string());
         if (!targetFilename.empty() && fs::exists(assetsRoot)) {
             for (const auto& entry : fs::recursive_directory_iterator(assetsRoot)) {
                 if (!entry.is_regular_file()) {
@@ -437,7 +545,8 @@ inline bool TryLoadObjAsset(const std::string& inputPath,
                 }
                 const std::string candidateFilename = ToLowerCopy(entry.path().filename().string());
                 const std::string candidateExtension = ToLowerCopy(entry.path().extension().string());
-                if (candidateExtension == ".obj" && candidateFilename == targetFilename) {
+                if (candidateFilename == targetFilename &&
+                    (targetExtension.empty() ? IsSupportedMeshExtension(candidateExtension) : candidateExtension == targetExtension)) {
                     const std::string candidateProjectPath = ToProjectAssetPath(entry.path(), assetsRoot);
                     if (std::find(candidatePaths.begin(), candidatePaths.end(), candidateProjectPath) == candidatePaths.end()) {
                         candidatePaths.push_back(candidateProjectPath);
@@ -495,8 +604,10 @@ inline bool IsCtrlYPressed() {
 }
 
 inline constexpr const char* kObjAssetPayload = "RACEMAN_PROJECT_OBJ";
+inline constexpr const char* kMeshAssetPayload = "RACEMAN_PROJECT_MESH";
 inline constexpr const char* kMaterialAssetPayload = "RACEMAN_PROJECT_MATERIAL";
 inline constexpr const char* kProjectFilePayload = "RACEMAN_PROJECT_FILE";
+inline constexpr const char* kHierarchyObjectPayload = "SCENE_HIERARCHY_OBJECT_INDEX";
 inline constexpr const char* kPlaneObjAssetPath = "editor-assets/mesh/plane.obj";
 
 } // namespace raceman::scene_editor_internal

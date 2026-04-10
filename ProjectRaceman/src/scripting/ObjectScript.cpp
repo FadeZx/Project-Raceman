@@ -235,6 +235,80 @@ void ObjectScriptContext::SetRigidbodyVelocity(const glm::vec3& value) {
     }
 }
 
+glm::vec3 ObjectScriptContext::GetRigidbodyAngularVelocity() const {
+    if (!HasRigidbody()) {
+        return {0.0f, 0.0f, 0.0f};
+    }
+    if (physicsWorld_ && physicsWorld_->HasBody(object_.id)) {
+        return physicsWorld_->GetBodyAngularVelocity(object_.id);
+    }
+    return object_.rigidbody.angularVelocity;
+}
+
+void ObjectScriptContext::SetRigidbodyAngularVelocity(const glm::vec3& value) {
+    if (!IsRigidbodyDynamic()) {
+        return;
+    }
+    object_.rigidbody.angularVelocity = value;
+    if (physicsWorld_ && physicsWorld_->HasBody(object_.id)) {
+        physicsWorld_->SetBodyAngularVelocity(object_.id, value);
+    }
+}
+
+void ObjectScriptContext::AddRigidbodyForce(const glm::vec3& force) {
+    if (!IsRigidbodyDynamic()) {
+        return;
+    }
+    if (physicsWorld_ && physicsWorld_->HasBody(object_.id)) {
+        physicsWorld_->AddBodyForce(object_.id, force);
+    }
+}
+
+void ObjectScriptContext::AddRigidbodyImpulse(const glm::vec3& impulse) {
+    if (!IsRigidbodyDynamic()) {
+        return;
+    }
+    if (physicsWorld_ && physicsWorld_->HasBody(object_.id)) {
+        physicsWorld_->AddBodyImpulse(object_.id, impulse);
+    }
+}
+
+void ObjectScriptContext::AddRigidbodyTorque(const glm::vec3& torque) {
+    if (!IsRigidbodyDynamic()) {
+        return;
+    }
+    if (physicsWorld_ && physicsWorld_->HasBody(object_.id)) {
+        physicsWorld_->AddBodyTorque(object_.id, torque);
+    }
+}
+
+void ObjectScriptContext::AddRigidbodyAngularImpulse(const glm::vec3& impulse) {
+    if (!IsRigidbodyDynamic()) {
+        return;
+    }
+    if (physicsWorld_ && physicsWorld_->HasBody(object_.id)) {
+        physicsWorld_->AddBodyAngularImpulse(object_.id, impulse);
+    }
+}
+
+void ObjectScriptContext::WakeRigidbody() {
+    if (!HasRigidbody()) {
+        return;
+    }
+    if (physicsWorld_ && physicsWorld_->HasBody(object_.id)) {
+        physicsWorld_->WakeBody(object_.id);
+    }
+}
+
+void ObjectScriptContext::SleepRigidbody() {
+    if (!HasRigidbody()) {
+        return;
+    }
+    if (physicsWorld_ && physicsWorld_->HasBody(object_.id)) {
+        physicsWorld_->SleepBody(object_.id);
+    }
+}
+
 bool ObjectScriptContext::HasCharacterController() const {
     return object_.hasCharacterController && object_.characterController.enabled;
 }

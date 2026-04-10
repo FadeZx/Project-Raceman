@@ -1,47 +1,8 @@
 {
   "objects": [
     {
-      "id": "mesh_1",
-      "parentId": "",
-      "name": "Plane",
-      "type": "GameObject",
-      "enabled": true,
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [10, 1, 10]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "editor-assets/mesh/plane.obj",
-          "meshIndex": 0,
-          "importedMaterialName": "DefaultMaterial",
-          "diffuseTexturePath": ""
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "pbr_default",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "PlaneCollider",
-          "enabled": true,
-          "isTrigger": false,
-          "normal": [0, 1, 0],
-          "offset": 0,
-          "infinite": true,
-          "halfExtent": 1000
-        }
-      ]
-    },
-    {
-      "id": "camera_2",
-      "parentId": "mesh_4",
+      "id": "camera_1",
+      "parentId": "gameobject_1",
       "name": "Camera",
       "type": "GameObject",
       "enabled": true,
@@ -64,7 +25,234 @@
       ]
     },
     {
-      "id": "light_3",
+      "id": "mesh_2",
+      "parentId": "",
+      "name": "Plane",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [10, 1, 10]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Plane",
+          "sourcePath": "",
+          "meshIndex": 0,
+          "importedMaterialName": "",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        },
+        {
+          "type": "PlaneCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "normal": [0, 1, 0],
+          "offset": 0,
+          "infinite": true,
+          "halfExtent": 1000
+        }
+      ]
+    },
+    {
+      "id": "mesh_3",
+      "parentId": "gameobject_1",
+      "name": "FLWheel",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.705627, 1, 0],
+          "rotationEuler": [0, -0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gameobject_1",
+      "parentId": "",
+      "name": "Vihicle base",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Vehicle",
+          "enabled": true,
+          "configPath": "assets/car/default.vehicle.json",
+          "wheelBindings": [
+            {
+              "wheelName": "Front Left",
+              "objectId": "mesh_3"
+            },
+            {
+              "wheelName": "Front Right",
+              "objectId": "mesh_1"
+            },
+            {
+              "wheelName": "Rear Left",
+              "objectId": "mesh_4"
+            },
+            {
+              "wheelName": "Rear Right",
+              "objectId": "mesh_5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_1",
+      "parentId": "gameobject_1",
+      "name": "FR Wheel",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0.788642, 1, 0],
+          "rotationEuler": [0, 180, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_4",
+      "parentId": "gameobject_1",
+      "name": "BLWheel",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.66749, 1, 1.7894],
+          "rotationEuler": [0, -0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_5",
+      "parentId": "gameobject_1",
+      "name": "BRWheel",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0.751401, 1, 1.84053],
+          "rotationEuler": [0, 180, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "light_8",
       "parentId": "",
       "name": "Directional Light",
       "type": "GameObject",
@@ -72,8 +260,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [-45, 35, 0],
+          "position": [-2.31907, 3.14599, 3.95966],
+          "rotationEuler": [-81.4558, 35, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -81,102 +269,38 @@
           "enabled": true,
           "lightType": "Directional",
           "color": [1, 1, 1],
-          "intensity": 1.5,
+          "intensity": 1.25,
           "range": 100,
           "spotAngleDegrees": 30
         }
       ]
     },
     {
-      "id": "mesh_4",
-      "parentId": "",
-      "name": "Chevrolet-nascar-FLWheel",
+      "id": "mesh_6",
+      "parentId": "gameobject_1",
+      "name": "body",
       "type": "GameObject",
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0.503275, 0],
+          "position": [0.205652, 0.928884, 0.724052],
           "rotationEuler": [0, -0, 0],
-          "scale": [1, 1, 1]
+          "scale": [0.696954, 0.659597, 0.433943]
         },
         {
           "type": "MeshFilter",
           "enabled": true,
           "meshType": "Mesh",
-          "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/car/body.obj",
           "meshIndex": 0,
-          "importedMaterialName": "wheel",
-          "diffuseTexturePath": "wheel.png"
+          "importedMaterialName": "car_base",
+          "diffuseTexturePath": "texture.png"
         },
         {
           "type": "MeshRenderer",
           "enabled": true,
-          "materialId": "Wheel",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-            {
-              "enabled": true,
-              "scriptName": "CharacterControllerTest",
-              "scriptPath": "assets/scripts/CharacterControllerTest.cpp",
-              "fields": [
-                {
-                  "name": "moveSpeed",
-                  "type": "Float",
-                "value": 6
-                },
-                {
-                  "name": "jumpImpulse",
-                  "type": "Float",
-                "value": 1.5
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "CharacterController",
-          "enabled": true,
-          "height": 1.18,
-          "radius": 0.4,
-          "center": [0.15, -0.65, 0],
-          "stepHeight": 0.08,
-          "slopeLimitDegrees": 36.5,
-          "maxStrength": 100,
-          "mass": 70
-        }
-      ]
-    },
-    {
-      "id": "gameobject_1",
-      "parentId": "mesh_4",
-      "name": "Chevrolet-nascar-FLWheel2",
-      "type": "GameObject",
-      "enabled": true,
-      "components": [
-        {
-          "type": "Transform",
-          "position": [-1.50558, -0.0147386, 0],
-          "rotationEuler": [0, -0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
-          "meshIndex": 0,
-          "importedMaterialName": "wheel",
-          "diffuseTexturePath": "wheel.png"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "Wheel",
+          "materialId": "Carbody",
           "color": [1, 1, 1, 1]
         },
         {
@@ -184,30 +308,6 @@
           "enabled": true,
           "attachments": [
           ]
-        }
-      ]
-    },
-    {
-      "id": "camera_3",
-      "parentId": "",
-      "name": "Camera",
-      "type": "GameObject",
-      "enabled": true,
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 2, 5],
-          "rotationEuler": [-15, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "Camera",
-          "enabled": true,
-          "isMain": false,
-          "fieldOfViewDegrees": 60,
-          "nearClip": 0.1,
-          "farClip": 500,
-          "clearColor": [0.02, 0.02, 0.02, 1]
         }
       ]
     }

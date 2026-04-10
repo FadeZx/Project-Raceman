@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -21,15 +22,19 @@
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/AllowedDOFs.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Body/MotionQuality.h>
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/PlaneShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/PhysicsSystem.h>
+
+#include "../ui/ObjImport.h"
 
 namespace raceman {
 
@@ -170,9 +175,70 @@ JPH::EAllowedDOFs ToAllowedDOFs(const PhysicsBodyDesc& body) {
     return allowed == JPH::EAllowedDOFs::None ? JPH::EAllowedDOFs::All : allowed;
 }
 
+JPH::EMotionQuality ToMotionQuality(PhysicsMotionQuality quality) {
+    return quality == PhysicsMotionQuality::Continuous
+        ? JPH::EMotionQuality::LinearCast
+        : JPH::EMotionQuality::Discrete;
+}
+
+std::filesystem::path FindProjectAssetAbsolutePath(const std::string& assetPath) {
+    std::filesystem::path normalized(assetPath);
+    if (!normalized.empty() && *normalized.begin() == "assets") {
+        normalized = normalized.lexically_relative("assets");
+        return (std::filesystem::current_path() / "Project" / "assets" / normalized).lexically_normal();
+    }
+    if (assetPath.rfind("editor-assets/", 0) == 0) {
+        return (std::filesystem::current_path() / assetPath).lexically_normal();
+    }
+    return (std::filesystem::current_path() / assetPath).lexically_normal();
+}
+
+JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider) {
+    if (collider.meshAssetPath.empty()) {
+        return {};
+    }
+
+    const std::filesystem::path resolvedPath = FindProjectAssetAbsolutePath(collider.meshAssetPath);
+    if (!std::filesystem::exists(resolvedPath)) {
+        return {};
+    }
+
+    auto model = raceman::LoadModelFromFile(resolvedPath.string());
+    std::vector<ImportedMeshInfo> infos = raceman::GetMeshInfos(model);
+    if (infos.empty()) {
+        return {};
+    }
+
+    const std::size_t meshIndex = collider.meshIndex >= 0 ? static_cast<std::size_t>(collider.meshIndex) : 0;
+    ImportedCollisionMesh collisionMesh;
+    if (!raceman::GetCollisionMesh(model, meshIndex, collisionMesh)) {
+        return {};
+    }
+
+    JPH::VertexList vertices;
+    vertices.reserve(collisionMesh.vertices.size());
+    for (const glm::vec3& vertex : collisionMesh.vertices) {
+        vertices.push_back(JPH::Float3(vertex.x, vertex.y, vertex.z));
+    }
+
+    JPH::IndexedTriangleList triangles;
+    triangles.reserve(collisionMesh.indices.size() / 3);
+    for (std::size_t i = 0; i + 2 < collisionMesh.indices.size(); i += 3) {
+        triangles.emplace_back(collisionMesh.indices[i], collisionMesh.indices[i + 1], collisionMesh.indices[i + 2], 0);
+    }
+
+    JPH::MeshShapeSettings settings(std::move(vertices), std::move(triangles));
+    settings.mBuildQuality = JPH::MeshShapeSettings::EBuildQuality::FavorBuildSpeed;
+    JPH::ShapeSettings::ShapeResult result = settings.Create();
+    return result.IsValid() ? result.Get() : JPH::ShapeRefC{};
+}
+
 JPH::ShapeRefC CreateBaseShape(const PhysicsColliderDesc& collider, const glm::vec3& scale) {
+    if (collider.type == PhysicsColliderType::Mesh) {
+        return CreateMeshShape(collider);
+    }
     if (collider.type == PhysicsColliderType::Box) {
-        const glm::vec3 halfExtent = glm::max(glm::abs(collider.size * scale) * 0.5f, glm::vec3(0.001f));
+        const glm::vec3 halfExtent = (glm::max)(glm::abs(collider.size * scale) * 0.5f, glm::vec3(0.001f));
         return new JPH::BoxShape(ToJoltVec3(halfExtent));
     }
     if (collider.type == PhysicsColliderType::Sphere) {
@@ -263,8 +329,8 @@ public:
 
         JPH::BodyInterface& bodyInterface = physicsSystem_->GetBodyInterface();
         for (const PhysicsBodyDesc& body : bodies_) {
-            const bool hasPlaneCollider = std::any_of(body.colliders.begin(), body.colliders.end(), [](const PhysicsColliderDesc& collider) {
-                return collider.type == PhysicsColliderType::Plane;
+            const bool hasStaticOnlyCollider = std::any_of(body.colliders.begin(), body.colliders.end(), [](const PhysicsColliderDesc& collider) {
+                return collider.type == PhysicsColliderType::Plane || collider.type == PhysicsColliderType::Mesh;
             });
             const bool hasSolidCollider = std::any_of(body.colliders.begin(), body.colliders.end(), [](const PhysicsColliderDesc& collider) {
                 return !collider.isTrigger;
@@ -275,8 +341,8 @@ public:
                 continue;
             }
 
-            const bool movable = body.bodyType != PhysicsBodyType::Static && !hasPlaneCollider;
-            const bool dynamic = body.bodyType == PhysicsBodyType::Dynamic && !hasPlaneCollider;
+            const bool movable = body.bodyType != PhysicsBodyType::Static && !hasStaticOnlyCollider;
+            const bool dynamic = body.bodyType == PhysicsBodyType::Dynamic && !hasStaticOnlyCollider;
             const JPH::EMotionType motionType = dynamic
                 ? JPH::EMotionType::Dynamic
                 : (movable ? JPH::EMotionType::Kinematic : JPH::EMotionType::Static);
@@ -286,6 +352,9 @@ public:
             settings.mGravityFactor = body.useGravity ? 1.0f : 0.0f;
             settings.mLinearDamping = (std::max)(0.0f, body.linearDamping);
             settings.mAngularDamping = (std::max)(0.0f, body.angularDamping);
+            settings.mFriction = (std::max)(0.0f, body.friction);
+            settings.mRestitution = (std::max)(0.0f, body.restitution);
+            settings.mMotionQuality = ToMotionQuality(body.motionQuality);
             settings.mAllowedDOFs = ToAllowedDOFs(body);
             settings.mLinearVelocity = ToJoltVec3(body.velocity);
             settings.mAngularVelocity = ToJoltVec3(body.angularVelocity);
@@ -377,17 +446,6 @@ public:
         }
 
         physicsSystem_->Update(step, 1, tempAllocator_.get(), jobSystem_.get());
-        for (const std::string& objectId : activeBodies_) {
-            auto stateIt = states_.find(objectId);
-            auto bodyIt = bodyIds_.find(objectId);
-            if (stateIt == states_.end() || bodyIt == bodyIds_.end()) {
-                continue;
-            }
-            stateIt->second.position = FromJoltRVec3(bodyInterface.GetPosition(bodyIt->second));
-            stateIt->second.rotationEuler = FromJoltQuat(bodyInterface.GetRotation(bodyIt->second));
-            stateIt->second.velocity = FromJoltVec3(bodyInterface.GetLinearVelocity(bodyIt->second));
-            stateIt->second.angularVelocity = FromJoltVec3(bodyInterface.GetAngularVelocity(bodyIt->second));
-        }
 
         const JPH::Vec3 gravity = JPH::Vec3(0.0f, -9.81f, 0.0f);
         const JPH::DefaultBroadPhaseLayerFilter broadPhaseFilter(objectVsBroadPhaseLayerFilter_, Layers::Moving);
@@ -423,6 +481,20 @@ public:
             record.state.groundVelocity = FromJoltVec3(character->GetGroundVelocity());
             record.state.grounded = character->IsSupported();
             characterStates_[objectId] = record.state;
+        }
+
+        // Sample body state after character updates so any push impulses applied by
+        // the character controller survive into the next frame's sync.
+        for (const std::string& objectId : activeBodies_) {
+            auto stateIt = states_.find(objectId);
+            auto bodyIt = bodyIds_.find(objectId);
+            if (stateIt == states_.end() || bodyIt == bodyIds_.end()) {
+                continue;
+            }
+            stateIt->second.position = FromJoltRVec3(bodyInterface.GetPosition(bodyIt->second));
+            stateIt->second.rotationEuler = FromJoltQuat(bodyInterface.GetRotation(bodyIt->second));
+            stateIt->second.velocity = FromJoltVec3(bodyInterface.GetLinearVelocity(bodyIt->second));
+            stateIt->second.angularVelocity = FromJoltVec3(bodyInterface.GetAngularVelocity(bodyIt->second));
         }
     }
 
@@ -474,6 +546,66 @@ public:
         auto bodyIt = bodyIds_.find(objectId);
         if (bodyIt != bodyIds_.end()) {
             physicsSystem_->GetBodyInterface().SetAngularVelocity(bodyIt->second, ToJoltVec3(velocity));
+        }
+    }
+
+    void AddBodyForce(const std::string& objectId, const glm::vec3& force) {
+        if (!physicsSystem_) {
+            return;
+        }
+        auto bodyIt = bodyIds_.find(objectId);
+        if (bodyIt != bodyIds_.end()) {
+            physicsSystem_->GetBodyInterface().AddForce(bodyIt->second, ToJoltVec3(force), JPH::EActivation::Activate);
+        }
+    }
+
+    void AddBodyImpulse(const std::string& objectId, const glm::vec3& impulse) {
+        if (!physicsSystem_) {
+            return;
+        }
+        auto bodyIt = bodyIds_.find(objectId);
+        if (bodyIt != bodyIds_.end()) {
+            physicsSystem_->GetBodyInterface().AddImpulse(bodyIt->second, ToJoltVec3(impulse));
+        }
+    }
+
+    void AddBodyTorque(const std::string& objectId, const glm::vec3& torque) {
+        if (!physicsSystem_) {
+            return;
+        }
+        auto bodyIt = bodyIds_.find(objectId);
+        if (bodyIt != bodyIds_.end()) {
+            physicsSystem_->GetBodyInterface().AddTorque(bodyIt->second, ToJoltVec3(torque), JPH::EActivation::Activate);
+        }
+    }
+
+    void AddBodyAngularImpulse(const std::string& objectId, const glm::vec3& impulse) {
+        if (!physicsSystem_) {
+            return;
+        }
+        auto bodyIt = bodyIds_.find(objectId);
+        if (bodyIt != bodyIds_.end()) {
+            physicsSystem_->GetBodyInterface().AddAngularImpulse(bodyIt->second, ToJoltVec3(impulse));
+        }
+    }
+
+    void WakeBody(const std::string& objectId) {
+        if (!physicsSystem_) {
+            return;
+        }
+        auto bodyIt = bodyIds_.find(objectId);
+        if (bodyIt != bodyIds_.end()) {
+            physicsSystem_->GetBodyInterface().ActivateBody(bodyIt->second);
+        }
+    }
+
+    void SleepBody(const std::string& objectId) {
+        if (!physicsSystem_) {
+            return;
+        }
+        auto bodyIt = bodyIds_.find(objectId);
+        if (bodyIt != bodyIds_.end()) {
+            physicsSystem_->GetBodyInterface().DeactivateBody(bodyIt->second);
         }
     }
 
@@ -583,6 +715,30 @@ glm::vec3 PhysicsWorld::GetBodyAngularVelocity(const std::string& objectId) cons
 
 void PhysicsWorld::SetBodyAngularVelocity(const std::string& objectId, const glm::vec3& velocity) {
     impl_->SetBodyAngularVelocity(objectId, velocity);
+}
+
+void PhysicsWorld::AddBodyForce(const std::string& objectId, const glm::vec3& force) {
+    impl_->AddBodyForce(objectId, force);
+}
+
+void PhysicsWorld::AddBodyImpulse(const std::string& objectId, const glm::vec3& impulse) {
+    impl_->AddBodyImpulse(objectId, impulse);
+}
+
+void PhysicsWorld::AddBodyTorque(const std::string& objectId, const glm::vec3& torque) {
+    impl_->AddBodyTorque(objectId, torque);
+}
+
+void PhysicsWorld::AddBodyAngularImpulse(const std::string& objectId, const glm::vec3& impulse) {
+    impl_->AddBodyAngularImpulse(objectId, impulse);
+}
+
+void PhysicsWorld::WakeBody(const std::string& objectId) {
+    impl_->WakeBody(objectId);
+}
+
+void PhysicsWorld::SleepBody(const std::string& objectId) {
+    impl_->SleepBody(objectId);
 }
 
 bool PhysicsWorld::HasCharacter(const std::string& objectId) const {

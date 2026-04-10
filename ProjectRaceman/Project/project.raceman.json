@@ -5,6 +5,6 @@
   "defaultScene": "assets/scenes/EditorScene.scene.json",
   "lastScene": "assets/scenes/Test2.scene.json",
   "editorState": {
-    "selectedProjectDirectory": "assets/mesh"
+    "selectedProjectDirectory": "assets/car"
   }
 }

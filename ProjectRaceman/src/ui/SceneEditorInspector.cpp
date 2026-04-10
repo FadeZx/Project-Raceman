@@ -1,5 +1,6 @@
 #include "SceneEditorInternal.h"
 #include "../physics/SimpleJson.h"
+#include "../physics/VehicleConfig.h"
 #include "../scripting/ScriptRegistry.h"
 
 #include <glad/glad.h>
@@ -95,6 +96,63 @@ bool RenderInspectorAxisToggles(const char* label, const char* idPrefix, bool& x
     return changed;
 }
 
+bool RenderInspectorLinkedScaleEditor(const char* label,
+                                      const char* idPrefix,
+                                      float* values,
+                                      float speed,
+                                      bool& linked,
+                                      bool* outDeactivated = nullptr) {
+    const glm::vec3 before{values[0], values[1], values[2]};
+    bool changed = false;
+
+    ImGui::PushID(idPrefix);
+    if (IsNarrowInspectorLayout()) {
+        RenderInspectorLabel(label);
+        if (ImGui::SmallButton(linked ? "Linked##scaleLink" : "Free##scaleLink")) {
+            linked = !linked;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Toggle uniform scale editing");
+        }
+        ImGui::SetNextItemWidth(-1.0f);
+        changed = ImGui::DragFloat3("##scaleValues", values, speed);
+    } else {
+        changed = ImGui::DragFloat3(label, values, speed);
+        ImGui::SameLine();
+        if (ImGui::SmallButton(linked ? "Linked##scaleLink" : "Free##scaleLink")) {
+            linked = !linked;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Toggle uniform scale editing");
+        }
+    }
+    if (outDeactivated != nullptr) {
+        *outDeactivated = ImGui::IsItemDeactivated();
+    }
+    ImGui::PopID();
+
+    if (!changed || !linked) {
+        return changed;
+    }
+
+    const glm::vec3 after{values[0], values[1], values[2]};
+    const float deltaX = std::fabs(after.x - before.x);
+    const float deltaY = std::fabs(after.y - before.y);
+    const float deltaZ = std::fabs(after.z - before.z);
+
+    float uniformValue = after.x;
+    if (deltaY >= deltaX && deltaY >= deltaZ) {
+        uniformValue = after.y;
+    } else if (deltaZ >= deltaX && deltaZ >= deltaY) {
+        uniformValue = after.z;
+    }
+
+    values[0] = uniformValue;
+    values[1] = uniformValue;
+    values[2] = uniformValue;
+    return true;
+}
+
 void RenderInspectorWrappedValue(const char* label, const std::string& value) {
     if (IsNarrowInspectorLayout()) {
         ImGui::TextDisabled("%s", label);
@@ -178,6 +236,36 @@ bool RenderScriptFieldEditor(const ScriptFieldDefinition& definition, ScriptFiel
     }
     }
     return false;
+}
+
+bool TryLoadVehicleConfigForPath(const std::string& projectPath, raceman::physics::VehicleConfig& outConfig) {
+    if (projectPath.empty()) {
+        return false;
+    }
+    try {
+        outConfig = raceman::physics::VehicleConfigLoader::loadFromFile(ProjectAssetPathToAbsolute(projectPath).string());
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+void SyncVehicleWheelBindings(VehicleComponent& vehicle, const raceman::physics::VehicleConfig& config) {
+    std::vector<VehicleWheelBinding> syncedBindings;
+    syncedBindings.reserve(config.wheels.size());
+    for (const raceman::physics::WheelConfig& wheel : config.wheels) {
+        VehicleWheelBinding binding;
+        binding.wheelName = wheel.name;
+        const auto existing = std::find_if(vehicle.wheelBindings.begin(), vehicle.wheelBindings.end(),
+            [&](const VehicleWheelBinding& candidate) {
+                return candidate.wheelName == wheel.name;
+            });
+        if (existing != vehicle.wheelBindings.end()) {
+            binding.objectId = existing->objectId;
+        }
+        syncedBindings.push_back(std::move(binding));
+    }
+    vehicle.wheelBindings = std::move(syncedBindings);
 }
 
 bool RenderRemovableComponentHeader(const char* label, const char* id, unsigned int textureId, bool* enabled, bool& enabledChanged, bool& removeRequested) {
@@ -333,6 +421,15 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                 }
+                if (!obj.hasVehicle) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Vehicle")) {
+                        PushUndoState();
+                        obj.hasVehicle = true;
+                        obj.vehicle = VehicleComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
                 if (!obj.hasCharacterController) {
                     anyAvailable = true;
                     if (ImGui::MenuItem("Character Controller")) {
@@ -346,7 +443,7 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                 }
-                const bool hasAvailableCollider = !obj.hasBoxCollider || !obj.hasSphereCollider || !obj.hasCapsuleCollider || !obj.hasPlaneCollider;
+                const bool hasAvailableCollider = !obj.hasBoxCollider || !obj.hasSphereCollider || !obj.hasCapsuleCollider || !obj.hasPlaneCollider || !obj.hasMeshCollider;
                 if (hasAvailableCollider) {
                     anyAvailable = true;
                     if (ImGui::BeginMenu("Collider")) {
@@ -372,6 +469,12 @@ void SceneEditor::RenderInspectorPanel() {
                             PushUndoState();
                             obj.hasPlaneCollider = true;
                             obj.planeCollider = PlaneColliderComponent{};
+                            if (onDirty_) onDirty_();
+                        }
+                        if (!obj.hasMeshCollider && ImGui::MenuItem("Mesh")) {
+                            PushUndoState();
+                            obj.hasMeshCollider = true;
+                            obj.meshCollider = MeshColliderComponent{};
                             if (onDirty_) onDirty_();
                         }
                         ImGui::EndMenu();
@@ -484,7 +587,8 @@ void SceneEditor::RenderInspectorPanel() {
                 }
 
                 before = obj.transform;
-                if (RenderInspectorDragFloat3("Scale", "##scale", &obj.transform.scale.x, 0.1f)) {
+                bool scaleDeactivated = false;
+                if (RenderInspectorLinkedScaleEditor("Scale", "##scale", &obj.transform.scale.x, 0.1f, linkedScaleValues_, &scaleDeactivated)) {
                     const glm::vec3 after{
                         (std::max)(obj.transform.scale.x, 0.01f),
                         (std::max)(obj.transform.scale.y, 0.01f),
@@ -500,7 +604,7 @@ void SceneEditor::RenderInspectorPanel() {
                     }
                     if (onDirty_) onDirty_();
                 }
-                if (ImGui::IsItemDeactivated()) {
+                if (scaleDeactivated) {
                     inspectorEditActive_ = false;
                 }
             }
@@ -537,6 +641,18 @@ void SceneEditor::RenderInspectorPanel() {
                     assetPickerMode_ = ProjectAssetPickerMode::ReplaceMesh;
                 }
                 if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
+                        const char* path = static_cast<const char*>(payload->Data);
+                        if (path != nullptr) {
+                            ReplaceSelectedMeshFromObj(path);
+                        }
+                    }
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                        const char* path = static_cast<const char*>(payload->Data);
+                        if (path != nullptr && IsMeshAssetPath(path)) {
+                            ReplaceSelectedMeshFromObj(path);
+                        }
+                    }
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
                         const char* path = static_cast<const char*>(payload->Data);
                         if (path != nullptr) {
@@ -549,7 +665,7 @@ void SceneEditor::RenderInspectorPanel() {
                     RenderInspectorWrappedValue("Source:", obj.meshFilter.sourcePath.empty() ? "(none)" : obj.meshFilter.sourcePath);
                     ImGui::TextDisabled("Submesh Index: %d", obj.meshFilter.meshIndex);
                     RenderInspectorWrappedValue("Imported Material:", obj.meshFilter.importedMaterialName.empty() ? "(none)" : obj.meshFilter.importedMaterialName);
-                    RenderInspectorWrappedValue("OBJ Diffuse:", obj.meshFilter.diffuseTexturePath.empty() ? "(none)" : obj.meshFilter.diffuseTexturePath);
+                    RenderInspectorWrappedValue("Imported Diffuse:", obj.meshFilter.diffuseTexturePath.empty() ? "(none)" : obj.meshFilter.diffuseTexturePath);
                 } else {
                     ImGui::TextDisabled("Built-in mesh: %s", meshType.c_str());
                 }
@@ -608,6 +724,12 @@ void SceneEditor::RenderInspectorPanel() {
                         const char* materialIdPayload = static_cast<const char*>(payload->Data);
                         if (materialIdPayload != nullptr) {
                             AssignMaterialToSelected(materialIdPayload);
+                        }
+                    }
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                        const char* projectPath = static_cast<const char*>(payload->Data);
+                        if (projectPath != nullptr && IsMaterialAssetPath(projectPath)) {
+                            AssignMaterialToSelected(MaterialIdFromAssetPath(projectPath));
                         }
                     }
                     ImGui::EndDragDropTarget();
@@ -804,92 +926,253 @@ void SceneEditor::RenderInspectorPanel() {
                 }
             }
             if (obj.hasRigidbody && rigidbodyOpen) {
+                if (ImGui::CollapsingHeader("Body", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    int bodyTypeIndex = obj.rigidbody.bodyType == RigidbodyBodyType::Static
+                        ? 0
+                        : (obj.rigidbody.bodyType == RigidbodyBodyType::Kinematic ? 1 : 2);
+                    const char* bodyTypes[] = {"Static", "Kinematic", "Dynamic"};
+                    if (ImGui::Combo("Body Type", &bodyTypeIndex, bodyTypes, 3)) {
+                        PushUndoState();
+                        obj.rigidbody.bodyType = bodyTypeIndex == 0
+                            ? RigidbodyBodyType::Static
+                            : (bodyTypeIndex == 1 ? RigidbodyBodyType::Kinematic : RigidbodyBodyType::Dynamic);
+                        if (obj.rigidbody.bodyType == RigidbodyBodyType::Static) {
+                            obj.rigidbody.velocity = {0.0f, 0.0f, 0.0f};
+                            obj.rigidbody.angularVelocity = {0.0f, 0.0f, 0.0f};
+                        }
+                        if (onDirty_) onDirty_();
+                    }
 
-                int bodyTypeIndex = obj.rigidbody.bodyType == RigidbodyBodyType::Static
-                    ? 0
-                    : (obj.rigidbody.bodyType == RigidbodyBodyType::Kinematic ? 1 : 2);
-                const char* bodyTypes[] = {"Static", "Kinematic", "Dynamic"};
-                if (ImGui::Combo("Body Type", &bodyTypeIndex, bodyTypes, 3)) {
+                    float mass = obj.rigidbody.mass;
+                    if (ImGui::DragFloat("Mass", &mass, 0.1f, 0.0001f, 100000.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.rigidbody.mass = (std::max)(0.0001f, mass);
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+
+                    const bool useGravityBefore = obj.rigidbody.useGravity;
+                    if (ImGui::Checkbox("Use Gravity", &obj.rigidbody.useGravity)) {
+                        const bool useGravityAfter = obj.rigidbody.useGravity;
+                        obj.rigidbody.useGravity = useGravityBefore;
+                        PushUndoState();
+                        obj.rigidbody.useGravity = useGravityAfter;
+                        if (onDirty_) onDirty_();
+                    }
+
+                    float linearDamping = obj.rigidbody.linearDamping;
+                    if (ImGui::DragFloat("Linear Damping", &linearDamping, 0.01f, 0.0f, 1000.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.rigidbody.linearDamping = (std::max)(0.0f, linearDamping);
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+
+                    float angularDamping = obj.rigidbody.angularDamping;
+                    if (ImGui::DragFloat("Angular Damping", &angularDamping, 0.01f, 0.0f, 1000.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.rigidbody.angularDamping = (std::max)(0.0f, angularDamping);
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                }
+
+                if (ImGui::CollapsingHeader("Material")) {
+                    float friction = obj.rigidbody.friction;
+                    if (ImGui::DragFloat("Friction", &friction, 0.01f, 0.0f, 10.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.rigidbody.friction = (std::max)(0.0f, friction);
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+
+                    float restitution = obj.rigidbody.restitution;
+                    if (ImGui::DragFloat("Restitution", &restitution, 0.01f, 0.0f, 1.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.rigidbody.restitution = (std::max)(0.0f, restitution);
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                }
+
+                if (ImGui::CollapsingHeader("Velocity")) {
+                    glm::vec3 velocity = obj.rigidbody.velocity;
+                    if (RenderInspectorDragFloat3("Velocity", "##rigidbodyVelocity", &velocity.x, 0.1f)) {
+                        beginInspectorContinuousEdit();
+                        obj.rigidbody.velocity = velocity;
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+
+                    glm::vec3 angularVelocity = obj.rigidbody.angularVelocity;
+                    if (RenderInspectorDragFloat3("Angular Velocity", "##rigidbodyAngularVelocity", &angularVelocity.x, 0.1f)) {
+                        beginInspectorContinuousEdit();
+                        obj.rigidbody.angularVelocity = angularVelocity;
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                }
+
+                if (ImGui::CollapsingHeader("Constraints")) {
+                    bool freezePositionX = obj.rigidbody.freezePositionX;
+                    bool freezePositionY = obj.rigidbody.freezePositionY;
+                    bool freezePositionZ = obj.rigidbody.freezePositionZ;
+                    if (RenderInspectorAxisToggles("Freeze Position", "rigidbodyFreezePosition", freezePositionX, freezePositionY, freezePositionZ)) {
+                        PushUndoState();
+                        obj.rigidbody.freezePositionX = freezePositionX;
+                        obj.rigidbody.freezePositionY = freezePositionY;
+                        obj.rigidbody.freezePositionZ = freezePositionZ;
+                        if (onDirty_) onDirty_();
+                    }
+                    bool freezeRotationX = obj.rigidbody.freezeRotationX;
+                    bool freezeRotationY = obj.rigidbody.freezeRotationY;
+                    bool freezeRotationZ = obj.rigidbody.freezeRotationZ;
+                    if (RenderInspectorAxisToggles("Freeze Rotation", "rigidbodyFreezeRotation", freezeRotationX, freezeRotationY, freezeRotationZ)) {
+                        PushUndoState();
+                        obj.rigidbody.freezeRotationX = freezeRotationX;
+                        obj.rigidbody.freezeRotationY = freezeRotationY;
+                        obj.rigidbody.freezeRotationZ = freezeRotationZ;
+                        if (onDirty_) onDirty_();
+                    }
+                }
+            }
+
+            bool removeVehicle = false;
+            bool vehicleOpen = false;
+            bool vehicleEnabledChanged = false;
+            const bool vehicleEnabledBefore = obj.vehicle.enabled;
+            if (obj.hasVehicle) {
+                vehicleOpen = RenderRemovableComponentHeader("Vehicle", "VehicleHeader", GetComponentIconTexture("component-rigidbody.png"), &obj.vehicle.enabled, vehicleEnabledChanged, removeVehicle);
+            }
+            if (removeVehicle) {
+                PushUndoState();
+                obj.hasVehicle = false;
+                obj.vehicle = VehicleComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasVehicle && vehicleEnabledChanged) {
+                const bool vehicleEnabledAfter = obj.vehicle.enabled;
+                obj.vehicle.enabled = vehicleEnabledBefore;
+                PushUndoState();
+                obj.vehicle.enabled = vehicleEnabledAfter;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasVehicle && vehicleOpen) {
+                char configBuffer[512]{};
+                std::snprintf(configBuffer, sizeof(configBuffer), "%s", obj.vehicle.configPath.c_str());
+                if (RenderInspectorInputText("Config Asset", "##vehicleConfigPath", configBuffer, sizeof(configBuffer))) {
+                    const std::string configPath = NormalizeSlashes(std::string(configBuffer));
                     PushUndoState();
-                    obj.rigidbody.bodyType = bodyTypeIndex == 0
-                        ? RigidbodyBodyType::Static
-                        : (bodyTypeIndex == 1 ? RigidbodyBodyType::Kinematic : RigidbodyBodyType::Dynamic);
-                    if (obj.rigidbody.bodyType == RigidbodyBodyType::Static) {
-                        obj.rigidbody.velocity = {0.0f, 0.0f, 0.0f};
-                        obj.rigidbody.angularVelocity = {0.0f, 0.0f, 0.0f};
+                    obj.vehicle.configPath = configPath;
+                    raceman::physics::VehicleConfig config;
+                    if (TryLoadVehicleConfigForPath(configPath, config)) {
+                        SyncVehicleWheelBindings(obj.vehicle, config);
+                    } else if (configPath.empty()) {
+                        obj.vehicle.wheelBindings.clear();
                     }
                     if (onDirty_) onDirty_();
                 }
-
-                float mass = obj.rigidbody.mass;
-                if (ImGui::DragFloat("Mass", &mass, 0.1f, 0.0001f, 100000.0f)) {
-                    beginInspectorContinuousEdit();
-                    obj.rigidbody.mass = (std::max)(0.0001f, mass);
-                    if (onDirty_) onDirty_();
-                }
-                endInspectorContinuousEdit();
-
-                const bool useGravityBefore = obj.rigidbody.useGravity;
-                if (ImGui::Checkbox("Use Gravity", &obj.rigidbody.useGravity)) {
-                    const bool useGravityAfter = obj.rigidbody.useGravity;
-                    obj.rigidbody.useGravity = useGravityBefore;
-                    PushUndoState();
-                    obj.rigidbody.useGravity = useGravityAfter;
-                    if (onDirty_) onDirty_();
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                        const char* projectPath = static_cast<const char*>(payload->Data);
+                        if (projectPath != nullptr && IsVehicleConfigAssetPath(projectPath)) {
+                            PushUndoState();
+                            obj.vehicle.configPath = NormalizeSlashes(projectPath);
+                            raceman::physics::VehicleConfig config;
+                            if (TryLoadVehicleConfigForPath(obj.vehicle.configPath, config)) {
+                                SyncVehicleWheelBindings(obj.vehicle, config);
+                            }
+                            if (onDirty_) onDirty_();
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
                 }
 
-                float linearDamping = obj.rigidbody.linearDamping;
-                if (ImGui::DragFloat("Linear Damping", &linearDamping, 0.01f, 0.0f, 1000.0f)) {
-                    beginInspectorContinuousEdit();
-                    obj.rigidbody.linearDamping = (std::max)(0.0f, linearDamping);
-                    if (onDirty_) onDirty_();
-                }
-                endInspectorContinuousEdit();
+                raceman::physics::VehicleConfig loadedConfig;
+                if (TryLoadVehicleConfigForPath(obj.vehicle.configPath, loadedConfig)) {
+                    ImGui::TextDisabled("Vehicle: %s", loadedConfig.name.c_str());
+                    ImGui::TextDisabled("Wheels: %d", static_cast<int>(loadedConfig.wheels.size()));
+                    for (const raceman::physics::WheelConfig& wheel : loadedConfig.wheels) {
+                        auto bindingIt = std::find_if(obj.vehicle.wheelBindings.begin(), obj.vehicle.wheelBindings.end(),
+                            [&](const VehicleWheelBinding& candidate) {
+                                return candidate.wheelName == wheel.name;
+                            });
+                        int selectedObjectIndex = -1;
+                        for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                            if (bindingIt != obj.vehicle.wheelBindings.end() && objects_[i].id == bindingIt->objectId) {
+                                selectedObjectIndex = i;
+                                break;
+                            }
+                        }
 
-                float angularDamping = obj.rigidbody.angularDamping;
-                if (ImGui::DragFloat("Angular Damping", &angularDamping, 0.01f, 0.0f, 1000.0f)) {
-                    beginInspectorContinuousEdit();
-                    obj.rigidbody.angularDamping = (std::max)(0.0f, angularDamping);
-                    if (onDirty_) onDirty_();
-                }
-                endInspectorContinuousEdit();
+                        std::string preview = "(none)";
+                        if (selectedObjectIndex >= 0) {
+                            preview = objects_[selectedObjectIndex].name;
+                        }
+                        if (preview.empty()) {
+                            preview = "(unnamed)";
+                        }
 
-                glm::vec3 velocity = obj.rigidbody.velocity;
-                if (RenderInspectorDragFloat3("Velocity", "##rigidbodyVelocity", &velocity.x, 0.1f)) {
-                    beginInspectorContinuousEdit();
-                    obj.rigidbody.velocity = velocity;
-                    if (onDirty_) onDirty_();
+                        const std::string comboLabel = wheel.name + "##vehicleWheelBinding_" + wheel.name;
+                        if (ImGui::BeginCombo(comboLabel.c_str(), preview.c_str())) {
+                            const bool noneSelected = selectedObjectIndex < 0;
+                            if (ImGui::Selectable("(none)", noneSelected)) {
+                                PushUndoState();
+                                if (bindingIt != obj.vehicle.wheelBindings.end()) {
+                                    bindingIt->objectId.clear();
+                                }
+                                if (onDirty_) onDirty_();
+                            }
+                            if (noneSelected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                            for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                                if (objects_[i].id == obj.id) {
+                                    continue;
+                                }
+                                const std::string itemName = objects_[i].name.empty() ? std::string("(unnamed)") : objects_[i].name;
+                                const std::string itemLabel = itemName + "##vehicleBindingObject_" + objects_[i].id;
+                                const bool isSelected = (i == selectedObjectIndex);
+                                if (ImGui::Selectable(itemLabel.c_str(), isSelected)) {
+                                    PushUndoState();
+                                    if (bindingIt == obj.vehicle.wheelBindings.end()) {
+                                        obj.vehicle.wheelBindings.push_back(VehicleWheelBinding{wheel.name, objects_[i].id});
+                                    } else {
+                                        bindingIt->objectId = objects_[i].id;
+                                    }
+                                    if (onDirty_) onDirty_();
+                                }
+                                if (isSelected) {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+                        if (ImGui::BeginDragDropTarget()) {
+                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
+                                if (payload->DataSize == sizeof(int)) {
+                                    const int droppedIndex = *static_cast<const int*>(payload->Data);
+                                    if (droppedIndex >= 0 &&
+                                        droppedIndex < static_cast<int>(objects_.size()) &&
+                                        objects_[droppedIndex].id != obj.id) {
+                                        PushUndoState();
+                                        if (bindingIt == obj.vehicle.wheelBindings.end()) {
+                                            obj.vehicle.wheelBindings.push_back(VehicleWheelBinding{wheel.name, objects_[droppedIndex].id});
+                                        } else {
+                                            bindingIt->objectId = objects_[droppedIndex].id;
+                                        }
+                                        if (onDirty_) onDirty_();
+                                    }
+                                }
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+                    }
+                } else if (!obj.vehicle.configPath.empty()) {
+                    ImGui::TextDisabled("Vehicle config could not be loaded.");
+                } else {
+                    ImGui::TextDisabled("Assign a `.vehicle.json` asset to author this vehicle.");
                 }
-                endInspectorContinuousEdit();
-
-                glm::vec3 angularVelocity = obj.rigidbody.angularVelocity;
-                if (RenderInspectorDragFloat3("Angular Velocity", "##rigidbodyAngularVelocity", &angularVelocity.x, 0.1f)) {
-                    beginInspectorContinuousEdit();
-                    obj.rigidbody.angularVelocity = angularVelocity;
-                    if (onDirty_) onDirty_();
-                }
-                endInspectorContinuousEdit();
-
-                bool freezePositionX = obj.rigidbody.freezePositionX;
-                bool freezePositionY = obj.rigidbody.freezePositionY;
-                bool freezePositionZ = obj.rigidbody.freezePositionZ;
-                if (RenderInspectorAxisToggles("Freeze Position", "rigidbodyFreezePosition", freezePositionX, freezePositionY, freezePositionZ)) {
-                    PushUndoState();
-                    obj.rigidbody.freezePositionX = freezePositionX;
-                    obj.rigidbody.freezePositionY = freezePositionY;
-                    obj.rigidbody.freezePositionZ = freezePositionZ;
-                    if (onDirty_) onDirty_();
-                }
-                bool freezeRotationX = obj.rigidbody.freezeRotationX;
-                bool freezeRotationY = obj.rigidbody.freezeRotationY;
-                bool freezeRotationZ = obj.rigidbody.freezeRotationZ;
-                if (RenderInspectorAxisToggles("Freeze Rotation", "rigidbodyFreezeRotation", freezeRotationX, freezeRotationY, freezeRotationZ)) {
-                    PushUndoState();
-                    obj.rigidbody.freezeRotationX = freezeRotationX;
-                    obj.rigidbody.freezeRotationY = freezeRotationY;
-                    obj.rigidbody.freezeRotationZ = freezeRotationZ;
-                    if (onDirty_) onDirty_();
-                }
+                ImGui::TextDisabled("This pass stores authoring data only; runtime vehicle spawning comes next.");
             }
 
             bool removeCharacterController = false;
@@ -1207,6 +1490,40 @@ void SceneEditor::RenderInspectorPanel() {
                 ImGui::TextDisabled("Jolt plane shapes stay static.");
             }
 
+            bool removeMeshCollider = false;
+            bool meshColliderOpen = false;
+            bool meshColliderEnabledChanged = false;
+            const bool meshColliderEnabledBefore = obj.meshCollider.enabled;
+            if (obj.hasMeshCollider) {
+                meshColliderOpen = RenderRemovableComponentHeader("Mesh Collider", "MeshColliderHeader", GetComponentIconTexture("component-box-collider.png"), &obj.meshCollider.enabled, meshColliderEnabledChanged, removeMeshCollider);
+            }
+            if (removeMeshCollider) {
+                PushUndoState();
+                obj.hasMeshCollider = false;
+                obj.meshCollider = MeshColliderComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasMeshCollider && meshColliderEnabledChanged) {
+                const bool colliderEnabledAfter = obj.meshCollider.enabled;
+                obj.meshCollider.enabled = meshColliderEnabledBefore;
+                PushUndoState();
+                obj.meshCollider.enabled = colliderEnabledAfter;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasMeshCollider && meshColliderOpen) {
+                const bool isTriggerBefore = obj.meshCollider.isTrigger;
+                if (ImGui::Checkbox("Is Trigger##MeshCollider", &obj.meshCollider.isTrigger)) {
+                    const bool isTriggerAfter = obj.meshCollider.isTrigger;
+                    obj.meshCollider.isTrigger = isTriggerBefore;
+                    PushUndoState();
+                    obj.meshCollider.isTrigger = isTriggerAfter;
+                    if (onDirty_) onDirty_();
+                }
+
+                const bool hasMeshSource = obj.hasMeshFilter && !obj.meshFilter.sourcePath.empty();
+                ImGui::TextDisabled("%s", hasMeshSource ? obj.meshFilter.sourcePath.c_str() : "Mesh Collider requires a Mesh Filter source.");
+                ImGui::TextDisabled("Mesh colliders are intended for static world geometry.");
+            }
+
             bool removeCamera = false;
             bool cameraOpen = false;
             bool cameraEnabledChanged = false;
@@ -1451,7 +1768,8 @@ void SceneEditor::RenderMultiSelectionInspector() {
         endInspectorContinuousEdit();
 
         glm::vec3 scale = active.transform.scale;
-        if (RenderInspectorDragFloat3("Scale", "##multiScale", &scale.x, 0.1f)) {
+        bool scaleDeactivated = false;
+        if (RenderInspectorLinkedScaleEditor("Scale", "##multiScale", &scale.x, 0.1f, linkedMultiScaleValues_, &scaleDeactivated)) {
             beginInspectorContinuousEdit();
             scale = {
                 (std::max)(scale.x, 0.01f),
@@ -1461,7 +1779,9 @@ void SceneEditor::RenderMultiSelectionInspector() {
             forEachSelected([&](SceneObject& object) { object.transform.scale = scale; });
             markDirty();
         }
-        endInspectorContinuousEdit();
+        if (scaleDeactivated) {
+            inspectorEditActive_ = false;
+        }
     }
 
     bool showedSharedComponent = false;
@@ -1493,6 +1813,12 @@ void SceneEditor::RenderMultiSelectionInspector() {
                         AssignMaterialToSelected(materialIdPayload);
                     }
                 }
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                    const char* projectPath = static_cast<const char*>(payload->Data);
+                    if (projectPath != nullptr && IsMaterialAssetPath(projectPath)) {
+                        AssignMaterialToSelected(MaterialIdFromAssetPath(projectPath));
+                    }
+                }
                 ImGui::EndDragDropTarget();
             }
             ImGui::TextDisabled("Material assignment applies to all selected Mesh Renderers.");
@@ -1502,99 +1828,175 @@ void SceneEditor::RenderMultiSelectionInspector() {
     if (allSelected([](const SceneObject& object) { return object.hasRigidbody; })) {
         showedSharedComponent = true;
         if (renderSharedEnabledHeader("Rigidbody", "MultiRigidbodyHeader", "component-rigidbody.png", active.rigidbody.enabled, [](SceneObject& object, bool value) { object.rigidbody.enabled = value; })) {
-            int bodyTypeIndex = active.rigidbody.bodyType == RigidbodyBodyType::Static
-                ? 0
-                : (active.rigidbody.bodyType == RigidbodyBodyType::Kinematic ? 1 : 2);
-            const char* bodyTypes[] = {"Static", "Kinematic", "Dynamic"};
-            if (ImGui::Combo("Body Type##multiRigidbody", &bodyTypeIndex, bodyTypes, 3)) {
+            if (ImGui::CollapsingHeader("Body", ImGuiTreeNodeFlags_DefaultOpen)) {
+                int bodyTypeIndex = active.rigidbody.bodyType == RigidbodyBodyType::Static
+                    ? 0
+                    : (active.rigidbody.bodyType == RigidbodyBodyType::Kinematic ? 1 : 2);
+                const char* bodyTypes[] = {"Static", "Kinematic", "Dynamic"};
+                if (ImGui::Combo("Body Type##multiRigidbody", &bodyTypeIndex, bodyTypes, 3)) {
+                    PushUndoState();
+                    const RigidbodyBodyType bodyType = bodyTypeIndex == 0
+                        ? RigidbodyBodyType::Static
+                        : (bodyTypeIndex == 1 ? RigidbodyBodyType::Kinematic : RigidbodyBodyType::Dynamic);
+                    forEachSelected([&](SceneObject& object) {
+                        object.rigidbody.bodyType = bodyType;
+                        if (bodyType == RigidbodyBodyType::Static) {
+                            object.rigidbody.velocity = glm::vec3{0.0f};
+                            object.rigidbody.angularVelocity = glm::vec3{0.0f};
+                        }
+                    });
+                    markDirty();
+                }
+
+                float mass = active.rigidbody.mass;
+                if (ImGui::DragFloat("Mass##multiRigidbody", &mass, 0.1f, 0.0001f, 100000.0f)) {
+                    beginInspectorContinuousEdit();
+                    mass = (std::max)(0.0001f, mass);
+                    forEachSelected([&](SceneObject& object) { object.rigidbody.mass = mass; });
+                    markDirty();
+                }
+                endInspectorContinuousEdit();
+
+                bool useGravity = active.rigidbody.useGravity;
+                if (ImGui::Checkbox("Use Gravity##multiRigidbody", &useGravity)) {
+                    PushUndoState();
+                    forEachSelected([&](SceneObject& object) { object.rigidbody.useGravity = useGravity; });
+                    markDirty();
+                }
+
+                float linearDamping = active.rigidbody.linearDamping;
+                if (ImGui::DragFloat("Linear Damping##multiRigidbody", &linearDamping, 0.01f, 0.0f, 1000.0f)) {
+                    beginInspectorContinuousEdit();
+                    linearDamping = (std::max)(0.0f, linearDamping);
+                    forEachSelected([&](SceneObject& object) { object.rigidbody.linearDamping = linearDamping; });
+                    markDirty();
+                }
+                endInspectorContinuousEdit();
+
+                float angularDamping = active.rigidbody.angularDamping;
+                if (ImGui::DragFloat("Angular Damping##multiRigidbody", &angularDamping, 0.01f, 0.0f, 1000.0f)) {
+                    beginInspectorContinuousEdit();
+                    angularDamping = (std::max)(0.0f, angularDamping);
+                    forEachSelected([&](SceneObject& object) { object.rigidbody.angularDamping = angularDamping; });
+                    markDirty();
+                }
+                endInspectorContinuousEdit();
+            }
+
+            if (ImGui::CollapsingHeader("Material")) {
+                float friction = active.rigidbody.friction;
+                if (ImGui::DragFloat("Friction##multiRigidbody", &friction, 0.01f, 0.0f, 10.0f)) {
+                    beginInspectorContinuousEdit();
+                    friction = (std::max)(0.0f, friction);
+                    forEachSelected([&](SceneObject& object) { object.rigidbody.friction = friction; });
+                    markDirty();
+                }
+                endInspectorContinuousEdit();
+
+                float restitution = active.rigidbody.restitution;
+                if (ImGui::DragFloat("Restitution##multiRigidbody", &restitution, 0.01f, 0.0f, 1.0f)) {
+                    beginInspectorContinuousEdit();
+                    restitution = (std::max)(0.0f, restitution);
+                    forEachSelected([&](SceneObject& object) { object.rigidbody.restitution = restitution; });
+                    markDirty();
+                }
+                endInspectorContinuousEdit();
+            }
+
+            if (ImGui::CollapsingHeader("Velocity")) {
+                glm::vec3 velocity = active.rigidbody.velocity;
+                if (RenderInspectorDragFloat3("Velocity", "##multiRigidbodyVelocity", &velocity.x, 0.1f)) {
+                    beginInspectorContinuousEdit();
+                    forEachSelected([&](SceneObject& object) { object.rigidbody.velocity = velocity; });
+                    markDirty();
+                }
+                endInspectorContinuousEdit();
+
+                glm::vec3 angularVelocity = active.rigidbody.angularVelocity;
+                if (RenderInspectorDragFloat3("Angular Velocity", "##multiRigidbodyAngularVelocity", &angularVelocity.x, 0.1f)) {
+                    beginInspectorContinuousEdit();
+                    forEachSelected([&](SceneObject& object) { object.rigidbody.angularVelocity = angularVelocity; });
+                    markDirty();
+                }
+                endInspectorContinuousEdit();
+            }
+
+            if (ImGui::CollapsingHeader("Constraints")) {
+                bool freezePositionX = active.rigidbody.freezePositionX;
+                bool freezePositionY = active.rigidbody.freezePositionY;
+                bool freezePositionZ = active.rigidbody.freezePositionZ;
+                if (RenderInspectorAxisToggles("Freeze Position", "multiRigidbodyFreezePosition", freezePositionX, freezePositionY, freezePositionZ)) {
+                    PushUndoState();
+                    forEachSelected([&](SceneObject& object) {
+                        object.rigidbody.freezePositionX = freezePositionX;
+                        object.rigidbody.freezePositionY = freezePositionY;
+                        object.rigidbody.freezePositionZ = freezePositionZ;
+                    });
+                    markDirty();
+                }
+                bool freezeRotationX = active.rigidbody.freezeRotationX;
+                bool freezeRotationY = active.rigidbody.freezeRotationY;
+                bool freezeRotationZ = active.rigidbody.freezeRotationZ;
+                if (RenderInspectorAxisToggles("Freeze Rotation", "multiRigidbodyFreezeRotation", freezeRotationX, freezeRotationY, freezeRotationZ)) {
+                    PushUndoState();
+                    forEachSelected([&](SceneObject& object) {
+                        object.rigidbody.freezeRotationX = freezeRotationX;
+                        object.rigidbody.freezeRotationY = freezeRotationY;
+                        object.rigidbody.freezeRotationZ = freezeRotationZ;
+                    });
+                    markDirty();
+                }
+            }
+        }
+    }
+
+    if (allSelected([](const SceneObject& object) { return object.hasVehicle; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Vehicle", "MultiVehicleHeader", "component-rigidbody.png", active.vehicle.enabled, [](SceneObject& object, bool value) { object.vehicle.enabled = value; })) {
+            char configBuffer[512]{};
+            std::snprintf(configBuffer, sizeof(configBuffer), "%s", active.vehicle.configPath.c_str());
+            if (RenderInspectorInputText("Config Asset", "##multiVehicleConfigPath", configBuffer, sizeof(configBuffer))) {
+                const std::string configPath = NormalizeSlashes(std::string(configBuffer));
                 PushUndoState();
-                const RigidbodyBodyType bodyType = bodyTypeIndex == 0
-                    ? RigidbodyBodyType::Static
-                    : (bodyTypeIndex == 1 ? RigidbodyBodyType::Kinematic : RigidbodyBodyType::Dynamic);
                 forEachSelected([&](SceneObject& object) {
-                    object.rigidbody.bodyType = bodyType;
-                    if (bodyType == RigidbodyBodyType::Static) {
-                        object.rigidbody.velocity = glm::vec3{0.0f};
-                        object.rigidbody.angularVelocity = glm::vec3{0.0f};
+                    object.vehicle.configPath = configPath;
+                    raceman::physics::VehicleConfig config;
+                    if (TryLoadVehicleConfigForPath(configPath, config)) {
+                        SyncVehicleWheelBindings(object.vehicle, config);
+                    } else if (configPath.empty()) {
+                        object.vehicle.wheelBindings.clear();
                     }
                 });
                 markDirty();
             }
-
-            float mass = active.rigidbody.mass;
-            if (ImGui::DragFloat("Mass##multiRigidbody", &mass, 0.1f, 0.0001f, 100000.0f)) {
-                beginInspectorContinuousEdit();
-                mass = (std::max)(0.0001f, mass);
-                forEachSelected([&](SceneObject& object) { object.rigidbody.mass = mass; });
-                markDirty();
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                    const char* projectPath = static_cast<const char*>(payload->Data);
+                    if (projectPath != nullptr && IsVehicleConfigAssetPath(projectPath)) {
+                        PushUndoState();
+                        const std::string configPath = NormalizeSlashes(projectPath);
+                        forEachSelected([&](SceneObject& object) {
+                            object.vehicle.configPath = configPath;
+                            raceman::physics::VehicleConfig config;
+                            if (TryLoadVehicleConfigForPath(configPath, config)) {
+                                SyncVehicleWheelBindings(object.vehicle, config);
+                            }
+                        });
+                        markDirty();
+                    }
+                }
+                ImGui::EndDragDropTarget();
             }
-            endInspectorContinuousEdit();
-
-            bool useGravity = active.rigidbody.useGravity;
-            if (ImGui::Checkbox("Use Gravity##multiRigidbody", &useGravity)) {
-                PushUndoState();
-                forEachSelected([&](SceneObject& object) { object.rigidbody.useGravity = useGravity; });
-                markDirty();
+            raceman::physics::VehicleConfig loadedConfig;
+            if (TryLoadVehicleConfigForPath(active.vehicle.configPath, loadedConfig)) {
+                ImGui::TextDisabled("Vehicle: %s", loadedConfig.name.c_str());
+                ImGui::TextDisabled("Wheels: %d", static_cast<int>(loadedConfig.wheels.size()));
+            } else if (!active.vehicle.configPath.empty()) {
+                ImGui::TextDisabled("Vehicle config could not be loaded.");
+            } else {
+                ImGui::TextDisabled("Assign a `.vehicle.json` asset to all selected objects.");
             }
-
-            float linearDamping = active.rigidbody.linearDamping;
-            if (ImGui::DragFloat("Linear Damping##multiRigidbody", &linearDamping, 0.01f, 0.0f, 1000.0f)) {
-                beginInspectorContinuousEdit();
-                linearDamping = (std::max)(0.0f, linearDamping);
-                forEachSelected([&](SceneObject& object) { object.rigidbody.linearDamping = linearDamping; });
-                markDirty();
-            }
-            endInspectorContinuousEdit();
-
-            float angularDamping = active.rigidbody.angularDamping;
-            if (ImGui::DragFloat("Angular Damping##multiRigidbody", &angularDamping, 0.01f, 0.0f, 1000.0f)) {
-                beginInspectorContinuousEdit();
-                angularDamping = (std::max)(0.0f, angularDamping);
-                forEachSelected([&](SceneObject& object) { object.rigidbody.angularDamping = angularDamping; });
-                markDirty();
-            }
-            endInspectorContinuousEdit();
-
-            glm::vec3 velocity = active.rigidbody.velocity;
-            if (RenderInspectorDragFloat3("Velocity", "##multiRigidbodyVelocity", &velocity.x, 0.1f)) {
-                beginInspectorContinuousEdit();
-                forEachSelected([&](SceneObject& object) { object.rigidbody.velocity = velocity; });
-                markDirty();
-            }
-            endInspectorContinuousEdit();
-
-            glm::vec3 angularVelocity = active.rigidbody.angularVelocity;
-            if (RenderInspectorDragFloat3("Angular Velocity", "##multiRigidbodyAngularVelocity", &angularVelocity.x, 0.1f)) {
-                beginInspectorContinuousEdit();
-                forEachSelected([&](SceneObject& object) { object.rigidbody.angularVelocity = angularVelocity; });
-                markDirty();
-            }
-            endInspectorContinuousEdit();
-
-            bool freezePositionX = active.rigidbody.freezePositionX;
-            bool freezePositionY = active.rigidbody.freezePositionY;
-            bool freezePositionZ = active.rigidbody.freezePositionZ;
-            if (RenderInspectorAxisToggles("Freeze Position", "multiRigidbodyFreezePosition", freezePositionX, freezePositionY, freezePositionZ)) {
-                PushUndoState();
-                forEachSelected([&](SceneObject& object) {
-                    object.rigidbody.freezePositionX = freezePositionX;
-                    object.rigidbody.freezePositionY = freezePositionY;
-                    object.rigidbody.freezePositionZ = freezePositionZ;
-                });
-                markDirty();
-            }
-            bool freezeRotationX = active.rigidbody.freezeRotationX;
-            bool freezeRotationY = active.rigidbody.freezeRotationY;
-            bool freezeRotationZ = active.rigidbody.freezeRotationZ;
-            if (RenderInspectorAxisToggles("Freeze Rotation", "multiRigidbodyFreezeRotation", freezeRotationX, freezeRotationY, freezeRotationZ)) {
-                PushUndoState();
-                forEachSelected([&](SceneObject& object) {
-                    object.rigidbody.freezeRotationX = freezeRotationX;
-                    object.rigidbody.freezeRotationY = freezeRotationY;
-                    object.rigidbody.freezeRotationZ = freezeRotationZ;
-                });
-                markDirty();
-            }
+            ImGui::TextDisabled("Wheel bindings are edited per object in the single-object inspector.");
         }
     }
 
@@ -1738,6 +2140,20 @@ void SceneEditor::RenderMultiSelectionInspector() {
         }
     }
 
+    if (allSelected([](const SceneObject& object) { return object.hasMeshCollider; })) {
+        showedSharedComponent = true;
+        if (renderSharedEnabledHeader("Mesh Collider", "MultiMeshColliderHeader", "component-box-collider.png", active.meshCollider.enabled, [](SceneObject& object, bool value) { object.meshCollider.enabled = value; })) {
+            bool isTrigger = active.meshCollider.isTrigger;
+            if (ImGui::Checkbox("Is Trigger##multiMeshCollider", &isTrigger)) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) { object.meshCollider.isTrigger = isTrigger; });
+                markDirty();
+            }
+            ImGui::TextDisabled("Mesh colliders use each object's Mesh Filter source.");
+            ImGui::TextDisabled("Use them for static world geometry.");
+        }
+    }
+
     if (allSelected([](const SceneObject& object) { return object.hasCamera; })) {
         showedSharedComponent = true;
         if (renderSharedEnabledHeader("Camera", "MultiCameraHeader", "component-camera.png", active.camera.enabled, [](SceneObject& object, bool value) { object.camera.enabled = value; })) {
@@ -1857,8 +2273,23 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
             assetPickerMode_ = ProjectAssetPickerMode::None;
             pickerOpen = false;
         } else {
-            ImGui::TextUnformatted(pickingMesh ? "Select an OBJ from the project" : "Select a material from the project");
+            ImGui::TextUnformatted(pickingMesh ? "Select a mesh asset from the project" : "Select a material from the project");
             ImGui::Separator();
+
+            if (pickingMesh) {
+                const char* builtIns[] = {"Plane", "Cube", "Sphere", "Cone", "Cylinder"};
+                for (int i = 0; i < 5; ++i) {
+                    if (ImGui::Button(builtIns[i], ImVec2(90.0f, 0.0f))) {
+                        ReplaceSelectedMeshWithBuiltIn(builtIns[i]);
+                        assetPickerMode_ = ProjectAssetPickerMode::None;
+                        pickerOpen = false;
+                    }
+                    if (i < 4) {
+                        ImGui::SameLine();
+                    }
+                }
+                ImGui::Separator();
+            }
 
             if (ImGui::Button("Refresh")) {
                 RefreshProjectFiles();
@@ -1886,7 +2317,7 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
             bool found = false;
             if (ImGui::BeginChild("ProjectAssetPickerList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing() * 2.0f), true)) {
                 for (const std::string& file : projectFiles_) {
-                    const bool matches = pickingMesh ? IsObjAssetPath(file) : IsMaterialAssetPath(file);
+                    const bool matches = pickingMesh ? IsMeshAssetPath(file) : IsMaterialAssetPath(file);
                     if (!matches) {
                         continue;
                     }
@@ -1906,7 +2337,7 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
                 }
 
                 if (!found) {
-                    ImGui::TextDisabled("%s", pickingMesh ? "No OBJ files found in project assets." : "No material files found in project assets.");
+                    ImGui::TextDisabled("%s", pickingMesh ? "No mesh assets found in project assets." : "No material files found in project assets.");
                 }
             }
             ImGui::EndChild();
@@ -1975,19 +2406,75 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
     ImGui::Separator();
     ImGui::TextUnformatted("Texture Paths");
 
-    auto editTexturePath = [](const char* label, std::string& value) {
-        char buffer[512];
-        std::snprintf(buffer, sizeof(buffer), "%s", value.c_str());
-        if (ImGui::InputText(label, buffer, sizeof(buffer))) {
-            value = buffer;
+    std::string materialProjectPath;
+    for (const std::string& file : projectFiles_) {
+        if (IsMaterialAssetPath(file) && MaterialIdFromAssetPath(file) == materialId) {
+            materialProjectPath = file;
+            break;
+        }
+    }
+
+    const fs::path materialDirectory = materialProjectPath.empty()
+        ? FindAssetsRoot()
+        : ProjectAssetPathToAbsolute(ParentProjectDirectory(materialProjectPath));
+
+    auto resolveTexturePath = [&](const std::string& value) -> fs::path {
+        if (value.empty()) {
+            return {};
+        }
+        fs::path path = fs::path(NormalizeSlashes(value));
+        if (path.is_absolute()) {
+            return path.lexically_normal();
+        }
+        if (!value.empty() && NormalizeSlashes(value).rfind("assets/", 0) == 0) {
+            return ProjectAssetPathToAbsolute(value);
+        }
+        return (materialDirectory / path).lexically_normal();
+    };
+
+    auto storeTexturePath = [&](const fs::path& absolutePath, std::string& value) {
+        const fs::path normalized = absolutePath.lexically_normal();
+        const fs::path assetsRoot = FindAssetsRoot();
+        if (IsUnderPath(normalized, assetsRoot)) {
+            value = ToProjectAssetPath(normalized, assetsRoot);
+        } else {
+            value = NormalizeSlashes(normalized.string());
         }
     };
 
-    editTexturePath("Albedo##matTexAlbedo", material->texAlbedo);
-    editTexturePath("Normal##matTexNormal", material->texNormal);
-    editTexturePath("Metallic##matTexMetallic", material->texMetallic);
-    editTexturePath("Roughness##matTexRoughness", material->texRoughness);
-    editTexturePath("AO##matTexAo", material->texAo);
+    auto editTexturePath = [&](const char* label, const char* idSuffix, std::string& value) {
+        char buffer[512];
+        std::snprintf(buffer, sizeof(buffer), "%s", value.c_str());
+        if (RenderInspectorInputText(label, idSuffix, buffer, sizeof(buffer))) {
+            value = buffer;
+        }
+        const fs::path resolvedPath = resolveTexturePath(value);
+        const std::string wrappedValue = value.empty() ? std::string("(none)") : NormalizeSlashes(value);
+        RenderInspectorWrappedValue("Path:", wrappedValue);
+        if (ImGui::Button((std::string("Browse##") + idSuffix).c_str())) {
+            const fs::path initialDirectory = resolvedPath.empty() ? materialDirectory : resolvedPath.parent_path();
+            const std::string selected = OpenTextureFileDialogWin32(initialDirectory.string());
+            if (!selected.empty()) {
+                storeTexturePath(fs::path(selected), value);
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button((std::string("Show##") + idSuffix).c_str())) {
+            if (!resolvedPath.empty() && !RevealAbsolutePathInExplorer(resolvedPath) && console_) {
+                console_->AddError("Failed to reveal texture path: " + NormalizeSlashes(resolvedPath.string()));
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button((std::string("Clear##") + idSuffix).c_str())) {
+            value.clear();
+        }
+    };
+
+    editTexturePath("Albedo", "matTexAlbedo", material->texAlbedo);
+    editTexturePath("Normal", "matTexNormal", material->texNormal);
+    editTexturePath("Metallic", "matTexMetallic", material->texMetallic);
+    editTexturePath("Roughness", "matTexRoughness", material->texRoughness);
+    editTexturePath("AO", "matTexAo", material->texAo);
 
     ImGui::Separator();
     if (ImGui::Button("Save Material")) {

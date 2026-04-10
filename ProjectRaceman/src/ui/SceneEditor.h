@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include "../rendering/Renderer.h"
 #include "../rendering/Material.h"
+#include "../rendering/PrimitiveMeshes.h"
 #include "../scripting/ObjectScript.h"
 
 class Model;
@@ -16,7 +17,6 @@ class Model;
 namespace raceman {
 
 class Renderer;
-class PrimitivePlane;
 class Console;
 class InputManager;
 class PhysicsWorld;
@@ -48,6 +48,7 @@ enum class SceneComponentType {
     MeshRenderer,
     Script,
     Rigidbody,
+    Vehicle,
     CharacterController,
     BoxCollider,
     SphereCollider,
@@ -121,6 +122,8 @@ struct RigidbodyComponent {
     bool useGravity{true};
     float linearDamping{0.05f};
     float angularDamping{0.05f};
+    float friction{0.2f};
+    float restitution{0.0f};
     glm::vec3 velocity{0.0f, 0.0f, 0.0f};
     glm::vec3 angularVelocity{0.0f, 0.0f, 0.0f};
     bool freezePositionX{false};
@@ -145,6 +148,17 @@ struct CharacterControllerComponent {
     glm::vec3 groundVelocity{0.0f, 0.0f, 0.0f};
     glm::vec3 moveInput{0.0f, 0.0f, 0.0f};
     float pendingJumpImpulse{0.0f};
+};
+
+struct VehicleWheelBinding {
+    std::string wheelName;
+    std::string objectId;
+};
+
+struct VehicleComponent {
+    bool enabled{true};
+    std::string configPath;
+    std::vector<VehicleWheelBinding> wheelBindings;
 };
 
 struct BoxColliderComponent {
@@ -178,6 +192,11 @@ struct PlaneColliderComponent {
     float halfExtent{1000.0f};
 };
 
+struct MeshColliderComponent {
+    bool enabled{true};
+    bool isTrigger{false};
+};
+
 struct CameraComponent {
     bool enabled{true};
     bool isMain{true};
@@ -207,22 +226,26 @@ struct SceneObject {
     bool hasMeshRenderer{true};
     bool hasScriptComponent{true};
     bool hasRigidbody{false};
+    bool hasVehicle{false};
     bool hasCharacterController{false};
     bool hasBoxCollider{false};
     bool hasSphereCollider{false};
     bool hasCapsuleCollider{false};
     bool hasPlaneCollider{false};
+    bool hasMeshCollider{false};
     bool hasCamera{false};
     bool hasLight{false};
     MeshFilterComponent meshFilter;
     MeshRendererComponent meshRenderer;
     ScriptComponent scriptComponent;
     RigidbodyComponent rigidbody;
+    VehicleComponent vehicle;
     CharacterControllerComponent characterController;
     BoxColliderComponent boxCollider;
     SphereColliderComponent sphereCollider;
     CapsuleColliderComponent capsuleCollider;
     PlaneColliderComponent planeCollider;
+    MeshColliderComponent meshCollider;
     CameraComponent camera;
     LightComponent light;
 };
@@ -313,11 +336,13 @@ private:
 
     // Actions
     void AddPlane();
+    void AddBuiltInPrimitiveObject(const std::string& meshType);
     void AddEmptyObject();
     void AddCameraObject();
     void AddLightObject(LightType type);
     void DeleteSelectedObject();
     bool ReplaceSelectedMeshWithPlane();
+    bool ReplaceSelectedMeshWithBuiltIn(const std::string& meshType);
     bool ReplaceSelectedMeshFromObj(const std::string& path);
     bool AssignMaterialToSelected(const std::string& materialId);
     bool AttachScriptToSelected(const std::string& scriptName, const std::string& scriptPath);
@@ -369,7 +394,7 @@ private:
     std::string savePath_{"assets/scenes/EditorScene.scene.json"};
 
     // shared primitives
-    std::unique_ptr<PrimitivePlane> planePrim_;
+    std::unordered_map<std::string, PrimitiveMesh> builtInPrimitiveMeshes_;
     Console* console_{nullptr};
     InputManager* inputManager_{nullptr};
 
@@ -412,6 +437,10 @@ private:
     int renamingObjectIndex_{-1};
     bool focusObjectRename_{false};
     char objectRenameBuffer_[128]{};
+    int pendingHierarchySelectIndex_{-1};
+    bool pendingHierarchySelectToggle_{false};
+    bool pendingHierarchyFocusObject_{false};
+    bool pendingHierarchySelectionDragged_{false};
 
     std::string renamingProjectFile_;
     bool focusProjectRename_{false};
@@ -424,8 +453,17 @@ private:
     glm::vec3 gizmoDragStartPosition_{0.0f};
     glm::vec3 gizmoDragStartRotation_{0.0f};
     glm::vec3 gizmoDragStartScale_{1.0f};
+    struct GizmoSelectionState {
+        int index{-1};
+        glm::vec3 worldPosition{0.0f};
+        glm::vec3 rotationEuler{0.0f};
+        glm::vec3 scale{1.0f};
+    };
+    std::vector<GizmoSelectionState> gizmoDragSelection_;
     bool gizmoDirtyDuringDrag_{false};
     bool inspectorEditActive_{false};
+    bool linkedScaleValues_{true};
+    bool linkedMultiScaleValues_{true};
     bool dockLayoutInitialized_{false};
     glm::vec2 viewportPanelPos_{0.0f, 0.0f};
     glm::vec2 viewportPanelSize_{0.0f, 0.0f};

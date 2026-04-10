@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -18,7 +19,13 @@ enum class PhysicsColliderType {
     Box,
     Sphere,
     Capsule,
-    Plane
+    Plane,
+    Mesh
+};
+
+enum class PhysicsMotionQuality : std::uint8_t {
+    Discrete,
+    Continuous
 };
 
 struct PhysicsColliderDesc {
@@ -32,6 +39,8 @@ struct PhysicsColliderDesc {
     float offset{0.0f};
     bool infinite{true};
     float halfExtent{1000.0f};
+    std::string meshAssetPath;
+    int meshIndex{0};
 };
 
 struct PhysicsBodyDesc {
@@ -44,6 +53,9 @@ struct PhysicsBodyDesc {
     bool useGravity{true};
     float linearDamping{0.05f};
     float angularDamping{0.05f};
+    float friction{0.2f};
+    float restitution{0.0f};
+    PhysicsMotionQuality motionQuality{PhysicsMotionQuality::Discrete};
     glm::vec3 velocity{0.0f};
     glm::vec3 angularVelocity{0.0f};
     bool freezePositionX{false};
@@ -104,6 +116,12 @@ public:
     void SetBodyVelocity(const std::string& objectId, const glm::vec3& velocity);
     glm::vec3 GetBodyAngularVelocity(const std::string& objectId) const;
     void SetBodyAngularVelocity(const std::string& objectId, const glm::vec3& velocity);
+    void AddBodyForce(const std::string& objectId, const glm::vec3& force);
+    void AddBodyImpulse(const std::string& objectId, const glm::vec3& impulse);
+    void AddBodyTorque(const std::string& objectId, const glm::vec3& torque);
+    void AddBodyAngularImpulse(const std::string& objectId, const glm::vec3& impulse);
+    void WakeBody(const std::string& objectId);
+    void SleepBody(const std::string& objectId);
 
     bool HasCharacter(const std::string& objectId) const;
     bool GetCharacterState(const std::string& objectId, PhysicsCharacterState& outState) const;

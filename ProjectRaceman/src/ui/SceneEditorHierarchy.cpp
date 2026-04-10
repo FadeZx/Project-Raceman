@@ -84,6 +84,18 @@ void SceneEditor::RenderScenePanel() {
                     if (ImGui::MenuItem("Plane")) {
                         AddPlane();
                     }
+                    if (ImGui::MenuItem("Cube")) {
+                        AddBuiltInPrimitiveObject("Cube");
+                    }
+                    if (ImGui::MenuItem("Sphere")) {
+                        AddBuiltInPrimitiveObject("Sphere");
+                    }
+                    if (ImGui::MenuItem("Cone")) {
+                        AddBuiltInPrimitiveObject("Cone");
+                    }
+                    if (ImGui::MenuItem("Cylinder")) {
+                        AddBuiltInPrimitiveObject("Cylinder");
+                    }
                     ImGui::EndMenu();
                 }
                 if (ImGui::MenuItem("Camera")) {
@@ -102,15 +114,13 @@ void SceneEditor::RenderScenePanel() {
                     ImGui::EndMenu();
                 }
                 if (ImGui::BeginMenu("Model")) {
-                    if (ImGui::MenuItem(".obj")) {
+                    if (ImGui::MenuItem("Import Mesh")) {
 #if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
-                        // Use native Windows file dialog
-                        std::string selected = OpenObjFileDialogWin32(getObjStartDirectory());
+                        std::string selected = OpenMeshFileDialogWin32(getObjStartDirectory());
                         if (!selected.empty()) {
                             ImportObj(selected);
                         }
 #else
-                        // Fallback: existing ImGui-based directory scanner
                         objScanDir_ = NormalizeSlashes(selectedProjectDirectory_.empty() ? std::string("assets") : selectedProjectDirectory_);
                         std::snprintf(importPath_, sizeof(importPath_), "%s", objScanDir_.c_str());
                         ScanObjDir(objScanDir_);
@@ -155,10 +165,9 @@ void SceneEditor::RenderScenePanel() {
         ImGui::Separator();
 
         // Trigger popup if requested
-        if (showImportObjPopup_) { ImGui::OpenPopup("Import OBJ"); showImportObjPopup_ = false; }
-        // Import OBJ popup
-        if (ImGui::BeginPopupModal("Import OBJ", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextUnformatted("Select a .obj file to import");
+        if (showImportObjPopup_) { ImGui::OpenPopup("Import Mesh"); showImportObjPopup_ = false; }
+        if (ImGui::BeginPopupModal("Import Mesh", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted("Select a supported mesh file to import");
             ImGui::InputText("Directory", importPath_, sizeof(importPath_));
             ImGui::SameLine();
             if (ImGui::Button("Use")) {
@@ -192,10 +201,21 @@ void SceneEditor::RenderScenePanel() {
             ImGui::EndPopup();
         }
 
-        constexpr const char* kHierarchyObjectPayload = "SCENE_HIERARCHY_OBJECT_INDEX";
         ImGui::TextDisabled("Drag an object onto another object to parent it.");
         bool hierarchyChanged = false;
         if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
+                const char* projectObjPath = static_cast<const char*>(payload->Data);
+                if (projectObjPath != nullptr && projectObjPath[0] != '\0') {
+                    ImportObj(projectObjPath);
+                }
+            }
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                const char* projectObjPath = static_cast<const char*>(payload->Data);
+                if (projectObjPath != nullptr && projectObjPath[0] != '\0' && IsMeshAssetPath(projectObjPath)) {
+                    ImportObj(projectObjPath);
+                }
+            }
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
                 const char* projectObjPath = static_cast<const char*>(payload->Data);
                 if (projectObjPath != nullptr && projectObjPath[0] != '\0') {
@@ -270,15 +290,21 @@ void SceneEditor::RenderScenePanel() {
                     const bool open = ImGui::TreeNodeEx(objects_[i].name.c_str(), flags);
                     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
                         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                            Select(i);
-                            RequestFocusSelectedObject();
-                        } else if (ImGui::GetIO().KeyCtrl) {
-                            ToggleSelect(i);
+                            pendingHierarchySelectIndex_ = i;
+                            pendingHierarchySelectToggle_ = false;
+                            pendingHierarchyFocusObject_ = true;
+                            pendingHierarchySelectionDragged_ = false;
                         } else {
-                            Select(i);
+                            pendingHierarchySelectIndex_ = i;
+                            pendingHierarchySelectToggle_ = ImGui::GetIO().KeyCtrl;
+                            pendingHierarchyFocusObject_ = false;
+                            pendingHierarchySelectionDragged_ = false;
                         }
                     }
                     if (ImGui::BeginDragDropSource()) {
+                        if (pendingHierarchySelectIndex_ == i) {
+                            pendingHierarchySelectionDragged_ = true;
+                        }
                         ImGui::SetDragDropPayload(kHierarchyObjectPayload, &i, sizeof(i));
                         ImGui::TextUnformatted(objects_[i].name.c_str());
                         ImGui::EndDragDropSource();
@@ -296,18 +322,24 @@ void SceneEditor::RenderScenePanel() {
                     if (ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_F2)) {
                         BeginObjectRename(i);
                     }
+                    const bool hasChildTree = open && !children.empty();
                     if (selected && ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::GetIO().WantTextInput) {
+                        if (hasChildTree) {
+                            ImGui::TreePop();
+                        }
                         DeleteSelectedObject();
                         hierarchyDeleted = true;
                         renderPath.erase(objectId);
                         ImGui::PopID();
                         return;
                     }
-                    if (open && !children.empty() && !hierarchyChanged) {
-                        for (int childIndex : children) {
-                            renderObjectRow(childIndex, renderPath);
-                            if (hierarchyChanged) {
-                                break;
+                    if (hasChildTree) {
+                        if (!hierarchyChanged) {
+                            for (int childIndex : children) {
+                                renderObjectRow(childIndex, renderPath);
+                                if (hierarchyChanged) {
+                                    break;
+                                }
                             }
                         }
                         ImGui::TreePop();
@@ -332,6 +364,18 @@ void SceneEditor::RenderScenePanel() {
             if (emptySpace.y > 0.0f) {
                 ImGui::InvisibleButton("##HierarchyEmptyDropTarget", ImVec2((std::max)(1.0f, emptySpace.x), emptySpace.y));
                 if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
+                        const char* projectObjPath = static_cast<const char*>(payload->Data);
+                        if (projectObjPath != nullptr && projectObjPath[0] != '\0') {
+                            ImportObj(projectObjPath);
+                        }
+                    }
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                        const char* projectObjPath = static_cast<const char*>(payload->Data);
+                        if (projectObjPath != nullptr && projectObjPath[0] != '\0' && IsMeshAssetPath(projectObjPath)) {
+                            ImportObj(projectObjPath);
+                        }
+                    }
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
                         const char* projectObjPath = static_cast<const char*>(payload->Data);
                         if (projectObjPath != nullptr && projectObjPath[0] != '\0') {
@@ -350,6 +394,28 @@ void SceneEditor::RenderScenePanel() {
             }
         }
         ImGui::EndChild();
+
+        if (pendingHierarchySelectIndex_ >= 0) {
+            if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                pendingHierarchySelectionDragged_ = true;
+            }
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+                if (!pendingHierarchySelectionDragged_) {
+                    if (pendingHierarchySelectToggle_) {
+                        ToggleSelect(pendingHierarchySelectIndex_);
+                    } else {
+                        Select(pendingHierarchySelectIndex_);
+                    }
+                    if (pendingHierarchyFocusObject_) {
+                        RequestFocusSelectedObject();
+                    }
+                }
+                pendingHierarchySelectIndex_ = -1;
+                pendingHierarchySelectToggle_ = false;
+                pendingHierarchyFocusObject_ = false;
+                pendingHierarchySelectionDragged_ = false;
+            }
+        }
 
     }
     ImGui::End();

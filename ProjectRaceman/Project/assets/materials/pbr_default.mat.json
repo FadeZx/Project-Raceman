@@ -3,9 +3,9 @@
   "name": "pbr_default",
   "shader": "pbr",
   "albedoColor": [0, 0, 0, 1],
-  "metallic": 0,
+  "metallic": 0.417,
   "roughness": 0,
-  "emissiveColor": [0.598039, 0.598039, 0.598039],
+  "emissiveColor": [0.637255, 0.637255, 0.637255],
   "uvTiling": [1, 1],
   "uvOffset": [0, 0],
   "textures": {

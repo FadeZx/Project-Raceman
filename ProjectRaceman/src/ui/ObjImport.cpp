@@ -55,4 +55,20 @@ std::vector<ImportedMeshInfo> GetMeshInfos(const std::shared_ptr<::Model>& model
     return out;
 }
 
+bool GetCollisionMesh(const std::shared_ptr<::Model>& model, std::size_t meshIndex, ImportedCollisionMesh& outMesh) {
+    outMesh.vertices.clear();
+    outMesh.indices.clear();
+    if (!model || meshIndex >= model->meshes.size()) {
+        return false;
+    }
+
+    const ::Mesh& mesh = model->meshes[meshIndex];
+    outMesh.vertices.reserve(mesh.vertices.size());
+    for (const ::Vertex& vertex : mesh.vertices) {
+        outMesh.vertices.push_back(vertex.Position);
+    }
+    outMesh.indices = mesh.indices;
+    return !outMesh.vertices.empty() && outMesh.indices.size() >= 3;
+}
+
 } // namespace raceman

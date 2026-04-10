@@ -304,26 +304,6 @@ bool ContainsText(const std::string& text, const std::string& needle) {
     return text.find(needle) != std::string::npos;
 }
 
-bool LoadBuiltInPlaneMesh(SceneObject& object) {
-    auto model = raceman::LoadModelFromFile(EngineAssetPathToAbsolute(kPlaneObjAssetPath).string());
-    const auto infos = raceman::GetMeshInfos(model);
-    if (infos.empty()) {
-        return false;
-    }
-
-    object.type = "GameObject";
-    object.hasMeshFilter = true;
-    object.hasMeshRenderer = true;
-    object.meshFilter.meshType = "Mesh";
-    object.meshRenderer.color = {1.0f, 1.0f, 1.0f, 1.0f};
-    if (object.meshRenderer.materialId.empty()) {
-        object.meshRenderer.materialId = "pbr_default";
-    }
-    object.meshFilter.sourcePath = kPlaneObjAssetPath;
-    ApplyMeshInfoToSceneObject(object, infos.front(), model);
-    return true;
-}
-
 std::string ScriptFieldTypeToString(ScriptFieldType type) {
     switch (type) {
     case ScriptFieldType::Bool: return "Bool";
@@ -484,10 +464,12 @@ void AddDefaultPlaneColliderToPlane(SceneObject& object) {
     object.hasSphereCollider = false;
     object.hasCapsuleCollider = false;
     object.hasPlaneCollider = true;
+    object.hasMeshCollider = false;
     object.boxCollider = BoxColliderComponent{};
     object.sphereCollider = SphereColliderComponent{};
     object.capsuleCollider = CapsuleColliderComponent{};
     object.planeCollider = PlaneColliderComponent{};
+    object.meshCollider = MeshColliderComponent{};
     object.planeCollider.normal = {0.0f, 1.0f, 0.0f};
     object.planeCollider.offset = 0.0f;
     object.planeCollider.infinite = true;
@@ -1009,6 +991,12 @@ void SceneEditor::RenderViewportPanel() {
         activeViewport_ = SceneEditorActiveViewport::None;
     }
 
+    if ((ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+        && !sceneViewportHovered_
+        && !gameViewportHovered_) {
+        activeViewport_ = SceneEditorActiveViewport::None;
+    }
+
     viewportHovered_ = sceneViewportHovered_ || gameViewportHovered_;
     sceneViewportFocused_ = activeViewport_ == SceneEditorActiveViewport::Scene;
     gameViewportFocused_ = activeViewport_ == SceneEditorActiveViewport::Game;
@@ -1305,6 +1293,8 @@ void SceneEditor::SetScriptsRunning(bool running) {
             body.useGravity = object.hasRigidbody ? object.rigidbody.useGravity : false;
             body.linearDamping = object.hasRigidbody ? object.rigidbody.linearDamping : 0.05f;
             body.angularDamping = object.hasRigidbody ? object.rigidbody.angularDamping : 0.05f;
+            body.friction = object.hasRigidbody ? object.rigidbody.friction : 0.2f;
+            body.restitution = object.hasRigidbody ? object.rigidbody.restitution : 0.0f;
             body.velocity = object.hasRigidbody ? object.rigidbody.velocity : glm::vec3{0.0f};
             body.angularVelocity = object.hasRigidbody ? object.rigidbody.angularVelocity : glm::vec3{0.0f};
             body.freezePositionX = object.hasRigidbody ? object.rigidbody.freezePositionX : false;
@@ -1347,6 +1337,14 @@ void SceneEditor::SetScriptsRunning(bool running) {
                 collider.offset = object.planeCollider.offset;
                 collider.infinite = object.planeCollider.infinite;
                 collider.halfExtent = object.planeCollider.halfExtent;
+                body.colliders.push_back(collider);
+            }
+            if (object.hasMeshCollider && object.meshCollider.enabled && object.hasMeshFilter && !object.meshFilter.sourcePath.empty()) {
+                PhysicsColliderDesc collider;
+                collider.type = PhysicsColliderType::Mesh;
+                collider.isTrigger = object.meshCollider.isTrigger;
+                collider.meshAssetPath = object.meshFilter.sourcePath;
+                collider.meshIndex = object.meshFilter.meshIndex;
                 body.colliders.push_back(collider);
             }
             if (!body.colliders.empty()) {
@@ -1502,27 +1500,35 @@ void SceneEditor::HandleConsoleCommand(const std::string& command) {
 
 
 void SceneEditor::AddPlane() {
+    AddBuiltInPrimitiveObject("Plane");
+}
+
+void SceneEditor::AddBuiltInPrimitiveObject(const std::string& meshType) {
     try {
         PushUndoState();
         SceneObject object;
         object.id = MakeId("mesh");
-        object.name = "Plane";
+        object.name = meshType;
         object.type = "GameObject";
-        object.transform.scale = {10.0f, 1.0f, 10.0f};
-        object.meshRenderer.materialId = "pbr_default";
-        if (!LoadBuiltInPlaneMesh(object)) {
-            throw std::runtime_error("plane mesh");
+        if (meshType == "Plane") {
+            object.transform.scale = {10.0f, 1.0f, 10.0f};
         }
-        AddDefaultPlaneColliderToPlane(object);
+        object.meshRenderer.materialId = "pbr_default";
+        if (!ConfigureBuiltInPrimitive(object, meshType, builtInPrimitiveMeshes_)) {
+            throw std::runtime_error("built-in primitive mesh");
+        }
+        if (meshType == "Plane") {
+            AddDefaultPlaneColliderToPlane(object);
+        }
         objects_.push_back(std::move(object));
         Select(static_cast<int>(objects_.size()) - 1);
         if (onDirty_) onDirty_();
         if (console_) {
-            console_->AddLog(std::string("Added Plane: ") + objects_.back().id + " (" + objects_.back().name + ")");
+            console_->AddLog(std::string("Added ") + meshType + ": " + objects_.back().id + " (" + objects_.back().name + ")");
         }
     } catch (...) {
         if (console_) {
-            console_->AddWarning("Failed to add Plane object.");
+            console_->AddWarning("Failed to add built-in primitive object.");
         }
     }
 }
@@ -2100,10 +2106,29 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"useGravity\": " << (o.rigidbody.useGravity ? "true" : "false") << ",\n";
             out << "          \"linearDamping\": " << o.rigidbody.linearDamping << ",\n";
             out << "          \"angularDamping\": " << o.rigidbody.angularDamping << ",\n";
+            out << "          \"friction\": " << o.rigidbody.friction << ",\n";
+            out << "          \"restitution\": " << o.rigidbody.restitution << ",\n";
             out << "          \"velocity\": [" << o.rigidbody.velocity.x << ", " << o.rigidbody.velocity.y << ", " << o.rigidbody.velocity.z << "],\n";
             out << "          \"angularVelocity\": [" << o.rigidbody.angularVelocity.x << ", " << o.rigidbody.angularVelocity.y << ", " << o.rigidbody.angularVelocity.z << "],\n";
             out << "          \"freezePosition\": [" << (o.rigidbody.freezePositionX ? "true" : "false") << ", " << (o.rigidbody.freezePositionY ? "true" : "false") << ", " << (o.rigidbody.freezePositionZ ? "true" : "false") << "],\n";
             out << "          \"freezeRotation\": [" << (o.rigidbody.freezeRotationX ? "true" : "false") << ", " << (o.rigidbody.freezeRotationY ? "true" : "false") << ", " << (o.rigidbody.freezeRotationZ ? "true" : "false") << "]\n";
+            out << "        }";
+        }
+        if (o.hasVehicle) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Vehicle\",\n";
+            out << "          \"enabled\": " << (o.vehicle.enabled ? "true" : "false") << ",\n";
+            out << "          \"configPath\": \"" << JsonEscape(NormalizeSlashes(o.vehicle.configPath)) << "\",\n";
+            out << "          \"wheelBindings\": [\n";
+            for (std::size_t wheelIndex = 0; wheelIndex < o.vehicle.wheelBindings.size(); ++wheelIndex) {
+                const VehicleWheelBinding& binding = o.vehicle.wheelBindings[wheelIndex];
+                out << "            {\n";
+                out << "              \"wheelName\": \"" << JsonEscape(binding.wheelName) << "\",\n";
+                out << "              \"objectId\": \"" << JsonEscape(binding.objectId) << "\"\n";
+                out << "            }" << (wheelIndex + 1 < o.vehicle.wheelBindings.size() ? ",\n" : "\n");
+            }
+            out << "          ]\n";
             out << "        }";
         }
         if (o.hasCharacterController) {
@@ -2161,6 +2186,14 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"offset\": " << o.planeCollider.offset << ",\n";
             out << "          \"infinite\": " << (o.planeCollider.infinite ? "true" : "false") << ",\n";
             out << "          \"halfExtent\": " << o.planeCollider.halfExtent << "\n";
+            out << "        }";
+        }
+        if (o.hasMeshCollider) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"MeshCollider\",\n";
+            out << "          \"enabled\": " << (o.meshCollider.enabled ? "true" : "false") << ",\n";
+            out << "          \"isTrigger\": " << (o.meshCollider.isTrigger ? "true" : "false") << "\n";
             out << "        }";
         }
         if (o.hasCamera) {
@@ -2383,11 +2416,13 @@ void SceneEditor::Load(const std::string& path) {
                 so.hasMeshRenderer = false;
                 so.hasScriptComponent = false;
                 so.hasRigidbody = false;
+                so.hasVehicle = false;
                 so.hasCharacterController = false;
                 so.hasBoxCollider = false;
                 so.hasSphereCollider = false;
                 so.hasCapsuleCollider = false;
                 so.hasPlaneCollider = false;
+                so.hasMeshCollider = false;
                 so.hasCamera = false;
                 so.hasLight = false;
 
@@ -2490,6 +2525,12 @@ void SceneEditor::Load(const std::string& path) {
                         if (auto angularDampingIt = component.find("angularDamping"); angularDampingIt != component.end() && angularDampingIt->second.is_number()) {
                             so.rigidbody.angularDamping = (std::max)(0.0f, static_cast<float>(angularDampingIt->second.as_number()));
                         }
+                        if (auto frictionIt = component.find("friction"); frictionIt != component.end() && frictionIt->second.is_number()) {
+                            so.rigidbody.friction = (std::max)(0.0f, static_cast<float>(frictionIt->second.as_number()));
+                        }
+                        if (auto restitutionIt = component.find("restitution"); restitutionIt != component.end() && restitutionIt->second.is_number()) {
+                            so.rigidbody.restitution = (std::max)(0.0f, static_cast<float>(restitutionIt->second.as_number()));
+                        }
                         ReadVec3(component, "velocity", so.rigidbody.velocity);
                         ReadVec3(component, "angularVelocity", so.rigidbody.angularVelocity);
                         if (auto freezePositionIt = component.find("freezePosition"); freezePositionIt != component.end() && freezePositionIt->second.is_array()) {
@@ -2506,6 +2547,26 @@ void SceneEditor::Load(const std::string& path) {
                                 so.rigidbody.freezeRotationX = value[0].as_bool();
                                 so.rigidbody.freezeRotationY = value[1].as_bool();
                                 so.rigidbody.freezeRotationZ = value[2].as_bool();
+                            }
+                        }
+                    } else if (componentType == "Vehicle") {
+                        so.hasVehicle = true;
+                        ReadBool(component, "enabled", so.vehicle.enabled);
+                        ReadString(component, "configPath", so.vehicle.configPath);
+                        so.vehicle.configPath = NormalizeSlashes(so.vehicle.configPath);
+                        so.vehicle.wheelBindings.clear();
+                        if (auto wheelBindingsIt = component.find("wheelBindings"); wheelBindingsIt != component.end() && wheelBindingsIt->second.is_array()) {
+                            for (const auto& bindingValue : wheelBindingsIt->second.as_array()) {
+                                if (!bindingValue.is_object()) {
+                                    continue;
+                                }
+                                const auto& bindingObject = bindingValue.as_object();
+                                VehicleWheelBinding binding;
+                                ReadString(bindingObject, "wheelName", binding.wheelName);
+                                ReadString(bindingObject, "objectId", binding.objectId);
+                                if (!binding.wheelName.empty()) {
+                                    so.vehicle.wheelBindings.push_back(std::move(binding));
+                                }
                             }
                         }
                     } else if (componentType == "CharacterController") {
@@ -2592,6 +2653,10 @@ void SceneEditor::Load(const std::string& path) {
                         if (halfExtentIt != component.end() && halfExtentIt->second.is_number()) {
                             so.planeCollider.halfExtent = (std::max)(0.001f, static_cast<float>(halfExtentIt->second.as_number()));
                         }
+                    } else if (componentType == "MeshCollider") {
+                        so.hasMeshCollider = true;
+                        ReadBool(component, "enabled", so.meshCollider.enabled);
+                        ReadBool(component, "isTrigger", so.meshCollider.isTrigger);
                     } else if (componentType == "Camera") {
                         so.hasCamera = true;
                         ReadBool(component, "enabled", so.camera.enabled);
@@ -2651,26 +2716,17 @@ void SceneEditor::Load(const std::string& path) {
 
             // attach render info for known types
             const std::string meshType = so.meshFilter.meshType.empty() ? std::string("Mesh") : so.meshFilter.meshType;
-            if (so.hasMeshFilter && meshType == "Plane") {
-                if (!planePrim_) {
-                    planePrim_ = std::make_unique<PrimitivePlane>();
-                }
-                so.meshFilter.meshType = "Plane";
-                so.meshFilter.vao = planePrim_->vao();
-                so.meshFilter.indexCount = planePrim_->indexCount();
-                if (so.meshRenderer.materialId.empty()) {
-                    so.meshRenderer.materialId = "pbr_default";
-                }
-            }
-            else if (so.hasMeshFilter && meshType == "Mesh" && !so.meshFilter.sourcePath.empty()) {
+            if (so.hasMeshFilter && IsBuiltInPrimitiveMeshType(meshType)) {
+                ConfigureBuiltInPrimitive(so, meshType, builtInPrimitiveMeshes_);
+            } else if (so.hasMeshFilter && meshType == "Mesh" && !so.meshFilter.sourcePath.empty()) {
                 try {
                     if (ShouldFallbackToBuiltInPlane(so)) {
-                        LoadBuiltInPlaneMesh(so);
+                        ConfigureBuiltInPrimitive(so, "Plane", builtInPrimitiveMeshes_);
                     } else {
                         std::string resolvedPath;
                         std::shared_ptr<::Model> model;
                         std::vector<ImportedMeshInfo> infos;
-                        if (TryLoadObjAsset(so.meshFilter.sourcePath, resolvedPath, model, infos) &&
+                        if (TryLoadMeshAsset(so.meshFilter.sourcePath, resolvedPath, model, infos) &&
                             so.meshFilter.meshIndex >= 0 &&
                             so.meshFilter.meshIndex < static_cast<int>(infos.size())) {
                             so.meshFilter.meshType = "Mesh";
@@ -2679,7 +2735,7 @@ void SceneEditor::Load(const std::string& path) {
                         }
                     }
                 } catch (...) {
-                    if (ShouldFallbackToBuiltInPlane(so) && LoadBuiltInPlaneMesh(so)) {
+                    if (ShouldFallbackToBuiltInPlane(so) && ConfigureBuiltInPrimitive(so, "Plane", builtInPrimitiveMeshes_)) {
                         AddDefaultPlaneColliderToPlane(so);
                     } else if (console_) {
                         console_->AddLog("Failed to reload mesh source: " + so.meshFilter.sourcePath);
@@ -2860,7 +2916,7 @@ void SceneEditor::CreateDefaultSceneObjects() {
         planeObject.type = "GameObject";
         planeObject.transform.scale = {10.0f, 1.0f, 10.0f};
         planeObject.meshRenderer.materialId = "pbr_default";
-        if (LoadBuiltInPlaneMesh(planeObject)) {
+        if (ConfigureBuiltInPrimitive(planeObject, "Plane", builtInPrimitiveMeshes_)) {
             AddDefaultPlaneColliderToPlane(planeObject);
             objects_.push_back(std::move(planeObject));
         }

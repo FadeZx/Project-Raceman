@@ -20,10 +20,16 @@ struct ImportedMeshInfo {
     glm::vec3 localBoundsMax{0.0f};
 };
 
+struct ImportedCollisionMesh {
+    std::vector<glm::vec3> vertices;
+    std::vector<unsigned int> indices;
+};
+
 // Loads a model using Assimp in a separate translation unit to avoid UI macro conflicts
 std::shared_ptr<::Model> LoadModelFromFile(const std::string& path);
 
 // Enumerate mesh infos (VAO and indexCount) for the loaded model
 std::vector<ImportedMeshInfo> GetMeshInfos(const std::shared_ptr<::Model>& model);
+bool GetCollisionMesh(const std::shared_ptr<::Model>& model, std::size_t meshIndex, ImportedCollisionMesh& outMesh);
 
 } // namespace raceman

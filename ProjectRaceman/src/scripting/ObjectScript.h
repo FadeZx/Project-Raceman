@@ -140,6 +140,14 @@ public:
     bool IsRigidbodyDynamic() const;
     glm::vec3 GetRigidbodyVelocity() const;
     void SetRigidbodyVelocity(const glm::vec3& value);
+    glm::vec3 GetRigidbodyAngularVelocity() const;
+    void SetRigidbodyAngularVelocity(const glm::vec3& value);
+    void AddRigidbodyForce(const glm::vec3& force);
+    void AddRigidbodyImpulse(const glm::vec3& impulse);
+    void AddRigidbodyTorque(const glm::vec3& torque);
+    void AddRigidbodyAngularImpulse(const glm::vec3& impulse);
+    void WakeRigidbody();
+    void SleepRigidbody();
 
     bool HasCharacterController() const;
     bool IsCharacterGrounded() const;

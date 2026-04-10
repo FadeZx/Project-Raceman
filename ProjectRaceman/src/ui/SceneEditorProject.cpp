@@ -67,7 +67,7 @@ std::string AssetIconForProjectFile(const std::string& path) {
     const std::string extension = ToLowerCopy(fs::path(path).extension().string());
     if (IsSceneAssetPath(path)) return "asset-scene.png";
     if (IsMaterialAssetPath(path)) return "asset-material.png";
-    if (IsObjAssetPath(path)) return "asset-mesh.png";
+    if (IsMeshAssetPath(path)) return "asset-mesh.png";
     if (extension == ".h" || extension == ".cpp") return "asset-script.png";
     if (extension == ".png" || extension == ".jpg" || extension == ".jpeg" || extension == ".webp" || extension == ".hdr") return "asset-image.png";
     if (lower.find("/skybox/") != std::string::npos) return "asset-skybox.png";
@@ -351,7 +351,7 @@ void SceneEditor::RenderProjectPanel() {
                     }
 
                     hasTiles = true;
-                    const bool isObj = IsObjAssetPath(file);
+                    const bool isMesh = IsMeshAssetPath(file);
                     const bool isMaterial = IsMaterialAssetPath(file);
                     const bool isScene = IsSceneAssetPath(file);
                     std::string filename = ProjectAssetDisplayFilename(file);
@@ -411,6 +411,26 @@ void SceneEditor::RenderProjectPanel() {
                                 }
                             }
                             ImGui::Separator();
+                            if (ImGui::BeginMenu("Move To")) {
+                                bool anyMoveTarget = false;
+                                const std::string currentDirectory = ParentProjectDirectory(file);
+                                for (const std::string& directory : projectDirectories_) {
+                                    if (directory == currentDirectory) {
+                                        continue;
+                                    }
+                                    anyMoveTarget = true;
+                                    const std::string label = ProjectFolderDisplayName(directory) + "##moveTarget_" + directory;
+                                    if (ImGui::MenuItem(label.c_str())) {
+                                        MoveProjectFile(file, directory);
+                                        deletedFromContext = true;
+                                        break;
+                                    }
+                                }
+                                if (!anyMoveTarget) {
+                                    ImGui::TextDisabled("No other folders.");
+                                }
+                                ImGui::EndMenu();
+                            }
                             if (ImGui::MenuItem("Rename", "F2")) {
                                 BeginProjectFileRename(file);
                             }
@@ -438,12 +458,6 @@ void SceneEditor::RenderProjectPanel() {
                     }
                     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
                         ImGui::SetDragDropPayload(kProjectFilePayload, file.c_str(), file.size() + 1);
-                        if (isObj) {
-                            ImGui::SetDragDropPayload(kObjAssetPayload, file.c_str(), file.size() + 1);
-                        } else if (isMaterial) {
-                            const std::string materialId = MaterialIdFromAssetPath(file);
-                            ImGui::SetDragDropPayload(kMaterialAssetPayload, materialId.c_str(), materialId.size() + 1);
-                        }
                         ImGui::TextUnformatted(file.c_str());
                         ImGui::EndDragDropSource();
                     }
@@ -579,7 +593,7 @@ void SceneEditor::ImportObj(const std::string& path) {
         std::string importPath;
         std::shared_ptr<::Model> model;
         std::vector<ImportedMeshInfo> infos;
-        if (!TryLoadObjAsset(path, importPath, model, infos)) {
+        if (!TryLoadMeshAsset(path, importPath, model, infos)) {
             return;
         }
         std::string baseName;
@@ -605,7 +619,7 @@ void SceneEditor::ImportObj(const std::string& path) {
         if (!objects_.empty()) {
             Select(static_cast<int>(objects_.size()) - 1);
             if (console_) {
-                console_->AddLog("Imported OBJ: " + importPath + " (" + std::to_string(infos.size()) + " mesh" + (infos.size() != 1 ? "es" : "") + ")");
+                console_->AddLog("Imported mesh: " + importPath + " (" + std::to_string(infos.size()) + " mesh" + (infos.size() != 1 ? "es" : "") + ")");
             }
             RefreshProjectFiles();
             if (onDirty_) onDirty_();
@@ -624,7 +638,7 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
         std::string importPath;
         std::shared_ptr<::Model> model;
         std::vector<ImportedMeshInfo> infos;
-        if (!TryLoadObjAsset(path, importPath, model, infos)) {
+        if (!TryLoadMeshAsset(path, importPath, model, infos)) {
             return false;
         }
 
@@ -646,14 +660,34 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
         return true;
     } catch (...) {
         if (console_) {
-            console_->AddLog("Failed to replace Mesh Filter with OBJ: " + path);
+            console_->AddLog("Failed to replace Mesh Filter with mesh asset: " + path);
         }
         return false;
     }
 }
 
 bool SceneEditor::ReplaceSelectedMeshWithPlane() {
-    return ReplaceSelectedMeshFromObj(kPlaneObjAssetPath);
+    return ReplaceSelectedMeshWithBuiltIn("Plane");
+}
+
+bool SceneEditor::ReplaceSelectedMeshWithBuiltIn(const std::string& meshType) {
+    if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size()) || meshType.empty()) {
+        return false;
+    }
+
+    PushUndoState();
+    SceneObject& obj = objects_[selectedIndex_];
+    obj.type = "GameObject";
+    obj.hasMeshFilter = true;
+    obj.hasMeshRenderer = true;
+    if (!ConfigureBuiltInPrimitive(obj, meshType, builtInPrimitiveMeshes_)) {
+        return false;
+    }
+    if (console_) {
+        console_->AddLog("Replaced Mesh Filter on " + obj.name + " with built-in " + meshType);
+    }
+    if (onDirty_) onDirty_();
+    return true;
 }
 
 void SceneEditor::BeginProjectFileRename(const std::string& path) {
@@ -761,6 +795,7 @@ void SceneEditor::CommitProjectFileRename() {
             for (auto& object : objects_) {
                 rewriteProjectPath(object.meshFilter.sourcePath);
                 rewriteProjectPath(object.meshFilter.diffuseTexturePath);
+                rewriteProjectPath(object.vehicle.configPath);
                 for (ObjectScriptAttachment& script : object.scriptComponent.attachments) {
                     rewriteProjectPath(script.scriptPath);
                 }
@@ -797,6 +832,9 @@ void SceneEditor::CommitProjectFileRename() {
             }
             if (!oldWasDirectory && NormalizeSlashes(object.meshFilter.diffuseTexturePath) == oldProjectPath) {
                 object.meshFilter.diffuseTexturePath = newProjectPath;
+            }
+            if (!oldWasDirectory && NormalizeSlashes(object.vehicle.configPath) == oldProjectPath) {
+                object.vehicle.configPath = newProjectPath;
             }
         }
 
@@ -877,6 +915,10 @@ void SceneEditor::DeleteProjectFile(const std::string& path) {
             if (NormalizeSlashes(object.meshFilter.diffuseTexturePath) == projectPath) {
                 object.meshFilter.diffuseTexturePath.clear();
                 object.meshFilter.diffuseTextureId = 0;
+            }
+            if (NormalizeSlashes(object.vehicle.configPath) == projectPath) {
+                object.vehicle.configPath.clear();
+                object.vehicle.wheelBindings.clear();
             }
         }
 
@@ -1089,6 +1131,9 @@ bool SceneEditor::MoveProjectFile(const std::string& path, const std::string& ta
             if (NormalizeSlashes(object.meshFilter.diffuseTexturePath) == oldProjectPath) {
                 object.meshFilter.diffuseTexturePath = newProjectPath;
             }
+            if (NormalizeSlashes(object.vehicle.configPath) == oldProjectPath) {
+                object.vehicle.configPath = newProjectPath;
+            }
             for (ObjectScriptAttachment& script : object.scriptComponent.attachments) {
                 const std::string normalizedScriptPath = NormalizeSlashes(script.scriptPath);
                 if (normalizedScriptPath == oldProjectPath || (movedScript && normalizedScriptPath == oldScriptSourceProjectPath)) {
@@ -1145,8 +1190,8 @@ void SceneEditor::RefreshProjectFiles() {
         projectDirectories_.erase(std::unique(projectDirectories_.begin(), projectDirectories_.end()), projectDirectories_.end());
 
         std::sort(projectFiles_.begin(), projectFiles_.end(), [](const std::string& a, const std::string& b) {
-            const bool aSpecial = IsSceneAssetPath(a) || IsObjAssetPath(a) || IsMaterialAssetPath(a);
-            const bool bSpecial = IsSceneAssetPath(b) || IsObjAssetPath(b) || IsMaterialAssetPath(b);
+            const bool aSpecial = IsSceneAssetPath(a) || IsMeshAssetPath(a) || IsMaterialAssetPath(a);
+            const bool bSpecial = IsSceneAssetPath(b) || IsMeshAssetPath(b) || IsMaterialAssetPath(b);
             if (aSpecial != bSpecial) {
                 return aSpecial > bSpecial;
             }
@@ -1174,7 +1219,7 @@ void SceneEditor::ScanObjDir(const std::string& dir) {
             if (!entry.is_regular_file()) continue;
             auto ext = entry.path().extension().string();
             std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-            if (ext == ".obj") {
+            if (IsSupportedMeshExtension(ext)) {
                 std::filesystem::path p = entry.path();
                 objFiles_.push_back(p.lexically_relative(dir).string());
             }
