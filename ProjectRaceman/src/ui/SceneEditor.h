@@ -453,13 +453,6 @@ private:
     glm::vec3 gizmoDragStartPosition_{0.0f};
     glm::vec3 gizmoDragStartRotation_{0.0f};
     glm::vec3 gizmoDragStartScale_{1.0f};
-    struct GizmoSelectionState {
-        int index{-1};
-        glm::vec3 worldPosition{0.0f};
-        glm::vec3 rotationEuler{0.0f};
-        glm::vec3 scale{1.0f};
-    };
-    std::vector<GizmoSelectionState> gizmoDragSelection_;
     bool gizmoDirtyDuringDrag_{false};
     bool inspectorEditActive_{false};
     bool linkedScaleValues_{true};

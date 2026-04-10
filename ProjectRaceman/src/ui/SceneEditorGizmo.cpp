@@ -518,40 +518,6 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
             gizmoDragStartPosition_ = origin;
             gizmoDragStartRotation_ = objects_[selectedIndex_].transform.rotationEuler;
             gizmoDragStartScale_ = objects_[selectedIndex_].transform.scale;
-            gizmoDragSelection_.clear();
-            NormalizeSelection();
-            for (int index : selectedIndices_) {
-                if (index < 0 || index >= static_cast<int>(objects_.size()) || !IsObjectEffectivelyEnabled(index)) {
-                    continue;
-                }
-                bool ancestorAlsoSelected = false;
-                int parentIndex = FindObjectIndexById(objects_[index].parentId);
-                while (parentIndex >= 0) {
-                    if (IsSelected(parentIndex)) {
-                        ancestorAlsoSelected = true;
-                        break;
-                    }
-                    parentIndex = FindObjectIndexById(objects_[parentIndex].parentId);
-                }
-                if (ancestorAlsoSelected) {
-                    continue;
-                }
-                const SceneObject& object = objects_[index];
-                gizmoDragSelection_.push_back({
-                    index,
-                    GetObjectWorldPosition(index),
-                    object.transform.rotationEuler,
-                    object.transform.scale
-                });
-            }
-            if (gizmoDragSelection_.empty()) {
-                gizmoDragSelection_.push_back({
-                    selectedIndex_,
-                    origin,
-                    objects_[selectedIndex_].transform.rotationEuler,
-                    objects_[selectedIndex_].transform.scale
-                });
-            }
             gizmoDirtyDuringDrag_ = false;
         } else if (mouseInViewport) {
             TrySelectObjectAtMouse(renderer);
@@ -564,7 +530,6 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
             onDirty_();
         }
         activeGizmoAxis_ = -1;
-        gizmoDragSelection_.clear();
         gizmoDirtyDuringDrag_ = false;
         return;
     }
@@ -619,19 +584,12 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
                 (std::max)(scaled.z, 0.01f)
             };
         } else {
-            const glm::vec3 worldOffset = axisVector * worldDelta;
-            for (const GizmoSelectionState& state : gizmoDragSelection_) {
-                if (state.index < 0 || state.index >= static_cast<int>(objects_.size())) {
-                    continue;
-                }
-                SceneObject& object = objects_[state.index];
-                const glm::vec3 targetWorldPosition = state.worldPosition + worldOffset;
-                const int parentIndex = FindObjectIndexById(object.parentId);
-                if (parentIndex >= 0) {
-                    object.transform.position = glm::vec3(glm::inverse(GetObjectWorldMatrix(parentIndex)) * glm::vec4(targetWorldPosition, 1.0f));
-                } else {
-                    object.transform.position = targetWorldPosition;
-                }
+            const glm::vec3 targetWorldPosition = gizmoDragStartPosition_ + axisVector * worldDelta;
+            const int parentIndex = FindObjectIndexById(objects_[selectedIndex_].parentId);
+            if (parentIndex >= 0) {
+                objects_[selectedIndex_].transform.position = glm::vec3(glm::inverse(GetObjectWorldMatrix(parentIndex)) * glm::vec4(targetWorldPosition, 1.0f));
+            } else {
+                objects_[selectedIndex_].transform.position = targetWorldPosition;
             }
         }
     }

@@ -68,8 +68,6 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         sceneEditor_ = std::make_unique<SceneEditor>();
         sceneEditor_->SetConsole(console_.get());
         sceneEditor_->SetInputManager(inputManager_.get());
-        sceneEditor_->SetOnDirty([this](){
-        });
         sceneEditor_->SetOnFocusObject([this](const glm::vec3& target, float radius) {
             FocusEditorCameraOn(target, radius);
         });
