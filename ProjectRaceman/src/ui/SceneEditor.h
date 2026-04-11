@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include <glm/glm.hpp>
+#include "../physics/MeshColliderBuildQuality.h"
 #include "../rendering/Renderer.h"
 #include "../rendering/Material.h"
 #include "../rendering/PrimitiveMeshes.h"
@@ -15,6 +16,10 @@
 class Model;
 
 namespace raceman {
+
+namespace physics {
+class VehiclePhysics;
+}
 
 class Renderer;
 class Console;
@@ -153,6 +158,7 @@ struct CharacterControllerComponent {
 struct VehicleWheelBinding {
     std::string wheelName;
     std::string objectId;
+    glm::vec3 visualRotationEuler{0.0f, 0.0f, 0.0f};
 };
 
 struct VehicleComponent {
@@ -195,6 +201,7 @@ struct PlaneColliderComponent {
 struct MeshColliderComponent {
     bool enabled{true};
     bool isTrigger{false};
+    MeshColliderBuildQuality buildQuality{MeshColliderBuildQuality::BuildSpeed};
 };
 
 struct CameraComponent {
@@ -320,10 +327,12 @@ private:
     void HandleEditorShortcuts();
     void UpdateScripts(float deltaTime);
     void UpdatePhysics(float deltaTime);
+    void UpdateVehicles(float deltaTime);
     void ResetPhysicsVelocities();
     void SetScriptsRunning(bool running);
     void SetScriptsPaused(bool paused);
     void RebuildScriptRuntime();
+    void RebuildVehicleRuntime();
     void ClearScriptRuntime();
     void HandleConsoleCommand(const std::string& command);
     void UpdateGizmo(Renderer& renderer);
@@ -374,6 +383,7 @@ private:
     bool IsObjectEffectivelyEnabled(int index) const;
     bool IsDescendantOf(const std::string& objectId, const std::string& potentialAncestorId) const;
     void SetParent(int childIndex, int parentIndex);
+    bool MoveObjectInHierarchy(int childIndex, int newParentIndex, int insertAfterIndex);
     glm::mat4 GetObjectWorldMatrix(int index) const;
     glm::vec3 GetObjectWorldPosition(int index) const;
 
@@ -434,11 +444,24 @@ private:
     };
     std::vector<RuntimeScriptInstance> runtimeScripts_;
 
+    struct RuntimeVehicleInstance {
+        std::string objectId;
+        int objectIndex{-1};
+        std::vector<int> wheelObjectIndices;
+        std::vector<VehicleWheelBinding> wheelBindings;
+        std::vector<Transform> wheelAuthoredLocalTransforms;
+        std::vector<glm::vec3> wheelAuthoredRotationEuler;
+        std::unique_ptr<physics::VehiclePhysics> instance;
+    };
+    std::vector<RuntimeVehicleInstance> runtimeVehicles_;
+
     int renamingObjectIndex_{-1};
     bool focusObjectRename_{false};
     char objectRenameBuffer_[128]{};
     int pendingHierarchySelectIndex_{-1};
     bool pendingHierarchySelectToggle_{false};
+    bool pendingHierarchySelectRange_{false};
+    int pendingHierarchyRangeAnchor_{-1};
     bool pendingHierarchyFocusObject_{false};
     bool pendingHierarchySelectionDragged_{false};
 
@@ -453,6 +476,9 @@ private:
     glm::vec3 gizmoDragStartPosition_{0.0f};
     glm::vec3 gizmoDragStartRotation_{0.0f};
     glm::vec3 gizmoDragStartScale_{1.0f};
+    std::vector<int> gizmoDragSelectionIndices_;
+    std::vector<Transform> gizmoDragStartLocalTransforms_;
+    std::vector<glm::mat4> gizmoDragStartWorldMatrices_;
     bool gizmoDirtyDuringDrag_{false};
     bool inspectorEditActive_{false};
     bool linkedScaleValues_{true};

@@ -181,6 +181,13 @@ JPH::EMotionQuality ToMotionQuality(PhysicsMotionQuality quality) {
         : JPH::EMotionQuality::Discrete;
 }
 
+JPH::MeshShapeSettings::EBuildQuality ToMeshBuildQuality(MeshColliderBuildQuality quality) {
+    if (quality == MeshColliderBuildQuality::Balanced || quality == MeshColliderBuildQuality::BuildQuality) {
+        return JPH::MeshShapeSettings::EBuildQuality::FavorRuntimePerformance;
+    }
+    return JPH::MeshShapeSettings::EBuildQuality::FavorBuildSpeed;
+}
+
 std::filesystem::path FindProjectAssetAbsolutePath(const std::string& assetPath) {
     std::filesystem::path normalized(assetPath);
     if (!normalized.empty() && *normalized.begin() == "assets") {
@@ -228,7 +235,7 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider) {
     }
 
     JPH::MeshShapeSettings settings(std::move(vertices), std::move(triangles));
-    settings.mBuildQuality = JPH::MeshShapeSettings::EBuildQuality::FavorBuildSpeed;
+    settings.mBuildQuality = ToMeshBuildQuality(collider.meshBuildQuality);
     JPH::ShapeSettings::ShapeResult result = settings.Create();
     return result.IsValid() ? result.Get() : JPH::ShapeRefC{};
 }

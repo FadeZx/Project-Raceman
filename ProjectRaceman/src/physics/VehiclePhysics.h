@@ -61,6 +61,7 @@ public:
     const Transform &getChassisTransform() const;
     const std::vector<Transform> &getWheelTransforms() const;
     const VehicleTelemetry &getTelemetry() const;
+    void setChassisTransform(const Transform &transform);
 
     const VehicleConfig &getConfig() const { return m_config; }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "MeshColliderBuildQuality.h"
+
 #include <glm/glm.hpp>
 
 #include <cstdint>
@@ -41,6 +43,7 @@ struct PhysicsColliderDesc {
     float halfExtent{1000.0f};
     std::string meshAssetPath;
     int meshIndex{0};
+    MeshColliderBuildQuality meshBuildQuality{MeshColliderBuildQuality::BuildSpeed};
 };
 
 struct PhysicsBodyDesc {

@@ -67,6 +67,7 @@ std::string AssetIconForProjectFile(const std::string& path) {
     const std::string extension = ToLowerCopy(fs::path(path).extension().string());
     if (IsSceneAssetPath(path)) return "asset-scene.png";
     if (IsMaterialAssetPath(path)) return "asset-material.png";
+    if (IsVehicleConfigAssetPath(path)) return "asset-vehicle.png";
     if (IsMeshAssetPath(path)) return "asset-mesh.png";
     if (extension == ".h" || extension == ".cpp") return "asset-script.png";
     if (extension == ".png" || extension == ".jpg" || extension == ".jpeg" || extension == ".webp" || extension == ".hdr") return "asset-image.png";
@@ -112,6 +113,55 @@ int ProjectDirectoryDepth(const std::string& path) {
         ++depth;
     }
     return (std::max)(0, depth - 1);
+}
+
+std::string SanitizeImportedMaterialId(std::string value) {
+    value = TrimCopyLocal(std::move(value));
+    std::string out;
+    out.reserve(value.size());
+    for (char ch : value) {
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (std::isalnum(uch) || ch == '_' || ch == '-' || ch == ' ') {
+            out.push_back(ch == ' ' ? '_' : static_cast<char>(std::tolower(uch)));
+        }
+    }
+    return out.empty() ? std::string("material") : out;
+}
+
+std::string ResolveImportedTextureAssetPath(const std::string& meshAssetPath, const std::string& texturePath) {
+    if (meshAssetPath.empty() || texturePath.empty()) {
+        return {};
+    }
+
+    const fs::path assetsRoot = FindAssetsRoot();
+    const fs::path meshAbsolutePath = ProjectAssetPathToAbsolute(meshAssetPath);
+    fs::path textureAbsolutePath = fs::path(NormalizeSlashes(texturePath));
+    if (!textureAbsolutePath.is_absolute()) {
+        textureAbsolutePath = (meshAbsolutePath.parent_path() / textureAbsolutePath).lexically_normal();
+    }
+
+    if (!fs::exists(textureAbsolutePath) || !IsUnderPath(textureAbsolutePath, assetsRoot)) {
+        return {};
+    }
+
+    return ToProjectAssetPath(textureAbsolutePath, assetsRoot);
+}
+
+std::string EnsureImportedMaterialAsset(MaterialManager& materialManager,
+                                        const std::string& meshAssetPath,
+                                        const std::string& packageBaseName,
+                                        const ImportedMeshInfo& info) {
+    const std::string baseId = SanitizeImportedMaterialId(packageBaseName);
+    const std::string materialPart = SanitizeImportedMaterialId(
+        info.materialName.empty() ? fs::path(meshAssetPath).stem().string() : info.materialName);
+    const std::string materialId = baseId + "_" + materialPart;
+
+    Material material;
+    material.name = info.materialName.empty() ? materialId : info.materialName;
+    material.shader = "pbr";
+    material.texAlbedo = ResolveImportedTextureAssetPath(meshAssetPath, info.diffuseTexturePath);
+    materialManager.Save(materialId, material);
+    return materialId;
 }
 
 } // namespace
@@ -599,25 +649,58 @@ void SceneEditor::ImportObj(const std::string& path) {
         std::string baseName;
         try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Mesh"; }
         PushUndoState();
+        std::string packageRootId;
+        int firstImportedIndex = -1;
+        if (infos.size() > 1) {
+            SceneObject packageRoot;
+            packageRoot.id = MakeId("gameobject");
+            packageRoot.name = baseName;
+            packageRoot.type = "GameObject";
+            packageRoot.transform.position = {0.0f, 0.0f, 0.0f};
+            packageRoot.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
+            packageRoot.transform.scale = {1.0f, 1.0f, 1.0f};
+            packageRoot.hasMeshFilter = false;
+            packageRoot.hasMeshRenderer = false;
+            packageRoot.hasScriptComponent = false;
+            packageRoot.hasRigidbody = false;
+            packageRoot.hasVehicle = false;
+            packageRoot.hasCharacterController = false;
+            packageRoot.hasBoxCollider = false;
+            packageRoot.hasSphereCollider = false;
+            packageRoot.hasCapsuleCollider = false;
+            packageRoot.hasPlaneCollider = false;
+            packageRoot.hasMeshCollider = false;
+            packageRoot.hasCamera = false;
+            packageRoot.hasLight = false;
+            packageRootId = packageRoot.id;
+            objects_.push_back(std::move(packageRoot));
+            firstImportedIndex = static_cast<int>(objects_.size()) - 1;
+        }
+
         for (size_t i = 0; i < infos.size(); ++i) {
             const auto& info = infos[i];
             SceneObject o;
             o.id = MakeId("mesh");
             o.name = baseName + (infos.size() > 1 ? ("_" + std::to_string(i)) : "");
             o.type = "GameObject";
+            o.parentId = packageRootId;
             o.transform.position = {0.0f, 0.0f, 0.0f};
             o.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
             o.transform.scale = {1.0f, 1.0f, 1.0f};
             o.hasMeshRenderer = true;
             o.meshRenderer.color = {1.0f, 1.0f, 1.0f, 1.0f};
-            o.meshRenderer.materialId = "pbr_default";
             o.meshFilter.sourcePath = importPath;
             ApplyMeshInfoToSceneObject(o, info, model);
+            o.meshRenderer.materialId = EnsureImportedMaterialAsset(materialManager_, importPath, baseName, info);
             objects_.push_back(std::move(o));
+            if (firstImportedIndex < 0) {
+                firstImportedIndex = static_cast<int>(objects_.size()) - 1;
+            }
         }
 
-        if (!objects_.empty()) {
-            Select(static_cast<int>(objects_.size()) - 1);
+        if (firstImportedIndex >= 0) {
+            materialManager_.LoadAll();
+            Select(firstImportedIndex);
             if (console_) {
                 console_->AddLog("Imported mesh: " + importPath + " (" + std::to_string(infos.size()) + " mesh" + (infos.size() != 1 ? "es" : "") + ")");
             }
@@ -646,11 +729,13 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
         SceneObject& obj = objects_[selectedIndex_];
         obj.type = "Mesh";
         obj.hasMeshFilter = true;
+        obj.hasMeshRenderer = true;
         obj.meshFilter.sourcePath = importPath;
         ApplyMeshInfoToSceneObject(obj, infos.front(), model);
-        if (obj.meshRenderer.materialId.empty()) {
-            obj.meshRenderer.materialId = "pbr_default";
-        }
+        std::string baseName;
+        try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Mesh"; }
+        obj.meshRenderer.materialId = EnsureImportedMaterialAsset(materialManager_, importPath, baseName, infos.front());
+        materialManager_.LoadAll();
 
         if (console_) {
             console_->AddLog("Replaced Mesh Filter on " + obj.name + " with " + importPath);

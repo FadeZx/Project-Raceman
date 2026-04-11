@@ -1,30 +1,6 @@
 {
   "objects": [
     {
-      "id": "camera_1",
-      "parentId": "gameobject_1",
-      "name": "Camera",
-      "type": "GameObject",
-      "enabled": true,
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 2, 5],
-          "rotationEuler": [-15, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "Camera",
-          "enabled": true,
-          "isMain": true,
-          "fieldOfViewDegrees": 60,
-          "nearClip": 0.1,
-          "farClip": 500,
-          "clearColor": [0.02, 0.02, 0.02, 1]
-        }
-      ]
-    },
-    {
       "id": "mesh_2",
       "parentId": "",
       "name": "Plane",
@@ -33,9 +9,9 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
+          "position": [0, 0.257328, 0],
           "rotationEuler": [0, 0, 0],
-          "scale": [10, 1, 10]
+          "scale": [10000, 10000, 10000]
         },
         {
           "type": "MeshFilter",
@@ -59,13 +35,99 @@
           ]
         },
         {
-          "type": "PlaneCollider",
+          "type": "Collider",
+          "colliderType": "Plane",
           "enabled": true,
           "isTrigger": false,
           "normal": [0, 1, 0],
           "offset": 0,
           "infinite": true,
           "halfExtent": 1000
+        }
+      ]
+    },
+    {
+      "id": "light_8",
+      "parentId": "",
+      "name": "Directional Light",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-2.31907, 3.14599, 3.95966],
+          "rotationEuler": [-143.008, -3.50556, -24.6277],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "lightType": "Directional",
+          "color": [1, 1, 1],
+          "intensity": 1.75,
+          "range": 100,
+          "spotAngleDegrees": 30
+        }
+      ]
+    },
+    {
+      "id": "mesh_6",
+      "parentId": "gameobject_1",
+      "name": "Chasis",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, -0.0395498, 0],
+          "rotationEuler": [0, -0, 0],
+          "scale": [0.41, 0.41, 0.41]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/car/body.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "car_base",
+          "diffuseTexturePath": "texture.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Carbody",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Mesh",
+          "enabled": true,
+          "isTrigger": false,
+          "buildQuality": "BuildSpeed"
+        }
+      ]
+    },
+    {
+      "id": "camera_1",
+      "parentId": "gameobject_1",
+      "name": "Camera",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 2, -5.59375],
+          "rotationEuler": [180, 5.00896e-06, 180],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": true,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.1,
+          "farClip": 500,
+          "clearColor": [0.02, 0.02, 0.02, 1]
         }
       ]
     },
@@ -78,9 +140,9 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.705627, 1, 0],
+          "position": [0.382276, 0, 0.84773],
           "rotationEuler": [0, -0, 0],
-          "scale": [1, 1, 1]
+          "scale": [0.5, 0.5, 0.5]
         },
         {
           "type": "MeshFilter",
@@ -108,14 +170,14 @@
     {
       "id": "gameobject_1",
       "parentId": "",
-      "name": "Vihicle base",
+      "name": "Vehicle base",
       "type": "GameObject",
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
+          "position": [0, 3.04388, 0],
+          "rotationEuler": [0, -0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -125,19 +187,23 @@
           "wheelBindings": [
             {
               "wheelName": "Front Left",
-              "objectId": "mesh_3"
+              "objectId": "mesh_3",
+              "visualRotationEuler": [0, 0, 0]
             },
             {
               "wheelName": "Front Right",
-              "objectId": "mesh_1"
+              "objectId": "mesh_1",
+              "visualRotationEuler": [0, 0, 0]
             },
             {
               "wheelName": "Rear Left",
-              "objectId": "mesh_4"
+              "objectId": "mesh_4",
+              "visualRotationEuler": [0, 0, 0]
             },
             {
               "wheelName": "Rear Right",
-              "objectId": "mesh_5"
+              "objectId": "mesh_5",
+              "visualRotationEuler": [0, 0, 0]
             }
           ]
         }
@@ -152,9 +218,9 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0.788642, 1, 0],
-          "rotationEuler": [0, 180, 0],
-          "scale": [1, 1, 1]
+          "position": [-0.470563, 0, 0.834524],
+          "rotationEuler": [0, -0, 0],
+          "scale": [0.5, 0.5, 0.5]
         },
         {
           "type": "MeshFilter",
@@ -188,9 +254,9 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.66749, 1, 1.7894],
+          "position": [0.381729, 0, -0.710159],
           "rotationEuler": [0, -0, 0],
-          "scale": [1, 1, 1]
+          "scale": [0.5, 0.5, 0.5]
         },
         {
           "type": "MeshFilter",
@@ -224,9 +290,9 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0.751401, 1, 1.84053],
-          "rotationEuler": [0, 180, 0],
-          "scale": [1, 1, 1]
+          "position": [-0.513722, 0, -0.710159],
+          "rotationEuler": [0, -0, 0],
+          "scale": [0.5, 0.5, 0.5]
         },
         {
           "type": "MeshFilter",
@@ -242,65 +308,50 @@
           "enabled": true,
           "materialId": "Wheel",
           "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
         }
       ]
     },
     {
-      "id": "light_8",
+      "id": "gameobject_27",
       "parentId": "",
-      "name": "Directional Light",
+      "name": "track3",
       "type": "GameObject",
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [-2.31907, 3.14599, 3.95966],
-          "rotationEuler": [-81.4558, 35, 0],
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
-        },
-        {
-          "type": "Light",
-          "enabled": true,
-          "lightType": "Directional",
-          "color": [1, 1, 1],
-          "intensity": 1.25,
-          "range": 100,
-          "spotAngleDegrees": 30
         }
       ]
     },
     {
-      "id": "mesh_6",
-      "parentId": "gameobject_1",
-      "name": "body",
+      "id": "mesh_28",
+      "parentId": "gameobject_27",
+      "name": "track3_0",
       "type": "GameObject",
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [0.205652, 0.928884, 0.724052],
-          "rotationEuler": [0, -0, 0],
-          "scale": [0.696954, 0.659597, 0.433943]
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
         },
         {
           "type": "MeshFilter",
           "enabled": true,
           "meshType": "Mesh",
-          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/car/body.obj",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
           "meshIndex": 0,
-          "importedMaterialName": "car_base",
-          "diffuseTexturePath": "texture.png"
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
         },
         {
           "type": "MeshRenderer",
           "enabled": true,
-          "materialId": "Carbody",
+          "materialId": "track3_material004",
           "color": [1, 1, 1, 1]
         },
         {
@@ -308,6 +359,4619 @@
           "enabled": true,
           "attachments": [
           ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_29",
+      "parentId": "gameobject_27",
+      "name": "track3_1",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 1,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_30",
+      "parentId": "gameobject_27",
+      "name": "track3_2",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 2,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_31",
+      "parentId": "gameobject_27",
+      "name": "track3_3",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 3,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_32",
+      "parentId": "gameobject_27",
+      "name": "track3_4",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 4,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_33",
+      "parentId": "gameobject_27",
+      "name": "track3_5",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 5,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_34",
+      "parentId": "gameobject_27",
+      "name": "track3_6",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 6,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_35",
+      "parentId": "gameobject_27",
+      "name": "track3_7",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 7,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_36",
+      "parentId": "gameobject_27",
+      "name": "track3_8",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 8,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_37",
+      "parentId": "gameobject_27",
+      "name": "track3_9",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 9,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_38",
+      "parentId": "gameobject_27",
+      "name": "track3_10",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 10,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_39",
+      "parentId": "gameobject_27",
+      "name": "track3_11",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 11,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_40",
+      "parentId": "gameobject_27",
+      "name": "track3_12",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 12,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_41",
+      "parentId": "gameobject_27",
+      "name": "track3_13",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 13,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_42",
+      "parentId": "gameobject_27",
+      "name": "track3_14",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 14,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_43",
+      "parentId": "gameobject_27",
+      "name": "track3_15",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 15,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_44",
+      "parentId": "gameobject_27",
+      "name": "track3_16",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 16,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_45",
+      "parentId": "gameobject_27",
+      "name": "track3_17",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 17,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_46",
+      "parentId": "gameobject_27",
+      "name": "track3_18",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 18,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_47",
+      "parentId": "gameobject_27",
+      "name": "track3_19",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 19,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_48",
+      "parentId": "gameobject_27",
+      "name": "track3_20",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 20,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_49",
+      "parentId": "gameobject_27",
+      "name": "track3_21",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 21,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_50",
+      "parentId": "gameobject_27",
+      "name": "track3_22",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 22,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_51",
+      "parentId": "gameobject_27",
+      "name": "track3_23",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 23,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_52",
+      "parentId": "gameobject_27",
+      "name": "track3_24",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 24,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_53",
+      "parentId": "gameobject_27",
+      "name": "track3_25",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 25,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_54",
+      "parentId": "gameobject_27",
+      "name": "track3_26",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 26,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_55",
+      "parentId": "gameobject_27",
+      "name": "track3_27",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 27,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_56",
+      "parentId": "gameobject_27",
+      "name": "track3_28",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 28,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_57",
+      "parentId": "gameobject_27",
+      "name": "track3_29",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 29,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_58",
+      "parentId": "gameobject_27",
+      "name": "track3_30",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 30,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_59",
+      "parentId": "gameobject_27",
+      "name": "track3_31",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 31,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_60",
+      "parentId": "gameobject_27",
+      "name": "track3_32",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 32,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_61",
+      "parentId": "gameobject_27",
+      "name": "track3_33",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 33,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_62",
+      "parentId": "gameobject_27",
+      "name": "track3_34",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 34,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_63",
+      "parentId": "gameobject_27",
+      "name": "track3_35",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 35,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_64",
+      "parentId": "gameobject_27",
+      "name": "track3_36",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 36,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_65",
+      "parentId": "gameobject_27",
+      "name": "track3_37",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 37,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_66",
+      "parentId": "gameobject_27",
+      "name": "track3_38",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 38,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_67",
+      "parentId": "gameobject_27",
+      "name": "track3_39",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 39,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_68",
+      "parentId": "gameobject_27",
+      "name": "track3_40",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 40,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_69",
+      "parentId": "gameobject_27",
+      "name": "track3_41",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 41,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_70",
+      "parentId": "gameobject_27",
+      "name": "track3_42",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 42,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_71",
+      "parentId": "gameobject_27",
+      "name": "track3_43",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 43,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_72",
+      "parentId": "gameobject_27",
+      "name": "track3_44",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 44,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_73",
+      "parentId": "gameobject_27",
+      "name": "track3_45",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 45,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_74",
+      "parentId": "gameobject_27",
+      "name": "track3_46",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 46,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_75",
+      "parentId": "gameobject_27",
+      "name": "track3_47",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 47,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_76",
+      "parentId": "gameobject_27",
+      "name": "track3_48",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 48,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_77",
+      "parentId": "gameobject_27",
+      "name": "track3_49",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 49,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_78",
+      "parentId": "gameobject_27",
+      "name": "track3_50",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 50,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_79",
+      "parentId": "gameobject_27",
+      "name": "track3_51",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 51,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_80",
+      "parentId": "gameobject_27",
+      "name": "track3_52",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 52,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_81",
+      "parentId": "gameobject_27",
+      "name": "track3_53",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 53,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_82",
+      "parentId": "gameobject_27",
+      "name": "track3_54",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 54,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_83",
+      "parentId": "gameobject_27",
+      "name": "track3_55",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 55,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_84",
+      "parentId": "gameobject_27",
+      "name": "track3_56",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 56,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_85",
+      "parentId": "gameobject_27",
+      "name": "track3_57",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 57,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_86",
+      "parentId": "gameobject_27",
+      "name": "track3_58",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 58,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_87",
+      "parentId": "gameobject_27",
+      "name": "track3_59",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 59,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_88",
+      "parentId": "gameobject_27",
+      "name": "track3_60",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 60,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_89",
+      "parentId": "gameobject_27",
+      "name": "track3_61",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 61,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_90",
+      "parentId": "gameobject_27",
+      "name": "track3_62",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 62,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_91",
+      "parentId": "gameobject_27",
+      "name": "track3_63",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 63,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_92",
+      "parentId": "gameobject_27",
+      "name": "track3_64",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 64,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_93",
+      "parentId": "gameobject_27",
+      "name": "track3_65",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 65,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_94",
+      "parentId": "gameobject_27",
+      "name": "track3_66",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 66,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_95",
+      "parentId": "gameobject_27",
+      "name": "track3_67",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 67,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_96",
+      "parentId": "gameobject_27",
+      "name": "track3_68",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 68,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_97",
+      "parentId": "gameobject_27",
+      "name": "track3_69",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 69,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_98",
+      "parentId": "gameobject_27",
+      "name": "track3_70",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 70,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_99",
+      "parentId": "gameobject_27",
+      "name": "track3_71",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 71,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_100",
+      "parentId": "gameobject_27",
+      "name": "track3_72",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 72,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_101",
+      "parentId": "gameobject_27",
+      "name": "track3_73",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 73,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_102",
+      "parentId": "gameobject_27",
+      "name": "track3_74",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 74,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_103",
+      "parentId": "gameobject_27",
+      "name": "track3_75",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 75,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_104",
+      "parentId": "gameobject_27",
+      "name": "track3_76",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 76,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_105",
+      "parentId": "gameobject_27",
+      "name": "track3_77",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 77,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_106",
+      "parentId": "gameobject_27",
+      "name": "track3_78",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 78,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_107",
+      "parentId": "gameobject_27",
+      "name": "track3_79",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 79,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_108",
+      "parentId": "gameobject_27",
+      "name": "track3_80",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 80,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_109",
+      "parentId": "gameobject_27",
+      "name": "track3_81",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 81,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_110",
+      "parentId": "gameobject_27",
+      "name": "track3_82",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 82,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_111",
+      "parentId": "gameobject_27",
+      "name": "track3_83",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 83,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_112",
+      "parentId": "gameobject_27",
+      "name": "track3_84",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 84,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_113",
+      "parentId": "gameobject_27",
+      "name": "track3_85",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 85,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_114",
+      "parentId": "gameobject_27",
+      "name": "track3_86",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 86,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_115",
+      "parentId": "gameobject_27",
+      "name": "track3_87",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 87,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_116",
+      "parentId": "gameobject_27",
+      "name": "track3_88",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 88,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_117",
+      "parentId": "gameobject_27",
+      "name": "track3_89",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 89,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_118",
+      "parentId": "gameobject_27",
+      "name": "track3_90",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 90,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_119",
+      "parentId": "gameobject_27",
+      "name": "track3_91",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 91,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_120",
+      "parentId": "gameobject_27",
+      "name": "track3_92",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 92,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_121",
+      "parentId": "gameobject_27",
+      "name": "track3_93",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 93,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_122",
+      "parentId": "gameobject_27",
+      "name": "track3_94",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 94,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_123",
+      "parentId": "gameobject_27",
+      "name": "track3_95",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 95,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_124",
+      "parentId": "gameobject_27",
+      "name": "track3_96",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 96,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_125",
+      "parentId": "gameobject_27",
+      "name": "track3_97",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 97,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_126",
+      "parentId": "gameobject_27",
+      "name": "track3_98",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 98,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_127",
+      "parentId": "gameobject_27",
+      "name": "track3_99",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 99,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_128",
+      "parentId": "gameobject_27",
+      "name": "track3_100",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 100,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_129",
+      "parentId": "gameobject_27",
+      "name": "track3_101",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 101,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_130",
+      "parentId": "gameobject_27",
+      "name": "track3_102",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 102,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_131",
+      "parentId": "gameobject_27",
+      "name": "track3_103",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 103,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_132",
+      "parentId": "gameobject_27",
+      "name": "track3_104",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 104,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_133",
+      "parentId": "gameobject_27",
+      "name": "track3_105",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 105,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_134",
+      "parentId": "gameobject_27",
+      "name": "track3_106",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 106,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_135",
+      "parentId": "gameobject_27",
+      "name": "track3_107",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 107,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_136",
+      "parentId": "gameobject_27",
+      "name": "track3_108",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 108,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_137",
+      "parentId": "gameobject_27",
+      "name": "track3_109",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 109,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_138",
+      "parentId": "gameobject_27",
+      "name": "track3_110",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 110,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_139",
+      "parentId": "gameobject_27",
+      "name": "track3_111",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 111,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_140",
+      "parentId": "gameobject_27",
+      "name": "track3_112",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 112,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_141",
+      "parentId": "gameobject_27",
+      "name": "track3_113",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 113,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_142",
+      "parentId": "gameobject_27",
+      "name": "track3_114",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 114,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_143",
+      "parentId": "gameobject_27",
+      "name": "track3_115",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 115,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_144",
+      "parentId": "gameobject_27",
+      "name": "track3_116",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 116,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_145",
+      "parentId": "gameobject_27",
+      "name": "track3_117",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 117,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_146",
+      "parentId": "gameobject_27",
+      "name": "track3_118",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 118,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_147",
+      "parentId": "gameobject_27",
+      "name": "track3_119",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 119,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_148",
+      "parentId": "gameobject_27",
+      "name": "track3_120",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 120,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_149",
+      "parentId": "gameobject_27",
+      "name": "track3_121",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 121,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_150",
+      "parentId": "gameobject_27",
+      "name": "track3_122",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 122,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_151",
+      "parentId": "gameobject_27",
+      "name": "track3_123",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 123,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_152",
+      "parentId": "gameobject_27",
+      "name": "track3_124",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 124,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_153",
+      "parentId": "gameobject_27",
+      "name": "track3_125",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 125,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_154",
+      "parentId": "gameobject_27",
+      "name": "track3_126",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/track3.obj",
+          "meshIndex": 126,
+          "importedMaterialName": "Material.004",
+          "diffuseTexturePath": "textureSolid.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "track3_material004",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "light_1",
+      "parentId": "gameobject_1",
+      "name": "Spot Light",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0.13943, 0.191543, 1.05395],
+          "rotationEuler": [-160.062, -0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "lightType": "Spot",
+          "color": [1, 1, 1],
+          "intensity": 11.25,
+          "range": 33.3,
+          "spotAngleDegrees": 69.5
+        }
+      ]
+    },
+    {
+      "id": "mesh_7",
+      "parentId": "",
+      "name": "collider test wheel",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 3.46914, 5.64867],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "chevrolet-nascar-flwheel_wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 15,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.68,
+          "restitution": 0.42,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Box",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     }

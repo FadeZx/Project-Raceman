@@ -263,9 +263,6 @@ private:
                 if (textures_loaded[j].path == texturePath) {
                     textures.push_back(textures_loaded[j]);
                     skip = true;
-
-                    // Debugging: Notify that this texture was skipped because it was already loaded
-                    std::cout << "Skipping texture (already loaded): " << texturePath << std::endl;
                     break;
                 }
             }

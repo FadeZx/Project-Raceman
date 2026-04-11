@@ -201,7 +201,7 @@ void SceneEditor::RenderScenePanel() {
             ImGui::EndPopup();
         }
 
-        ImGui::TextDisabled("Drag an object onto another object to parent it.");
+        ImGui::TextDisabled("Drag onto an object to parent it. Drag onto the line under an object to reorder it.");
         bool hierarchyChanged = false;
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
@@ -292,11 +292,15 @@ void SceneEditor::RenderScenePanel() {
                         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                             pendingHierarchySelectIndex_ = i;
                             pendingHierarchySelectToggle_ = false;
+                            pendingHierarchySelectRange_ = false;
+                            pendingHierarchyRangeAnchor_ = -1;
                             pendingHierarchyFocusObject_ = true;
                             pendingHierarchySelectionDragged_ = false;
                         } else {
                             pendingHierarchySelectIndex_ = i;
                             pendingHierarchySelectToggle_ = ImGui::GetIO().KeyCtrl;
+                            pendingHierarchySelectRange_ = ImGui::GetIO().KeyShift;
+                            pendingHierarchyRangeAnchor_ = selectedIndex_;
                             pendingHierarchyFocusObject_ = false;
                             pendingHierarchySelectionDragged_ = false;
                         }
@@ -344,6 +348,29 @@ void SceneEditor::RenderScenePanel() {
                         }
                         ImGui::TreePop();
                     }
+
+                    const float reorderHeight = 6.0f;
+                    const ImVec2 reorderPos = ImGui::GetCursorScreenPos();
+                    ImGui::InvisibleButton("##reorderAfter", ImVec2((std::max)(1.0f, ImGui::GetContentRegionAvail().x), reorderHeight));
+                    const bool reorderHovered = ImGui::IsItemHovered();
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
+                    const ImU32 reorderColor = ImGui::GetColorU32(reorderHovered ? ImGuiCol_DragDropTarget : ImGuiCol_Separator);
+                    drawList->AddLine(ImVec2(reorderPos.x, reorderPos.y + reorderHeight * 0.5f),
+                                      ImVec2(reorderPos.x + ImGui::GetContentRegionAvail().x, reorderPos.y + reorderHeight * 0.5f),
+                                      reorderColor,
+                                      reorderHovered ? 2.0f : 1.0f);
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
+                            if (payload->DataSize == sizeof(int)) {
+                                const int childIndex = *static_cast<const int*>(payload->Data);
+                                const int newParentIndex = FindObjectIndexById(objects_[i].parentId);
+                                if (MoveObjectInHierarchy(childIndex, newParentIndex, i)) {
+                                    hierarchyChanged = true;
+                                }
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
                 }
                 ImGui::PopID();
                 renderPath.erase(objectId);
@@ -385,8 +412,9 @@ void SceneEditor::RenderScenePanel() {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
                         if (payload->DataSize == sizeof(int)) {
                             int childIndex = *static_cast<const int*>(payload->Data);
-                            SetParent(childIndex, -1);
-                            hierarchyChanged = true;
+                            if (MoveObjectInHierarchy(childIndex, -1, objects_.empty() ? -1 : static_cast<int>(objects_.size()) - 1)) {
+                                hierarchyChanged = true;
+                            }
                         }
                     }
                     ImGui::EndDragDropTarget();
@@ -401,7 +429,19 @@ void SceneEditor::RenderScenePanel() {
             }
             if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
                 if (!pendingHierarchySelectionDragged_) {
-                    if (pendingHierarchySelectToggle_) {
+                    if (pendingHierarchySelectRange_ &&
+                        pendingHierarchyRangeAnchor_ >= 0 &&
+                        pendingHierarchyRangeAnchor_ < static_cast<int>(objects_.size())) {
+                        selectedIndices_.clear();
+                        const int minIndex = (std::min)(pendingHierarchyRangeAnchor_, pendingHierarchySelectIndex_);
+                        const int maxIndex = (std::max)(pendingHierarchyRangeAnchor_, pendingHierarchySelectIndex_);
+                        for (int index = minIndex; index <= maxIndex; ++index) {
+                            selectedIndices_.push_back(index);
+                        }
+                        selectedIndex_ = pendingHierarchySelectIndex_;
+                        inspectMaterial_ = false;
+                        NormalizeSelection();
+                    } else if (pendingHierarchySelectToggle_) {
                         ToggleSelect(pendingHierarchySelectIndex_);
                     } else {
                         Select(pendingHierarchySelectIndex_);
@@ -412,6 +452,8 @@ void SceneEditor::RenderScenePanel() {
                 }
                 pendingHierarchySelectIndex_ = -1;
                 pendingHierarchySelectToggle_ = false;
+                pendingHierarchySelectRange_ = false;
+                pendingHierarchyRangeAnchor_ = -1;
                 pendingHierarchyFocusObject_ = false;
                 pendingHierarchySelectionDragged_ = false;
             }
@@ -429,49 +471,42 @@ void SceneEditor::DeleteSelectedObject() {
     }
 
     PushUndoState();
-    std::vector<std::string> deleteIds;
+    std::unordered_set<std::string> rootDeleteIds;
     for (int index : selectedIndices_) {
         if (index >= 0 && index < static_cast<int>(objects_.size())) {
-            deleteIds.push_back(objects_[index].id);
+            rootDeleteIds.insert(objects_[index].id);
         }
     }
-    std::vector<int> indices;
-    indices.reserve(deleteIds.size());
-    for (int index : selectedIndices_) {
-        if (index >= 0 && index < static_cast<int>(objects_.size())) {
-            indices.push_back(index);
+
+    std::unordered_set<std::string> deleteIds = rootDeleteIds;
+    bool added = true;
+    while (added) {
+        added = false;
+        for (const SceneObject& object : objects_) {
+            if (object.parentId.empty() || deleteIds.find(object.id) != deleteIds.end()) {
+                continue;
+            }
+            if (deleteIds.find(object.parentId) != deleteIds.end()) {
+                deleteIds.insert(object.id);
+                added = true;
+            }
         }
     }
-    std::sort(indices.begin(), indices.end(), [](int a, int b) { return a > b; });
-    if (indices.empty()) {
+
+    std::vector<int> indicesToDelete;
+    indicesToDelete.reserve(deleteIds.size());
+    for (int index = 0; index < static_cast<int>(objects_.size()); ++index) {
+        if (deleteIds.find(objects_[index].id) != deleteIds.end()) {
+            indicesToDelete.push_back(index);
+        }
+    }
+
+    std::sort(indicesToDelete.begin(), indicesToDelete.end(), [](int a, int b) { return a > b; });
+    if (indicesToDelete.empty()) {
         return;
     }
 
-    for (int deleteIndex : indices) {
-        if (deleteIndex < 0 || deleteIndex >= static_cast<int>(objects_.size())) {
-            continue;
-        }
-        const SceneObject& deletingObject = objects_[deleteIndex];
-        const std::string parentId = deletingObject.parentId;
-        const int parentIndex = FindObjectIndexById(parentId);
-        const glm::mat4 parentWorld = parentIndex >= 0 ? GetObjectWorldMatrix(parentIndex) : glm::mat4(1.0f);
-
-        for (int childIndex = 0; childIndex < static_cast<int>(objects_.size()); ++childIndex) {
-            if (childIndex == deleteIndex || objects_[childIndex].parentId != deletingObject.id) {
-                continue;
-            }
-
-            const glm::mat4 childWorld = GetObjectWorldMatrix(childIndex);
-            objects_[childIndex].parentId = parentId;
-            if (parentIndex >= 0) {
-                objects_[childIndex].transform = TransformFromMatrixLocal(glm::inverse(parentWorld) * childWorld);
-            } else {
-                objects_[childIndex].transform = TransformFromMatrixLocal(childWorld);
-            }
-        }
-    }
-
-    for (int index : indices) {
+    for (int index : indicesToDelete) {
         if (index >= 0 && index < static_cast<int>(objects_.size())) {
             objects_.erase(objects_.begin() + index);
         }
@@ -486,7 +521,7 @@ void SceneEditor::DeleteSelectedObject() {
         return;
     }
 
-    selectedIndex_ = (std::min)(indices.back(), static_cast<int>(objects_.size()) - 1);
+    selectedIndex_ = (std::min)(indicesToDelete.back(), static_cast<int>(objects_.size()) - 1);
     selectedIndices_ = {selectedIndex_};
 }
 

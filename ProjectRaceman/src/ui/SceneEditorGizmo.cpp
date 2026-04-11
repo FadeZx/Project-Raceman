@@ -8,6 +8,8 @@
 #ifndef GLM_ENABLE_EXPERIMENTAL
 #define GLM_ENABLE_EXPERIMENTAL
 #endif
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/norm.hpp>
 
 namespace fs = std::filesystem;
@@ -42,6 +44,47 @@ glm::mat4 BuildObjectMatrixNoScale(const SceneObject& object) {
     model = glm::translate(model, object.transform.position);
     model *= BuildRotationMatrix(object);
     return model;
+}
+
+Transform TransformFromMatrix(const glm::mat4& matrix) {
+    Transform transform;
+    glm::vec3 skew;
+    glm::vec4 perspective;
+    glm::quat orientation;
+    if (glm::decompose(matrix, transform.scale, orientation, transform.position, skew, perspective)) {
+        transform.rotationEuler = glm::degrees(glm::eulerAngles(orientation));
+    }
+    return transform;
+}
+
+int HierarchyDepth(const std::vector<SceneObject>& objects, int index) {
+    if (index < 0 || index >= static_cast<int>(objects.size())) {
+        return 0;
+    }
+
+    int depth = 0;
+    int currentIndex = index;
+    std::vector<std::string> visited;
+    while (currentIndex >= 0 && currentIndex < static_cast<int>(objects.size())) {
+        const SceneObject& object = objects[currentIndex];
+        if (object.parentId.empty()) {
+            break;
+        }
+        if (std::find(visited.begin(), visited.end(), object.id) != visited.end()) {
+            break;
+        }
+        visited.push_back(object.id);
+
+        currentIndex = -1;
+        for (int i = 0; i < static_cast<int>(objects.size()); ++i) {
+            if (objects[i].id == object.parentId) {
+                currentIndex = i;
+                ++depth;
+                break;
+            }
+        }
+    }
+    return depth;
 }
 
 glm::vec3 TransformDirection(const glm::mat4& transform, const glm::vec3& direction) {
@@ -468,12 +511,16 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
 }
 
 void SceneEditor::UpdateGizmo(Renderer& renderer) {
+    NormalizeSelection();
     hoveredGizmoAxis_ = -1;
     ImGuiIO& io = ImGui::GetIO();
     const bool mouseInViewport = ContainsSceneViewportPoint(io.MousePos.x, io.MousePos.y);
 
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
         activeGizmoAxis_ = -1;
+        gizmoDragSelectionIndices_.clear();
+        gizmoDragStartLocalTransforms_.clear();
+        gizmoDragStartWorldMatrices_.clear();
         TrySelectObjectAtMouse(renderer);
         return;
     }
@@ -481,6 +528,9 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
     const SceneObject& selectedObject = objects_[selectedIndex_];
     if (!IsObjectEffectivelyEnabled(selectedIndex_)) {
         activeGizmoAxis_ = -1;
+        gizmoDragSelectionIndices_.clear();
+        gizmoDragStartLocalTransforms_.clear();
+        gizmoDragStartWorldMatrices_.clear();
         TrySelectObjectAtMouse(renderer);
         return;
     }
@@ -518,6 +568,26 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
             gizmoDragStartPosition_ = origin;
             gizmoDragStartRotation_ = objects_[selectedIndex_].transform.rotationEuler;
             gizmoDragStartScale_ = objects_[selectedIndex_].transform.scale;
+            gizmoDragSelectionIndices_ = selectedIndices_;
+            if (gizmoDragSelectionIndices_.empty()) {
+                gizmoDragSelectionIndices_.push_back(selectedIndex_);
+            }
+            std::sort(gizmoDragSelectionIndices_.begin(), gizmoDragSelectionIndices_.end(), [&](int a, int b) {
+                const int depthA = HierarchyDepth(objects_, a);
+                const int depthB = HierarchyDepth(objects_, b);
+                if (depthA != depthB) {
+                    return depthA < depthB;
+                }
+                return a < b;
+            });
+            gizmoDragStartLocalTransforms_.clear();
+            gizmoDragStartWorldMatrices_.clear();
+            gizmoDragStartLocalTransforms_.reserve(gizmoDragSelectionIndices_.size());
+            gizmoDragStartWorldMatrices_.reserve(gizmoDragSelectionIndices_.size());
+            for (int index : gizmoDragSelectionIndices_) {
+                gizmoDragStartLocalTransforms_.push_back(objects_[index].transform);
+                gizmoDragStartWorldMatrices_.push_back(GetObjectWorldMatrix(index));
+            }
             gizmoDirtyDuringDrag_ = false;
         } else if (mouseInViewport) {
             TrySelectObjectAtMouse(renderer);
@@ -531,6 +601,9 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
         }
         activeGizmoAxis_ = -1;
         gizmoDirtyDuringDrag_ = false;
+        gizmoDragSelectionIndices_.clear();
+        gizmoDragStartLocalTransforms_.clear();
+        gizmoDragStartWorldMatrices_.clear();
         return;
     }
 
@@ -560,7 +633,24 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
         }
 
         const float direction = (activeGizmoAxis_ == 1 || activeGizmoAxis_ == 2) ? -1.0f : 1.0f;
-        objects_[selectedIndex_].transform.rotationEuler = gizmoDragStartRotation_ + eulerAxisVector * (glm::degrees(angleDelta) * direction);
+        const float worldAngleDegrees = glm::degrees(angleDelta) * direction;
+        const glm::mat4 rotationDelta = glm::rotate(glm::mat4(1.0f), glm::radians(worldAngleDegrees), axisVector);
+        const glm::mat4 pivotToWorld = glm::translate(glm::mat4(1.0f), gizmoDragStartPosition_);
+        const glm::mat4 worldToPivot = glm::translate(glm::mat4(1.0f), -gizmoDragStartPosition_);
+
+        for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
+            const int index = gizmoDragSelectionIndices_[i];
+            if (index < 0 || index >= static_cast<int>(objects_.size())) {
+                continue;
+            }
+
+            const glm::mat4 rotatedWorld = pivotToWorld * rotationDelta * worldToPivot * gizmoDragStartWorldMatrices_[i];
+            const int parentIndex = FindObjectIndexById(objects_[index].parentId);
+            const glm::mat4 localMatrix = parentIndex >= 0
+                ? glm::inverse(GetObjectWorldMatrix(parentIndex)) * rotatedWorld
+                : rotatedWorld;
+            objects_[index].transform = TransformFromMatrix(localMatrix);
+        }
     } else {
         if (!ProjectWorldToScreen(gizmoDragStartPosition_, renderer, startScreen) ||
             !ProjectWorldToScreen(gizmoDragStartPosition_ + axisVector * axisLength, renderer, endScreen)) {
@@ -577,19 +667,35 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
         const float pixelsAlongAxis = glm::dot(mouse - gizmoDragStartMouse_, axisScreenDir);
         const float worldDelta = pixelsAlongAxis / axisScreenLength * axisLength;
         if (gizmoMode_ == GizmoMode::Scale) {
-            const glm::vec3 scaled = gizmoDragStartScale_ + axisVector * worldDelta;
-            objects_[selectedIndex_].transform.scale = {
-                (std::max)(scaled.x, 0.01f),
-                (std::max)(scaled.y, 0.01f),
-                (std::max)(scaled.z, 0.01f)
-            };
+            for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
+                const int index = gizmoDragSelectionIndices_[i];
+                if (index < 0 || index >= static_cast<int>(objects_.size())) {
+                    continue;
+                }
+
+                const glm::vec3 scaled = gizmoDragStartLocalTransforms_[i].scale + axisVector * worldDelta;
+                objects_[index].transform.scale = {
+                    (std::max)(scaled.x, 0.01f),
+                    (std::max)(scaled.y, 0.01f),
+                    (std::max)(scaled.z, 0.01f)
+                };
+            }
         } else {
-            const glm::vec3 targetWorldPosition = gizmoDragStartPosition_ + axisVector * worldDelta;
-            const int parentIndex = FindObjectIndexById(objects_[selectedIndex_].parentId);
-            if (parentIndex >= 0) {
-                objects_[selectedIndex_].transform.position = glm::vec3(glm::inverse(GetObjectWorldMatrix(parentIndex)) * glm::vec4(targetWorldPosition, 1.0f));
-            } else {
-                objects_[selectedIndex_].transform.position = targetWorldPosition;
+            const glm::vec3 worldOffset = axisVector * worldDelta;
+            for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
+                const int index = gizmoDragSelectionIndices_[i];
+                if (index < 0 || index >= static_cast<int>(objects_.size())) {
+                    continue;
+                }
+
+                const glm::vec3 startWorldPosition = glm::vec3(gizmoDragStartWorldMatrices_[i] * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+                const glm::vec3 targetWorldPosition = startWorldPosition + worldOffset;
+                const int parentIndex = FindObjectIndexById(objects_[index].parentId);
+                if (parentIndex >= 0) {
+                    objects_[index].transform.position = glm::vec3(glm::inverse(GetObjectWorldMatrix(parentIndex)) * glm::vec4(targetWorldPosition, 1.0f));
+                } else {
+                    objects_[index].transform.position = targetWorldPosition;
+                }
             }
         }
     }
@@ -671,7 +777,8 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
     constexpr float colliderWidth = 2.0f;
     constexpr DebugLineDepthMode helperDepthMode = DebugLineDepthMode::DepthTestedOverlay;
     const glm::mat4 objectMatrix = GetObjectWorldMatrix(selectedIndex_);
-    if (object.hasBoxCollider && object.boxCollider.enabled) {
+    const SceneColliderType colliderType = GetActiveColliderType(object);
+    if (colliderType == SceneColliderType::Box && object.boxCollider.enabled) {
         SubmitWireBox(
             renderer,
             objectMatrix,
@@ -681,7 +788,7 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             colliderWidth,
             helperDepthMode);
     }
-    if (object.hasSphereCollider && object.sphereCollider.enabled) {
+    if (colliderType == SceneColliderType::Sphere && object.sphereCollider.enabled) {
         SubmitWireSphere(
             renderer,
             TransformPoint(objectMatrix, object.sphereCollider.center),
@@ -690,12 +797,12 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             colliderWidth,
             helperDepthMode);
     }
-    if (object.hasCapsuleCollider && object.capsuleCollider.enabled) {
+    if (colliderType == SceneColliderType::Capsule && object.capsuleCollider.enabled) {
         const float radius = object.capsuleCollider.radius;
         const float height = (std::max)(object.capsuleCollider.height, radius * 2.0f);
         SubmitWireCapsuleY(renderer, objectMatrix, object.capsuleCollider.center, radius, height, colliderColor, colliderWidth, helperDepthMode);
     }
-    if (object.hasPlaneCollider && object.planeCollider.enabled) {
+    if (colliderType == SceneColliderType::Plane && object.planeCollider.enabled) {
         const glm::mat4 planeMatrix = BuildObjectMatrixNoScale(object);
         SubmitWirePlane(
             renderer,
@@ -707,6 +814,15 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             glm::vec4{0.45f, 0.8f, 1.0f, 1.0f},
             colliderWidth,
             helperDepthMode);
+    }
+    if (colliderType == SceneColliderType::Mesh && object.meshCollider.enabled) {
+        glm::vec3 boundsMin{0.0f};
+        glm::vec3 boundsMax{0.0f};
+        if (GetObjectLocalBounds(object, boundsMin, boundsMax)) {
+            const glm::vec3 size = boundsMax - boundsMin;
+            const glm::vec3 center = (boundsMin + boundsMax) * 0.5f;
+            SubmitWireBox(renderer, objectMatrix, center, size, glm::vec4{0.95f, 0.55f, 0.2f, 1.0f}, colliderWidth, helperDepthMode);
+        }
     }
     if (object.hasCharacterController && object.characterController.enabled) {
         const float radius = (std::max)(0.001f, object.characterController.radius);

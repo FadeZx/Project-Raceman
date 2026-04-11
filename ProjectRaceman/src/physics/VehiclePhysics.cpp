@@ -121,6 +121,11 @@ const VehicleTelemetry &VehiclePhysics::getTelemetry() const
     return m_lastTelemetry;
 }
 
+void VehiclePhysics::setChassisTransform(const Transform &transform)
+{
+    m_body.transform = transform;
+}
+
 void VehiclePhysics::update(float dt)
 {
     if (dt < kEpsilon)

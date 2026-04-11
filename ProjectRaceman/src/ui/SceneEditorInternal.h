@@ -35,6 +35,92 @@ namespace raceman::scene_editor_internal {
 
 namespace fs = std::filesystem;
 
+enum class SceneColliderType {
+    None,
+    Box,
+    Sphere,
+    Capsule,
+    Plane,
+    Mesh
+};
+
+inline SceneColliderType GetActiveColliderType(const SceneObject& object) {
+    if (object.hasBoxCollider) return SceneColliderType::Box;
+    if (object.hasSphereCollider) return SceneColliderType::Sphere;
+    if (object.hasCapsuleCollider) return SceneColliderType::Capsule;
+    if (object.hasPlaneCollider) return SceneColliderType::Plane;
+    if (object.hasMeshCollider) return SceneColliderType::Mesh;
+    return SceneColliderType::None;
+}
+
+inline bool HasColliderComponent(const SceneObject& object) {
+    return GetActiveColliderType(object) != SceneColliderType::None;
+}
+
+inline void ClearColliderComponent(SceneObject& object) {
+    object.hasBoxCollider = false;
+    object.hasSphereCollider = false;
+    object.hasCapsuleCollider = false;
+    object.hasPlaneCollider = false;
+    object.hasMeshCollider = false;
+    object.boxCollider = BoxColliderComponent{};
+    object.sphereCollider = SphereColliderComponent{};
+    object.capsuleCollider = CapsuleColliderComponent{};
+    object.planeCollider = PlaneColliderComponent{};
+    object.meshCollider = MeshColliderComponent{};
+}
+
+inline void SetActiveColliderType(SceneObject& object, SceneColliderType type) {
+    if (GetActiveColliderType(object) == type) {
+        return;
+    }
+
+    ClearColliderComponent(object);
+    switch (type) {
+    case SceneColliderType::Box:
+        object.hasBoxCollider = true;
+        break;
+    case SceneColliderType::Sphere:
+        object.hasSphereCollider = true;
+        break;
+    case SceneColliderType::Capsule:
+        object.hasCapsuleCollider = true;
+        break;
+    case SceneColliderType::Plane:
+        object.hasPlaneCollider = true;
+        break;
+    case SceneColliderType::Mesh:
+        object.hasMeshCollider = true;
+        break;
+    case SceneColliderType::None:
+        break;
+    }
+}
+
+inline const char* SceneColliderTypeLabel(SceneColliderType type) {
+    switch (type) {
+    case SceneColliderType::Box: return "Box";
+    case SceneColliderType::Sphere: return "Sphere";
+    case SceneColliderType::Capsule: return "Capsule";
+    case SceneColliderType::Plane: return "Plane";
+    case SceneColliderType::Mesh: return "Mesh";
+    case SceneColliderType::None: return "None";
+    }
+    return "None";
+}
+
+inline const char* SceneColliderTypeIcon(SceneColliderType type) {
+    switch (type) {
+    case SceneColliderType::Box: return "component-box-collider.png";
+    case SceneColliderType::Sphere: return "component-sphere-collider.png";
+    case SceneColliderType::Capsule: return "component-capsule-collider.png";
+    case SceneColliderType::Plane: return "component-plane-collider.png";
+    case SceneColliderType::Mesh: return "component-mesh-collider.png";
+    case SceneColliderType::None: return "component-box-collider.png";
+    }
+    return "component-box-collider.png";
+}
+
 inline std::string OpenMeshFileDialogWin32(const std::string& initialDirectory = {}) {
 #if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
     char fileBuffer[MAX_PATH] = {0};
