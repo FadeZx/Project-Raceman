@@ -25,6 +25,7 @@
 #include <Jolt/Physics/Body/MotionQuality.h>
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
+#include <Jolt/Physics/Collision/CollisionGroup.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
@@ -113,6 +114,21 @@ public:
         }
         return true;
     }
+};
+
+class ProjectLayerGroupFilter final : public JPH::GroupFilter {
+public:
+    explicit ProjectLayerGroupFilter(const PhysicsLayerCollisionMatrix& collisionMatrix)
+        : collisionMatrix_(collisionMatrix) {}
+
+    bool CanCollide(const JPH::CollisionGroup& first, const JPH::CollisionGroup& second) const override {
+        const int firstLayer = (std::max)(0, (std::min)(kPhysicsLayerCount - 1, static_cast<int>(first.GetSubGroupID())));
+        const int secondLayer = (std::max)(0, (std::min)(kPhysicsLayerCount - 1, static_cast<int>(second.GetSubGroupID())));
+        return collisionMatrix_[static_cast<std::size_t>(firstLayer)][static_cast<std::size_t>(secondLayer)];
+    }
+
+private:
+    PhysicsLayerCollisionMatrix collisionMatrix_{};
 };
 
 void EnsureJoltInitialized() {
@@ -306,6 +322,9 @@ JPH::ShapeRefC CreateShape(const PhysicsBodyDesc& body, bool sensorOnly) {
 
 class PhysicsWorld::Impl {
 public:
+    explicit Impl(const PhysicsLayerCollisionMatrix& collisionMatrix)
+        : collisionMatrix_(collisionMatrix) {}
+
     struct CharacterRecord {
         PhysicsCharacterDesc desc;
         PhysicsCharacterState state;
@@ -333,6 +352,7 @@ public:
         jobSystem_ = std::make_unique<JPH::JobSystemThreadPool>(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, workerCount);
         physicsSystem_ = std::make_unique<JPH::PhysicsSystem>();
         physicsSystem_->Init(65536, 0, 65536, 10240, broadPhaseLayerInterface_, objectVsBroadPhaseLayerFilter_, objectLayerPairFilter_);
+        collisionGroupFilter_ = new ProjectLayerGroupFilter(collisionMatrix_);
 
         JPH::BodyInterface& bodyInterface = physicsSystem_->GetBodyInterface();
         for (const PhysicsBodyDesc& body : bodies_) {
@@ -365,6 +385,10 @@ public:
             settings.mAllowedDOFs = ToAllowedDOFs(body);
             settings.mLinearVelocity = ToJoltVec3(body.velocity);
             settings.mAngularVelocity = ToJoltVec3(body.angularVelocity);
+            settings.mCollisionGroup = JPH::CollisionGroup(
+                collisionGroupFilter_.GetPtr(),
+                0,
+                static_cast<JPH::CollisionGroup::SubGroupID>((std::max)(0, (std::min)(kPhysicsLayerCount - 1, body.collisionLayer))));
             if (movable) {
                 settings.mAllowDynamicOrKinematic = true;
             }
@@ -431,6 +455,7 @@ public:
         physicsSystem_.reset();
         jobSystem_.reset();
         tempAllocator_.reset();
+        collisionGroupFilter_ = nullptr;
         bodies_.clear();
         states_.clear();
     }
@@ -663,6 +688,7 @@ public:
     }
 
 private:
+    PhysicsLayerCollisionMatrix collisionMatrix_{};
     std::vector<PhysicsBodyDesc> bodies_;
     std::unordered_map<std::string, PhysicsBodyState> states_;
     std::unordered_map<std::string, JPH::BodyID> bodyIds_;
@@ -670,6 +696,7 @@ private:
     std::unordered_map<std::string, CharacterRecord> characters_;
     std::unordered_map<std::string, PhysicsCharacterState> characterStates_;
     JPH::CharacterVsCharacterCollisionSimple characterVsCharacterCollision_;
+    JPH::Ref<JPH::GroupFilter> collisionGroupFilter_;
 
     BroadPhaseLayerInterfaceImpl broadPhaseLayerInterface_;
     ObjectVsBroadPhaseLayerFilterImpl objectVsBroadPhaseLayerFilter_;
@@ -679,8 +706,8 @@ private:
     std::unique_ptr<JPH::JobSystemThreadPool> jobSystem_;
 };
 
-PhysicsWorld::PhysicsWorld()
-    : impl_(std::make_unique<Impl>()) {}
+PhysicsWorld::PhysicsWorld(const PhysicsLayerCollisionMatrix& collisionMatrix)
+    : impl_(std::make_unique<Impl>(collisionMatrix)) {}
 
 PhysicsWorld::~PhysicsWorld() = default;
 

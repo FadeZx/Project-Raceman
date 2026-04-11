@@ -8,6 +8,7 @@
 
 #include <glm/glm.hpp>
 #include "../physics/MeshColliderBuildQuality.h"
+#include "../physics/PhysicsLayers.h"
 #include "../rendering/Renderer.h"
 #include "../rendering/Material.h"
 #include "../rendering/PrimitiveMeshes.h"
@@ -59,6 +60,19 @@ enum class SceneComponentType {
     SphereCollider,
     CapsuleCollider,
     PlaneCollider,
+    Camera,
+    Light
+};
+
+enum class SceneInspectorComponentType {
+    Transform,
+    MeshFilter,
+    MeshRenderer,
+    Script,
+    Rigidbody,
+    Vehicle,
+    CharacterController,
+    Collider,
     Camera,
     Light
 };
@@ -227,6 +241,8 @@ struct SceneObject {
     std::string parentId;
     std::string name;  // editable name
     std::string type;  // legacy/display object type, e.g., "Plane", "Mesh"
+    int physicsLayer{0};
+    std::vector<SceneInspectorComponentType> inspectorComponentOrder;
     Transform transform;
     bool enabled{true};
     bool hasMeshFilter{true};
@@ -305,6 +321,7 @@ public:
     void SaveCurrentSceneAs();
     bool OpenSceneAsset(const std::string& path);
     void SaveProject();
+    void RenderProjectPhysicsSettings();
     std::vector<std::string> GetSceneAssetPaths() const;
     const std::string& GetCurrentScenePath() const { return savePath_; }
     const std::string& GetProjectName() const { return projectName_; }
@@ -386,6 +403,9 @@ private:
     bool MoveObjectInHierarchy(int childIndex, int newParentIndex, int insertAfterIndex);
     glm::mat4 GetObjectWorldMatrix(int index) const;
     glm::vec3 GetObjectWorldPosition(int index) const;
+    int ClampPhysicsLayerIndex(int layer) const;
+    const char* GetPhysicsLayerName(int layer) const;
+    void ResetPhysicsLayerSettings();
 
     // Utils
     std::string MakeId(const std::string& base);
@@ -402,6 +422,8 @@ private:
     std::string defaultScenePath_{"assets/scenes/EditorScene.scene.json"};
     std::string lastScenePath_{"assets/scenes/EditorScene.scene.json"};
     std::string savePath_{"assets/scenes/EditorScene.scene.json"};
+    PhysicsLayerNames physicsLayerNames_{};
+    PhysicsLayerCollisionMatrix physicsLayerCollisionMatrix_{};
 
     // shared primitives
     std::unordered_map<std::string, PrimitiveMesh> builtInPrimitiveMeshes_;

@@ -12,6 +12,7 @@
 #include <cmath>
 #include <iostream>
 #include <unordered_set>
+#include <array>
 #ifndef GLM_ENABLE_EXPERIMENTAL
 #define GLM_ENABLE_EXPERIMENTAL
 #endif
@@ -140,6 +141,92 @@ MeshColliderBuildQuality MeshColliderBuildQualityFromString(const std::string& v
     if (value == "Balanced") return MeshColliderBuildQuality::Balanced;
     if (value == "BuildQuality") return MeshColliderBuildQuality::BuildQuality;
     return MeshColliderBuildQuality::BuildSpeed;
+}
+
+const char* InspectorComponentTypeToString(SceneInspectorComponentType type) {
+    switch (type) {
+    case SceneInspectorComponentType::Transform: return "Transform";
+    case SceneInspectorComponentType::MeshFilter: return "MeshFilter";
+    case SceneInspectorComponentType::MeshRenderer: return "MeshRenderer";
+    case SceneInspectorComponentType::Script: return "Script";
+    case SceneInspectorComponentType::Rigidbody: return "Rigidbody";
+    case SceneInspectorComponentType::Vehicle: return "Vehicle";
+    case SceneInspectorComponentType::CharacterController: return "CharacterController";
+    case SceneInspectorComponentType::Collider: return "Collider";
+    case SceneInspectorComponentType::Camera: return "Camera";
+    case SceneInspectorComponentType::Light: return "Light";
+    }
+    return "Transform";
+}
+
+bool InspectorComponentTypeFromString(const std::string& value, SceneInspectorComponentType& outType) {
+    if (value == "Transform") { outType = SceneInspectorComponentType::Transform; return true; }
+    if (value == "MeshFilter") { outType = SceneInspectorComponentType::MeshFilter; return true; }
+    if (value == "MeshRenderer") { outType = SceneInspectorComponentType::MeshRenderer; return true; }
+    if (value == "Script") { outType = SceneInspectorComponentType::Script; return true; }
+    if (value == "Rigidbody") { outType = SceneInspectorComponentType::Rigidbody; return true; }
+    if (value == "Vehicle") { outType = SceneInspectorComponentType::Vehicle; return true; }
+    if (value == "CharacterController") { outType = SceneInspectorComponentType::CharacterController; return true; }
+    if (value == "Collider") { outType = SceneInspectorComponentType::Collider; return true; }
+    if (value == "Camera") { outType = SceneInspectorComponentType::Camera; return true; }
+    if (value == "Light") { outType = SceneInspectorComponentType::Light; return true; }
+    return false;
+}
+
+bool ReadBoolArray(const raceman::physics::json::Object& object, const std::string& key, std::array<bool, kPhysicsLayerCount>& out) {
+    auto it = object.find(key);
+    if (it == object.end() || !it->second.is_array()) {
+        return false;
+    }
+
+    const auto& values = it->second.as_array();
+    if (values.size() != kPhysicsLayerCount) {
+        return false;
+    }
+
+    for (int i = 0; i < kPhysicsLayerCount; ++i) {
+        if (!values[static_cast<std::size_t>(i)].is_bool()) {
+            return false;
+        }
+        out[static_cast<std::size_t>(i)] = values[static_cast<std::size_t>(i)].as_bool();
+    }
+    return true;
+}
+
+PhysicsLayerNames MakeDefaultPhysicsLayerNames() {
+    PhysicsLayerNames names{};
+    names[0] = "Default";
+    names[1] = "World";
+    names[2] = "Vehicle";
+    names[3] = "VehicleWheel";
+    names[4] = "Trigger";
+    names[5] = "Player";
+    names[6] = "Layer6";
+    names[7] = "Layer7";
+    return names;
+}
+
+PhysicsLayerCollisionMatrix MakeDefaultPhysicsLayerCollisionMatrix() {
+    PhysicsLayerCollisionMatrix matrix{};
+    for (int row = 0; row < kPhysicsLayerCount; ++row) {
+        for (int column = 0; column < kPhysicsLayerCount; ++column) {
+            matrix[static_cast<std::size_t>(row)][static_cast<std::size_t>(column)] = true;
+        }
+    }
+
+    matrix[3][2] = false;
+    matrix[2][3] = false;
+    matrix[3][3] = false;
+    return matrix;
+}
+
+std::string MakePhysicsLayerStorageName(const std::string& value, int fallbackIndex) {
+    std::string trimmed = scene_editor_internal::TrimCopyLocal(value);
+    if (trimmed.empty()) {
+        return fallbackIndex == 0 ? "Default" : ("Layer" + std::to_string(fallbackIndex));
+    }
+
+    return trimmed;
 }
 
 float MaxAbsComponent(const glm::vec3& value) {
@@ -837,6 +924,7 @@ std::string BuildScriptRegistrySource(const std::vector<ScriptSourceInfo>& scrip
 } // namespace
 
 SceneEditor::SceneEditor() {
+    ResetPhysicsLayerSettings();
     // Load materials at startup
     materialManager_.LoadAll();
     RefreshProjectFiles();
@@ -1483,6 +1571,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
 
             PhysicsBodyDesc body;
             body.objectId = object.id;
+            body.collisionLayer = ClampPhysicsLayerIndex(object.physicsLayer);
             body.position = worldTransform.position;
             body.rotationEuler = worldTransform.rotationEuler;
             body.scale = worldTransform.scale;
@@ -1556,7 +1645,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
                 physicsBodies.push_back(std::move(body));
             }
         }
-        physicsWorld_ = std::make_unique<PhysicsWorld>();
+        physicsWorld_ = std::make_unique<PhysicsWorld>(physicsLayerCollisionMatrix_);
         physicsWorld_->Build(physicsBodies, physicsCharacters);
         RebuildVehicleRuntime();
         RebuildScriptRuntime();
@@ -2440,7 +2529,18 @@ void SceneEditor::Save(const std::string& path) {
         out << "      \"parentId\": \"" << JsonEscape(o.parentId) << "\",\n";
         out << "      \"name\": \"" << JsonEscape(o.name) << "\",\n";
         out << "      \"type\": \"" << JsonEscape(o.type) << "\",\n";
+        out << "      \"physicsLayer\": " << ClampPhysicsLayerIndex(o.physicsLayer) << ",\n";
         out << "      \"enabled\": " << (o.enabled ? "true" : "false") << ",\n";
+        SceneObject orderedObject = o;
+        SyncInspectorComponentOrder(orderedObject);
+        out << "      \"componentOrder\": [";
+        for (std::size_t orderIndex = 0; orderIndex < orderedObject.inspectorComponentOrder.size(); ++orderIndex) {
+            out << "\"" << InspectorComponentTypeToString(orderedObject.inspectorComponentOrder[orderIndex]) << "\"";
+            if (orderIndex + 1 < orderedObject.inspectorComponentOrder.size()) {
+                out << ", ";
+            }
+        }
+        out << "],\n";
         out << "      \"components\": [\n";
         out << "        {\n";
         out << "          \"type\": \"Transform\",\n";
@@ -2664,6 +2764,7 @@ void SceneEditor::Load(const std::string& path) {
             const auto& o = v.as_object();
 
             SceneObject so;
+            so.inspectorComponentOrder = DefaultInspectorComponentOrder();
 
             // id
             auto idIt = o.find("id");
@@ -2692,6 +2793,7 @@ void SceneEditor::Load(const std::string& path) {
                 legacyType = typeIt->second.as_string();
             }
             so.type = "GameObject";
+            so.physicsLayer = 0;
 
             // transform
             auto trIt = o.find("transform");
@@ -2736,6 +2838,21 @@ void SceneEditor::Load(const std::string& path) {
             }
 
             ReadBool(o, "enabled", so.enabled);
+            if (auto physicsLayerIt = o.find("physicsLayer"); physicsLayerIt != o.end() && physicsLayerIt->second.is_number()) {
+                so.physicsLayer = ClampPhysicsLayerIndex(static_cast<int>(physicsLayerIt->second.as_number()));
+            }
+            if (auto componentOrderIt = o.find("componentOrder"); componentOrderIt != o.end() && componentOrderIt->second.is_array()) {
+                so.inspectorComponentOrder.clear();
+                for (const auto& orderValue : componentOrderIt->second.as_array()) {
+                    if (!orderValue.is_string()) {
+                        continue;
+                    }
+                    SceneInspectorComponentType componentType;
+                    if (InspectorComponentTypeFromString(orderValue.as_string(), componentType)) {
+                        so.inspectorComponentOrder.push_back(componentType);
+                    }
+                }
+            }
 
             // color (optional)
             auto colIt = o.find("color");
@@ -3187,6 +3304,8 @@ void SceneEditor::Load(const std::string& path) {
                 so.rigidbody = RigidbodyComponent{};
             }
 
+            SyncInspectorComponentOrder(so);
+
             // attach render info for known types
             const std::string meshType = so.meshFilter.meshType.empty() ? std::string("Mesh") : so.meshFilter.meshType;
             if (so.hasMeshFilter && IsBuiltInPrimitiveMeshType(meshType)) {
@@ -3282,6 +3401,7 @@ void SceneEditor::LoadProject() {
     lastScenePath_ = defaultScenePath_;
     selectedProjectDirectory_ = "assets";
     activeViewport_ = SceneEditorActiveViewport::Scene;
+    ResetPhysicsLayerSettings();
 
     const fs::path assetsRoot = FindAssetsRoot();
     const fs::path scenesRoot = assetsRoot / "scenes";
@@ -3307,6 +3427,37 @@ void SceneEditor::LoadProject() {
                 if (editorIt != object.end() && editorIt->second.is_object()) {
                     const auto& editorState = editorIt->second.as_object();
                     ReadString(editorState, "selectedProjectDirectory", selectedProjectDirectory_);
+                }
+
+                auto physicsIt = object.find("physics");
+                if (physicsIt != object.end() && physicsIt->second.is_object()) {
+                    const auto& physicsSettings = physicsIt->second.as_object();
+
+                    auto layersIt = physicsSettings.find("layers");
+                    if (layersIt != physicsSettings.end() && layersIt->second.is_array()) {
+                        const auto& layers = layersIt->second.as_array();
+                        for (int layerIndex = 0; layerIndex < kPhysicsLayerCount && layerIndex < static_cast<int>(layers.size()); ++layerIndex) {
+                            if (layers[static_cast<std::size_t>(layerIndex)].is_string()) {
+                                physicsLayerNames_[static_cast<std::size_t>(layerIndex)] = MakePhysicsLayerStorageName(
+                                    layers[static_cast<std::size_t>(layerIndex)].as_string(),
+                                    layerIndex);
+                            }
+                        }
+                    }
+
+                    auto matrixIt = physicsSettings.find("collisionMatrix");
+                    if (matrixIt != physicsSettings.end() && matrixIt->second.is_array()) {
+                        const auto& rows = matrixIt->second.as_array();
+                        for (int row = 0; row < kPhysicsLayerCount && row < static_cast<int>(rows.size()); ++row) {
+                            if (!rows[static_cast<std::size_t>(row)].is_object()) {
+                                continue;
+                            }
+                            std::array<bool, kPhysicsLayerCount> rowValues = physicsLayerCollisionMatrix_[static_cast<std::size_t>(row)];
+                            if (ReadBoolArray(rows[static_cast<std::size_t>(row)].as_object(), "values", rowValues)) {
+                                physicsLayerCollisionMatrix_[static_cast<std::size_t>(row)] = rowValues;
+                            }
+                        }
+                    }
                 }
             }
         } catch (...) {
@@ -3374,6 +3525,28 @@ void SceneEditor::SaveProject() {
         out << "  \"assetsRoot\": \"" << JsonEscape(assetsRootSetting_) << "\",\n";
         out << "  \"defaultScene\": \"" << JsonEscape(NormalizeSlashes(defaultScenePath_)) << "\",\n";
         out << "  \"lastScene\": \"" << JsonEscape(NormalizeSlashes(lastScenePath_)) << "\",\n";
+        out << "  \"physics\": {\n";
+        out << "    \"layers\": [\n";
+        for (int layerIndex = 0; layerIndex < kPhysicsLayerCount; ++layerIndex) {
+            const std::string layerName = MakePhysicsLayerStorageName(physicsLayerNames_[static_cast<std::size_t>(layerIndex)], layerIndex);
+            out << "      \"" << JsonEscape(layerName) << "\"" << (layerIndex + 1 < kPhysicsLayerCount ? ",\n" : "\n");
+        }
+        out << "    ],\n";
+        out << "    \"collisionMatrix\": [\n";
+        for (int row = 0; row < kPhysicsLayerCount; ++row) {
+            out << "      {\n";
+            out << "        \"values\": [";
+            for (int column = 0; column < kPhysicsLayerCount; ++column) {
+                out << (physicsLayerCollisionMatrix_[static_cast<std::size_t>(row)][static_cast<std::size_t>(column)] ? "true" : "false");
+                if (column + 1 < kPhysicsLayerCount) {
+                    out << ", ";
+                }
+            }
+            out << "]\n";
+            out << "      }" << (row + 1 < kPhysicsLayerCount ? ",\n" : "\n");
+        }
+        out << "    ]\n";
+        out << "  },\n";
         out << "  \"editorState\": {\n";
         out << "    \"selectedProjectDirectory\": \"" << JsonEscape(NormalizeSlashes(selectedProjectDirectory_)) << "\"\n";
         out << "  }\n";
@@ -3759,6 +3932,21 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
 
 void SceneEditor::SetSavePath(const std::string& path) {
     savePath_ = NormalizeSlashes(path);
+}
+
+int SceneEditor::ClampPhysicsLayerIndex(int layer) const {
+    return (std::max)(0, (std::min)(kPhysicsLayerCount - 1, layer));
+}
+
+const char* SceneEditor::GetPhysicsLayerName(int layer) const {
+    const int clampedLayer = ClampPhysicsLayerIndex(layer);
+    const std::string& name = physicsLayerNames_[static_cast<std::size_t>(clampedLayer)];
+    return name.empty() ? "Default" : name.c_str();
+}
+
+void SceneEditor::ResetPhysicsLayerSettings() {
+    physicsLayerNames_ = MakeDefaultPhysicsLayerNames();
+    physicsLayerCollisionMatrix_ = MakeDefaultPhysicsLayerCollisionMatrix();
 }
 
 } // namespace raceman

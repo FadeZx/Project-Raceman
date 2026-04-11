@@ -5,6 +5,7 @@
       "parentId": "",
       "name": "Plane",
       "type": "GameObject",
+      "physicsLayer": 1,
       "enabled": true,
       "components": [
         {
@@ -51,6 +52,7 @@
       "parentId": "",
       "name": "Directional Light",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -75,6 +77,7 @@
       "parentId": "gameobject_1",
       "name": "Chasis",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -99,11 +102,27 @@
           "color": [1, 1, 1, 1]
         },
         {
-          "type": "Collider",
-          "colliderType": "Mesh",
+          "type": "Rigidbody",
           "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildSpeed"
+          "bodyType": "Dynamic",
+          "mass": 1,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Box",
+          "enabled": true,
+          "isTrigger": true,
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -112,6 +131,7 @@
       "parentId": "gameobject_1",
       "name": "Camera",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -136,12 +156,13 @@
       "parentId": "gameobject_1",
       "name": "FLWheel",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [0.382276, 0, 0.84773],
-          "rotationEuler": [0, -0, 0],
+          "position": [0.382278, 1.90735e-06, 0.847733],
+          "rotationEuler": [-117.67, -0.00633158, 1.70734e-06],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -172,12 +193,13 @@
       "parentId": "",
       "name": "Vehicle base",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [0, 3.04388, 0],
-          "rotationEuler": [0, -0, 0],
+          "position": [0, 0.582592, 0],
+          "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -214,12 +236,13 @@
       "parentId": "gameobject_1",
       "name": "FR Wheel",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [-0.470563, 0, 0.834524],
-          "rotationEuler": [0, -0, 0],
+          "position": [-0.47056, 1.90735e-06, 0.834522],
+          "rotationEuler": [173.161, -0.00634183, 6.40356e-07],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -250,12 +273,13 @@
       "parentId": "gameobject_1",
       "name": "BLWheel",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [0.381729, 0, -0.710159],
-          "rotationEuler": [0, -0, 0],
+          "position": [0.381727, 1.90735e-06, -0.710159],
+          "rotationEuler": [-166.141, -0.00633671, 0],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -286,12 +310,13 @@
       "parentId": "gameobject_1",
       "name": "BRWheel",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [-0.513722, 0, -0.710159],
-          "rotationEuler": [0, -0, 0],
+          "position": [-0.51372, 1.90735e-06, -0.710159],
+          "rotationEuler": [-171.995, -0.00633159, -2.13443e-07],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -316,6 +341,7 @@
       "parentId": "",
       "name": "track3",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -331,6 +357,7 @@
       "parentId": "gameobject_27",
       "name": "track3_0",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -367,6 +394,7 @@
       "parentId": "gameobject_27",
       "name": "track3_1",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -403,6 +431,7 @@
       "parentId": "gameobject_27",
       "name": "track3_2",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -439,6 +468,7 @@
       "parentId": "gameobject_27",
       "name": "track3_3",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -475,6 +505,7 @@
       "parentId": "gameobject_27",
       "name": "track3_4",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -511,6 +542,7 @@
       "parentId": "gameobject_27",
       "name": "track3_5",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -547,6 +579,7 @@
       "parentId": "gameobject_27",
       "name": "track3_6",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -583,6 +616,7 @@
       "parentId": "gameobject_27",
       "name": "track3_7",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -619,6 +653,7 @@
       "parentId": "gameobject_27",
       "name": "track3_8",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -655,6 +690,7 @@
       "parentId": "gameobject_27",
       "name": "track3_9",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -691,6 +727,7 @@
       "parentId": "gameobject_27",
       "name": "track3_10",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -727,6 +764,7 @@
       "parentId": "gameobject_27",
       "name": "track3_11",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -763,6 +801,7 @@
       "parentId": "gameobject_27",
       "name": "track3_12",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -799,6 +838,7 @@
       "parentId": "gameobject_27",
       "name": "track3_13",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -835,6 +875,7 @@
       "parentId": "gameobject_27",
       "name": "track3_14",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -871,6 +912,7 @@
       "parentId": "gameobject_27",
       "name": "track3_15",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -907,6 +949,7 @@
       "parentId": "gameobject_27",
       "name": "track3_16",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -943,6 +986,7 @@
       "parentId": "gameobject_27",
       "name": "track3_17",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -979,6 +1023,7 @@
       "parentId": "gameobject_27",
       "name": "track3_18",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1015,6 +1060,7 @@
       "parentId": "gameobject_27",
       "name": "track3_19",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1051,6 +1097,7 @@
       "parentId": "gameobject_27",
       "name": "track3_20",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1087,6 +1134,7 @@
       "parentId": "gameobject_27",
       "name": "track3_21",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1123,6 +1171,7 @@
       "parentId": "gameobject_27",
       "name": "track3_22",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1159,6 +1208,7 @@
       "parentId": "gameobject_27",
       "name": "track3_23",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1195,6 +1245,7 @@
       "parentId": "gameobject_27",
       "name": "track3_24",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1231,6 +1282,7 @@
       "parentId": "gameobject_27",
       "name": "track3_25",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1267,6 +1319,7 @@
       "parentId": "gameobject_27",
       "name": "track3_26",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1303,6 +1356,7 @@
       "parentId": "gameobject_27",
       "name": "track3_27",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1339,6 +1393,7 @@
       "parentId": "gameobject_27",
       "name": "track3_28",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1375,6 +1430,7 @@
       "parentId": "gameobject_27",
       "name": "track3_29",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1411,6 +1467,7 @@
       "parentId": "gameobject_27",
       "name": "track3_30",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1447,6 +1504,7 @@
       "parentId": "gameobject_27",
       "name": "track3_31",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1483,6 +1541,7 @@
       "parentId": "gameobject_27",
       "name": "track3_32",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1519,6 +1578,7 @@
       "parentId": "gameobject_27",
       "name": "track3_33",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1555,6 +1615,7 @@
       "parentId": "gameobject_27",
       "name": "track3_34",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1591,6 +1652,7 @@
       "parentId": "gameobject_27",
       "name": "track3_35",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1627,6 +1689,7 @@
       "parentId": "gameobject_27",
       "name": "track3_36",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1663,6 +1726,7 @@
       "parentId": "gameobject_27",
       "name": "track3_37",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1699,6 +1763,7 @@
       "parentId": "gameobject_27",
       "name": "track3_38",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1735,6 +1800,7 @@
       "parentId": "gameobject_27",
       "name": "track3_39",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1771,6 +1837,7 @@
       "parentId": "gameobject_27",
       "name": "track3_40",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1807,6 +1874,7 @@
       "parentId": "gameobject_27",
       "name": "track3_41",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1843,6 +1911,7 @@
       "parentId": "gameobject_27",
       "name": "track3_42",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1879,6 +1948,7 @@
       "parentId": "gameobject_27",
       "name": "track3_43",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1915,6 +1985,7 @@
       "parentId": "gameobject_27",
       "name": "track3_44",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1951,6 +2022,7 @@
       "parentId": "gameobject_27",
       "name": "track3_45",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -1987,6 +2059,7 @@
       "parentId": "gameobject_27",
       "name": "track3_46",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2023,6 +2096,7 @@
       "parentId": "gameobject_27",
       "name": "track3_47",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2059,6 +2133,7 @@
       "parentId": "gameobject_27",
       "name": "track3_48",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2095,6 +2170,7 @@
       "parentId": "gameobject_27",
       "name": "track3_49",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2131,6 +2207,7 @@
       "parentId": "gameobject_27",
       "name": "track3_50",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2167,6 +2244,7 @@
       "parentId": "gameobject_27",
       "name": "track3_51",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2203,6 +2281,7 @@
       "parentId": "gameobject_27",
       "name": "track3_52",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2239,6 +2318,7 @@
       "parentId": "gameobject_27",
       "name": "track3_53",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2275,6 +2355,7 @@
       "parentId": "gameobject_27",
       "name": "track3_54",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2311,6 +2392,7 @@
       "parentId": "gameobject_27",
       "name": "track3_55",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2347,6 +2429,7 @@
       "parentId": "gameobject_27",
       "name": "track3_56",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2383,6 +2466,7 @@
       "parentId": "gameobject_27",
       "name": "track3_57",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2419,6 +2503,7 @@
       "parentId": "gameobject_27",
       "name": "track3_58",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2455,6 +2540,7 @@
       "parentId": "gameobject_27",
       "name": "track3_59",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2491,6 +2577,7 @@
       "parentId": "gameobject_27",
       "name": "track3_60",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2527,6 +2614,7 @@
       "parentId": "gameobject_27",
       "name": "track3_61",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2563,6 +2651,7 @@
       "parentId": "gameobject_27",
       "name": "track3_62",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2599,6 +2688,7 @@
       "parentId": "gameobject_27",
       "name": "track3_63",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2635,6 +2725,7 @@
       "parentId": "gameobject_27",
       "name": "track3_64",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2671,6 +2762,7 @@
       "parentId": "gameobject_27",
       "name": "track3_65",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2707,6 +2799,7 @@
       "parentId": "gameobject_27",
       "name": "track3_66",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2743,6 +2836,7 @@
       "parentId": "gameobject_27",
       "name": "track3_67",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2779,6 +2873,7 @@
       "parentId": "gameobject_27",
       "name": "track3_68",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2815,6 +2910,7 @@
       "parentId": "gameobject_27",
       "name": "track3_69",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2851,6 +2947,7 @@
       "parentId": "gameobject_27",
       "name": "track3_70",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2887,6 +2984,7 @@
       "parentId": "gameobject_27",
       "name": "track3_71",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2923,6 +3021,7 @@
       "parentId": "gameobject_27",
       "name": "track3_72",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2959,6 +3058,7 @@
       "parentId": "gameobject_27",
       "name": "track3_73",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -2995,6 +3095,7 @@
       "parentId": "gameobject_27",
       "name": "track3_74",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3031,6 +3132,7 @@
       "parentId": "gameobject_27",
       "name": "track3_75",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3067,6 +3169,7 @@
       "parentId": "gameobject_27",
       "name": "track3_76",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3103,6 +3206,7 @@
       "parentId": "gameobject_27",
       "name": "track3_77",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3139,6 +3243,7 @@
       "parentId": "gameobject_27",
       "name": "track3_78",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3175,6 +3280,7 @@
       "parentId": "gameobject_27",
       "name": "track3_79",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3211,6 +3317,7 @@
       "parentId": "gameobject_27",
       "name": "track3_80",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3247,6 +3354,7 @@
       "parentId": "gameobject_27",
       "name": "track3_81",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3283,6 +3391,7 @@
       "parentId": "gameobject_27",
       "name": "track3_82",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3319,6 +3428,7 @@
       "parentId": "gameobject_27",
       "name": "track3_83",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3355,6 +3465,7 @@
       "parentId": "gameobject_27",
       "name": "track3_84",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3391,6 +3502,7 @@
       "parentId": "gameobject_27",
       "name": "track3_85",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3427,6 +3539,7 @@
       "parentId": "gameobject_27",
       "name": "track3_86",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3463,6 +3576,7 @@
       "parentId": "gameobject_27",
       "name": "track3_87",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3499,6 +3613,7 @@
       "parentId": "gameobject_27",
       "name": "track3_88",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3535,6 +3650,7 @@
       "parentId": "gameobject_27",
       "name": "track3_89",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3571,6 +3687,7 @@
       "parentId": "gameobject_27",
       "name": "track3_90",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3607,6 +3724,7 @@
       "parentId": "gameobject_27",
       "name": "track3_91",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3643,6 +3761,7 @@
       "parentId": "gameobject_27",
       "name": "track3_92",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3679,6 +3798,7 @@
       "parentId": "gameobject_27",
       "name": "track3_93",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3715,6 +3835,7 @@
       "parentId": "gameobject_27",
       "name": "track3_94",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3751,6 +3872,7 @@
       "parentId": "gameobject_27",
       "name": "track3_95",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3787,6 +3909,7 @@
       "parentId": "gameobject_27",
       "name": "track3_96",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3823,6 +3946,7 @@
       "parentId": "gameobject_27",
       "name": "track3_97",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3859,6 +3983,7 @@
       "parentId": "gameobject_27",
       "name": "track3_98",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3895,6 +4020,7 @@
       "parentId": "gameobject_27",
       "name": "track3_99",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3931,6 +4057,7 @@
       "parentId": "gameobject_27",
       "name": "track3_100",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -3967,6 +4094,7 @@
       "parentId": "gameobject_27",
       "name": "track3_101",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4003,6 +4131,7 @@
       "parentId": "gameobject_27",
       "name": "track3_102",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4039,6 +4168,7 @@
       "parentId": "gameobject_27",
       "name": "track3_103",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4075,6 +4205,7 @@
       "parentId": "gameobject_27",
       "name": "track3_104",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4111,6 +4242,7 @@
       "parentId": "gameobject_27",
       "name": "track3_105",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4147,6 +4279,7 @@
       "parentId": "gameobject_27",
       "name": "track3_106",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4183,6 +4316,7 @@
       "parentId": "gameobject_27",
       "name": "track3_107",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4219,6 +4353,7 @@
       "parentId": "gameobject_27",
       "name": "track3_108",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4255,6 +4390,7 @@
       "parentId": "gameobject_27",
       "name": "track3_109",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4291,6 +4427,7 @@
       "parentId": "gameobject_27",
       "name": "track3_110",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4327,6 +4464,7 @@
       "parentId": "gameobject_27",
       "name": "track3_111",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4363,6 +4501,7 @@
       "parentId": "gameobject_27",
       "name": "track3_112",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4399,6 +4538,7 @@
       "parentId": "gameobject_27",
       "name": "track3_113",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4435,6 +4575,7 @@
       "parentId": "gameobject_27",
       "name": "track3_114",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4471,6 +4612,7 @@
       "parentId": "gameobject_27",
       "name": "track3_115",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4507,6 +4649,7 @@
       "parentId": "gameobject_27",
       "name": "track3_116",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4543,6 +4686,7 @@
       "parentId": "gameobject_27",
       "name": "track3_117",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4579,6 +4723,7 @@
       "parentId": "gameobject_27",
       "name": "track3_118",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4615,6 +4760,7 @@
       "parentId": "gameobject_27",
       "name": "track3_119",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4651,6 +4797,7 @@
       "parentId": "gameobject_27",
       "name": "track3_120",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4687,6 +4834,7 @@
       "parentId": "gameobject_27",
       "name": "track3_121",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4723,6 +4871,7 @@
       "parentId": "gameobject_27",
       "name": "track3_122",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4759,6 +4908,7 @@
       "parentId": "gameobject_27",
       "name": "track3_123",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4795,6 +4945,7 @@
       "parentId": "gameobject_27",
       "name": "track3_124",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4831,6 +4982,7 @@
       "parentId": "gameobject_27",
       "name": "track3_125",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4867,6 +5019,7 @@
       "parentId": "gameobject_27",
       "name": "track3_126",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4903,6 +5056,7 @@
       "parentId": "gameobject_1",
       "name": "Spot Light",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
@@ -4927,12 +5081,13 @@
       "parentId": "",
       "name": "collider test wheel",
       "type": "GameObject",
+      "physicsLayer": 0,
       "enabled": true,
       "components": [
         {
           "type": "Transform",
-          "position": [0, 3.46914, 5.64867],
-          "rotationEuler": [0, 0, 0],
+          "position": [0.000303178, 1.67931, 5.65007],
+          "rotationEuler": [4.32414e-05, 0.0143073, -7.47984e-06],
           "scale": [1, 1, 1]
         },
         {
@@ -4967,11 +5122,11 @@
         },
         {
           "type": "Collider",
-          "colliderType": "Box",
+          "colliderType": "Sphere",
           "enabled": true,
           "isTrigger": false,
-          "center": [0, 0, 0],
-          "size": [1, 1, 1]
+          "center": [0.2, 0, 0],
+          "radius": 0.5
         }
       ]
     }

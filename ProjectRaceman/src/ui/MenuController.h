@@ -20,6 +20,7 @@ struct EditorProjectMenu {
     std::function<void()> onSaveScene;
     std::function<void(const std::string&)> onOpenScene;
     std::function<void()> onSaveProject;
+    std::function<void()> renderProjectSettings;
 };
 
 class MenuController {
@@ -54,7 +55,7 @@ private:
     void SaveState() const;
 
     // Toggles
-    bool showRendering_{false};
+    bool showProjectSettings_{false};
     bool showSkybox_{false};
     bool showConsole_{false};
 

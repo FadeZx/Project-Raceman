@@ -1,7 +1,9 @@
 #pragma once
 
+#include "PhysicsLayers.h"
 #include "MeshColliderBuildQuality.h"
 
+#include <array>
 #include <glm/glm.hpp>
 
 #include <cstdint>
@@ -48,6 +50,7 @@ struct PhysicsColliderDesc {
 
 struct PhysicsBodyDesc {
     std::string objectId;
+    int collisionLayer{0};
     PhysicsBodyType bodyType{PhysicsBodyType::Static};
     glm::vec3 position{0.0f};
     glm::vec3 rotationEuler{0.0f};
@@ -102,7 +105,7 @@ struct PhysicsCharacterState {
 
 class PhysicsWorld {
 public:
-    PhysicsWorld();
+    explicit PhysicsWorld(const PhysicsLayerCollisionMatrix& collisionMatrix = {});
     ~PhysicsWorld();
 
     PhysicsWorld(const PhysicsWorld&) = delete;

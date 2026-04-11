@@ -21,6 +21,8 @@ using namespace scene_editor_internal;
 
 namespace {
 
+constexpr const char* kInspectorComponentReorderPayload = "RM_COMP_REORDER";
+
 bool IsNarrowInspectorLayout() {
     return ImGui::GetContentRegionAvail().x < 260.0f;
 }
@@ -268,7 +270,15 @@ void SyncVehicleWheelBindings(VehicleComponent& vehicle, const raceman::physics:
     vehicle.wheelBindings = std::move(syncedBindings);
 }
 
-bool RenderRemovableComponentHeader(const char* label, const char* id, unsigned int textureId, bool* enabled, bool& enabledChanged, bool& removeRequested) {
+bool RenderRemovableComponentHeader(const char* label,
+                                    const char* id,
+                                    unsigned int textureId,
+                                    bool* enabled,
+                                    bool& enabledChanged,
+                                    bool& removeRequested,
+                                    SceneInspectorComponentType* componentType = nullptr,
+                                    SceneInspectorComponentType* outDraggedType = nullptr,
+                                    SceneInspectorComponentType* outDropTargetType = nullptr) {
     ImGui::PushID(id);
     RenderComponentIcon(textureId);
     enabledChanged = false;
@@ -280,6 +290,28 @@ bool RenderRemovableComponentHeader(const char* label, const char* id, unsigned 
         ImGui::SameLine();
     }
     const bool open = ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+    if (componentType != nullptr) {
+        if (ImGui::BeginDragDropSource()) {
+            const SceneInspectorComponentType payloadType = *componentType;
+            ImGui::SetDragDropPayload(kInspectorComponentReorderPayload, &payloadType, sizeof(payloadType));
+            ImGui::TextUnformatted(label);
+            if (outDraggedType != nullptr) {
+                *outDraggedType = payloadType;
+            }
+            ImGui::EndDragDropSource();
+        }
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kInspectorComponentReorderPayload)) {
+                if (payload->DataSize == sizeof(SceneInspectorComponentType) && outDropTargetType != nullptr) {
+                    *outDropTargetType = *componentType;
+                    if (outDraggedType != nullptr) {
+                        *outDraggedType = *static_cast<const SceneInspectorComponentType*>(payload->Data);
+                    }
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+    }
     const float removeButtonWidth = ImGui::CalcTextSize("Remove").x + ImGui::GetStyle().FramePadding.x * 2.0f;
     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - removeButtonWidth);
     ImGui::SetNextItemAllowOverlap();
@@ -349,6 +381,36 @@ bool RenderMeshColliderBuildQualityCombo(const char* label,
         const std::string selectableLabel = std::string(MeshColliderBuildQualityLabel(quality)) + "##" + comboId + "_" + MeshColliderBuildQualityLabel(quality);
         if (ImGui::Selectable(selectableLabel.c_str(), selected)) {
             outQuality = quality;
+            changed = true;
+        }
+    }
+
+    ImGui::EndCombo();
+    return changed;
+}
+
+bool RenderPhysicsLayerCombo(const char* label,
+                             const char* comboId,
+                             int currentLayer,
+                             const PhysicsLayerNames& layerNames,
+                             int& outLayer) {
+    const int safeCurrentLayer = (std::max)(0, (std::min)(kPhysicsLayerCount - 1, currentLayer));
+    const std::string preview = layerNames[static_cast<std::size_t>(safeCurrentLayer)].empty()
+        ? ("Layer " + std::to_string(safeCurrentLayer))
+        : layerNames[static_cast<std::size_t>(safeCurrentLayer)];
+    if (!ImGui::BeginCombo(label, preview.c_str())) {
+        return false;
+    }
+
+    bool changed = false;
+    for (int layerIndex = 0; layerIndex < kPhysicsLayerCount; ++layerIndex) {
+        const std::string layerName = layerNames[static_cast<std::size_t>(layerIndex)].empty()
+            ? ("Layer " + std::to_string(layerIndex))
+            : layerNames[static_cast<std::size_t>(layerIndex)];
+        const bool selected = layerIndex == safeCurrentLayer;
+        const std::string selectableLabel = layerName + "##" + comboId + "_" + std::to_string(layerIndex);
+        if (ImGui::Selectable(selectableLabel.c_str(), selected)) {
+            outLayer = layerIndex;
             changed = true;
         }
     }
@@ -445,6 +507,13 @@ void SceneEditor::RenderInspectorPanel() {
             } else {
                 ImGui::SameLine();
                 ImGui::TextDisabled("| ID: %s", obj.id.c_str());
+            }
+
+            int physicsLayer = ClampPhysicsLayerIndex(obj.physicsLayer);
+            if (RenderPhysicsLayerCombo("Physics Layer", "singlePhysicsLayer", obj.physicsLayer, physicsLayerNames_, physicsLayer)) {
+                PushUndoState();
+                obj.physicsLayer = physicsLayer;
+                if (onDirty_) onDirty_();
             }
 
             auto renderAddComponentMenu = [&]() {
@@ -594,6 +663,12 @@ void SceneEditor::RenderInspectorPanel() {
                 ImGui::EndPopup();
             }
 
+            SyncInspectorComponentOrder(obj);
+            SceneInspectorComponentType reorderDraggedType = SceneInspectorComponentType::Transform;
+            SceneInspectorComponentType reorderTargetType = SceneInspectorComponentType::Transform;
+
+            for (SceneInspectorComponentType currentComponentToRender : obj.inspectorComponentOrder) {
+            if (currentComponentToRender == SceneInspectorComponentType::Transform) {
             RenderComponentIcon(GetComponentIconTexture("component-transform.png"));
             if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
                 Transform before = obj.transform;
@@ -648,13 +723,16 @@ void SceneEditor::RenderInspectorPanel() {
                     inspectorEditActive_ = false;
                 }
             }
+            }
 
+            if (currentComponentToRender == SceneInspectorComponentType::MeshFilter) {
             bool removeMeshFilter = false;
             bool meshFilterOpen = false;
             bool meshFilterEnabledChanged = false;
             const bool meshFilterEnabledBefore = obj.meshFilter.enabled;
             if (obj.hasMeshFilter) {
-                meshFilterOpen = RenderRemovableComponentHeader("Mesh Filter", "MeshFilterHeader", GetComponentIconTexture("component-mesh-filter.png"), &obj.meshFilter.enabled, meshFilterEnabledChanged, removeMeshFilter);
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::MeshFilter;
+                meshFilterOpen = RenderRemovableComponentHeader("Mesh Filter", "MeshFilterHeader", GetComponentIconTexture("component-mesh-filter.png"), &obj.meshFilter.enabled, meshFilterEnabledChanged, removeMeshFilter, &componentType, &reorderDraggedType, &reorderTargetType);
             }
             if (removeMeshFilter) {
                 PushUndoState();
@@ -710,13 +788,16 @@ void SceneEditor::RenderInspectorPanel() {
                     ImGui::TextDisabled("Built-in mesh: %s", meshType.c_str());
                 }
             }
+            }
 
+            if (currentComponentToRender == SceneInspectorComponentType::MeshRenderer) {
             bool removeMeshRenderer = false;
             bool meshRendererOpen = false;
             bool meshRendererEnabledChanged = false;
             const bool meshRendererEnabledBefore = obj.meshRenderer.enabled;
             if (obj.hasMeshRenderer) {
-                meshRendererOpen = RenderRemovableComponentHeader("Mesh Renderer", "MeshRendererHeader", GetComponentIconTexture("component-mesh-renderer.png"), &obj.meshRenderer.enabled, meshRendererEnabledChanged, removeMeshRenderer);
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::MeshRenderer;
+                meshRendererOpen = RenderRemovableComponentHeader("Mesh Renderer", "MeshRendererHeader", GetComponentIconTexture("component-mesh-renderer.png"), &obj.meshRenderer.enabled, meshRendererEnabledChanged, removeMeshRenderer, &componentType, &reorderDraggedType, &reorderTargetType);
             }
             if (removeMeshRenderer) {
                 PushUndoState();
@@ -784,13 +865,16 @@ void SceneEditor::RenderInspectorPanel() {
                     ImGui::TextDisabled("Material asset not loaded.");
                 }
             }
+            }
 
+            if (currentComponentToRender == SceneInspectorComponentType::Script) {
             bool removeScripts = false;
             bool scriptsOpen = false;
             bool scriptsEnabledChanged = false;
             const bool scriptsEnabledBefore = obj.scriptComponent.enabled;
             if (obj.hasScriptComponent) {
-                scriptsOpen = RenderRemovableComponentHeader("Scripts", "ScriptsHeader", GetComponentIconTexture("component-script.png"), &obj.scriptComponent.enabled, scriptsEnabledChanged, removeScripts);
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::Script;
+                scriptsOpen = RenderRemovableComponentHeader("Scripts", "ScriptsHeader", GetComponentIconTexture("component-script.png"), &obj.scriptComponent.enabled, scriptsEnabledChanged, removeScripts, &componentType, &reorderDraggedType, &reorderTargetType);
             }
             if (removeScripts) {
                 PushUndoState();
@@ -943,27 +1027,28 @@ void SceneEditor::RenderInspectorPanel() {
                     ImGui::PopID();
                 }
             }
+            }
 
+            if (currentComponentToRender == SceneInspectorComponentType::Rigidbody) {
             bool removeRigidbody = false;
             bool rigidbodyOpen = false;
             bool rigidbodyEnabledChanged = false;
             const bool rigidbodyEnabledBefore = obj.rigidbody.enabled;
             if (obj.hasRigidbody) {
-                rigidbodyOpen = RenderRemovableComponentHeader("Rigidbody", "RigidbodyHeader", GetComponentIconTexture("component-rigidbody.png"), &obj.rigidbody.enabled, rigidbodyEnabledChanged, removeRigidbody);
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::Rigidbody;
+                rigidbodyOpen = RenderRemovableComponentHeader("Rigidbody", "RigidbodyHeader", GetComponentIconTexture("component-rigidbody.png"), &obj.rigidbody.enabled, rigidbodyEnabledChanged, removeRigidbody, &componentType, &reorderDraggedType, &reorderTargetType);
             }
             if (removeRigidbody) {
                 PushUndoState();
                 obj.hasRigidbody = false;
                 obj.rigidbody = RigidbodyComponent{};
                 if (onDirty_) onDirty_();
-            } else {
-                if (obj.hasRigidbody && rigidbodyEnabledChanged) {
-                    const bool rigidbodyEnabledAfter = obj.rigidbody.enabled;
-                    obj.rigidbody.enabled = rigidbodyEnabledBefore;
-                    PushUndoState();
-                    obj.rigidbody.enabled = rigidbodyEnabledAfter;
-                    if (onDirty_) onDirty_();
-                }
+            } else if (obj.hasRigidbody && rigidbodyEnabledChanged) {
+                const bool rigidbodyEnabledAfter = obj.rigidbody.enabled;
+                obj.rigidbody.enabled = rigidbodyEnabledBefore;
+                PushUndoState();
+                obj.rigidbody.enabled = rigidbodyEnabledAfter;
+                if (onDirty_) onDirty_();
             }
             if (obj.hasRigidbody && rigidbodyOpen) {
                 if (ImGui::CollapsingHeader("Body", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -1076,13 +1161,16 @@ void SceneEditor::RenderInspectorPanel() {
                     }
                 }
             }
+            }
 
+            if (currentComponentToRender == SceneInspectorComponentType::Vehicle) {
             bool removeVehicle = false;
             bool vehicleOpen = false;
             bool vehicleEnabledChanged = false;
             const bool vehicleEnabledBefore = obj.vehicle.enabled;
             if (obj.hasVehicle) {
-                vehicleOpen = RenderRemovableComponentHeader("Vehicle", "VehicleHeader", GetComponentIconTexture("component-vehicle.png"), &obj.vehicle.enabled, vehicleEnabledChanged, removeVehicle);
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::Vehicle;
+                vehicleOpen = RenderRemovableComponentHeader("Vehicle", "VehicleHeader", GetComponentIconTexture("component-vehicle.png"), &obj.vehicle.enabled, vehicleEnabledChanged, removeVehicle, &componentType, &reorderDraggedType, &reorderTargetType);
             }
             if (removeVehicle) {
                 PushUndoState();
@@ -1230,13 +1318,16 @@ void SceneEditor::RenderInspectorPanel() {
                 ImGui::TextDisabled("Play mode uses bound wheel object transforms as the wheel rest pose.");
                 ImGui::TextDisabled("Use the wheel object's own transform for placement. Use Mesh Rotation Offset only if the mesh faces the wrong axis.");
             }
+            }
 
+            if (currentComponentToRender == SceneInspectorComponentType::CharacterController) {
             bool removeCharacterController = false;
             bool characterControllerOpen = false;
             bool characterControllerEnabledChanged = false;
             const bool characterControllerEnabledBefore = obj.characterController.enabled;
             if (obj.hasCharacterController) {
-                characterControllerOpen = RenderRemovableComponentHeader("Character Controller", "CharacterControllerHeader", GetComponentIconTexture("component-capsule-collider.png"), &obj.characterController.enabled, characterControllerEnabledChanged, removeCharacterController);
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::CharacterController;
+                characterControllerOpen = RenderRemovableComponentHeader("Character Controller", "CharacterControllerHeader", GetComponentIconTexture("component-capsule-collider.png"), &obj.characterController.enabled, characterControllerEnabledChanged, removeCharacterController, &componentType, &reorderDraggedType, &reorderTargetType);
             }
             if (removeCharacterController) {
                 PushUndoState();
@@ -1313,7 +1404,9 @@ void SceneEditor::RenderInspectorPanel() {
                 ImGui::TextDisabled("Grounded: %s", obj.characterController.grounded ? "Yes" : "No");
                 ImGui::TextDisabled("Velocity: %.2f, %.2f, %.2f", obj.characterController.velocity.x, obj.characterController.velocity.y, obj.characterController.velocity.z);
             }
+            }
 
+            if (currentComponentToRender == SceneInspectorComponentType::Collider) {
             const SceneColliderType colliderType = GetActiveColliderType(obj);
             if (colliderType != SceneColliderType::None) {
                 bool removeCollider = false;
@@ -1339,13 +1432,17 @@ void SceneEditor::RenderInspectorPanel() {
                 case SceneColliderType::None: break;
                 }
 
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::Collider;
                 colliderOpen = RenderRemovableComponentHeader(
                     "Collider",
                     "ColliderHeader",
                     GetComponentIconTexture(SceneColliderTypeIcon(colliderType)),
                     enabledPtr,
                     colliderEnabledChanged,
-                    removeCollider);
+                    removeCollider,
+                    &componentType,
+                    &reorderDraggedType,
+                    &reorderTargetType);
 
                 if (removeCollider) {
                     PushUndoState();
@@ -1532,13 +1629,16 @@ void SceneEditor::RenderInspectorPanel() {
                     }
                 }
             }
+            }
 
+            if (currentComponentToRender == SceneInspectorComponentType::Camera) {
             bool removeCamera = false;
             bool cameraOpen = false;
             bool cameraEnabledChanged = false;
             const bool cameraEnabledBefore = obj.camera.enabled;
             if (obj.hasCamera) {
-                cameraOpen = RenderRemovableComponentHeader("Camera", "CameraHeader", GetComponentIconTexture("component-camera.png"), &obj.camera.enabled, cameraEnabledChanged, removeCamera);
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::Camera;
+                cameraOpen = RenderRemovableComponentHeader("Camera", "CameraHeader", GetComponentIconTexture("component-camera.png"), &obj.camera.enabled, cameraEnabledChanged, removeCamera, &componentType, &reorderDraggedType, &reorderTargetType);
             }
             if (removeCamera) {
                 PushUndoState();
@@ -1598,13 +1698,16 @@ void SceneEditor::RenderInspectorPanel() {
                 }
                 endInspectorContinuousEdit();
             }
+            }
 
+            if (currentComponentToRender == SceneInspectorComponentType::Light) {
             bool removeLight = false;
             bool lightOpen = false;
             bool lightEnabledChanged = false;
             const bool lightEnabledBefore = obj.light.enabled;
             if (obj.hasLight) {
-                lightOpen = RenderRemovableComponentHeader("Light", "LightHeader", GetComponentIconTexture("component-light.png"), &obj.light.enabled, lightEnabledChanged, removeLight);
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::Light;
+                lightOpen = RenderRemovableComponentHeader("Light", "LightHeader", GetComponentIconTexture("component-light.png"), &obj.light.enabled, lightEnabledChanged, removeLight, &componentType, &reorderDraggedType, &reorderTargetType);
             }
             if (removeLight) {
                 PushUndoState();
@@ -1671,6 +1774,16 @@ void SceneEditor::RenderInspectorPanel() {
                     endInspectorContinuousEdit();
                 }
             }
+            }
+            }
+            if (reorderDraggedType != reorderTargetType) {
+                SceneObject orderProbe = obj;
+                if (MoveInspectorComponentBefore(orderProbe, reorderDraggedType, reorderTargetType)) {
+                    PushUndoState();
+                    MoveInspectorComponentBefore(obj, reorderDraggedType, reorderTargetType);
+                    if (onDirty_) onDirty_();
+                }
+            }
             ImGui::Separator();
             if (ImGui::Button("Delete")) {
                 DeleteSelectedObject();
@@ -1693,6 +1806,18 @@ void SceneEditor::RenderMultiSelectionInspector() {
     SceneObject& active = objects_[selectedIndex_];
     ImGui::Text("%zu objects selected", selectedIndices_.size());
     ImGui::TextDisabled("Showing components shared by every selected object. Edits apply to all selected objects.");
+    int sharedPhysicsLayer = ClampPhysicsLayerIndex(active.physicsLayer);
+    if (RenderPhysicsLayerCombo("Physics Layer##multi", "multiPhysicsLayer", active.physicsLayer, physicsLayerNames_, sharedPhysicsLayer)) {
+        PushUndoState();
+        for (int index : selectedIndices_) {
+            if (index >= 0 && index < static_cast<int>(objects_.size())) {
+                objects_[index].physicsLayer = sharedPhysicsLayer;
+            }
+        }
+        if (onDirty_) {
+            onDirty_();
+        }
+    }
 
     auto beginInspectorContinuousEdit = [&]() {
         if (!inspectorEditActive_) {

@@ -121,6 +121,101 @@ inline const char* SceneColliderTypeIcon(SceneColliderType type) {
     return "component-box-collider.png";
 }
 
+inline std::vector<SceneInspectorComponentType> DefaultInspectorComponentOrder() {
+    return {
+        SceneInspectorComponentType::Transform,
+        SceneInspectorComponentType::MeshFilter,
+        SceneInspectorComponentType::MeshRenderer,
+        SceneInspectorComponentType::Script,
+        SceneInspectorComponentType::Rigidbody,
+        SceneInspectorComponentType::Vehicle,
+        SceneInspectorComponentType::CharacterController,
+        SceneInspectorComponentType::Collider,
+        SceneInspectorComponentType::Camera,
+        SceneInspectorComponentType::Light
+    };
+}
+
+inline bool HasInspectorComponent(const SceneObject& object, SceneInspectorComponentType type) {
+    switch (type) {
+    case SceneInspectorComponentType::Transform:
+        return true;
+    case SceneInspectorComponentType::MeshFilter:
+        return object.hasMeshFilter;
+    case SceneInspectorComponentType::MeshRenderer:
+        return object.hasMeshRenderer;
+    case SceneInspectorComponentType::Script:
+        return object.hasScriptComponent;
+    case SceneInspectorComponentType::Rigidbody:
+        return object.hasRigidbody;
+    case SceneInspectorComponentType::Vehicle:
+        return object.hasVehicle;
+    case SceneInspectorComponentType::CharacterController:
+        return object.hasCharacterController;
+    case SceneInspectorComponentType::Collider:
+        return HasColliderComponent(object);
+    case SceneInspectorComponentType::Camera:
+        return object.hasCamera;
+    case SceneInspectorComponentType::Light:
+        return object.hasLight;
+    }
+    return false;
+}
+
+inline void SyncInspectorComponentOrder(SceneObject& object) {
+    const std::vector<SceneInspectorComponentType> defaults = DefaultInspectorComponentOrder();
+    std::vector<SceneInspectorComponentType> synced;
+    synced.reserve(defaults.size());
+
+    for (SceneInspectorComponentType type : object.inspectorComponentOrder) {
+        if (!HasInspectorComponent(object, type)) {
+            continue;
+        }
+        if (std::find(synced.begin(), synced.end(), type) == synced.end()) {
+            synced.push_back(type);
+        }
+    }
+
+    for (SceneInspectorComponentType type : defaults) {
+        if (!HasInspectorComponent(object, type)) {
+            continue;
+        }
+        if (std::find(synced.begin(), synced.end(), type) == synced.end()) {
+            synced.push_back(type);
+        }
+    }
+
+    if (synced.empty()) {
+        synced.push_back(SceneInspectorComponentType::Transform);
+    }
+    if (synced.front() != SceneInspectorComponentType::Transform) {
+        synced.erase(std::remove(synced.begin(), synced.end(), SceneInspectorComponentType::Transform), synced.end());
+        synced.insert(synced.begin(), SceneInspectorComponentType::Transform);
+    }
+    object.inspectorComponentOrder = std::move(synced);
+}
+
+inline bool MoveInspectorComponentBefore(SceneObject& object,
+                                         SceneInspectorComponentType dragged,
+                                         SceneInspectorComponentType target) {
+    if (dragged == SceneInspectorComponentType::Transform || target == SceneInspectorComponentType::Transform || dragged == target) {
+        return false;
+    }
+
+    SyncInspectorComponentOrder(object);
+    auto draggedIt = std::find(object.inspectorComponentOrder.begin(), object.inspectorComponentOrder.end(), dragged);
+    auto targetIt = std::find(object.inspectorComponentOrder.begin(), object.inspectorComponentOrder.end(), target);
+    if (draggedIt == object.inspectorComponentOrder.end() || targetIt == object.inspectorComponentOrder.end()) {
+        return false;
+    }
+
+    const SceneInspectorComponentType draggedType = *draggedIt;
+    object.inspectorComponentOrder.erase(draggedIt);
+    targetIt = std::find(object.inspectorComponentOrder.begin(), object.inspectorComponentOrder.end(), target);
+    object.inspectorComponentOrder.insert(targetIt, draggedType);
+    return true;
+}
+
 inline std::string OpenMeshFileDialogWin32(const std::string& initialDirectory = {}) {
 #if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
     char fileBuffer[MAX_PATH] = {0};

@@ -4,6 +4,44 @@
   "assetsRoot": "assets",
   "defaultScene": "assets/scenes/EditorScene.scene.json",
   "lastScene": "assets/scenes/Test2.scene.json",
+  "physics": {
+    "layers": [
+      "Default",
+      "World",
+      "Vehicle",
+      "VehicleWheel",
+      "Trigger",
+      "Player",
+      "Layer6",
+      "Layer7"
+    ],
+    "collisionMatrix": [
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, false, true, true, true, true]
+      },
+      {
+        "values": [true, true, false, false, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      }
+    ]
+  },
   "editorState": {
     "selectedProjectDirectory": "assets/track"
   }

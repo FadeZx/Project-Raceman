@@ -331,6 +331,9 @@ void Application::Update(float deltaTime) {
                 },
                 [this]() {
                     if (sceneEditor_) sceneEditor_->SaveProject();
+                },
+                [this]() {
+                    if (sceneEditor_) sceneEditor_->RenderProjectPhysicsSettings();
                 }
             } : EditorProjectMenu{},
             [this](const SkyboxFaces& faces) {

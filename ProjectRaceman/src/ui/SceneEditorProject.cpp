@@ -635,6 +635,58 @@ void SceneEditor::RenderProjectPanel() {
     ImGui::End();
 }
 
+void SceneEditor::RenderProjectPhysicsSettings() {
+    bool projectSettingsChanged = false;
+    if (ImGui::BeginTable("ProjectPhysicsLayerMatrix", kPhysicsLayerCount + 1, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit)) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted("Layer");
+        for (int column = 0; column < kPhysicsLayerCount; ++column) {
+            ImGui::TableSetColumnIndex(column + 1);
+            ImGui::PushID(("projectPhysicsLayerNameHeader_" + std::to_string(column)).c_str());
+            ImGui::SetNextItemWidth(100.0f);
+            std::string layerName = physicsLayerNames_[static_cast<std::size_t>(column)];
+            char buffer[64]{};
+            std::snprintf(buffer, sizeof(buffer), "%s", layerName.c_str());
+            if (ImGui::InputText("##layerName", buffer, sizeof(buffer))) {
+                physicsLayerNames_[static_cast<std::size_t>(column)] = buffer;
+                projectSettingsChanged = true;
+            }
+            ImGui::PopID();
+        }
+
+        for (int row = 0; row < kPhysicsLayerCount; ++row) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted(GetPhysicsLayerName(row));
+            for (int column = 0; column < kPhysicsLayerCount; ++column) {
+                ImGui::TableSetColumnIndex(column + 1);
+                bool collides = physicsLayerCollisionMatrix_[static_cast<std::size_t>(row)][static_cast<std::size_t>(column)];
+                const std::string checkboxId = "##projectPhysicsLayerCollision_" + std::to_string(row) + "_" + std::to_string(column);
+                if (ImGui::Checkbox(checkboxId.c_str(), &collides)) {
+                    physicsLayerCollisionMatrix_[static_cast<std::size_t>(row)][static_cast<std::size_t>(column)] = collides;
+                    physicsLayerCollisionMatrix_[static_cast<std::size_t>(column)][static_cast<std::size_t>(row)] = collides;
+                    projectSettingsChanged = true;
+                }
+            }
+        }
+
+        ImGui::EndTable();
+    }
+
+    if (projectSettingsChanged) {
+        for (int layerIndex = 0; layerIndex < kPhysicsLayerCount; ++layerIndex) {
+            if (physicsLayerNames_[static_cast<std::size_t>(layerIndex)].empty()) {
+                physicsLayerNames_[static_cast<std::size_t>(layerIndex)] = layerIndex == 0 ? "Default" : ("Layer" + std::to_string(layerIndex));
+            }
+        }
+        SaveProject();
+    }
+
+    ImGui::Spacing();
+    ImGui::TextDisabled("Assign each object's physics layer in the Inspector. This matrix controls which layers collide.");
+}
+
 
 void SceneEditor::ImportObj(const std::string& path) {
     namespace fs = std::filesystem;

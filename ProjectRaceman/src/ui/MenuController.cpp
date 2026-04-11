@@ -52,71 +52,85 @@ void MenuController::Render(Renderer& renderer,
 
     RenderMainMenu(onAddMeshPlane, projectMenu);
 
-    // Rendering panel: reuse existing DebugUI metrics by just showing a small window that calls them
-    if (showRendering_) {
-        if (ImGui::Begin("Rendering", &showRendering_, ImGuiWindowFlags_NoCollapse)) {
-        // Note: Application already calls DebugUI::RenderAppMetrics; to avoid duplication,
-        // we just mirror a few controls, or we could display a note.
-        auto& settings = renderer.GetSettings();
-        ImGui::TextUnformatted("Renderer Settings");
-        ImGui::SliderFloat("Exposure", &settings.exposure, 0.1f, 5.0f, "%.2f");
-        ImGui::SliderFloat("Gamma", &settings.gamma, 1.0f, 3.0f, "%.2f");
-        ImGui::ColorEdit3("Clear Color", &settings.clearColor.x);
-        ImGui::Checkbox("Enable Shadows", &settings.enableShadows);
-        ImGui::Checkbox("Show Env Debug", &settings.showEnvironmentDebugView);
+    if (showProjectSettings_) {
+        if (ImGui::Begin("Project Settings", &showProjectSettings_, ImGuiWindowFlags_NoCollapse)) {
+            if (ImGui::BeginTabBar("GlobalProjectSettingsTabs")) {
+                if (ImGui::BeginTabItem("Rendering")) {
+                    auto& settings = renderer.GetSettings();
+                    ImGui::TextUnformatted("Renderer Settings");
+                    ImGui::SliderFloat("Exposure", &settings.exposure, 0.1f, 5.0f, "%.2f");
+                    ImGui::SliderFloat("Gamma", &settings.gamma, 1.0f, 3.0f, "%.2f");
+                    ImGui::ColorEdit3("Clear Color", &settings.clearColor.x);
+                    ImGui::Checkbox("Enable Shadows", &settings.enableShadows);
+                    ImGui::Checkbox("Show Env Debug", &settings.showEnvironmentDebugView);
 
-        bool vs = vsyncEnabled;
-        if (ImGui::Checkbox("VSync", &vs)) {
-            if (setVSync) setVSync(vs);
-        }
-
-        ImGui::Separator();
-        // Collapsible Skybox section inside Rendering panel
-        // Use showSkybox_ only as default open hint
-        if (showSkybox_) { ImGui::SetNextItemOpen(true, ImGuiCond_Once); }
-        if (ImGui::CollapsingHeader("Skybox")) {
-            if (skyboxFolders_.empty()) {
-                RefreshSkyboxSets();
-            }
-
-            ImGui::TextUnformatted("Pick a skybox folder (auto-detects px/nx/py/ny/pz/nz or posx/negx/...)");
-            if (ImGui::BeginListBox("##skybox-folders", ImVec2(0, 200))) {
-                for (int i = 0; i < static_cast<int>(skyboxFolders_.size()); ++i) {
-                    bool selected = (i == selectedFolder_);
-                    if (ImGui::Selectable(skyboxFolders_[i].c_str(), selected)) {
-                        selectedFolder_ = i;
-                        if (selectedFolder_ >= 0) {
-                            selectedSkyboxFaces_ = BuildFacesFromFolder(skyboxFolders_[selectedFolder_]);
-                            hasSelectedSkyboxFaces_ = true;
+                    bool vs = vsyncEnabled;
+                    if (ImGui::Checkbox("VSync", &vs)) {
+                        if (setVSync) {
+                            setVSync(vs);
                         }
                     }
-                }
-                ImGui::EndListBox();
-            }
 
-            if (hasSelectedSkyboxFaces_) {
-                const auto& faces = selectedSkyboxFaces_;
-                const char* labels[6] = {"+X","-X","+Y","-Y","+Z","-Z"};
-                for (int i = 0; i < 6; ++i) {
-                    std::vector<char> buf(faces[i].begin(), faces[i].end());
-                    buf.push_back('\0');
-                    ImGui::InputText(labels[i], buf.data(), buf.size(), ImGuiInputTextFlags_ReadOnly);
-                }
-                if (onSkyboxChosen) {
-                    if (ImGui::Button("Apply Skybox")) {
-                        onSkyboxChosen(faces);
+                    ImGui::Separator();
+                    if (showSkybox_) {
+                        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
                     }
-                } else {
-                    ImGui::TextDisabled("Skybox selection is stored only.");
-                }
-            } else {
-                ImGui::TextDisabled("No skybox selected.");
-            }
-        }
+                    if (ImGui::CollapsingHeader("Skybox")) {
+                        if (skyboxFolders_.empty()) {
+                            RefreshSkyboxSets();
+                        }
 
+                        ImGui::TextUnformatted("Pick a skybox folder (auto-detects px/nx/py/ny/pz/nz or posx/negx/...)");
+                        if (ImGui::BeginListBox("##skybox-folders", ImVec2(0, 200))) {
+                            for (int i = 0; i < static_cast<int>(skyboxFolders_.size()); ++i) {
+                                bool selected = (i == selectedFolder_);
+                                if (ImGui::Selectable(skyboxFolders_[i].c_str(), selected)) {
+                                    selectedFolder_ = i;
+                                    if (selectedFolder_ >= 0) {
+                                        selectedSkyboxFaces_ = BuildFacesFromFolder(skyboxFolders_[selectedFolder_]);
+                                        hasSelectedSkyboxFaces_ = true;
+                                    }
+                                }
+                            }
+                            ImGui::EndListBox();
+                        }
+
+                        if (hasSelectedSkyboxFaces_) {
+                            const auto& faces = selectedSkyboxFaces_;
+                            const char* labels[6] = {"+X","-X","+Y","-Y","+Z","-Z"};
+                            for (int i = 0; i < 6; ++i) {
+                                std::vector<char> buf(faces[i].begin(), faces[i].end());
+                                buf.push_back('\0');
+                                ImGui::InputText(labels[i], buf.data(), buf.size(), ImGuiInputTextFlags_ReadOnly);
+                            }
+                            if (onSkyboxChosen) {
+                                if (ImGui::Button("Apply Skybox")) {
+                                    onSkyboxChosen(faces);
+                                }
+                            } else {
+                                ImGui::TextDisabled("Skybox selection is stored only.");
+                            }
+                        } else {
+                            ImGui::TextDisabled("No skybox selected.");
+                        }
+                    }
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("Physics")) {
+                    if (projectMenu.renderProjectSettings) {
+                        projectMenu.renderProjectSettings();
+                    } else {
+                        ImGui::TextDisabled("Physics settings are unavailable.");
+                    }
+                    ImGui::EndTabItem();
+                }
+
+                ImGui::EndTabBar();
+            }
         }
         ImGui::End();
-        if (!showRendering_) {
+        if (!showProjectSettings_) {
             SaveState();
         }
     }
@@ -168,8 +182,8 @@ void MenuController::RenderMainMenu(const std::function<void()>& onAddMeshPlane,
         (void)onAddMeshPlane;
 
         if (ImGui::BeginMenu("Window")) {
-            if (ImGui::MenuItem("Rendering", nullptr, showRendering_)) {
-                showRendering_ = !showRendering_;
+            if (ImGui::MenuItem("Project Settings...", nullptr, showProjectSettings_)) {
+                showProjectSettings_ = !showProjectSettings_;
                 SaveState();
             }
             ImGui::EndMenu();
@@ -343,7 +357,7 @@ void MenuController::LoadState() {
         if (pos == std::string::npos) continue;
         auto key = line.substr(0, pos);
         auto val = line.substr(pos + 1);
-        if (key == "showRendering") showRendering_ = (val == "1");
+        if (key == "showProjectSettings") showProjectSettings_ = (val == "1");
         else if (key == "showSkybox") showSkybox_ = (val == "1");
         else if (key == "showConsole") showConsole_ = (val == "1");
         else if (key == "selectedFolder") selectedFolder_ = std::stoi(val);
@@ -357,7 +371,7 @@ void MenuController::SaveState() const {
     } catch (...) {}
     std::ofstream out(stateFile_, std::ios::trunc);
     if (!out.good()) return;
-    out << "showRendering=" << (showRendering_ ? "1" : "0") << "\n";
+    out << "showProjectSettings=" << (showProjectSettings_ ? "1" : "0") << "\n";
     out << "showSkybox=" << (showSkybox_ ? "1" : "0") << "\n";
     out << "showConsole=" << (showConsole_ ? "1" : "0") << "\n";
     out << "selectedFolder=" << selectedFolder_ << "\n";
