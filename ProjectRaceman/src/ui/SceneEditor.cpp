@@ -31,337 +31,8 @@ struct ColliderWorldAabb {
     glm::vec3 min{0.0f};
     glm::vec3 max{0.0f};
 };
-
-bool ReadVec2(const raceman::physics::json::Object& object, const std::string& key, glm::vec2& out) {
-    auto it = object.find(key);
-    if (it == object.end() || !it->second.is_array()) {
-        return false;
-    }
-
-    const auto& a = it->second.as_array();
-    if (a.size() != 2 || !a[0].is_number() || !a[1].is_number()) {
-        return false;
-    }
-
-    out = {
-        static_cast<float>(a[0].as_number()),
-        static_cast<float>(a[1].as_number())
-    };
-    return true;
-}
-
-bool ReadVec3(const raceman::physics::json::Object& object, const std::string& key, glm::vec3& out) {
-    auto it = object.find(key);
-    if (it == object.end() || !it->second.is_array()) {
-        return false;
-    }
-
-    const auto& a = it->second.as_array();
-    if (a.size() != 3 || !a[0].is_number() || !a[1].is_number() || !a[2].is_number()) {
-        return false;
-    }
-
-    out = {
-        static_cast<float>(a[0].as_number()),
-        static_cast<float>(a[1].as_number()),
-        static_cast<float>(a[2].as_number())
-    };
-    return true;
-}
-
-bool ReadVec4(const raceman::physics::json::Object& object, const std::string& key, glm::vec4& out) {
-    auto it = object.find(key);
-    if (it == object.end() || !it->second.is_array()) {
-        return false;
-    }
-
-    const auto& a = it->second.as_array();
-    if (a.size() != 4 || !a[0].is_number() || !a[1].is_number() || !a[2].is_number() || !a[3].is_number()) {
-        return false;
-    }
-
-    out = {
-        static_cast<float>(a[0].as_number()),
-        static_cast<float>(a[1].as_number()),
-        static_cast<float>(a[2].as_number()),
-        static_cast<float>(a[3].as_number())
-    };
-    return true;
-}
-
-bool ReadBool(const raceman::physics::json::Object& object, const std::string& key, bool& out) {
-    auto it = object.find(key);
-    if (it == object.end() || !it->second.is_bool()) {
-        return false;
-    }
-    out = it->second.as_bool();
-    return true;
-}
-
-bool ReadString(const raceman::physics::json::Object& object, const std::string& key, std::string& out) {
-    auto it = object.find(key);
-    if (it == object.end() || !it->second.is_string()) {
-        return false;
-    }
-    out = it->second.as_string();
-    return true;
-}
-
-std::string RigidbodyBodyTypeToString(RigidbodyBodyType bodyType) {
-    if (bodyType == RigidbodyBodyType::Static) return "Static";
-    if (bodyType == RigidbodyBodyType::Kinematic) return "Kinematic";
-    return "Dynamic";
-}
-
-RigidbodyBodyType RigidbodyBodyTypeFromString(const std::string& value) {
-    if (value == "Static") return RigidbodyBodyType::Static;
-    if (value == "Kinematic") return RigidbodyBodyType::Kinematic;
-    return RigidbodyBodyType::Dynamic;
-}
-
-std::string LightTypeToString(LightType type) {
-    if (type == LightType::Directional) return "Directional";
-    if (type == LightType::Spot) return "Spot";
-    return "Point";
-}
-
-LightType LightTypeFromString(const std::string& value) {
-    if (value == "Directional") return LightType::Directional;
-    if (value == "Spot") return LightType::Spot;
-    return LightType::Point;
-}
-
-std::string MeshColliderBuildQualityToString(MeshColliderBuildQuality quality) {
-    if (quality == MeshColliderBuildQuality::Balanced) return "Balanced";
-    if (quality == MeshColliderBuildQuality::BuildQuality) return "BuildQuality";
-    return "BuildSpeed";
-}
-
-MeshColliderBuildQuality MeshColliderBuildQualityFromString(const std::string& value) {
-    if (value == "Balanced") return MeshColliderBuildQuality::Balanced;
-    if (value == "BuildQuality") return MeshColliderBuildQuality::BuildQuality;
-    return MeshColliderBuildQuality::BuildSpeed;
-}
-
-const char* InspectorComponentTypeToString(SceneInspectorComponentType type) {
-    switch (type) {
-    case SceneInspectorComponentType::Transform: return "Transform";
-    case SceneInspectorComponentType::MeshFilter: return "MeshFilter";
-    case SceneInspectorComponentType::MeshRenderer: return "MeshRenderer";
-    case SceneInspectorComponentType::Script: return "Script";
-    case SceneInspectorComponentType::Rigidbody: return "Rigidbody";
-    case SceneInspectorComponentType::Vehicle: return "Vehicle";
-    case SceneInspectorComponentType::CharacterController: return "CharacterController";
-    case SceneInspectorComponentType::Collider: return "Collider";
-    case SceneInspectorComponentType::Camera: return "Camera";
-    case SceneInspectorComponentType::Light: return "Light";
-    }
-    return "Transform";
-}
-
-bool InspectorComponentTypeFromString(const std::string& value, SceneInspectorComponentType& outType) {
-    if (value == "Transform") { outType = SceneInspectorComponentType::Transform; return true; }
-    if (value == "MeshFilter") { outType = SceneInspectorComponentType::MeshFilter; return true; }
-    if (value == "MeshRenderer") { outType = SceneInspectorComponentType::MeshRenderer; return true; }
-    if (value == "Script") { outType = SceneInspectorComponentType::Script; return true; }
-    if (value == "Rigidbody") { outType = SceneInspectorComponentType::Rigidbody; return true; }
-    if (value == "Vehicle") { outType = SceneInspectorComponentType::Vehicle; return true; }
-    if (value == "CharacterController") { outType = SceneInspectorComponentType::CharacterController; return true; }
-    if (value == "Collider") { outType = SceneInspectorComponentType::Collider; return true; }
-    if (value == "Camera") { outType = SceneInspectorComponentType::Camera; return true; }
-    if (value == "Light") { outType = SceneInspectorComponentType::Light; return true; }
-    return false;
-}
-
-bool ReadBoolArray(const raceman::physics::json::Object& object, const std::string& key, std::array<bool, kPhysicsLayerCount>& out) {
-    auto it = object.find(key);
-    if (it == object.end() || !it->second.is_array()) {
-        return false;
-    }
-
-    const auto& values = it->second.as_array();
-    if (values.size() != kPhysicsLayerCount) {
-        return false;
-    }
-
-    for (int i = 0; i < kPhysicsLayerCount; ++i) {
-        if (!values[static_cast<std::size_t>(i)].is_bool()) {
-            return false;
-        }
-        out[static_cast<std::size_t>(i)] = values[static_cast<std::size_t>(i)].as_bool();
-    }
-    return true;
-}
-
-PhysicsLayerNames MakeDefaultPhysicsLayerNames() {
-    PhysicsLayerNames names{};
-    names[0] = "Default";
-    names[1] = "World";
-    names[2] = "Vehicle";
-    names[3] = "VehicleWheel";
-    names[4] = "Trigger";
-    names[5] = "Player";
-    names[6] = "Layer6";
-    names[7] = "Layer7";
-    return names;
-}
-
-PhysicsLayerCollisionMatrix MakeDefaultPhysicsLayerCollisionMatrix() {
-    PhysicsLayerCollisionMatrix matrix{};
-    for (int row = 0; row < kPhysicsLayerCount; ++row) {
-        for (int column = 0; column < kPhysicsLayerCount; ++column) {
-            matrix[static_cast<std::size_t>(row)][static_cast<std::size_t>(column)] = true;
-        }
-    }
-
-    matrix[3][2] = false;
-    matrix[2][3] = false;
-    matrix[3][3] = false;
-    return matrix;
-}
-
-std::string MakePhysicsLayerStorageName(const std::string& value, int fallbackIndex) {
-    std::string trimmed = scene_editor_internal::TrimCopyLocal(value);
-    if (trimmed.empty()) {
-        return fallbackIndex == 0 ? "Default" : ("Layer" + std::to_string(fallbackIndex));
-    }
-
-    return trimmed;
-}
-
 float MaxAbsComponent(const glm::vec3& value) {
     return (std::max)((std::max)(std::abs(value.x), std::abs(value.y)), std::abs(value.z));
-}
-
-glm::mat4 BuildTransformMatrix(const Transform& transform) {
-    glm::mat4 model(1.0f);
-    model = glm::translate(model, transform.position);
-    const glm::vec3 rads = glm::radians(transform.rotationEuler);
-    model = glm::rotate(model, rads.z, glm::vec3(0.0f, 0.0f, 1.0f));
-    model = glm::rotate(model, rads.y, glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, rads.x, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, transform.scale);
-    return model;
-}
-
-Transform TransformFromMatrix(const glm::mat4& matrix) {
-    Transform transform;
-    glm::vec3 skew;
-    glm::vec4 perspective;
-    glm::quat orientation;
-    if (glm::decompose(matrix, transform.scale, orientation, transform.position, skew, perspective)) {
-        transform.rotationEuler = glm::degrees(glm::eulerAngles(orientation));
-    }
-    return transform;
-}
-
-glm::vec3 TransformPoint(const glm::mat4& transform, const glm::vec3& point) {
-    return glm::vec3(transform * glm::vec4(point, 1.0f));
-}
-
-glm::vec3 ToGlmVec3(const raceman::physics::Vector3& value) {
-    return {value.x, value.y, value.z};
-}
-
-raceman::physics::Vector3 ToVehicleVec3(const glm::vec3& value) {
-    return {value.x, value.y, value.z};
-}
-
-glm::mat3 VehicleToSceneBasis() {
-    return glm::mat3(
-        glm::vec3(1.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 1.0f),
-        glm::vec3(0.0f, 1.0f, 0.0f));
-}
-
-glm::vec3 VehicleVectorToScene(const raceman::physics::Vector3& value) {
-    return VehicleToSceneBasis() * ToGlmVec3(value);
-}
-
-raceman::physics::Vector3 SceneVectorToVehicle(const glm::vec3& value) {
-    const glm::vec3 converted = glm::transpose(VehicleToSceneBasis()) * value;
-    return ToVehicleVec3(converted);
-}
-
-glm::quat ToGlmQuat(const raceman::physics::Quaternion& value) {
-    return glm::quat(value.w, value.x, value.y, value.z);
-}
-
-raceman::physics::Quaternion ToVehicleQuat(const glm::quat& value) {
-    return {value.w, value.x, value.y, value.z};
-}
-
-glm::quat VehicleQuatToScene(const raceman::physics::Quaternion& value) {
-    const glm::mat3 basis = VehicleToSceneBasis();
-    const glm::mat3 vehicleRotation = glm::mat3_cast(ToGlmQuat(value));
-    return glm::quat_cast(basis * vehicleRotation * glm::transpose(basis));
-}
-
-raceman::physics::Quaternion SceneQuatToVehicle(const glm::quat& value) {
-    const glm::mat3 basis = VehicleToSceneBasis();
-    const glm::mat3 sceneRotation = glm::mat3_cast(value);
-    return ToVehicleQuat(glm::quat_cast(glm::transpose(basis) * sceneRotation * basis));
-}
-
-Transform TransformFromVehicleTransform(const raceman::physics::Transform& transform) {
-    Transform result;
-    result.position = VehicleVectorToScene(transform.position);
-    result.rotationEuler = glm::degrees(glm::eulerAngles(VehicleQuatToScene(transform.rotation)));
-    result.scale = glm::vec3(1.0f);
-    return result;
-}
-
-glm::mat4 BuildRotationOnlyMatrix(const glm::vec3& rotationEuler) {
-    Transform rotationOnly;
-    rotationOnly.rotationEuler = rotationEuler;
-    return BuildTransformMatrix(rotationOnly);
-}
-
-Transform BuildWheelWorldTransformFromAuthoredLocal(const glm::mat4& vehicleWorldMatrix,
-                                                    const Transform& authoredLocalTransform,
-                                                    const Transform& runtimeChassisWorldTransform,
-                                                    const Transform& runtimeWheelWorldTransform,
-                                                    const VehicleWheelBinding& binding) {
-    const glm::mat4 runtimeChassisWorldMatrix = BuildTransformMatrix(runtimeChassisWorldTransform);
-    const glm::mat4 runtimeWheelWorldMatrix = BuildTransformMatrix(runtimeWheelWorldTransform);
-    const glm::mat4 runtimeWheelRelativeMatrix = glm::inverse(runtimeChassisWorldMatrix) * runtimeWheelWorldMatrix;
-    const Transform runtimeWheelRelativeTransform = TransformFromMatrix(runtimeWheelRelativeMatrix);
-
-    glm::mat4 wheelWorldMatrix = vehicleWorldMatrix;
-    wheelWorldMatrix = wheelWorldMatrix * glm::translate(glm::mat4(1.0f), authoredLocalTransform.position);
-    wheelWorldMatrix = wheelWorldMatrix * BuildRotationOnlyMatrix(runtimeWheelRelativeTransform.rotationEuler);
-    wheelWorldMatrix = wheelWorldMatrix * BuildRotationOnlyMatrix(authoredLocalTransform.rotationEuler);
-    wheelWorldMatrix = wheelWorldMatrix * BuildRotationOnlyMatrix(binding.visualRotationEuler);
-    wheelWorldMatrix = wheelWorldMatrix * glm::scale(glm::mat4(1.0f), authoredLocalTransform.scale);
-    return TransformFromMatrix(wheelWorldMatrix);
-}
-
-void ApplyWorldTransformToSceneObject(std::vector<SceneObject>& objects,
-                                      const std::function<int(const std::string&)>& findObjectIndexById,
-                                      const std::function<glm::mat4(int)>& getObjectWorldMatrix,
-                                      int objectIndex,
-                                      const Transform& worldTransform,
-                                      bool preserveScale) {
-    if (objectIndex < 0 || objectIndex >= static_cast<int>(objects.size())) {
-        return;
-    }
-
-    const Transform previousLocal = objects[objectIndex].transform;
-    glm::mat4 worldMatrix = BuildTransformMatrix(worldTransform);
-    if (preserveScale) {
-        worldMatrix = glm::scale(worldMatrix, previousLocal.scale);
-    }
-
-    const int parentIndex = findObjectIndexById(objects[objectIndex].parentId);
-    if (parentIndex >= 0 && parentIndex != objectIndex) {
-        objects[objectIndex].transform = TransformFromMatrix(glm::inverse(getObjectWorldMatrix(parentIndex)) * worldMatrix);
-    } else {
-        objects[objectIndex].transform = TransformFromMatrix(worldMatrix);
-    }
-
-    if (preserveScale) {
-        objects[objectIndex].transform.scale = previousLocal.scale;
-    }
 }
 glm::mat4 BuildRotationMatrix(const glm::vec3& rotationEuler) {
     glm::mat4 rotation(1.0f);
@@ -535,48 +206,6 @@ ScriptFieldType ScriptFieldTypeFromString(const std::string& value) {
     if (value == "Vec3") return ScriptFieldType::Vec3;
     if (value == "Vec4") return ScriptFieldType::Vec4;
     return ScriptFieldType::Float;
-}
-
-ScriptFieldEntry MakeScriptFieldEntry(const ScriptFieldDefinition& definition) {
-    return {definition.name, definition.type, definition.defaultValue};
-}
-
-bool IsScriptFieldValueCompatible(ScriptFieldType type, const ScriptFieldValue& value) {
-    switch (type) {
-    case ScriptFieldType::Bool: return std::holds_alternative<bool>(value);
-    case ScriptFieldType::Int: return std::holds_alternative<int>(value);
-    case ScriptFieldType::Float: return std::holds_alternative<float>(value);
-    case ScriptFieldType::String: return std::holds_alternative<std::string>(value);
-    case ScriptFieldType::Vec2: return std::holds_alternative<glm::vec2>(value);
-    case ScriptFieldType::Vec3: return std::holds_alternative<glm::vec3>(value);
-    case ScriptFieldType::Vec4: return std::holds_alternative<glm::vec4>(value);
-    }
-    return false;
-}
-
-bool SyncScriptAttachmentFields(ObjectScriptAttachment& attachment, const std::vector<ScriptFieldDefinition>& definitions) {
-    bool changed = false;
-    std::vector<ScriptFieldEntry> synced;
-    synced.reserve(definitions.size());
-
-    for (const ScriptFieldDefinition& definition : definitions) {
-        auto existing = std::find_if(attachment.fields.begin(), attachment.fields.end(), [&](const ScriptFieldEntry& field) {
-            return field.name == definition.name;
-        });
-
-        if (existing != attachment.fields.end() && existing->type == definition.type && IsScriptFieldValueCompatible(existing->type, existing->value)) {
-            synced.push_back(*existing);
-        } else {
-            synced.push_back(MakeScriptFieldEntry(definition));
-            changed = true;
-        }
-    }
-
-    if (attachment.fields.size() != synced.size()) {
-        changed = true;
-    }
-    attachment.fields = std::move(synced);
-    return changed;
 }
 
 void WriteScriptFieldValue(std::ostream& out, const ScriptFieldEntry& field) {
@@ -1018,6 +647,7 @@ void SceneEditor::AddEmptyObject() {
 void SceneEditor::RenderUI(float deltaTime) {
     HandleEditorShortcuts();
     UpdateScripts(deltaTime);
+    UpdateVehiclePhysics(deltaTime);
     UpdatePhysics(deltaTime);
     UpdateVehicles(deltaTime);
 
@@ -1026,6 +656,7 @@ void SceneEditor::RenderUI(float deltaTime) {
     RenderInspectorPanel();
     RenderProjectPanel();
     RenderViewportPanel();
+    RenderVehicleConfigEditorWindow();
 }
 
 float SceneEditor::GetViewportAspect() const {
@@ -1275,16 +906,66 @@ void SceneEditor::HandleEditorShortcuts() {
     if (io.WantTextInput) {
         return;
     }
+    const bool vehicleConfigShortcutTarget = showVehicleConfigEditor_ &&
+        (vehicleConfigEditorFocused_ || vehicleConfigEditorHovered_);
     if (IsCtrlZPressed()) {
-        Undo();
+        if (vehicleConfigShortcutTarget) {
+            UndoVehicleConfig();
+        } else {
+            Undo();
+        }
         return;
     }
     if (IsCtrlYPressed()) {
-        Redo();
+        if (vehicleConfigShortcutTarget) {
+            RedoVehicleConfig();
+        } else {
+            Redo();
+        }
+        return;
+    }
+
+    if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C)) {
+        const bool wantsComponentCopy = (inspectorPanelHovered_ || inspectorPanelFocused_) &&
+            !inspectorKeyboardTargetComponentKey_.empty() &&
+            selectedIndex_ >= 0 &&
+            selectedIndex_ < static_cast<int>(objects_.size());
+        if (wantsComponentCopy) {
+            CopyInspectorComponentToClipboard(selectedIndex_, inspectorKeyboardTargetComponentType_);
+        } else {
+            CopySelectedObjectsToClipboard();
+        }
+        return;
+    }
+
+    if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_V)) {
+        const bool wantsComponentPaste = (inspectorPanelHovered_ || inspectorPanelFocused_) &&
+            componentClipboard_.hasValue &&
+            (!inspectorKeyboardTargetComponentKey_.empty() || !selectedIndices_.empty());
+        if (wantsComponentPaste) {
+            std::vector<int> targetIndices = selectedIndices_;
+            if (targetIndices.empty() && selectedIndex_ >= 0) {
+                targetIndices.push_back(selectedIndex_);
+            }
+            PasteInspectorComponentFromClipboard(targetIndices, componentClipboard_.type);
+        } else {
+            PasteObjectsFromClipboard();
+        }
         return;
     }
 
     if (!io.KeyCtrl && !io.KeyAlt && !io.MouseDown[1]) {
+        if (ImGui::IsKeyPressed(ImGuiKey_E)) {
+            if ((inspectorPanelHovered_ || inspectorPanelFocused_) && !inspectorKeyboardTargetComponentKey_.empty()) {
+                pendingInspectorToggleComponentKey_ = inspectorKeyboardTargetComponentKey_;
+                return;
+            }
+            if ((scenePanelHovered_ || scenePanelFocused_) && !hierarchyKeyboardTargetObjectId_.empty()) {
+                pendingHierarchyToggleObjectId_ = hierarchyKeyboardTargetObjectId_;
+                return;
+            }
+        }
+
         if (ImGui::IsKeyPressed(ImGuiKey_W)) {
             gizmoMode_ = GizmoMode::Move;
         } else if (ImGui::IsKeyPressed(ImGuiKey_E)) {
@@ -1295,576 +976,220 @@ void SceneEditor::HandleEditorShortcuts() {
     }
 }
 
-void SceneEditor::UpdateScripts(float deltaTime) {
-    if (!scriptsRunning_ || scriptsPaused_ || deltaTime <= 0.0f) {
-        return;
-    }
-
-    for (RuntimeScriptInstance& runtimeScript : runtimeScripts_) {
-        auto objectIt = std::find_if(objects_.begin(), objects_.end(), [&](const SceneObject& object) {
-            return object.id == runtimeScript.objectId;
-        });
-        if (objectIt == objects_.end()) {
-            continue;
-        }
-        const int objectIndex = static_cast<int>(std::distance(objects_.begin(), objectIt));
-        if (!IsObjectEffectivelyEnabled(objectIndex) || !objectIt->hasScriptComponent || !objectIt->scriptComponent.enabled) {
-            continue;
-        }
-        if (runtimeScript.attachmentIndex >= objectIt->scriptComponent.attachments.size()) {
-            continue;
-        }
-
-        ObjectScriptAttachment& attachment = objectIt->scriptComponent.attachments[runtimeScript.attachmentIndex];
-        if (!attachment.enabled || !runtimeScript.instance) {
-            continue;
-        }
-
-        InputManager* scriptInput = ShouldRouteInputToGame() ? inputManager_ : nullptr;
-        ObjectScriptContext context(*objectIt, &attachment, console_, scriptInput, physicsWorld_.get());
-        if (!runtimeScript.started) {
-            runtimeScript.instance->OnStart(context);
-            runtimeScript.started = true;
-        }
-        runtimeScript.instance->OnUpdate(context, deltaTime);
-    }
-}
-
-void SceneEditor::UpdatePhysics(float deltaTime) {
-    if (!scriptsRunning_ || scriptsPaused_ || deltaTime <= 0.0f) {
-        return;
-    }
-
-    if (!physicsWorld_) {
-        return;
-    }
-
-    for (const SceneObject& object : objects_) {
-        if (object.hasRigidbody &&
-            object.rigidbody.enabled &&
-            !(object.hasVehicle && object.vehicle.enabled) &&
-            object.rigidbody.bodyType != RigidbodyBodyType::Static) {
-            physicsWorld_->SetBodyVelocity(object.id, object.rigidbody.velocity);
-            physicsWorld_->SetBodyAngularVelocity(object.id, object.rigidbody.angularVelocity);
-        }
-    }
-
-    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-        const SceneObject& object = objects_[objectIndex];
-        if (!object.hasCharacterController || !object.characterController.enabled || !physicsWorld_->HasCharacter(object.id)) {
-            continue;
-        }
-
-        const Transform worldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
-        physicsWorld_->SetCharacterTransform(object.id, worldTransform.position, worldTransform.rotationEuler);
-        physicsWorld_->SetCharacterDesiredVelocity(object.id, object.characterController.moveInput);
-        if (object.characterController.pendingJumpImpulse > 0.0f) {
-            physicsWorld_->AddCharacterJumpImpulse(object.id, object.characterController.pendingJumpImpulse);
-        }
-    }
-
-    physicsWorld_->Step(deltaTime);
-
-    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-        SceneObject& object = objects_[objectIndex];
-        if (!object.hasRigidbody || (object.hasVehicle && object.vehicle.enabled) || object.rigidbody.bodyType == RigidbodyBodyType::Static) {
-            continue;
-        }
-
-        PhysicsBodyState state;
-        if (!physicsWorld_->GetBodyState(object.id, state)) {
-            continue;
-        }
-
-        object.rigidbody.velocity = state.velocity;
-        object.rigidbody.angularVelocity = state.angularVelocity;
-        const Transform previousLocal = object.transform;
-        Transform worldTransform;
-        worldTransform.position = state.position;
-        worldTransform.rotationEuler = state.rotationEuler;
-        worldTransform.scale = glm::vec3(1.0f);
-
-        glm::mat4 worldMatrix = BuildTransformMatrix(worldTransform);
-        worldMatrix = glm::scale(worldMatrix, previousLocal.scale);
-        const int parentIndex = FindObjectIndexById(object.parentId);
-        if (parentIndex >= 0 && parentIndex != objectIndex) {
-            object.transform = TransformFromMatrix(glm::inverse(GetObjectWorldMatrix(parentIndex)) * worldMatrix);
-        } else {
-            object.transform = TransformFromMatrix(worldMatrix);
-        }
-        object.transform.scale = previousLocal.scale;
-    }
-
-    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-        SceneObject& object = objects_[objectIndex];
-        if (!object.hasCharacterController || !physicsWorld_->HasCharacter(object.id)) {
-            continue;
-        }
-
-        PhysicsCharacterState state;
-        if (!physicsWorld_->GetCharacterState(object.id, state)) {
-            continue;
-        }
-
-        object.characterController.velocity = state.velocity;
-        object.characterController.groundVelocity = state.groundVelocity;
-        object.characterController.grounded = state.grounded;
-        object.characterController.pendingJumpImpulse = 0.0f;
-
-        const Transform previousLocal = object.transform;
-        Transform worldTransform;
-        worldTransform.position = state.position;
-        worldTransform.rotationEuler = state.rotationEuler;
-        worldTransform.scale = glm::vec3(1.0f);
-
-        glm::mat4 worldMatrix = BuildTransformMatrix(worldTransform);
-        worldMatrix = glm::scale(worldMatrix, previousLocal.scale);
-        const int parentIndex = FindObjectIndexById(object.parentId);
-        if (parentIndex >= 0 && parentIndex != objectIndex) {
-            object.transform = TransformFromMatrix(glm::inverse(GetObjectWorldMatrix(parentIndex)) * worldMatrix);
-        } else {
-            object.transform = TransformFromMatrix(worldMatrix);
-        }
-        object.transform.scale = previousLocal.scale;
-    }
-}
-
-void SceneEditor::UpdateVehicles(float deltaTime) {
-    if (!scriptsRunning_ || scriptsPaused_ || deltaTime <= 0.0f) {
-        return;
-    }
-
-    if (runtimeVehicles_.empty()) {
-        return;
-    }
-
-    raceman::physics::VehicleControlInput input{};
-    if (ShouldRouteInputToGame() && inputManager_ != nullptr) {
-        if (inputManager_->IsKeyDown(GLFW_KEY_W) || inputManager_->IsKeyDown(GLFW_KEY_UP)) {
-            input.throttle = 1.0f;
-        }
-        if (inputManager_->IsKeyDown(GLFW_KEY_S) || inputManager_->IsKeyDown(GLFW_KEY_DOWN)) {
-            input.brake = 1.0f;
-        }
-        if (inputManager_->IsKeyDown(GLFW_KEY_A) || inputManager_->IsKeyDown(GLFW_KEY_LEFT)) {
-            input.steering -= 1.0f;
-        }
-        if (inputManager_->IsKeyDown(GLFW_KEY_D) || inputManager_->IsKeyDown(GLFW_KEY_RIGHT)) {
-            input.steering += 1.0f;
-        }
-        if (inputManager_->IsKeyDown(GLFW_KEY_SPACE)) {
-            input.handbrake = 1.0f;
-        }
-    }
-
-    for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
-        if (!runtimeVehicle.instance) {
-            continue;
-        }
-        if (runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
-            continue;
-        }
-        if (!IsObjectEffectivelyEnabled(runtimeVehicle.objectIndex)) {
-            continue;
-        }
-
-        runtimeVehicle.instance->setInput(input);
-        runtimeVehicle.instance->update(deltaTime);
-
-        const Transform runtimeChassisWorldTransform = TransformFromVehicleTransform(runtimeVehicle.instance->getChassisTransform());
-
-        ApplyWorldTransformToSceneObject(
-            objects_,
-            [this](const std::string& id) { return FindObjectIndexById(id); },
-            [this](int index) { return GetObjectWorldMatrix(index); },
-            runtimeVehicle.objectIndex,
-            runtimeChassisWorldTransform,
-            true);
-
-        const glm::mat4 authoredVehicleWorldMatrix = GetObjectWorldMatrix(runtimeVehicle.objectIndex);
-
-        const std::vector<raceman::physics::Transform>& wheelTransforms = runtimeVehicle.instance->getWheelTransforms();
-        const std::size_t wheelCount = (std::min)(wheelTransforms.size(), runtimeVehicle.wheelObjectIndices.size());
-        for (std::size_t wheelIndex = 0; wheelIndex < wheelCount; ++wheelIndex) {
-            const int objectIndex = runtimeVehicle.wheelObjectIndices[wheelIndex];
-            if (objectIndex < 0 || objectIndex >= static_cast<int>(objects_.size())) {
-                continue;
-            }
-
-            Transform wheelWorldTransform = TransformFromVehicleTransform(wheelTransforms[wheelIndex]);
-            if (wheelIndex < runtimeVehicle.wheelBindings.size() && wheelIndex < runtimeVehicle.wheelAuthoredLocalTransforms.size()) {
-                wheelWorldTransform = BuildWheelWorldTransformFromAuthoredLocal(
-                    authoredVehicleWorldMatrix,
-                    runtimeVehicle.wheelAuthoredLocalTransforms[wheelIndex],
-                    runtimeChassisWorldTransform,
-                    wheelWorldTransform,
-                    runtimeVehicle.wheelBindings[wheelIndex]);
-            }
-
-            ApplyWorldTransformToSceneObject(
-                objects_,
-                [this](const std::string& id) { return FindObjectIndexById(id); },
-                [this](int index) { return GetObjectWorldMatrix(index); },
-                objectIndex,
-                wheelWorldTransform,
-                false);
-        }
-    }
-}
-
-void SceneEditor::ResetPhysicsVelocities() {
-    for (SceneObject& object : objects_) {
-        if (object.hasRigidbody) {
-            object.rigidbody.velocity = {0.0f, 0.0f, 0.0f};
-            object.rigidbody.angularVelocity = {0.0f, 0.0f, 0.0f};
-        }
-        if (object.hasCharacterController) {
-            object.characterController.velocity = {0.0f, 0.0f, 0.0f};
-            object.characterController.groundVelocity = {0.0f, 0.0f, 0.0f};
-            object.characterController.moveInput = {0.0f, 0.0f, 0.0f};
-            object.characterController.pendingJumpImpulse = 0.0f;
-            object.characterController.grounded = false;
-        }
-    }
-}
-
-void SceneEditor::SetScriptsRunning(bool running) {
-    if (scriptsRunning_ == running) {
-        return;
-    }
-
-    if (running) {
-        SaveCurrentScene();
-        playModeSnapshot_ = {objects_, selectedIndex_, selectedIndices_};
-        hasPlayModeSnapshot_ = true;
-        activeViewport_ = SceneEditorActiveViewport::Game;
-        scriptsRunning_ = true;
-        scriptsPaused_ = false;
-        std::vector<PhysicsBodyDesc> physicsBodies;
-        std::vector<PhysicsCharacterDesc> physicsCharacters;
-        for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-            const SceneObject& object = objects_[objectIndex];
-            if (!IsObjectEffectivelyEnabled(objectIndex)) {
-                continue;
-            }
-
-            const Transform worldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
-            if (object.hasCharacterController && object.characterController.enabled) {
-                PhysicsCharacterDesc character;
-                character.objectId = object.id;
-                character.position = worldTransform.position;
-                character.rotationEuler = worldTransform.rotationEuler;
-                character.height = object.characterController.height;
-                character.radius = object.characterController.radius;
-                character.center = object.characterController.center;
-                character.stepHeight = object.characterController.stepHeight;
-                character.slopeLimitDegrees = object.characterController.slopeLimitDegrees;
-                character.maxStrength = object.characterController.maxStrength;
-                character.mass = object.characterController.mass;
-                physicsCharacters.push_back(std::move(character));
-                continue;
-            }
-
-            if (object.hasVehicle && object.vehicle.enabled) {
-                continue;
-            }
-
-            PhysicsBodyDesc body;
-            body.objectId = object.id;
-            body.collisionLayer = ClampPhysicsLayerIndex(object.physicsLayer);
-            body.position = worldTransform.position;
-            body.rotationEuler = worldTransform.rotationEuler;
-            body.scale = worldTransform.scale;
-            body.bodyType = PhysicsBodyType::Static;
-            if (object.hasRigidbody && object.rigidbody.enabled && !(object.hasVehicle && object.vehicle.enabled)) {
-                body.bodyType = object.rigidbody.bodyType == RigidbodyBodyType::Dynamic
-                    ? PhysicsBodyType::Dynamic
-                    : (object.rigidbody.bodyType == RigidbodyBodyType::Kinematic ? PhysicsBodyType::Kinematic : PhysicsBodyType::Static);
-            }
-            body.mass = object.hasRigidbody ? object.rigidbody.mass : 1.0f;
-            body.useGravity = object.hasRigidbody ? object.rigidbody.useGravity : false;
-            body.linearDamping = object.hasRigidbody ? object.rigidbody.linearDamping : 0.05f;
-            body.angularDamping = object.hasRigidbody ? object.rigidbody.angularDamping : 0.05f;
-            body.friction = object.hasRigidbody ? object.rigidbody.friction : 0.2f;
-            body.restitution = object.hasRigidbody ? object.rigidbody.restitution : 0.0f;
-            body.velocity = object.hasRigidbody ? object.rigidbody.velocity : glm::vec3{0.0f};
-            body.angularVelocity = object.hasRigidbody ? object.rigidbody.angularVelocity : glm::vec3{0.0f};
-            body.freezePositionX = object.hasRigidbody ? object.rigidbody.freezePositionX : false;
-            body.freezePositionY = object.hasRigidbody ? object.rigidbody.freezePositionY : false;
-            body.freezePositionZ = object.hasRigidbody ? object.rigidbody.freezePositionZ : false;
-            body.freezeRotationX = object.hasRigidbody ? object.rigidbody.freezeRotationX : false;
-            body.freezeRotationY = object.hasRigidbody ? object.rigidbody.freezeRotationY : false;
-            body.freezeRotationZ = object.hasRigidbody ? object.rigidbody.freezeRotationZ : false;
-
-            const SceneColliderType colliderType = GetActiveColliderType(object);
-            if (colliderType == SceneColliderType::Box && object.boxCollider.enabled) {
-                PhysicsColliderDesc collider;
-                collider.type = PhysicsColliderType::Box;
-                collider.isTrigger = object.boxCollider.isTrigger;
-                collider.center = object.boxCollider.center;
-                collider.size = object.boxCollider.size;
-                body.colliders.push_back(collider);
-            }
-            if (colliderType == SceneColliderType::Sphere && object.sphereCollider.enabled) {
-                PhysicsColliderDesc collider;
-                collider.type = PhysicsColliderType::Sphere;
-                collider.isTrigger = object.sphereCollider.isTrigger;
-                collider.center = object.sphereCollider.center;
-                collider.radius = object.sphereCollider.radius;
-                body.colliders.push_back(collider);
-            }
-            if (colliderType == SceneColliderType::Capsule && object.capsuleCollider.enabled) {
-                PhysicsColliderDesc collider;
-                collider.type = PhysicsColliderType::Capsule;
-                collider.isTrigger = object.capsuleCollider.isTrigger;
-                collider.center = object.capsuleCollider.center;
-                collider.radius = object.capsuleCollider.radius;
-                collider.height = object.capsuleCollider.height;
-                body.colliders.push_back(collider);
-            }
-            if (colliderType == SceneColliderType::Plane && object.planeCollider.enabled) {
-                PhysicsColliderDesc collider;
-                collider.type = PhysicsColliderType::Plane;
-                collider.isTrigger = object.planeCollider.isTrigger;
-                collider.normal = object.planeCollider.normal;
-                collider.offset = object.planeCollider.offset;
-                collider.infinite = object.planeCollider.infinite;
-                collider.halfExtent = object.planeCollider.halfExtent;
-                body.colliders.push_back(collider);
-            }
-            if (colliderType == SceneColliderType::Mesh && object.meshCollider.enabled && object.hasMeshFilter && !object.meshFilter.sourcePath.empty()) {
-                PhysicsColliderDesc collider;
-                collider.type = PhysicsColliderType::Mesh;
-                collider.isTrigger = object.meshCollider.isTrigger;
-                collider.meshAssetPath = object.meshFilter.sourcePath;
-                collider.meshIndex = object.meshFilter.meshIndex;
-                collider.meshBuildQuality = object.meshCollider.buildQuality;
-                body.colliders.push_back(collider);
-            }
-            if (!body.colliders.empty()) {
-                physicsBodies.push_back(std::move(body));
-            }
-        }
-        physicsWorld_ = std::make_unique<PhysicsWorld>(physicsLayerCollisionMatrix_);
-        physicsWorld_->Build(physicsBodies, physicsCharacters);
-        RebuildVehicleRuntime();
-        RebuildScriptRuntime();
-        if (console_) {
-            console_->AddLog("Play mode started.");
-        }
-    } else {
-        scriptsRunning_ = false;
-        scriptsPaused_ = false;
-        ClearScriptRuntime();
-        runtimeVehicles_.clear();
-        if (physicsWorld_) {
-            physicsWorld_->Clear();
-            physicsWorld_.reset();
-        }
-        if (hasPlayModeSnapshot_) {
-            objects_ = playModeSnapshot_.objects;
-            selectedIndex_ = playModeSnapshot_.selectedIndex;
-            selectedIndices_ = playModeSnapshot_.selectedIndices;
-            NormalizeSelection();
-            playModeSnapshot_ = {};
-            hasPlayModeSnapshot_ = false;
-        } else {
-            ResetPhysicsVelocities();
-        }
-        activeViewport_ = SceneEditorActiveViewport::Scene;
-        activeGizmoAxis_ = -1;
-        hoveredGizmoAxis_ = -1;
-        if (console_) {
-            console_->AddLog("Play mode stopped.");
-        }
-    }
-}
-
-void SceneEditor::SetScriptsPaused(bool paused) {
-    if (!scriptsRunning_ || scriptsPaused_ == paused) {
-        return;
-    }
-
-    scriptsPaused_ = paused;
-    if (!scriptsPaused_) {
-        activeViewport_ = SceneEditorActiveViewport::Game;
-    }
-    if (console_) {
-        console_->AddLog(scriptsPaused_ ? "Play mode paused." : "Play mode resumed.");
-    }
-}
-
-void SceneEditor::ClearScriptRuntime() {
-    runtimeScripts_.clear();
-}
-
-void SceneEditor::RebuildVehicleRuntime() {
-    runtimeVehicles_.clear();
-
-    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-        const SceneObject& object = objects_[objectIndex];
-        if (!object.hasVehicle || !object.vehicle.enabled || object.vehicle.configPath.empty() || !IsObjectEffectivelyEnabled(objectIndex)) {
-            continue;
-        }
-
-        try {
-            const fs::path configPath = ProjectAssetPathToAbsolute(object.vehicle.configPath);
-            raceman::physics::VehicleConfig config = raceman::physics::VehicleConfigLoader::loadFromFile(configPath.string());
-            RuntimeVehicleInstance runtimeVehicle;
-            runtimeVehicle.objectId = object.id;
-            runtimeVehicle.objectIndex = objectIndex;
-            runtimeVehicle.instance = std::make_unique<raceman::physics::VehiclePhysics>(config);
-
-            raceman::physics::Transform chassisTransform;
-            const Transform sceneWorldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
-            chassisTransform.position = SceneVectorToVehicle(sceneWorldTransform.position);
-            const glm::quat rotation = glm::quat(glm::radians(sceneWorldTransform.rotationEuler));
-            chassisTransform.rotation = SceneQuatToVehicle(rotation);
-            runtimeVehicle.instance->setChassisTransform(chassisTransform);
-
-            runtimeVehicle.wheelObjectIndices.reserve(config.wheels.size());
-            runtimeVehicle.wheelBindings.reserve(config.wheels.size());
-            runtimeVehicle.wheelAuthoredLocalTransforms.reserve(config.wheels.size());
-            runtimeVehicle.wheelAuthoredRotationEuler.reserve(config.wheels.size());
-            const glm::mat4 vehicleWorldMatrix = GetObjectWorldMatrix(objectIndex);
-            for (std::size_t wheelConfigIndex = 0; wheelConfigIndex < config.wheels.size(); ++wheelConfigIndex) {
-                raceman::physics::WheelConfig& wheelConfig = config.wheels[wheelConfigIndex];
-                int wheelObjectIndex = -1;
-                VehicleWheelBinding runtimeBinding;
-                runtimeBinding.wheelName = wheelConfig.name;
-                Transform authoredLocalTransform;
-                glm::vec3 authoredRotationEuler{0.0f};
-                const auto bindingIt = std::find_if(object.vehicle.wheelBindings.begin(), object.vehicle.wheelBindings.end(),
-                    [&](const VehicleWheelBinding& binding) {
-                        return binding.wheelName == wheelConfig.name;
-                    });
-                if (bindingIt != object.vehicle.wheelBindings.end()) {
-                    wheelObjectIndex = FindObjectIndexById(bindingIt->objectId);
-                    runtimeBinding = *bindingIt;
-                }
-                if (wheelObjectIndex >= 0 && wheelObjectIndex < static_cast<int>(objects_.size())) {
-                    const glm::mat4 wheelRelativeMatrix = glm::inverse(vehicleWorldMatrix) * GetObjectWorldMatrix(wheelObjectIndex);
-                    const Transform wheelRelativeTransform = TransformFromMatrix(wheelRelativeMatrix);
-                    authoredLocalTransform = wheelRelativeTransform;
-                    authoredRotationEuler = wheelRelativeTransform.rotationEuler;
-
-                    const raceman::physics::Vector3 wheelCenterVehicle = SceneVectorToVehicle(wheelRelativeTransform.position);
-                    const float suspensionRestLength = wheelCenterVehicle.y >= 0.0f
-                        ? config.frontSuspension.restLength
-                        : config.rearSuspension.restLength;
-                    wheelConfig.mountPosition = wheelCenterVehicle + raceman::physics::Vector3{0.0f, 0.0f, suspensionRestLength};
-                }
-                runtimeVehicle.wheelObjectIndices.push_back(wheelObjectIndex);
-                runtimeVehicle.wheelBindings.push_back(std::move(runtimeBinding));
-                runtimeVehicle.wheelAuthoredLocalTransforms.push_back(authoredLocalTransform);
-                runtimeVehicle.wheelAuthoredRotationEuler.push_back(authoredRotationEuler);
-            }
-
-            runtimeVehicles_.push_back(std::move(runtimeVehicle));
-        } catch (const std::exception& ex) {
-            if (console_) {
-                console_->AddWarning("Vehicle runtime load failed for '" + object.name + "': " + ex.what());
-            }
-        }
-    }
-}
-
-bool SceneEditor::SyncAttachmentScriptFields(ObjectScriptAttachment& attachment) {
-    if (attachment.scriptName.empty()) {
+bool SceneEditor::CopyInspectorComponentToClipboard(int objectIndex, SceneInspectorComponentType type) {
+    if (objectIndex < 0 || objectIndex >= static_cast<int>(objects_.size())) {
         return false;
     }
-    if (FindRegisteredScript(attachment.scriptName) == nullptr) {
+    if (!HasInspectorComponent(objects_[objectIndex], type)) {
         return false;
     }
-    const std::vector<ScriptFieldDefinition> definitions = GetRegisteredScriptFieldDefinitions(attachment.scriptName);
-    if (definitions.empty()) {
-        const bool changed = !attachment.fields.empty();
-        attachment.fields.clear();
-        return changed;
+
+    componentClipboard_.hasValue = true;
+    componentClipboard_.type = type;
+    componentClipboard_.sourceObject = objects_[objectIndex];
+    if (console_) {
+        console_->AddLog(std::string("Copied ") + InspectorComponentTypeToString(type) + " component.");
     }
-    return SyncScriptAttachmentFields(attachment, definitions);
+    return true;
 }
 
-void SceneEditor::RebuildScriptRuntime() {
-    ClearScriptRuntime();
+bool SceneEditor::PasteInspectorComponentFromClipboard(const std::vector<int>& targetIndices, SceneInspectorComponentType targetType) {
+    if (!componentClipboard_.hasValue || componentClipboard_.type != targetType) {
+        if (console_) {
+            console_->AddWarning("No matching component clipboard data to paste.");
+        }
+        return false;
+    }
 
-    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-        SceneObject& object = objects_[objectIndex];
-        if (!IsObjectEffectivelyEnabled(objectIndex) || !object.hasScriptComponent || !object.scriptComponent.enabled) {
+    std::vector<int> validTargets;
+    validTargets.reserve(targetIndices.size());
+    for (int index : targetIndices) {
+        if (index >= 0 && index < static_cast<int>(objects_.size())) {
+            validTargets.push_back(index);
+        }
+    }
+    if (validTargets.empty()) {
+        return false;
+    }
+
+    PushUndoState();
+    for (int index : validTargets) {
+        SceneObject& target = objects_[index];
+        switch (targetType) {
+        case SceneInspectorComponentType::Transform:
+            target.transform = componentClipboard_.sourceObject.transform;
+            break;
+        case SceneInspectorComponentType::MeshFilter:
+            target.hasMeshFilter = true;
+            target.meshFilter = componentClipboard_.sourceObject.meshFilter;
+            break;
+        case SceneInspectorComponentType::MeshRenderer:
+            target.hasMeshRenderer = true;
+            target.meshRenderer = componentClipboard_.sourceObject.meshRenderer;
+            break;
+        case SceneInspectorComponentType::Script:
+            target.hasScriptComponent = true;
+            target.scriptComponent = componentClipboard_.sourceObject.scriptComponent;
+            break;
+        case SceneInspectorComponentType::Rigidbody:
+            target.hasCharacterController = false;
+            target.characterController = CharacterControllerComponent{};
+            target.hasRigidbody = true;
+            target.rigidbody = componentClipboard_.sourceObject.rigidbody;
+            break;
+        case SceneInspectorComponentType::Vehicle:
+            target.hasVehicle = true;
+            target.vehicle = componentClipboard_.sourceObject.vehicle;
+            break;
+        case SceneInspectorComponentType::CharacterController:
+            target.hasRigidbody = false;
+            target.rigidbody = RigidbodyComponent{};
+            target.hasCharacterController = true;
+            target.characterController = componentClipboard_.sourceObject.characterController;
+            break;
+        case SceneInspectorComponentType::Collider:
+            target.hasBoxCollider = componentClipboard_.sourceObject.hasBoxCollider;
+            target.hasSphereCollider = componentClipboard_.sourceObject.hasSphereCollider;
+            target.hasCapsuleCollider = componentClipboard_.sourceObject.hasCapsuleCollider;
+            target.hasPlaneCollider = componentClipboard_.sourceObject.hasPlaneCollider;
+            target.hasMeshCollider = componentClipboard_.sourceObject.hasMeshCollider;
+            target.boxCollider = componentClipboard_.sourceObject.boxCollider;
+            target.sphereCollider = componentClipboard_.sourceObject.sphereCollider;
+            target.capsuleCollider = componentClipboard_.sourceObject.capsuleCollider;
+            target.planeCollider = componentClipboard_.sourceObject.planeCollider;
+            target.meshCollider = componentClipboard_.sourceObject.meshCollider;
+            break;
+        case SceneInspectorComponentType::Camera:
+            target.hasCamera = true;
+            target.camera = componentClipboard_.sourceObject.camera;
+            break;
+        case SceneInspectorComponentType::Light:
+            target.hasLight = true;
+            target.light = componentClipboard_.sourceObject.light;
+            break;
+        }
+        SyncInspectorComponentOrder(target);
+    }
+
+    if (onDirty_) {
+        onDirty_();
+    }
+    if (console_) {
+        console_->AddLog(std::string("Pasted ") + InspectorComponentTypeToString(targetType) + " component.");
+    }
+    return true;
+}
+
+void SceneEditor::CopySelectedObjectsToClipboard() {
+    NormalizeSelection();
+    if (selectedIndices_.empty()) {
+        return;
+    }
+
+    std::unordered_set<std::string> selectedIds;
+    for (int index : selectedIndices_) {
+        if (index >= 0 && index < static_cast<int>(objects_.size())) {
+            selectedIds.insert(objects_[index].id);
+        }
+    }
+
+    std::vector<std::string> rootIds;
+    std::vector<SceneObject> clipboardObjects;
+    for (int index = 0; index < static_cast<int>(objects_.size()); ++index) {
+        if (selectedIds.find(objects_[index].id) == selectedIds.end()) {
             continue;
         }
-        for (std::size_t i = 0; i < object.scriptComponent.attachments.size(); ++i) {
-            const ObjectScriptAttachment& attachment = object.scriptComponent.attachments[i];
-            if (!attachment.enabled || attachment.scriptName.empty()) {
-                continue;
-            }
+        if (!objects_[index].parentId.empty() && selectedIds.find(objects_[index].parentId) != selectedIds.end()) {
+            continue;
+        }
 
-            std::unique_ptr<IObjectScript> instance = CreateRegisteredScript(attachment.scriptName);
-            if (!instance) {
-                if (console_) {
-                    console_->AddWarning("Script not registered, rebuild may be required: " + attachment.scriptName);
+        rootIds.push_back(objects_[index].id);
+        std::unordered_set<std::string> subtreeIds{objects_[index].id};
+        bool expanded = true;
+        while (expanded) {
+            expanded = false;
+            for (const SceneObject& object : objects_) {
+                if (subtreeIds.find(object.id) != subtreeIds.end()) {
+                    continue;
                 }
-                continue;
+                if (!object.parentId.empty() && subtreeIds.find(object.parentId) != subtreeIds.end()) {
+                    subtreeIds.insert(object.id);
+                    expanded = true;
+                }
             }
-            SyncAttachmentScriptFields(object.scriptComponent.attachments[i]);
+        }
 
-            RuntimeScriptInstance runtimeScript;
-            runtimeScript.objectId = object.id;
-            runtimeScript.attachmentIndex = i;
-            runtimeScript.instance = std::move(instance);
-            runtimeScripts_.push_back(std::move(runtimeScript));
+        for (const SceneObject& object : objects_) {
+            if (subtreeIds.find(object.id) != subtreeIds.end()) {
+                clipboardObjects.push_back(object);
+            }
         }
     }
-}
 
-void SceneEditor::HandleConsoleCommand(const std::string& command) {
-    const std::string trimmed = TrimCopyLocal(command);
-    if (trimmed.empty()) {
+    if (clipboardObjects.empty()) {
         return;
     }
 
-    if (trimmed == "help" || trimmed == "script.help") {
-        if (console_) {
-            console_->AddLog("Commands: script.help, script.list, script.run, script.pause, script.stop");
-        }
-        return;
-    }
-    if (trimmed == "script.run") {
-        if (scriptsRunning_) {
-            SetScriptsPaused(false);
-        } else {
-            SetScriptsRunning(true);
-        }
-        return;
-    }
-    if (trimmed == "script.pause") {
-        SetScriptsPaused(true);
-        return;
-    }
-    if (trimmed == "script.stop") {
-        SetScriptsRunning(false);
-        return;
-    }
-    if (trimmed == "script.list") {
-        if (!console_) {
-            return;
-        }
-        const auto& scripts = GetRegisteredScripts();
-        if (scripts.empty()) {
-            console_->AddLog("No registered scripts. Create a script, rebuild, then attach it.");
-            return;
-        }
-        for (const ScriptDescriptor& script : scripts) {
-            console_->AddLog(script.name + " (" + script.path + ")");
-        }
-        return;
-    }
-
+    objectClipboard_.hasValue = true;
+    objectClipboard_.objects = std::move(clipboardObjects);
+    objectClipboard_.rootObjectIds = std::move(rootIds);
     if (console_) {
-        console_->AddWarning("Unknown command: " + trimmed);
+        console_->AddLog("Copied object selection.");
     }
 }
 
+void SceneEditor::PasteObjectsFromClipboard() {
+    if (!objectClipboard_.hasValue || objectClipboard_.objects.empty()) {
+        return;
+    }
+
+    PushUndoState();
+
+    std::unordered_set<std::string> rootIds(objectClipboard_.rootObjectIds.begin(), objectClipboard_.rootObjectIds.end());
+    std::unordered_map<std::string, std::string> idRemap;
+    idRemap.reserve(objectClipboard_.objects.size());
+    for (const SceneObject& sourceObject : objectClipboard_.objects) {
+        idRemap.emplace(sourceObject.id, MakeId("gameobject"));
+    }
+
+    const std::size_t insertStart = objects_.size();
+    std::vector<std::string> pastedRootIds;
+    pastedRootIds.reserve(objectClipboard_.rootObjectIds.size());
+
+    for (const SceneObject& sourceObject : objectClipboard_.objects) {
+        SceneObject copy = sourceObject;
+        copy.id = idRemap[sourceObject.id];
+        const auto parentIt = idRemap.find(sourceObject.parentId);
+        if (parentIt != idRemap.end()) {
+            copy.parentId = parentIt->second;
+        }
+        if (rootIds.find(sourceObject.id) != rootIds.end()) {
+            if (!IsObjectNameCopySuffix(copy.name)) {
+                copy.name += " Copy";
+            }
+            pastedRootIds.push_back(copy.id);
+        }
+        RemapVehicleObjectReferences(copy, idRemap);
+        objects_.push_back(std::move(copy));
+    }
+
+    selectedIndices_.clear();
+    selectedIndex_ = -1;
+    for (int index = static_cast<int>(insertStart); index < static_cast<int>(objects_.size()); ++index) {
+        if (std::find(pastedRootIds.begin(), pastedRootIds.end(), objects_[index].id) != pastedRootIds.end()) {
+            selectedIndices_.push_back(index);
+            selectedIndex_ = index;
+        }
+    }
+    NormalizeSelection();
+
+    if (onDirty_) {
+        onDirty_();
+    }
+    if (console_) {
+        console_->AddLog("Pasted object selection.");
+    }
+}
 
 void SceneEditor::AddPlane() {
     AddBuiltInPrimitiveObject("Plane");
@@ -2471,6 +1796,19 @@ void SceneEditor::PushUndoState() {
     }
 }
 
+void SceneEditor::PushVehicleConfigUndoState() {
+    if (!showVehicleConfigEditor_ || inspectedVehicleConfigPath_.empty() || !inspectedVehicleConfigLoaded_) {
+        return;
+    }
+
+    vehicleConfigUndoStack_.push_back({inspectedVehicleConfig_});
+    vehicleConfigRedoStack_.clear();
+    constexpr std::size_t maxHistory = 128;
+    if (vehicleConfigUndoStack_.size() > maxHistory) {
+        vehicleConfigUndoStack_.erase(vehicleConfigUndoStack_.begin());
+    }
+}
+
 void SceneEditor::Undo() {
     if (undoStack_.empty()) {
         return;
@@ -2488,6 +1826,17 @@ void SceneEditor::Undo() {
     inspectMaterial_ = false;
     activeGizmoAxis_ = -1;
     if (onDirty_) onDirty_();
+}
+
+void SceneEditor::UndoVehicleConfig() {
+    if (vehicleConfigUndoStack_.empty() || !showVehicleConfigEditor_) {
+        return;
+    }
+
+    vehicleConfigRedoStack_.push_back({inspectedVehicleConfig_});
+    inspectedVehicleConfig_ = vehicleConfigUndoStack_.back().config;
+    vehicleConfigUndoStack_.pop_back();
+    vehicleConfigEditActive_ = false;
 }
 
 void SceneEditor::Redo() {
@@ -2627,6 +1976,11 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"type\": \"Vehicle\",\n";
             out << "          \"enabled\": " << (o.vehicle.enabled ? "true" : "false") << ",\n";
             out << "          \"configPath\": \"" << JsonEscape(NormalizeSlashes(o.vehicle.configPath)) << "\",\n";
+            out << "          \"chassisObjectIds\": [";
+            for (std::size_t chassisIndex = 0; chassisIndex < o.vehicle.chassisObjectIds.size(); ++chassisIndex) {
+                out << (chassisIndex == 0 ? "" : ", ") << "\"" << JsonEscape(o.vehicle.chassisObjectIds[chassisIndex]) << "\"";
+            }
+            out << "],\n";
             out << "          \"wheelBindings\": [\n";
             for (std::size_t wheelIndex = 0; wheelIndex < o.vehicle.wheelBindings.size(); ++wheelIndex) {
                 const VehicleWheelBinding& binding = o.vehicle.wheelBindings[wheelIndex];
@@ -2722,12 +2076,26 @@ void SceneEditor::Save(const std::string& path) {
         out << "      ]\n";
         out << "    }" << (i + 1 < objects_.size() ? ",\n" : "\n");
     }
-    out << "  ]\n}\n";
+    out << "  ],\n";
+    out << "  \"hierarchyClosed\": [";
+    bool wroteClosed = false;
+    for (const auto& entry : hierarchyOpenStates_) {
+        if (entry.second) {
+            continue;
+        }
+        if (wroteClosed) {
+            out << ", ";
+        }
+        out << "\"" << JsonEscape(entry.first) << "\"";
+        wroteClosed = true;
+    }
+    out << "]\n}\n";
 }
 
 void SceneEditor::Load(const std::string& path) {
     using namespace raceman::physics::json;
     objects_.clear();
+    hierarchyOpenStates_.clear();
     selectedIndex_ = -1;
     selectedIndices_.clear();
     undoStack_.clear();
@@ -3078,6 +2446,17 @@ void SceneEditor::Load(const std::string& path) {
                         ReadBool(component, "enabled", so.vehicle.enabled);
                         ReadString(component, "configPath", so.vehicle.configPath);
                         so.vehicle.configPath = NormalizeSlashes(so.vehicle.configPath);
+                        so.vehicle.chassisObjectIds.clear();
+                        if (auto chassisObjectIdsIt = component.find("chassisObjectIds"); chassisObjectIdsIt != component.end() && chassisObjectIdsIt->second.is_array()) {
+                            for (const auto& chassisValue : chassisObjectIdsIt->second.as_array()) {
+                                if (chassisValue.is_string()) {
+                                    const std::string chassisObjectId = chassisValue.as_string();
+                                    if (!chassisObjectId.empty()) {
+                                        so.vehicle.chassisObjectIds.push_back(chassisObjectId);
+                                    }
+                                }
+                            }
+                        }
                         so.vehicle.wheelBindings.clear();
                         if (auto wheelBindingsIt = component.find("wheelBindings"); wheelBindingsIt != component.end() && wheelBindingsIt->second.is_array()) {
                             for (const auto& bindingValue : wheelBindingsIt->second.as_array()) {
@@ -3375,6 +2754,25 @@ void SceneEditor::Load(const std::string& path) {
             }
         }
 
+        auto hierarchyClosedIt = obj.find("hierarchyClosed");
+        if (hierarchyClosedIt != obj.end() && hierarchyClosedIt->second.is_array()) {
+            for (const auto& closedValue : hierarchyClosedIt->second.as_array()) {
+                if (!closedValue.is_string()) {
+                    continue;
+                }
+                hierarchyOpenStates_[closedValue.as_string()] = false;
+            }
+        }
+        auto hierarchyOpenIt = obj.find("hierarchyOpen");
+        if (hierarchyOpenIt != obj.end() && hierarchyOpenIt->second.is_array()) {
+            for (const auto& openValue : hierarchyOpenIt->second.as_array()) {
+                if (!openValue.is_string()) {
+                    continue;
+                }
+                hierarchyOpenStates_[openValue.as_string()] = true;
+            }
+        }
+
         // Select first object if available
         for (SceneObject& object : objects_) {
             if (!object.parentId.empty() && FindObjectIndexById(object.parentId) < 0) {
@@ -3561,6 +2959,17 @@ void SceneEditor::SaveProject() {
     }
 }
 
+void SceneEditor::RedoVehicleConfig() {
+    if (vehicleConfigRedoStack_.empty() || !showVehicleConfigEditor_) {
+        return;
+    }
+
+    vehicleConfigUndoStack_.push_back({inspectedVehicleConfig_});
+    inspectedVehicleConfig_ = vehicleConfigRedoStack_.back().config;
+    vehicleConfigRedoStack_.pop_back();
+    vehicleConfigEditActive_ = false;
+}
+
 void SceneEditor::NewScene() {
     NewScene("Untitled");
 }
@@ -3622,6 +3031,7 @@ void SceneEditor::NewScene(const std::string& sceneName) {
     }
     ClearScriptRuntime();
     objects_.clear();
+    hierarchyOpenStates_.clear();
     selectedIndex_ = -1;
     selectedIndices_.clear();
     undoStack_.clear();
@@ -3686,6 +3096,20 @@ void SceneEditor::SaveActiveAsset() {
         return;
     }
 
+    if (showVehicleConfigEditor_ && !inspectedVehicleConfigPath_.empty()) {
+        std::string error;
+        const fs::path configPath = ProjectAssetPathToAbsolute(inspectedVehicleConfigPath_);
+        if (physics::VehicleConfigLoader::saveToFile(configPath.string(), inspectedVehicleConfig_, &error)) {
+            inspectedVehicleConfigLoaded_ = false;
+            if (console_) {
+                console_->AddLog("Saved vehicle config: " + inspectedVehicleConfigPath_);
+            }
+        } else if (console_) {
+            console_->AddError(error.empty() ? ("Failed to save vehicle config: " + inspectedVehicleConfigPath_) : error);
+        }
+        return;
+    }
+
     SaveCurrentScene();
 }
 
@@ -3719,6 +3143,11 @@ bool SceneEditor::CreateSceneAsset(const std::string& requestedName, std::string
     const std::vector<int> previousSelectedIndices = selectedIndices_;
     const bool previousInspectMaterial = inspectMaterial_;
     const std::string previousInspectedMaterialId = inspectedMaterialId_;
+    const bool previousShowVehicleConfigEditor = showVehicleConfigEditor_;
+    const std::string previousInspectedVehicleConfigPath = inspectedVehicleConfigPath_;
+    const physics::VehicleConfig previousInspectedVehicleConfig = inspectedVehicleConfig_;
+    const bool previousInspectedVehicleConfigLoaded = inspectedVehicleConfigLoaded_;
+    const std::string previousInspectedVehicleConfigError = inspectedVehicleConfigError_;
 
     try {
         objects_.clear();
@@ -3726,6 +3155,10 @@ bool SceneEditor::CreateSceneAsset(const std::string& requestedName, std::string
         selectedIndices_.clear();
         inspectMaterial_ = false;
         inspectedMaterialId_.clear();
+        showVehicleConfigEditor_ = false;
+        inspectedVehicleConfigPath_.clear();
+        inspectedVehicleConfigLoaded_ = false;
+        inspectedVehicleConfigError_.clear();
         CreateDefaultSceneObjects();
         Save(scenePath);
 
@@ -3734,6 +3167,11 @@ bool SceneEditor::CreateSceneAsset(const std::string& requestedName, std::string
         selectedIndices_ = previousSelectedIndices;
         inspectMaterial_ = previousInspectMaterial;
         inspectedMaterialId_ = previousInspectedMaterialId;
+        showVehicleConfigEditor_ = previousShowVehicleConfigEditor;
+        inspectedVehicleConfigPath_ = previousInspectedVehicleConfigPath;
+        inspectedVehicleConfig_ = previousInspectedVehicleConfig;
+        inspectedVehicleConfigLoaded_ = previousInspectedVehicleConfigLoaded;
+        inspectedVehicleConfigError_ = previousInspectedVehicleConfigError;
         NormalizeSelection();
 
         if (outScenePath) {
@@ -3750,12 +3188,92 @@ bool SceneEditor::CreateSceneAsset(const std::string& requestedName, std::string
         selectedIndices_ = previousSelectedIndices;
         inspectMaterial_ = previousInspectMaterial;
         inspectedMaterialId_ = previousInspectedMaterialId;
+        showVehicleConfigEditor_ = previousShowVehicleConfigEditor;
+        inspectedVehicleConfigPath_ = previousInspectedVehicleConfigPath;
+        inspectedVehicleConfig_ = previousInspectedVehicleConfig;
+        inspectedVehicleConfigLoaded_ = previousInspectedVehicleConfigLoaded;
+        inspectedVehicleConfigError_ = previousInspectedVehicleConfigError;
         NormalizeSelection();
         if (console_) {
             console_->AddError("Failed to create scene asset.");
         }
         return false;
     }
+}
+
+bool SceneEditor::CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath) {
+    std::string baseName = TrimCopyLocal(requestedName);
+    if (baseName.empty()) {
+        if (console_) {
+            console_->AddError("Vehicle profile name cannot be empty.");
+        }
+        return false;
+    }
+
+    const std::string suffix = ".vehicle.json";
+    const std::string lowerBaseName = ToLowerCopy(baseName);
+    if (EndsWith(lowerBaseName, suffix)) {
+        baseName.resize(baseName.size() - suffix.size());
+    }
+
+    std::string sanitized;
+    sanitized.reserve(baseName.size());
+    for (char& ch : baseName) {
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (std::isalnum(uch) || ch == '_' || ch == '-' || ch == ' ') {
+            sanitized.push_back(ch == ' ' ? '_' : ch);
+        }
+    }
+    sanitized = TrimCopyLocal(sanitized);
+    if (sanitized.empty()) {
+        if (console_) {
+            console_->AddError("Vehicle profile name must contain letters or numbers.");
+        }
+        return false;
+    }
+
+    const fs::path assetsRoot = FindAssetsRoot();
+    fs::path targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + sanitized + suffix);
+    if (!IsUnderPath(targetPath, assetsRoot)) {
+        if (console_) {
+            console_->AddError("Vehicle profile creation blocked outside assets: " + sanitized);
+        }
+        return false;
+    }
+
+    int duplicateIndex = 1;
+    while (fs::exists(targetPath)) {
+        targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + sanitized + "_" + std::to_string(duplicateIndex) + suffix);
+        ++duplicateIndex;
+    }
+
+    physics::VehicleConfig config;
+    config.name = sanitized;
+    config.wheels = {
+        {"Front Left",  {-0.85f,  1.35f, 0.0f}, 0.35f, 0.24f, 15.0f, 1.0f, 0.55f, 0.0f, 0.0f, 1.0f, 10000.0f, 8000.0f, 3000.0f, true,  true},
+        {"Front Right", { 0.85f,  1.35f, 0.0f}, 0.35f, 0.24f, 15.0f, 1.0f, 0.55f, 0.0f, 0.0f, 1.0f, 10000.0f, 8000.0f, 3000.0f, true,  true},
+        {"Rear Left",   {-0.85f, -1.35f, 0.0f}, 0.35f, 0.24f, 15.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f, 10000.0f, 8000.0f, 3200.0f, true,  true},
+        {"Rear Right",  { 0.85f, -1.35f, 0.0f}, 0.35f, 0.24f, 15.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f, 10000.0f, 8000.0f, 3200.0f, true,  true}
+    };
+
+    std::string error;
+    fs::create_directories(targetPath.parent_path());
+    if (!physics::VehicleConfigLoader::saveToFile(targetPath.string(), config, &error)) {
+        if (console_) {
+            console_->AddError(error.empty() ? ("Failed to create vehicle profile: " + sanitized) : error);
+        }
+        return false;
+    }
+
+    const std::string createdProjectPath = ToProjectAssetPath(targetPath, assetsRoot);
+    if (outConfigPath) {
+        *outConfigPath = createdProjectPath;
+    }
+    RefreshProjectFiles();
+    if (console_) {
+        console_->AddLog("Created vehicle profile: " + createdProjectPath);
+    }
+    return true;
 }
 
 bool SceneEditor::OpenSceneAsset(const std::string& path) {

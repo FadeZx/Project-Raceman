@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "Orange",
+  "shader": "pbr",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0,
+  "roughness": 0.5,
+  "emissiveColor": [0, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "",
+    "normal": "",
+    "metallic": "",
+    "roughness": "",
+    "ao": ""
+  }
+}

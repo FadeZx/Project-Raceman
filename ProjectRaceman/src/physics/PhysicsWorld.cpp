@@ -29,8 +29,10 @@
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/OffsetCenterOfMassShape.h>
 #include <Jolt/Physics/Collision/Shape/PlaneShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+#include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -198,10 +200,8 @@ JPH::EMotionQuality ToMotionQuality(PhysicsMotionQuality quality) {
 }
 
 JPH::MeshShapeSettings::EBuildQuality ToMeshBuildQuality(MeshColliderBuildQuality quality) {
-    if (quality == MeshColliderBuildQuality::Balanced || quality == MeshColliderBuildQuality::BuildQuality) {
-        return JPH::MeshShapeSettings::EBuildQuality::FavorRuntimePerformance;
-    }
-    return JPH::MeshShapeSettings::EBuildQuality::FavorBuildSpeed;
+    (void)quality;
+    return JPH::MeshShapeSettings::EBuildQuality::FavorRuntimePerformance;
 }
 
 std::filesystem::path FindProjectAssetAbsolutePath(const std::string& assetPath) {
@@ -258,7 +258,16 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider) {
 
 JPH::ShapeRefC CreateBaseShape(const PhysicsColliderDesc& collider, const glm::vec3& scale) {
     if (collider.type == PhysicsColliderType::Mesh) {
-        return CreateMeshShape(collider);
+        JPH::ShapeRefC shape = CreateMeshShape(collider);
+        if (!shape) {
+            return {};
+        }
+        if (glm::length2(scale - glm::vec3(1.0f)) <= 0.00000001f) {
+            return shape;
+        }
+        JPH::ScaledShapeSettings scaledSettings(shape, ToJoltVec3(scale));
+        JPH::ShapeSettings::ShapeResult result = scaledSettings.Create();
+        return result.IsValid() ? result.Get() : JPH::ShapeRefC{};
     }
     if (collider.type == PhysicsColliderType::Box) {
         const glm::vec3 halfExtent = (glm::max)(glm::abs(collider.size * scale) * 0.5f, glm::vec3(0.001f));
@@ -289,30 +298,39 @@ JPH::ShapeRefC CreateBaseShape(const PhysicsColliderDesc& collider, const glm::v
 
 JPH::ShapeRefC CreateShape(const PhysicsBodyDesc& body, bool sensorOnly) {
     std::vector<JPH::ShapeRefC> shapes;
-    std::vector<JPH::Vec3> centers;
     for (const PhysicsColliderDesc& collider : body.colliders) {
         if (sensorOnly != collider.isTrigger) {
             continue;
         }
-        shapes.push_back(CreateBaseShape(collider, body.scale));
-        centers.push_back(ToJoltVec3(collider.center * body.scale));
+        const glm::vec3 combinedScale = body.scale * collider.scale;
+        JPH::ShapeRefC shape = CreateBaseShape(collider, combinedScale);
+        if (!shape) {
+            continue;
+        }
+
+        const glm::vec3 scaledCenter = collider.center * body.scale;
+        const JPH::Quat localRotation = ToJoltQuat(collider.rotationEuler);
+        if (glm::length2(scaledCenter) > 0.000001f || std::abs(localRotation.GetW() - 1.0f) > 0.000001f || localRotation.GetX() != 0.0f || localRotation.GetY() != 0.0f || localRotation.GetZ() != 0.0f) {
+            JPH::RotatedTranslatedShapeSettings offsetSettings(ToJoltVec3(scaledCenter), localRotation, shape);
+            JPH::ShapeSettings::ShapeResult result = offsetSettings.Create();
+            if (!result.IsValid()) {
+                continue;
+            }
+            shape = result.Get();
+        }
+        shapes.push_back(shape);
     }
 
     if (shapes.empty()) {
         return {};
     }
     if (shapes.size() == 1) {
-        if (centers[0].LengthSq() <= 0.000001f) {
-            return shapes[0];
-        }
-        JPH::RotatedTranslatedShapeSettings offsetSettings(centers[0], JPH::Quat::sIdentity(), shapes[0]);
-        JPH::ShapeSettings::ShapeResult result = offsetSettings.Create();
-        return result.IsValid() ? result.Get() : JPH::ShapeRefC{};
+        return shapes[0];
     }
 
     JPH::StaticCompoundShapeSettings compoundSettings;
-    for (std::size_t i = 0; i < shapes.size(); ++i) {
-        compoundSettings.AddShape(centers[i], JPH::Quat::sIdentity(), shapes[i]);
+    for (const JPH::ShapeRefC& shape : shapes) {
+        compoundSettings.AddShape(JPH::Vec3::sZero(), JPH::Quat::sIdentity(), shape);
     }
     JPH::ShapeSettings::ShapeResult result = compoundSettings.Create();
     return result.IsValid() ? result.Get() : JPH::ShapeRefC{};
@@ -368,6 +386,14 @@ public:
                 continue;
             }
 
+            if (shape && body.overrideCenterOfMass && glm::length2(body.centerOfMassOffset) > 0.000001f) {
+                JPH::OffsetCenterOfMassShapeSettings offsetSettings(ToJoltVec3(body.centerOfMassOffset), shape);
+                JPH::ShapeSettings::ShapeResult offsetResult = offsetSettings.Create();
+                if (offsetResult.IsValid()) {
+                    shape = offsetResult.Get();
+                }
+            }
+
             const bool movable = body.bodyType != PhysicsBodyType::Static && !hasStaticOnlyCollider;
             const bool dynamic = body.bodyType == PhysicsBodyType::Dynamic && !hasStaticOnlyCollider;
             const JPH::EMotionType motionType = dynamic
@@ -393,8 +419,21 @@ public:
                 settings.mAllowDynamicOrKinematic = true;
             }
             if (dynamic) {
-                settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
                 settings.mMassPropertiesOverride.mMass = (std::max)(0.001f, body.mass);
+                if (body.overrideMassProperties) {
+                    settings.mOverrideMassProperties = JPH::EOverrideMassProperties::MassAndInertiaProvided;
+                    JPH::MassProperties massProperties;
+                    massProperties.mMass = (std::max)(0.001f, body.mass);
+                    massProperties.mInertia = JPH::Mat44::sZero();
+                    massProperties.mInertia.SetDiagonal4(JPH::Vec4(
+                        (std::max)(0.001f, body.inertiaDiagonal.x),
+                        (std::max)(0.001f, body.inertiaDiagonal.y),
+                        (std::max)(0.001f, body.inertiaDiagonal.z),
+                        1.0f));
+                    settings.mMassPropertiesOverride = massProperties;
+                } else {
+                    settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
+                }
             }
 
             JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(settings, movable ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
@@ -591,6 +630,26 @@ public:
         }
     }
 
+    void MoveBodyKinematic(const std::string& objectId, const glm::vec3& position, const glm::vec3& rotationEuler, float deltaTime) {
+        auto stateIt = states_.find(objectId);
+        if (stateIt != states_.end()) {
+            stateIt->second.position = position;
+            stateIt->second.rotationEuler = rotationEuler;
+        }
+        if (!physicsSystem_) {
+            return;
+        }
+        auto bodyIt = bodyIds_.find(objectId);
+        if (bodyIt == bodyIds_.end()) {
+            return;
+        }
+        physicsSystem_->GetBodyInterface().MoveKinematic(
+            bodyIt->second,
+            ToJoltRVec3(position),
+            ToJoltQuat(rotationEuler),
+            (std::max)(0.0f, deltaTime));
+    }
+
     void AddBodyImpulse(const std::string& objectId, const glm::vec3& impulse) {
         if (!physicsSystem_) {
             return;
@@ -749,6 +808,10 @@ glm::vec3 PhysicsWorld::GetBodyAngularVelocity(const std::string& objectId) cons
 
 void PhysicsWorld::SetBodyAngularVelocity(const std::string& objectId, const glm::vec3& velocity) {
     impl_->SetBodyAngularVelocity(objectId, velocity);
+}
+
+void PhysicsWorld::MoveBodyKinematic(const std::string& objectId, const glm::vec3& position, const glm::vec3& rotationEuler, float deltaTime) {
+    impl_->MoveBodyKinematic(objectId, position, rotationEuler, deltaTime);
 }
 
 void PhysicsWorld::AddBodyForce(const std::string& objectId, const glm::vec3& force) {

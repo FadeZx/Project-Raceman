@@ -36,6 +36,8 @@ struct PhysicsColliderDesc {
     PhysicsColliderType type{PhysicsColliderType::Box};
     bool isTrigger{false};
     glm::vec3 center{0.0f};
+    glm::vec3 rotationEuler{0.0f};
+    glm::vec3 scale{1.0f};
     glm::vec3 size{1.0f};
     float radius{0.5f};
     float height{2.0f};
@@ -45,7 +47,7 @@ struct PhysicsColliderDesc {
     float halfExtent{1000.0f};
     std::string meshAssetPath;
     int meshIndex{0};
-    MeshColliderBuildQuality meshBuildQuality{MeshColliderBuildQuality::BuildSpeed};
+    MeshColliderBuildQuality meshBuildQuality{MeshColliderBuildQuality::BuildQuality};
 };
 
 struct PhysicsBodyDesc {
@@ -70,6 +72,10 @@ struct PhysicsBodyDesc {
     bool freezeRotationX{false};
     bool freezeRotationY{false};
     bool freezeRotationZ{false};
+    bool overrideCenterOfMass{false};
+    glm::vec3 centerOfMassOffset{0.0f};
+    bool overrideMassProperties{false};
+    glm::vec3 inertiaDiagonal{0.0f};
     std::vector<PhysicsColliderDesc> colliders;
 };
 
@@ -122,6 +128,7 @@ public:
     void SetBodyVelocity(const std::string& objectId, const glm::vec3& velocity);
     glm::vec3 GetBodyAngularVelocity(const std::string& objectId) const;
     void SetBodyAngularVelocity(const std::string& objectId, const glm::vec3& velocity);
+    void MoveBodyKinematic(const std::string& objectId, const glm::vec3& position, const glm::vec3& rotationEuler, float deltaTime);
     void AddBodyForce(const std::string& objectId, const glm::vec3& force);
     void AddBodyImpulse(const std::string& objectId, const glm::vec3& impulse);
     void AddBodyTorque(const std::string& objectId, const glm::vec3& torque);

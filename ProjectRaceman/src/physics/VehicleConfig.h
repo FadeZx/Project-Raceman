@@ -64,6 +64,13 @@ struct EngineConfig
 
 struct TransmissionConfig
 {
+    enum class Mode
+    {
+        Automatic,
+        Manual
+    };
+
+    Mode mode{Mode::Automatic};
     std::vector<float> gearRatios{2.8f, 1.9f, 1.4f, 1.1f, 0.95f, 0.85f};
     float finalDriveRatio{3.42f};
     float reverseRatio{-2.9f};
@@ -96,6 +103,7 @@ class VehicleConfigLoader
 public:
     static VehicleConfig loadFromFile(const std::string &path);
     static std::vector<VehicleConfig> loadDirectory(const std::string &directory, const std::function<bool(const std::string &)> &filter = {});
+    static bool saveToFile(const std::string &path, const VehicleConfig &config, std::string *outError = nullptr);
 };
 
 float sampleTorqueCurve(const EngineConfig &config, float rpm);

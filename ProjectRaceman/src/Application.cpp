@@ -111,6 +111,9 @@ void Application::Run() {
 
         Update(deltaTime);
         Render();
+        if (inputManager_) {
+            inputManager_->Update();
+        }
     }
 }
 
@@ -179,9 +182,6 @@ void Application::PollEvents() {
         glfwGetFramebufferSize(window_, &framebufferWidth, &framebufferHeight);
         renderer_->Resize(framebufferWidth, framebufferHeight);
     }
-
-    // Reset per-frame pressed flags after handling
-    inputManager_->Update();
 }
 
 void Application::FocusEditorCameraOn(const glm::vec3& target, float radius) {

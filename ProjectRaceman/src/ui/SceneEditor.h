@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include "../physics/MeshColliderBuildQuality.h"
 #include "../physics/PhysicsLayers.h"
+#include "../physics/VehicleConfig.h"
 #include "../rendering/Renderer.h"
 #include "../rendering/Material.h"
 #include "../rendering/PrimitiveMeshes.h"
@@ -37,7 +38,8 @@ enum class ProjectAssetPickerMode {
     None,
     ReplaceMesh,
     AssignMaterial,
-    AttachScript
+    AttachScript,
+    AssignVehicleConfig
 };
 
 enum class ProjectCreateAssetType {
@@ -45,6 +47,7 @@ enum class ProjectCreateAssetType {
     Folder,
     Scene,
     Material,
+    VehicleProfile,
     Script
 };
 
@@ -178,6 +181,7 @@ struct VehicleWheelBinding {
 struct VehicleComponent {
     bool enabled{true};
     std::string configPath;
+    std::vector<std::string> chassisObjectIds;
     std::vector<VehicleWheelBinding> wheelBindings;
 };
 
@@ -215,7 +219,7 @@ struct PlaneColliderComponent {
 struct MeshColliderComponent {
     bool enabled{true};
     bool isTrigger{false};
-    MeshColliderBuildQuality buildQuality{MeshColliderBuildQuality::BuildSpeed};
+    MeshColliderBuildQuality buildQuality{MeshColliderBuildQuality::BuildQuality};
 };
 
 struct CameraComponent {
@@ -338,11 +342,13 @@ private:
     void RenderViewportPanel();
     void RenderDockspaceHost();
     void RenderMaterialInspector();
+    void RenderVehicleConfigEditorWindow();
     void RenderMaterialProperties(const std::string& materialId, bool showBackButton);
     void RenderProjectAssetPickerPopup();
     unsigned int GetComponentIconTexture(const std::string& filename);
     void HandleEditorShortcuts();
     void UpdateScripts(float deltaTime);
+    void UpdateVehiclePhysics(float deltaTime);
     void UpdatePhysics(float deltaTime);
     void UpdateVehicles(float deltaTime);
     void ResetPhysicsVelocities();
@@ -358,6 +364,9 @@ private:
     void PushUndoState();
     void Undo();
     void Redo();
+    void PushVehicleConfigUndoState();
+    void UndoVehicleConfig();
+    void RedoVehicleConfig();
     void RequestFocusSelectedObject();
 
     // Actions
@@ -371,14 +380,17 @@ private:
     bool ReplaceSelectedMeshWithBuiltIn(const std::string& meshType);
     bool ReplaceSelectedMeshFromObj(const std::string& path);
     bool AssignMaterialToSelected(const std::string& materialId);
+    bool AssignVehicleConfigToSelected(const std::string& configPath);
     bool AttachScriptToSelected(const std::string& scriptName, const std::string& scriptPath);
     bool CreateScriptAsset(const std::string& requestedName, bool attachToSelected = true);
     bool SyncAttachmentScriptFields(ObjectScriptAttachment& attachment);
     bool CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId = nullptr);
+    bool CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath = nullptr);
     bool CreateSceneAsset(const std::string& requestedName, std::string* outScenePath = nullptr);
     bool CreateProjectFolder(const std::string& requestedName);
     void SyncScriptProjectFiles();
     void OpenMaterialEditor(const std::string& materialId);
+    void OpenVehicleConfigEditor(const std::string& configPath);
     void BeginObjectRename(int index);
     void BeginProjectFileRename(const std::string& path);
     void CommitProjectFileRename();
@@ -406,6 +418,10 @@ private:
     int ClampPhysicsLayerIndex(int layer) const;
     const char* GetPhysicsLayerName(int layer) const;
     void ResetPhysicsLayerSettings();
+    void CopySelectedObjectsToClipboard();
+    void PasteObjectsFromClipboard();
+    bool CopyInspectorComponentToClipboard(int objectIndex, SceneInspectorComponentType type);
+    bool PasteInspectorComponentFromClipboard(const std::vector<int>& targetIndices, SceneInspectorComponentType targetType);
 
     // Utils
     std::string MakeId(const std::string& base);
@@ -448,12 +464,21 @@ private:
 
     bool inspectMaterial_{false};
     std::string inspectedMaterialId_;
+    bool showVehicleConfigEditor_{false};
+    std::string inspectedVehicleConfigPath_;
+    physics::VehicleConfig inspectedVehicleConfig_{};
+    bool inspectedVehicleConfigLoaded_{false};
+    std::string inspectedVehicleConfigError_;
+    bool vehicleConfigEditorHovered_{false};
+    bool vehicleConfigEditorFocused_{false};
+    bool vehicleConfigEditActive_{false};
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
     bool scriptsRunning_{false};
     bool scriptsPaused_{false};
     bool showCreateScriptPopup_{false};
     char createScriptNameBuffer_[128]{};
     char createMaterialNameBuffer_[128]{};
+    char createVehicleConfigNameBuffer_[128]{};
     bool showCreateProjectAssetPopup_{false};
     ProjectCreateAssetType createProjectAssetType_{ProjectCreateAssetType::None};
     char createProjectAssetNameBuffer_[128]{};
@@ -469,6 +494,7 @@ private:
     struct RuntimeVehicleInstance {
         std::string objectId;
         int objectIndex{-1};
+        std::string chassisBodyObjectId;
         std::vector<int> wheelObjectIndices;
         std::vector<VehicleWheelBinding> wheelBindings;
         std::vector<Transform> wheelAuthoredLocalTransforms;
@@ -486,6 +512,11 @@ private:
     int pendingHierarchyRangeAnchor_{-1};
     bool pendingHierarchyFocusObject_{false};
     bool pendingHierarchySelectionDragged_{false};
+    bool scenePanelHovered_{false};
+    bool scenePanelFocused_{false};
+    std::string hierarchyKeyboardTargetObjectId_;
+    std::string pendingHierarchyToggleObjectId_;
+    std::unordered_map<std::string, bool> hierarchyOpenStates_;
 
     std::string renamingProjectFile_;
     bool focusProjectRename_{false};
@@ -505,6 +536,23 @@ private:
     bool inspectorEditActive_{false};
     bool linkedScaleValues_{true};
     bool linkedMultiScaleValues_{true};
+    bool inspectorPanelHovered_{false};
+    bool inspectorPanelFocused_{false};
+    std::string inspectorKeyboardTargetComponentKey_;
+    std::string inspectorKeyboardTargetObjectId_;
+    SceneInspectorComponentType inspectorKeyboardTargetComponentType_{SceneInspectorComponentType::Transform};
+    std::string pendingInspectorToggleComponentKey_;
+    std::unordered_map<std::string, bool> inspectorComponentOpenStates_;
+    struct ComponentClipboardState {
+        bool hasValue{false};
+        SceneInspectorComponentType type{SceneInspectorComponentType::Transform};
+        SceneObject sourceObject{};
+    } componentClipboard_;
+    struct ObjectClipboardState {
+        bool hasValue{false};
+        std::vector<SceneObject> objects;
+        std::vector<std::string> rootObjectIds;
+    } objectClipboard_;
     bool dockLayoutInitialized_{false};
     glm::vec2 viewportPanelPos_{0.0f, 0.0f};
     glm::vec2 viewportPanelSize_{0.0f, 0.0f};
@@ -529,6 +577,11 @@ private:
     };
     std::vector<HistoryState> undoStack_;
     std::vector<HistoryState> redoStack_;
+    struct VehicleConfigHistoryState {
+        physics::VehicleConfig config;
+    };
+    std::vector<VehicleConfigHistoryState> vehicleConfigUndoStack_;
+    std::vector<VehicleConfigHistoryState> vehicleConfigRedoStack_;
     HistoryState playModeSnapshot_{};
     bool hasPlayModeSnapshot_{false};
     std::unique_ptr<PhysicsWorld> physicsWorld_;

@@ -34,6 +34,9 @@ struct VehicleTelemetry
     float throttle{0.0f};
     float brake{0.0f};
     float steering{0.0f};
+    int currentGear{1};
+    bool isReverse{false};
+    bool isNeutral{false};
     Vector3 linearVelocity{};
     Vector3 linearAcceleration{};
     float longitudinalSpeed{0.0f};
@@ -62,6 +65,11 @@ public:
     const std::vector<Transform> &getWheelTransforms() const;
     const VehicleTelemetry &getTelemetry() const;
     void setChassisTransform(const Transform &transform);
+    void setRigidBodyState(const VehicleRigidBodyState &state);
+    const VehicleRigidBodyState &getRigidBodyState() const;
+    const Vector3 &getPendingChassisForce() const;
+    const Vector3 &getPendingChassisTorque() const;
+    void setExternalBodySimulation(bool external);
 
     const VehicleConfig &getConfig() const { return m_config; }
 
@@ -97,6 +105,9 @@ private:
     std::vector<Transform> m_wheelTransforms;
     VehicleTelemetry m_lastTelemetry{};
     std::function<void(const VehicleTelemetry &)> m_telemetryCallback{};
+    Vector3 m_pendingChassisForce{};
+    Vector3 m_pendingChassisTorque{};
+    bool m_externalBodySimulation{false};
 
     float m_engineAngularVelocity{0.0f};
     float m_prevEngineRPM{0.0f};

@@ -5,9 +5,12 @@
 #include "Console.h"
 #include "../rendering/PrimitivePlane.h"
 #include "../rendering/Renderer.h"
+#include "../physics/PhysicsWorld.h"
+#include "../physics/VehiclePhysics.h"
 
 #include <imgui/imgui.h>
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
@@ -19,8 +22,13 @@
 #include <unordered_map>
 #include <vector>
 
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
 #ifndef NOMINMAX
@@ -784,11 +792,487 @@ inline bool IsCtrlYPressed() {
     return (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y));
 }
 
+inline bool ReadVec2(const raceman::physics::json::Object& object, const std::string& key, glm::vec2& out) {
+    auto it = object.find(key);
+    if (it == object.end() || !it->second.is_array()) {
+        return false;
+    }
+
+    const auto& a = it->second.as_array();
+    if (a.size() != 2 || !a[0].is_number() || !a[1].is_number()) {
+        return false;
+    }
+
+    out = {
+        static_cast<float>(a[0].as_number()),
+        static_cast<float>(a[1].as_number())
+    };
+    return true;
+}
+
+inline bool ReadVec3(const raceman::physics::json::Object& object, const std::string& key, glm::vec3& out) {
+    auto it = object.find(key);
+    if (it == object.end() || !it->second.is_array()) {
+        return false;
+    }
+
+    const auto& a = it->second.as_array();
+    if (a.size() != 3 || !a[0].is_number() || !a[1].is_number() || !a[2].is_number()) {
+        return false;
+    }
+
+    out = {
+        static_cast<float>(a[0].as_number()),
+        static_cast<float>(a[1].as_number()),
+        static_cast<float>(a[2].as_number())
+    };
+    return true;
+}
+
+inline bool ReadVec4(const raceman::physics::json::Object& object, const std::string& key, glm::vec4& out) {
+    auto it = object.find(key);
+    if (it == object.end() || !it->second.is_array()) {
+        return false;
+    }
+
+    const auto& a = it->second.as_array();
+    if (a.size() != 4 || !a[0].is_number() || !a[1].is_number() || !a[2].is_number() || !a[3].is_number()) {
+        return false;
+    }
+
+    out = {
+        static_cast<float>(a[0].as_number()),
+        static_cast<float>(a[1].as_number()),
+        static_cast<float>(a[2].as_number()),
+        static_cast<float>(a[3].as_number())
+    };
+    return true;
+}
+
+inline bool ReadBool(const raceman::physics::json::Object& object, const std::string& key, bool& out) {
+    auto it = object.find(key);
+    if (it == object.end() || !it->second.is_bool()) {
+        return false;
+    }
+    out = it->second.as_bool();
+    return true;
+}
+
+inline bool ReadString(const raceman::physics::json::Object& object, const std::string& key, std::string& out) {
+    auto it = object.find(key);
+    if (it == object.end() || !it->second.is_string()) {
+        return false;
+    }
+    out = it->second.as_string();
+    return true;
+}
+
+inline std::string RigidbodyBodyTypeToString(RigidbodyBodyType bodyType) {
+    if (bodyType == RigidbodyBodyType::Static) return "Static";
+    if (bodyType == RigidbodyBodyType::Kinematic) return "Kinematic";
+    return "Dynamic";
+}
+
+inline RigidbodyBodyType RigidbodyBodyTypeFromString(const std::string& value) {
+    if (value == "Static") return RigidbodyBodyType::Static;
+    if (value == "Kinematic") return RigidbodyBodyType::Kinematic;
+    return RigidbodyBodyType::Dynamic;
+}
+
+inline std::string LightTypeToString(LightType type) {
+    if (type == LightType::Directional) return "Directional";
+    if (type == LightType::Spot) return "Spot";
+    return "Point";
+}
+
+inline LightType LightTypeFromString(const std::string& value) {
+    if (value == "Directional") return LightType::Directional;
+    if (value == "Spot") return LightType::Spot;
+    return LightType::Point;
+}
+
+inline std::string MeshColliderBuildQualityToString(MeshColliderBuildQuality quality) {
+    if (quality == MeshColliderBuildQuality::Balanced) return "Balanced";
+    return "BuildQuality";
+}
+
+inline MeshColliderBuildQuality MeshColliderBuildQualityFromString(const std::string& value) {
+    if (value == "Balanced") return MeshColliderBuildQuality::Balanced;
+    if (value == "BuildQuality" || value == "BuildSpeed") return MeshColliderBuildQuality::BuildQuality;
+    return MeshColliderBuildQuality::BuildQuality;
+}
+
+inline const char* InspectorComponentTypeToString(SceneInspectorComponentType type) {
+    switch (type) {
+    case SceneInspectorComponentType::Transform: return "Transform";
+    case SceneInspectorComponentType::MeshFilter: return "MeshFilter";
+    case SceneInspectorComponentType::MeshRenderer: return "MeshRenderer";
+    case SceneInspectorComponentType::Script: return "Script";
+    case SceneInspectorComponentType::Rigidbody: return "Rigidbody";
+    case SceneInspectorComponentType::Vehicle: return "Vehicle";
+    case SceneInspectorComponentType::CharacterController: return "CharacterController";
+    case SceneInspectorComponentType::Collider: return "Collider";
+    case SceneInspectorComponentType::Camera: return "Camera";
+    case SceneInspectorComponentType::Light: return "Light";
+    }
+    return "Transform";
+}
+
+inline bool InspectorComponentTypeFromString(const std::string& value, SceneInspectorComponentType& outType) {
+    if (value == "Transform") { outType = SceneInspectorComponentType::Transform; return true; }
+    if (value == "MeshFilter") { outType = SceneInspectorComponentType::MeshFilter; return true; }
+    if (value == "MeshRenderer") { outType = SceneInspectorComponentType::MeshRenderer; return true; }
+    if (value == "Script") { outType = SceneInspectorComponentType::Script; return true; }
+    if (value == "Rigidbody") { outType = SceneInspectorComponentType::Rigidbody; return true; }
+    if (value == "Vehicle") { outType = SceneInspectorComponentType::Vehicle; return true; }
+    if (value == "CharacterController") { outType = SceneInspectorComponentType::CharacterController; return true; }
+    if (value == "Collider") { outType = SceneInspectorComponentType::Collider; return true; }
+    if (value == "Camera") { outType = SceneInspectorComponentType::Camera; return true; }
+    if (value == "Light") { outType = SceneInspectorComponentType::Light; return true; }
+    return false;
+}
+
+inline std::string InspectorComponentKey(const std::string& objectId, SceneInspectorComponentType type) {
+    return objectId + "|" + InspectorComponentTypeToString(type);
+}
+
+inline bool IsObjectNameCopySuffix(const std::string& name) {
+    return name.size() >= 5 && name.substr(name.size() - 5) == " Copy";
+}
+
+inline void RemapVehicleObjectReferences(SceneObject& object, const std::unordered_map<std::string, std::string>& idRemap) {
+    if (!object.hasVehicle) {
+        return;
+    }
+
+    for (std::string& chassisObjectId : object.vehicle.chassisObjectIds) {
+        const auto it = idRemap.find(chassisObjectId);
+        if (it != idRemap.end()) {
+            chassisObjectId = it->second;
+        }
+    }
+
+    for (VehicleWheelBinding& wheelBinding : object.vehicle.wheelBindings) {
+        const auto it = idRemap.find(wheelBinding.objectId);
+        if (it != idRemap.end()) {
+            wheelBinding.objectId = it->second;
+        }
+    }
+}
+
+inline bool ReadBoolArray(const raceman::physics::json::Object& object, const std::string& key, std::array<bool, kPhysicsLayerCount>& out) {
+    auto it = object.find(key);
+    if (it == object.end() || !it->second.is_array()) {
+        return false;
+    }
+
+    const auto& values = it->second.as_array();
+    if (values.size() != kPhysicsLayerCount) {
+        return false;
+    }
+
+    for (int i = 0; i < kPhysicsLayerCount; ++i) {
+        if (!values[static_cast<std::size_t>(i)].is_bool()) {
+            return false;
+        }
+        out[static_cast<std::size_t>(i)] = values[static_cast<std::size_t>(i)].as_bool();
+    }
+    return true;
+}
+
+inline PhysicsLayerNames MakeDefaultPhysicsLayerNames() {
+    PhysicsLayerNames names{};
+    names[0] = "Default";
+    names[1] = "World";
+    names[2] = "Vehicle";
+    names[3] = "VehicleWheel";
+    names[4] = "Trigger";
+    names[5] = "Player";
+    names[6] = "Layer6";
+    names[7] = "Layer7";
+    return names;
+}
+
+inline PhysicsLayerCollisionMatrix MakeDefaultPhysicsLayerCollisionMatrix() {
+    PhysicsLayerCollisionMatrix matrix{};
+    for (int row = 0; row < kPhysicsLayerCount; ++row) {
+        for (int column = 0; column < kPhysicsLayerCount; ++column) {
+            matrix[static_cast<std::size_t>(row)][static_cast<std::size_t>(column)] = true;
+        }
+    }
+
+    matrix[3][2] = false;
+    matrix[2][3] = false;
+    matrix[3][3] = false;
+    return matrix;
+}
+
+inline std::string MakePhysicsLayerStorageName(const std::string& value, int fallbackIndex) {
+    std::string trimmed = scene_editor_internal::TrimCopyLocal(value);
+    if (trimmed.empty()) {
+        return fallbackIndex == 0 ? "Default" : ("Layer" + std::to_string(fallbackIndex));
+    }
+
+    return trimmed;
+}
+
+inline ScriptFieldEntry MakeScriptFieldEntry(const ScriptFieldDefinition& definition) {
+    return {definition.name, definition.type, definition.defaultValue};
+}
+
+inline bool IsScriptFieldValueCompatible(ScriptFieldType type, const ScriptFieldValue& value) {
+    switch (type) {
+    case ScriptFieldType::Bool: return std::holds_alternative<bool>(value);
+    case ScriptFieldType::Int: return std::holds_alternative<int>(value);
+    case ScriptFieldType::Float: return std::holds_alternative<float>(value);
+    case ScriptFieldType::String: return std::holds_alternative<std::string>(value);
+    case ScriptFieldType::Vec2: return std::holds_alternative<glm::vec2>(value);
+    case ScriptFieldType::Vec3: return std::holds_alternative<glm::vec3>(value);
+    case ScriptFieldType::Vec4: return std::holds_alternative<glm::vec4>(value);
+    }
+    return false;
+}
+
+inline bool SyncScriptAttachmentFields(ObjectScriptAttachment& attachment, const std::vector<ScriptFieldDefinition>& definitions) {
+    bool changed = false;
+    std::vector<ScriptFieldEntry> synced;
+    synced.reserve(definitions.size());
+
+    for (const ScriptFieldDefinition& definition : definitions) {
+        auto existing = std::find_if(attachment.fields.begin(), attachment.fields.end(), [&](const ScriptFieldEntry& field) {
+            return field.name == definition.name;
+        });
+
+        if (existing != attachment.fields.end() && existing->type == definition.type && IsScriptFieldValueCompatible(existing->type, existing->value)) {
+            synced.push_back(*existing);
+        } else {
+            synced.push_back(MakeScriptFieldEntry(definition));
+            changed = true;
+        }
+    }
+
+    if (attachment.fields.size() != synced.size()) {
+        changed = true;
+    }
+    attachment.fields = std::move(synced);
+    return changed;
+}
+
+inline std::string MakeVehicleChassisBodyObjectId(const std::string& objectId) {
+    return objectId + "::vehicle_chassis";
+}
+
+inline glm::mat4 BuildTransformMatrix(const Transform& transform) {
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, transform.position);
+    const glm::vec3 rads = glm::radians(transform.rotationEuler);
+    model = glm::rotate(model, rads.z, glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, rads.y, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, rads.x, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::scale(model, transform.scale);
+    return model;
+}
+
+inline Transform TransformFromMatrix(const glm::mat4& matrix) {
+    Transform transform;
+    glm::vec3 skew;
+    glm::vec4 perspective;
+    glm::quat orientation;
+    if (glm::decompose(matrix, transform.scale, orientation, transform.position, skew, perspective)) {
+        transform.rotationEuler = glm::degrees(glm::eulerAngles(orientation));
+    }
+    return transform;
+}
+
+inline glm::vec3 TransformPoint(const glm::mat4& transform, const glm::vec3& point) {
+    return glm::vec3(transform * glm::vec4(point, 1.0f));
+}
+
+inline glm::vec3 ToGlmVec3(const raceman::physics::Vector3& value) {
+    return {value.x, value.y, value.z};
+}
+
+inline raceman::physics::Vector3 ToVehicleVec3(const glm::vec3& value) {
+    return {value.x, value.y, value.z};
+}
+
+inline glm::mat3 VehicleToSceneBasis() {
+    return glm::mat3(
+        glm::vec3(1.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 0.0f, 1.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f));
+}
+
+inline glm::vec3 VehicleVectorToScene(const raceman::physics::Vector3& value) {
+    return VehicleToSceneBasis() * ToGlmVec3(value);
+}
+
+inline raceman::physics::Vector3 SceneVectorToVehicle(const glm::vec3& value) {
+    const glm::vec3 converted = glm::transpose(VehicleToSceneBasis()) * value;
+    return ToVehicleVec3(converted);
+}
+
+inline glm::vec3 VehiclePseudoVectorToScene(const raceman::physics::Vector3& value) {
+    return -VehicleVectorToScene(value);
+}
+
+inline raceman::physics::Vector3 ScenePseudoVectorToVehicle(const glm::vec3& value) {
+    return ToVehicleVec3(-(glm::transpose(VehicleToSceneBasis()) * value));
+}
+
+inline float VehicleLongitudinalSpeed(const raceman::physics::VehicleRigidBodyState& state) {
+    const raceman::physics::Vector3 forward = state.transform.rotation.rotate({0.0f, 1.0f, 0.0f});
+    return raceman::physics::dot(state.linearVelocity, forward);
+}
+
+inline glm::quat ToGlmQuat(const raceman::physics::Quaternion& value) {
+    return glm::quat(value.w, value.x, value.y, value.z);
+}
+
+inline raceman::physics::Quaternion ToVehicleQuat(const glm::quat& value) {
+    return {value.w, value.x, value.y, value.z};
+}
+
+inline glm::quat VehicleQuatToScene(const raceman::physics::Quaternion& value) {
+    const glm::mat3 basis = VehicleToSceneBasis();
+    const glm::mat3 vehicleRotation = glm::mat3_cast(ToGlmQuat(value));
+    return glm::quat_cast(basis * vehicleRotation * glm::transpose(basis));
+}
+
+inline raceman::physics::Quaternion SceneQuatToVehicle(const glm::quat& value) {
+    const glm::mat3 basis = VehicleToSceneBasis();
+    const glm::mat3 sceneRotation = glm::mat3_cast(value);
+    return ToVehicleQuat(glm::quat_cast(glm::transpose(basis) * sceneRotation * basis));
+}
+
+inline Transform TransformFromVehicleTransform(const raceman::physics::Transform& transform) {
+    Transform result;
+    result.position = VehicleVectorToScene(transform.position);
+    result.rotationEuler = glm::degrees(glm::eulerAngles(VehicleQuatToScene(transform.rotation)));
+    result.scale = glm::vec3(1.0f);
+    return result;
+}
+
+inline glm::mat4 BuildRotationOnlyMatrix(const glm::vec3& rotationEuler) {
+    Transform rotationOnly;
+    rotationOnly.rotationEuler = rotationEuler;
+    return BuildTransformMatrix(rotationOnly);
+}
+
+inline Transform BuildWheelWorldTransformFromAuthoredLocal(const glm::mat4& vehicleWorldMatrix,
+                                                           const Transform& authoredLocalTransform,
+                                                           const Transform& runtimeChassisWorldTransform,
+                                                           const Transform& runtimeWheelWorldTransform,
+                                                           const VehicleWheelBinding& binding) {
+    const glm::mat4 runtimeChassisWorldMatrix = BuildTransformMatrix(runtimeChassisWorldTransform);
+    const glm::mat4 runtimeWheelWorldMatrix = BuildTransformMatrix(runtimeWheelWorldTransform);
+    const glm::mat4 runtimeWheelRelativeMatrix = glm::inverse(runtimeChassisWorldMatrix) * runtimeWheelWorldMatrix;
+    const Transform runtimeWheelRelativeTransform = TransformFromMatrix(runtimeWheelRelativeMatrix);
+
+    glm::mat4 wheelWorldMatrix = vehicleWorldMatrix;
+    wheelWorldMatrix = wheelWorldMatrix * glm::translate(glm::mat4(1.0f), authoredLocalTransform.position);
+    wheelWorldMatrix = wheelWorldMatrix * BuildRotationOnlyMatrix(runtimeWheelRelativeTransform.rotationEuler);
+    wheelWorldMatrix = wheelWorldMatrix * BuildRotationOnlyMatrix(authoredLocalTransform.rotationEuler);
+    wheelWorldMatrix = wheelWorldMatrix * BuildRotationOnlyMatrix(binding.visualRotationEuler);
+    wheelWorldMatrix = wheelWorldMatrix * glm::scale(glm::mat4(1.0f), authoredLocalTransform.scale);
+    return TransformFromMatrix(wheelWorldMatrix);
+}
+
+inline void ApplyWorldTransformToSceneObject(std::vector<SceneObject>& objects,
+                                             const std::function<int(const std::string&)>& findObjectIndexById,
+                                             const std::function<glm::mat4(int)>& getObjectWorldMatrix,
+                                             int objectIndex,
+                                             const Transform& worldTransform,
+                                             bool preserveScale) {
+    if (objectIndex < 0 || objectIndex >= static_cast<int>(objects.size())) {
+        return;
+    }
+
+    const Transform previousLocal = objects[objectIndex].transform;
+    glm::mat4 worldMatrix = BuildTransformMatrix(worldTransform);
+    if (preserveScale) {
+        worldMatrix = glm::scale(worldMatrix, previousLocal.scale);
+    }
+
+    const int parentIndex = findObjectIndexById(objects[objectIndex].parentId);
+    if (parentIndex >= 0 && parentIndex != objectIndex) {
+        objects[objectIndex].transform = TransformFromMatrix(glm::inverse(getObjectWorldMatrix(parentIndex)) * worldMatrix);
+    } else {
+        objects[objectIndex].transform = TransformFromMatrix(worldMatrix);
+    }
+
+    if (preserveScale) {
+        objects[objectIndex].transform.scale = previousLocal.scale;
+    }
+}
+
+inline bool IsVehicleWheelHelperObject(const VehicleComponent& vehicle, const std::string& objectId) {
+    return std::any_of(vehicle.wheelBindings.begin(), vehicle.wheelBindings.end(), [&](const VehicleWheelBinding& binding) {
+        return binding.objectId == objectId;
+    });
+}
+
+inline bool HasVehicleChassisBindings(const SceneObject& object) {
+    return HasColliderComponent(object) || !object.vehicle.chassisObjectIds.empty();
+}
+
+inline bool AppendSupportedVehicleChassisColliders(const SceneObject& object,
+                                                   const glm::mat4& relativeMatrix,
+                                                   std::vector<PhysicsColliderDesc>& outColliders) {
+    const std::size_t beforeCount = outColliders.size();
+    const Transform relativeTransform = TransformFromMatrix(relativeMatrix);
+    const glm::vec3 relativeScale = glm::abs(relativeTransform.scale);
+    const SceneColliderType colliderType = GetActiveColliderType(object);
+
+    if (colliderType == SceneColliderType::Box && object.boxCollider.enabled && !object.boxCollider.isTrigger) {
+        PhysicsColliderDesc collider;
+        collider.type = PhysicsColliderType::Box;
+        collider.center = TransformPoint(relativeMatrix, object.boxCollider.center);
+        collider.rotationEuler = relativeTransform.rotationEuler;
+        collider.scale = relativeScale;
+        collider.size = object.boxCollider.size;
+        outColliders.push_back(std::move(collider));
+    }
+    if (colliderType == SceneColliderType::Sphere && object.sphereCollider.enabled && !object.sphereCollider.isTrigger) {
+        PhysicsColliderDesc collider;
+        collider.type = PhysicsColliderType::Sphere;
+        collider.center = TransformPoint(relativeMatrix, object.sphereCollider.center);
+        collider.scale = relativeScale;
+        collider.radius = object.sphereCollider.radius;
+        outColliders.push_back(std::move(collider));
+    }
+    if (colliderType == SceneColliderType::Capsule && object.capsuleCollider.enabled && !object.capsuleCollider.isTrigger) {
+        PhysicsColliderDesc collider;
+        collider.type = PhysicsColliderType::Capsule;
+        collider.center = TransformPoint(relativeMatrix, object.capsuleCollider.center);
+        collider.rotationEuler = relativeTransform.rotationEuler;
+        collider.scale = relativeScale;
+        collider.radius = object.capsuleCollider.radius;
+        collider.height = object.capsuleCollider.height;
+        outColliders.push_back(std::move(collider));
+    }
+    if (colliderType == SceneColliderType::Mesh && object.meshCollider.enabled && !object.meshCollider.isTrigger &&
+        object.hasMeshFilter && !object.meshFilter.sourcePath.empty()) {
+        PhysicsColliderDesc collider;
+        collider.type = PhysicsColliderType::Mesh;
+        collider.center = relativeTransform.position;
+        collider.rotationEuler = relativeTransform.rotationEuler;
+        collider.scale = relativeScale;
+        collider.meshAssetPath = object.meshFilter.sourcePath;
+        collider.meshIndex = object.meshFilter.meshIndex;
+        collider.meshBuildQuality = object.meshCollider.buildQuality;
+        outColliders.push_back(std::move(collider));
+    }
+
+    return outColliders.size() > beforeCount;
+}
+
 inline constexpr const char* kObjAssetPayload = "RACEMAN_PROJECT_OBJ";
 inline constexpr const char* kMeshAssetPayload = "RACEMAN_PROJECT_MESH";
 inline constexpr const char* kMaterialAssetPayload = "RACEMAN_PROJECT_MATERIAL";
 inline constexpr const char* kProjectFilePayload = "RACEMAN_PROJECT_FILE";
 inline constexpr const char* kHierarchyObjectPayload = "SCENE_HIERARCHY_OBJECT_INDEX";
+inline constexpr const char* kHierarchyMultiObjectPayload = "SCENE_HIERARCHY_OBJECT_IDS";
 inline constexpr const char* kPlaneObjAssetPath = "editor-assets/mesh/plane.obj";
 
 } // namespace raceman::scene_editor_internal

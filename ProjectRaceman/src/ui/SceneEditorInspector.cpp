@@ -1,6 +1,7 @@
 #include "SceneEditorInternal.h"
 #include "../physics/SimpleJson.h"
 #include "../physics/VehicleConfig.h"
+#include "../physics/VehiclePhysics.h"
 #include "../scripting/ScriptRegistry.h"
 
 #include <glad/glad.h>
@@ -278,7 +279,9 @@ bool RenderRemovableComponentHeader(const char* label,
                                     bool& removeRequested,
                                     SceneInspectorComponentType* componentType = nullptr,
                                     SceneInspectorComponentType* outDraggedType = nullptr,
-                                    SceneInspectorComponentType* outDropTargetType = nullptr) {
+                                    SceneInspectorComponentType* outDropTargetType = nullptr,
+                                    bool* outHeaderActive = nullptr,
+                                    bool* outHeaderToggledOpen = nullptr) {
     ImGui::PushID(id);
     RenderComponentIcon(textureId);
     enabledChanged = false;
@@ -290,6 +293,12 @@ bool RenderRemovableComponentHeader(const char* label,
         ImGui::SameLine();
     }
     const bool open = ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+    if (outHeaderActive != nullptr) {
+        *outHeaderActive = ImGui::IsItemHovered() || ImGui::IsItemFocused();
+    }
+    if (outHeaderToggledOpen != nullptr) {
+        *outHeaderToggledOpen = ImGui::IsItemToggledOpen();
+    }
     if (componentType != nullptr) {
         if (ImGui::BeginDragDropSource()) {
             const SceneInspectorComponentType payloadType = *componentType;
@@ -320,6 +329,15 @@ bool RenderRemovableComponentHeader(const char* label,
     return open;
 }
 
+void RenderComponentClipboardButtons(bool canPaste, bool& copyRequested, bool& pasteRequested) {
+    copyRequested = ImGui::SmallButton("Copy");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!canPaste);
+    pasteRequested = ImGui::SmallButton("Paste");
+    ImGui::EndDisabled();
+    ImGui::Separator();
+}
+
 bool RenderColliderTypeCombo(const char* label, const char* comboId, SceneColliderType currentType, bool allowNone, const char* previewOverride, SceneColliderType& outType) {
     const char* preview = previewOverride != nullptr ? previewOverride : SceneColliderTypeLabel(currentType);
     if (!ImGui::BeginCombo(label, preview)) {
@@ -348,39 +366,6 @@ bool RenderColliderTypeCombo(const char* label, const char* comboId, SceneCollid
         const std::string selectableLabel = std::string(SceneColliderTypeLabel(type)) + "##" + comboId + "_" + SceneColliderTypeLabel(type);
         if (ImGui::Selectable(selectableLabel.c_str(), selected)) {
             outType = type;
-            changed = true;
-        }
-    }
-
-    ImGui::EndCombo();
-    return changed;
-}
-
-const char* MeshColliderBuildQualityLabel(MeshColliderBuildQuality quality) {
-    if (quality == MeshColliderBuildQuality::Balanced) return "Balanced";
-    if (quality == MeshColliderBuildQuality::BuildQuality) return "Build Quality";
-    return "Build Speed";
-}
-
-bool RenderMeshColliderBuildQualityCombo(const char* label,
-                                         const char* comboId,
-                                         MeshColliderBuildQuality currentQuality,
-                                         MeshColliderBuildQuality& outQuality) {
-    if (!ImGui::BeginCombo(label, MeshColliderBuildQualityLabel(currentQuality))) {
-        return false;
-    }
-
-    bool changed = false;
-    const MeshColliderBuildQuality qualities[] = {
-        MeshColliderBuildQuality::BuildSpeed,
-        MeshColliderBuildQuality::Balanced,
-        MeshColliderBuildQuality::BuildQuality
-    };
-    for (MeshColliderBuildQuality quality : qualities) {
-        const bool selected = quality == currentQuality;
-        const std::string selectableLabel = std::string(MeshColliderBuildQualityLabel(quality)) + "##" + comboId + "_" + MeshColliderBuildQualityLabel(quality);
-        if (ImGui::Selectable(selectableLabel.c_str(), selected)) {
-            outQuality = quality;
             changed = true;
         }
     }
@@ -454,6 +439,10 @@ unsigned int SceneEditor::GetComponentIconTexture(const std::string& filename) {
 
 void SceneEditor::RenderInspectorPanel() {
     if (ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoCollapse)) {
+        inspectorPanelHovered_ = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+        inspectorPanelFocused_ = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+        inspectorKeyboardTargetComponentKey_.clear();
+        inspectorKeyboardTargetObjectId_.clear();
         if (inspectMaterial_) {
             RenderMaterialInspector();
         } else if (selectedIndices_.size() > 1) {
@@ -648,6 +637,12 @@ void SceneEditor::RenderInspectorPanel() {
             if (ImGui::Button("Add Component")) {
                 ImGui::OpenPopup("Add Object Component");
             }
+            if (componentClipboard_.hasValue) {
+                ImGui::SameLine();
+                if (ImGui::Button("Paste Component")) {
+                    PasteInspectorComponentFromClipboard({selectedIndex_}, componentClipboard_.type);
+                }
+            }
             if (ImGui::BeginPopup("Add Object Component")) {
                 if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
                     ImGui::CloseCurrentPopup();
@@ -666,11 +661,73 @@ void SceneEditor::RenderInspectorPanel() {
             SyncInspectorComponentOrder(obj);
             SceneInspectorComponentType reorderDraggedType = SceneInspectorComponentType::Transform;
             SceneInspectorComponentType reorderTargetType = SceneInspectorComponentType::Transform;
+            auto componentKeyFor = [&](SceneInspectorComponentType type) {
+                const char* typeName = "Transform";
+                switch (type) {
+                case SceneInspectorComponentType::Transform: typeName = "Transform"; break;
+                case SceneInspectorComponentType::MeshFilter: typeName = "MeshFilter"; break;
+                case SceneInspectorComponentType::MeshRenderer: typeName = "MeshRenderer"; break;
+                case SceneInspectorComponentType::Script: typeName = "Script"; break;
+                case SceneInspectorComponentType::Rigidbody: typeName = "Rigidbody"; break;
+                case SceneInspectorComponentType::Vehicle: typeName = "Vehicle"; break;
+                case SceneInspectorComponentType::CharacterController: typeName = "CharacterController"; break;
+                case SceneInspectorComponentType::Collider: typeName = "Collider"; break;
+                case SceneInspectorComponentType::Camera: typeName = "Camera"; break;
+                case SceneInspectorComponentType::Light: typeName = "Light"; break;
+                }
+                return obj.id + "|" + typeName;
+            };
+            auto prepareComponentOpenState = [&](SceneInspectorComponentType type) {
+                const std::string key = componentKeyFor(type);
+                bool openState = true;
+                const auto it = inspectorComponentOpenStates_.find(key);
+                if (it != inspectorComponentOpenStates_.end()) {
+                    openState = it->second;
+                }
+                if (pendingInspectorToggleComponentKey_ == key) {
+                    openState = !openState;
+                    inspectorComponentOpenStates_[key] = openState;
+                    pendingInspectorToggleComponentKey_.clear();
+                }
+                ImGui::SetNextItemOpen(openState, ImGuiCond_Always);
+                return key;
+            };
+            auto finishComponentHeaderState = [&](const std::string& key,
+                                                  SceneInspectorComponentType type,
+                                                  bool headerActive,
+                                                  bool headerToggledOpen,
+                                                  bool open) {
+                if (headerActive) {
+                    inspectorKeyboardTargetComponentKey_ = key;
+                    inspectorKeyboardTargetObjectId_ = obj.id;
+                    inspectorKeyboardTargetComponentType_ = type;
+                }
+                if (headerToggledOpen) {
+                    inspectorComponentOpenStates_[key] = open;
+                }
+            };
 
             for (SceneInspectorComponentType currentComponentToRender : obj.inspectorComponentOrder) {
             if (currentComponentToRender == SceneInspectorComponentType::Transform) {
+            const std::string transformComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Transform);
             RenderComponentIcon(GetComponentIconTexture("component-transform.png"));
-            if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
+            const bool transformOpen = ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen);
+            finishComponentHeaderState(
+                transformComponentKey,
+                SceneInspectorComponentType::Transform,
+                ImGui::IsItemHovered() || ImGui::IsItemFocused(),
+                ImGui::IsItemToggledOpen(),
+                transformOpen);
+            if (transformOpen) {
+                bool copyRequested = false;
+                bool pasteRequested = false;
+                RenderComponentClipboardButtons(componentClipboard_.hasValue && componentClipboard_.type == SceneInspectorComponentType::Transform, copyRequested, pasteRequested);
+                if (copyRequested) {
+                    CopyInspectorComponentToClipboard(selectedIndex_, SceneInspectorComponentType::Transform);
+                }
+                if (pasteRequested) {
+                    PasteInspectorComponentFromClipboard({selectedIndex_}, SceneInspectorComponentType::Transform);
+                }
                 Transform before = obj.transform;
                 if (RenderInspectorDragFloat3("Position", "##position", &obj.transform.position.x, 0.1f)) {
                     const glm::vec3 after = obj.transform.position;
@@ -729,10 +786,14 @@ void SceneEditor::RenderInspectorPanel() {
             bool removeMeshFilter = false;
             bool meshFilterOpen = false;
             bool meshFilterEnabledChanged = false;
+            bool meshFilterHeaderActive = false;
+            bool meshFilterHeaderToggledOpen = false;
             const bool meshFilterEnabledBefore = obj.meshFilter.enabled;
             if (obj.hasMeshFilter) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::MeshFilter;
-                meshFilterOpen = RenderRemovableComponentHeader("Mesh Filter", "MeshFilterHeader", GetComponentIconTexture("component-mesh-filter.png"), &obj.meshFilter.enabled, meshFilterEnabledChanged, removeMeshFilter, &componentType, &reorderDraggedType, &reorderTargetType);
+                const std::string meshFilterComponentKey = prepareComponentOpenState(SceneInspectorComponentType::MeshFilter);
+                meshFilterOpen = RenderRemovableComponentHeader("Mesh Filter", "MeshFilterHeader", GetComponentIconTexture("component-mesh-filter.png"), &obj.meshFilter.enabled, meshFilterEnabledChanged, removeMeshFilter, &componentType, &reorderDraggedType, &reorderTargetType, &meshFilterHeaderActive, &meshFilterHeaderToggledOpen);
+                finishComponentHeaderState(meshFilterComponentKey, SceneInspectorComponentType::MeshFilter, meshFilterHeaderActive, meshFilterHeaderToggledOpen, meshFilterOpen);
             }
             if (removeMeshFilter) {
                 PushUndoState();
@@ -794,10 +855,14 @@ void SceneEditor::RenderInspectorPanel() {
             bool removeMeshRenderer = false;
             bool meshRendererOpen = false;
             bool meshRendererEnabledChanged = false;
+            bool meshRendererHeaderActive = false;
+            bool meshRendererHeaderToggledOpen = false;
             const bool meshRendererEnabledBefore = obj.meshRenderer.enabled;
             if (obj.hasMeshRenderer) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::MeshRenderer;
-                meshRendererOpen = RenderRemovableComponentHeader("Mesh Renderer", "MeshRendererHeader", GetComponentIconTexture("component-mesh-renderer.png"), &obj.meshRenderer.enabled, meshRendererEnabledChanged, removeMeshRenderer, &componentType, &reorderDraggedType, &reorderTargetType);
+                const std::string meshRendererComponentKey = prepareComponentOpenState(SceneInspectorComponentType::MeshRenderer);
+                meshRendererOpen = RenderRemovableComponentHeader("Mesh Renderer", "MeshRendererHeader", GetComponentIconTexture("component-mesh-renderer.png"), &obj.meshRenderer.enabled, meshRendererEnabledChanged, removeMeshRenderer, &componentType, &reorderDraggedType, &reorderTargetType, &meshRendererHeaderActive, &meshRendererHeaderToggledOpen);
+                finishComponentHeaderState(meshRendererComponentKey, SceneInspectorComponentType::MeshRenderer, meshRendererHeaderActive, meshRendererHeaderToggledOpen, meshRendererOpen);
             }
             if (removeMeshRenderer) {
                 PushUndoState();
@@ -871,10 +936,14 @@ void SceneEditor::RenderInspectorPanel() {
             bool removeScripts = false;
             bool scriptsOpen = false;
             bool scriptsEnabledChanged = false;
+            bool scriptsHeaderActive = false;
+            bool scriptsHeaderToggledOpen = false;
             const bool scriptsEnabledBefore = obj.scriptComponent.enabled;
             if (obj.hasScriptComponent) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Script;
-                scriptsOpen = RenderRemovableComponentHeader("Scripts", "ScriptsHeader", GetComponentIconTexture("component-script.png"), &obj.scriptComponent.enabled, scriptsEnabledChanged, removeScripts, &componentType, &reorderDraggedType, &reorderTargetType);
+                const std::string scriptComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Script);
+                scriptsOpen = RenderRemovableComponentHeader("Scripts", "ScriptsHeader", GetComponentIconTexture("component-script.png"), &obj.scriptComponent.enabled, scriptsEnabledChanged, removeScripts, &componentType, &reorderDraggedType, &reorderTargetType, &scriptsHeaderActive, &scriptsHeaderToggledOpen);
+                finishComponentHeaderState(scriptComponentKey, SceneInspectorComponentType::Script, scriptsHeaderActive, scriptsHeaderToggledOpen, scriptsOpen);
             }
             if (removeScripts) {
                 PushUndoState();
@@ -1033,10 +1102,14 @@ void SceneEditor::RenderInspectorPanel() {
             bool removeRigidbody = false;
             bool rigidbodyOpen = false;
             bool rigidbodyEnabledChanged = false;
+            bool rigidbodyHeaderActive = false;
+            bool rigidbodyHeaderToggledOpen = false;
             const bool rigidbodyEnabledBefore = obj.rigidbody.enabled;
             if (obj.hasRigidbody) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Rigidbody;
-                rigidbodyOpen = RenderRemovableComponentHeader("Rigidbody", "RigidbodyHeader", GetComponentIconTexture("component-rigidbody.png"), &obj.rigidbody.enabled, rigidbodyEnabledChanged, removeRigidbody, &componentType, &reorderDraggedType, &reorderTargetType);
+                const std::string rigidbodyComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Rigidbody);
+                rigidbodyOpen = RenderRemovableComponentHeader("Rigidbody", "RigidbodyHeader", GetComponentIconTexture("component-rigidbody.png"), &obj.rigidbody.enabled, rigidbodyEnabledChanged, removeRigidbody, &componentType, &reorderDraggedType, &reorderTargetType, &rigidbodyHeaderActive, &rigidbodyHeaderToggledOpen);
+                finishComponentHeaderState(rigidbodyComponentKey, SceneInspectorComponentType::Rigidbody, rigidbodyHeaderActive, rigidbodyHeaderToggledOpen, rigidbodyOpen);
             }
             if (removeRigidbody) {
                 PushUndoState();
@@ -1167,10 +1240,14 @@ void SceneEditor::RenderInspectorPanel() {
             bool removeVehicle = false;
             bool vehicleOpen = false;
             bool vehicleEnabledChanged = false;
+            bool vehicleHeaderActive = false;
+            bool vehicleHeaderToggledOpen = false;
             const bool vehicleEnabledBefore = obj.vehicle.enabled;
             if (obj.hasVehicle) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Vehicle;
-                vehicleOpen = RenderRemovableComponentHeader("Vehicle", "VehicleHeader", GetComponentIconTexture("component-vehicle.png"), &obj.vehicle.enabled, vehicleEnabledChanged, removeVehicle, &componentType, &reorderDraggedType, &reorderTargetType);
+                const std::string vehicleComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Vehicle);
+                vehicleOpen = RenderRemovableComponentHeader("Vehicle", "VehicleHeader", GetComponentIconTexture("component-vehicle.png"), &obj.vehicle.enabled, vehicleEnabledChanged, removeVehicle, &componentType, &reorderDraggedType, &reorderTargetType, &vehicleHeaderActive, &vehicleHeaderToggledOpen);
+                finishComponentHeaderState(vehicleComponentKey, SceneInspectorComponentType::Vehicle, vehicleHeaderActive, vehicleHeaderToggledOpen, vehicleOpen);
             }
             if (removeVehicle) {
                 PushUndoState();
@@ -1185,40 +1262,141 @@ void SceneEditor::RenderInspectorPanel() {
                 if (onDirty_) onDirty_();
             }
             if (obj.hasVehicle && vehicleOpen) {
-                char configBuffer[512]{};
-                std::snprintf(configBuffer, sizeof(configBuffer), "%s", obj.vehicle.configPath.c_str());
-                if (RenderInspectorInputText("Config Asset", "##vehicleConfigPath", configBuffer, sizeof(configBuffer))) {
-                    const std::string configPath = NormalizeSlashes(std::string(configBuffer));
-                    PushUndoState();
-                    obj.vehicle.configPath = configPath;
-                    raceman::physics::VehicleConfig config;
-                    if (TryLoadVehicleConfigForPath(configPath, config)) {
-                        SyncVehicleWheelBindings(obj.vehicle, config);
-                    } else if (configPath.empty()) {
-                        obj.vehicle.wheelBindings.clear();
+                std::string configDisplayName = "(none)";
+                if (!obj.vehicle.configPath.empty()) {
+                    configDisplayName = ProjectAssetDisplayFilename(obj.vehicle.configPath);
+                }
+                ImGui::TextDisabled("Config Asset:");
+                ImGui::SameLine();
+                const float vehicleConfigButtonWidth = (std::max)(1.0f, ImGui::GetContentRegionAvail().x);
+                if (ImGui::Button((configDisplayName + "##selectVehicleConfig").c_str(), ImVec2(vehicleConfigButtonWidth, 0.0f))) {
+                    assetPickerMode_ = ProjectAssetPickerMode::AssignVehicleConfig;
+                }
+                if (!obj.vehicle.configPath.empty()) {
+                    if (ImGui::Button("Edit Profile##vehicleConfigEdit")) {
+                        OpenVehicleConfigEditor(obj.vehicle.configPath);
                     }
-                    if (onDirty_) onDirty_();
                 }
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
                         const char* projectPath = static_cast<const char*>(payload->Data);
                         if (projectPath != nullptr && IsVehicleConfigAssetPath(projectPath)) {
-                            PushUndoState();
-                            obj.vehicle.configPath = NormalizeSlashes(projectPath);
-                            raceman::physics::VehicleConfig config;
-                            if (TryLoadVehicleConfigForPath(obj.vehicle.configPath, config)) {
-                                SyncVehicleWheelBindings(obj.vehicle, config);
-                            }
-                            if (onDirty_) onDirty_();
+                            AssignVehicleConfigToSelected(projectPath);
                         }
                     }
                     ImGui::EndDragDropTarget();
+                }
+
+                if (ImGui::Button("Add Chassis Part")) {
+                    PushUndoState();
+                    obj.vehicle.chassisObjectIds.push_back({});
+                    if (onDirty_) onDirty_();
+                }
+                if (obj.vehicle.chassisObjectIds.empty()) {
+                    ImGui::TextDisabled("No chassis parts bound. Root colliders are still used if present.");
+                }
+                for (int chassisIndex = 0; chassisIndex < static_cast<int>(obj.vehicle.chassisObjectIds.size()); ++chassisIndex) {
+                    std::string& chassisObjectId = obj.vehicle.chassisObjectIds[static_cast<std::size_t>(chassisIndex)];
+                    int selectedObjectIndex = -1;
+                    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                        if (objects_[i].id == chassisObjectId) {
+                            selectedObjectIndex = i;
+                            break;
+                        }
+                    }
+
+                    std::string preview = "(none)";
+                    if (selectedObjectIndex >= 0) {
+                        preview = objects_[selectedObjectIndex].name.empty() ? std::string("(unnamed)") : objects_[selectedObjectIndex].name;
+                    }
+
+                    ImGui::PushID(chassisIndex);
+                    const std::string comboLabel = "Chassis Part##vehicleChassisPart";
+                    if (ImGui::BeginCombo(comboLabel.c_str(), preview.c_str())) {
+                        const bool noneSelected = selectedObjectIndex < 0;
+                        if (ImGui::Selectable("(none)", noneSelected)) {
+                            PushUndoState();
+                            chassisObjectId.clear();
+                            if (onDirty_) onDirty_();
+                        }
+                        if (noneSelected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                        for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                            if (objects_[i].id == obj.id || !IsDescendantOf(objects_[i].id, obj.id)) {
+                                continue;
+                            }
+                            const std::string itemName = objects_[i].name.empty() ? std::string("(unnamed)") : objects_[i].name;
+                            const std::string itemLabel = itemName + "##vehicleChassisObject_" + objects_[i].id;
+                            const bool isSelected = (i == selectedObjectIndex);
+                            if (ImGui::Selectable(itemLabel.c_str(), isSelected)) {
+                                PushUndoState();
+                                chassisObjectId = objects_[i].id;
+                                if (onDirty_) onDirty_();
+                            }
+                            if (isSelected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
+                            if (payload->DataSize == sizeof(int)) {
+                                const int droppedIndex = *static_cast<const int*>(payload->Data);
+                                if (droppedIndex >= 0 &&
+                                    droppedIndex < static_cast<int>(objects_.size()) &&
+                                    objects_[droppedIndex].id != obj.id &&
+                                    IsDescendantOf(objects_[droppedIndex].id, obj.id)) {
+                                    PushUndoState();
+                                    chassisObjectId = objects_[droppedIndex].id;
+                                    if (onDirty_) onDirty_();
+                                }
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Remove##vehicleChassisPart")) {
+                        PushUndoState();
+                        obj.vehicle.chassisObjectIds.erase(obj.vehicle.chassisObjectIds.begin() + chassisIndex);
+                        if (onDirty_) onDirty_();
+                        ImGui::PopID();
+                        break;
+                    }
+                    ImGui::PopID();
                 }
 
                 raceman::physics::VehicleConfig loadedConfig;
                 if (TryLoadVehicleConfigForPath(obj.vehicle.configPath, loadedConfig)) {
                     ImGui::TextDisabled("Vehicle: %s", loadedConfig.name.c_str());
                     ImGui::TextDisabled("Wheels: %d", static_cast<int>(loadedConfig.wheels.size()));
+                    if (scriptsRunning_) {
+                        const auto runtimeVehicleIt = std::find_if(runtimeVehicles_.begin(), runtimeVehicles_.end(),
+                            [&](const RuntimeVehicleInstance& runtimeVehicle) {
+                                return runtimeVehicle.objectIndex == selectedIndex_ && runtimeVehicle.instance != nullptr;
+                            });
+                        if (runtimeVehicleIt != runtimeVehicles_.end()) {
+                            const raceman::physics::VehicleTelemetry& telemetry = runtimeVehicleIt->instance->getTelemetry();
+                            const float speed = glm::length(glm::vec3(telemetry.linearVelocity.x, telemetry.linearVelocity.y, telemetry.linearVelocity.z));
+                            ImGui::Separator();
+                            ImGui::TextDisabled("Runtime Debug");
+                            ImGui::TextDisabled("Speed: %.2f m/s", speed);
+                            ImGui::TextDisabled("Engine RPM: %.0f", telemetry.engineRPM);
+                            if (telemetry.isReverse) {
+                                ImGui::TextDisabled("Gear: R");
+                            } else if (telemetry.isNeutral) {
+                                ImGui::TextDisabled("Gear: N");
+                            } else {
+                                ImGui::TextDisabled("Gear: %d", telemetry.currentGear);
+                            }
+                            ImGui::TextDisabled("Throttle / Brake / Steering: %.2f / %.2f / %.2f",
+                                telemetry.throttle,
+                                telemetry.brake,
+                                telemetry.steering);
+                            ImGui::Separator();
+                        }
+                    }
                     for (const raceman::physics::WheelConfig& wheel : loadedConfig.wheels) {
                         auto bindingIt = std::find_if(obj.vehicle.wheelBindings.begin(), obj.vehicle.wheelBindings.end(),
                             [&](const VehicleWheelBinding& candidate) {
@@ -1316,7 +1494,9 @@ void SceneEditor::RenderInspectorPanel() {
                     ImGui::TextDisabled("Assign a `.vehicle.json` asset to author this vehicle.");
                 }
                 ImGui::TextDisabled("Play mode uses bound wheel object transforms as the wheel rest pose.");
+                ImGui::TextDisabled("Bind chassis child objects here to merge their colliders into one chassis body.");
                 ImGui::TextDisabled("Use the wheel object's own transform for placement. Use Mesh Rotation Offset only if the mesh faces the wrong axis.");
+                ImGui::TextDisabled("Wheel-bound child objects are excluded from the chassis build.");
             }
             }
 
@@ -1324,10 +1504,14 @@ void SceneEditor::RenderInspectorPanel() {
             bool removeCharacterController = false;
             bool characterControllerOpen = false;
             bool characterControllerEnabledChanged = false;
+            bool characterControllerHeaderActive = false;
+            bool characterControllerHeaderToggledOpen = false;
             const bool characterControllerEnabledBefore = obj.characterController.enabled;
             if (obj.hasCharacterController) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::CharacterController;
-                characterControllerOpen = RenderRemovableComponentHeader("Character Controller", "CharacterControllerHeader", GetComponentIconTexture("component-capsule-collider.png"), &obj.characterController.enabled, characterControllerEnabledChanged, removeCharacterController, &componentType, &reorderDraggedType, &reorderTargetType);
+                const std::string characterControllerComponentKey = prepareComponentOpenState(SceneInspectorComponentType::CharacterController);
+                characterControllerOpen = RenderRemovableComponentHeader("Character Controller", "CharacterControllerHeader", GetComponentIconTexture("component-capsule-collider.png"), &obj.characterController.enabled, characterControllerEnabledChanged, removeCharacterController, &componentType, &reorderDraggedType, &reorderTargetType, &characterControllerHeaderActive, &characterControllerHeaderToggledOpen);
+                finishComponentHeaderState(characterControllerComponentKey, SceneInspectorComponentType::CharacterController, characterControllerHeaderActive, characterControllerHeaderToggledOpen, characterControllerOpen);
             }
             if (removeCharacterController) {
                 PushUndoState();
@@ -1412,6 +1596,8 @@ void SceneEditor::RenderInspectorPanel() {
                 bool removeCollider = false;
                 bool colliderOpen = false;
                 bool colliderEnabledChanged = false;
+                bool colliderHeaderActive = false;
+                bool colliderHeaderToggledOpen = false;
                 bool colliderEnabledBefore = false;
                 switch (colliderType) {
                 case SceneColliderType::Box: colliderEnabledBefore = obj.boxCollider.enabled; break;
@@ -1433,6 +1619,7 @@ void SceneEditor::RenderInspectorPanel() {
                 }
 
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Collider;
+                const std::string colliderComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Collider);
                 colliderOpen = RenderRemovableComponentHeader(
                     "Collider",
                     "ColliderHeader",
@@ -1442,7 +1629,10 @@ void SceneEditor::RenderInspectorPanel() {
                     removeCollider,
                     &componentType,
                     &reorderDraggedType,
-                    &reorderTargetType);
+                    &reorderTargetType,
+                    &colliderHeaderActive,
+                    &colliderHeaderToggledOpen);
+                finishComponentHeaderState(colliderComponentKey, SceneInspectorComponentType::Collider, colliderHeaderActive, colliderHeaderToggledOpen, colliderOpen);
 
                 if (removeCollider) {
                     PushUndoState();
@@ -1615,17 +1805,11 @@ void SceneEditor::RenderInspectorPanel() {
                             if (onDirty_) onDirty_();
                         }
 
-                        MeshColliderBuildQuality buildQuality = obj.meshCollider.buildQuality;
-                        if (RenderMeshColliderBuildQualityCombo("Build Quality", "ColliderMeshBuildQuality", obj.meshCollider.buildQuality, buildQuality)) {
-                            beginInspectorContinuousEdit();
-                            obj.meshCollider.buildQuality = buildQuality;
-                            if (onDirty_) onDirty_();
-                        }
-                        endInspectorContinuousEdit();
+                        ImGui::TextDisabled("Build Quality: Quality (fixed)");
 
                         const bool hasMeshSource = obj.hasMeshFilter && !obj.meshFilter.sourcePath.empty();
                         ImGui::TextDisabled("%s", hasMeshSource ? obj.meshFilter.sourcePath.c_str() : "Mesh Collider requires a Mesh Filter source.");
-                        ImGui::TextDisabled("Mesh colliders are intended for static world geometry.");
+                        ImGui::TextDisabled("Mesh colliders are static-only in Jolt (use convex or primitives for dynamic).");
                     }
                 }
             }
@@ -1635,10 +1819,14 @@ void SceneEditor::RenderInspectorPanel() {
             bool removeCamera = false;
             bool cameraOpen = false;
             bool cameraEnabledChanged = false;
+            bool cameraHeaderActive = false;
+            bool cameraHeaderToggledOpen = false;
             const bool cameraEnabledBefore = obj.camera.enabled;
             if (obj.hasCamera) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Camera;
-                cameraOpen = RenderRemovableComponentHeader("Camera", "CameraHeader", GetComponentIconTexture("component-camera.png"), &obj.camera.enabled, cameraEnabledChanged, removeCamera, &componentType, &reorderDraggedType, &reorderTargetType);
+                const std::string cameraComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Camera);
+                cameraOpen = RenderRemovableComponentHeader("Camera", "CameraHeader", GetComponentIconTexture("component-camera.png"), &obj.camera.enabled, cameraEnabledChanged, removeCamera, &componentType, &reorderDraggedType, &reorderTargetType, &cameraHeaderActive, &cameraHeaderToggledOpen);
+                finishComponentHeaderState(cameraComponentKey, SceneInspectorComponentType::Camera, cameraHeaderActive, cameraHeaderToggledOpen, cameraOpen);
             }
             if (removeCamera) {
                 PushUndoState();
@@ -1704,10 +1892,14 @@ void SceneEditor::RenderInspectorPanel() {
             bool removeLight = false;
             bool lightOpen = false;
             bool lightEnabledChanged = false;
+            bool lightHeaderActive = false;
+            bool lightHeaderToggledOpen = false;
             const bool lightEnabledBefore = obj.light.enabled;
             if (obj.hasLight) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Light;
-                lightOpen = RenderRemovableComponentHeader("Light", "LightHeader", GetComponentIconTexture("component-light.png"), &obj.light.enabled, lightEnabledChanged, removeLight, &componentType, &reorderDraggedType, &reorderTargetType);
+                const std::string lightComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Light);
+                lightOpen = RenderRemovableComponentHeader("Light", "LightHeader", GetComponentIconTexture("component-light.png"), &obj.light.enabled, lightEnabledChanged, removeLight, &componentType, &reorderDraggedType, &reorderTargetType, &lightHeaderActive, &lightHeaderToggledOpen);
+                finishComponentHeaderState(lightComponentKey, SceneInspectorComponentType::Light, lightHeaderActive, lightHeaderToggledOpen, lightOpen);
             }
             if (removeLight) {
                 PushUndoState();
@@ -1785,6 +1977,20 @@ void SceneEditor::RenderInspectorPanel() {
                 }
             }
             ImGui::Separator();
+            if (!inspectorKeyboardTargetComponentKey_.empty()) {
+                if (ImGui::Button("Copy Focused Component")) {
+                    CopyInspectorComponentToClipboard(selectedIndex_, inspectorKeyboardTargetComponentType_);
+                }
+                ImGui::SameLine();
+            }
+            ImGui::BeginDisabled(!componentClipboard_.hasValue);
+            if (ImGui::Button("Paste Clipboard Component")) {
+                PasteInspectorComponentFromClipboard({selectedIndex_}, componentClipboard_.type);
+            }
+            ImGui::EndDisabled();
+            if (!inspectorKeyboardTargetComponentKey_.empty() || componentClipboard_.hasValue) {
+                ImGui::SameLine();
+            }
             if (ImGui::Button("Delete")) {
                 DeleteSelectedObject();
             }
@@ -1795,6 +2001,10 @@ void SceneEditor::RenderInspectorPanel() {
         RenderProjectAssetPickerPopup();
     }
     ImGui::End();
+    if (!inspectorPanelHovered_ && !inspectorPanelFocused_) {
+        inspectorKeyboardTargetComponentKey_.clear();
+        inspectorKeyboardTargetObjectId_.clear();
+    }
 }
 
 void SceneEditor::RenderMultiSelectionInspector() {
@@ -2263,36 +2473,32 @@ void SceneEditor::RenderMultiSelectionInspector() {
     if (allSelected([](const SceneObject& object) { return object.hasVehicle; })) {
         showedSharedComponent = true;
         if (renderSharedEnabledHeader("Vehicle", "MultiVehicleHeader", "component-vehicle.png", active.vehicle.enabled, [](SceneObject& object, bool value) { object.vehicle.enabled = value; })) {
-            char configBuffer[512]{};
-            std::snprintf(configBuffer, sizeof(configBuffer), "%s", active.vehicle.configPath.c_str());
-            if (RenderInspectorInputText("Config Asset", "##multiVehicleConfigPath", configBuffer, sizeof(configBuffer))) {
-                const std::string configPath = NormalizeSlashes(std::string(configBuffer));
-                PushUndoState();
-                forEachSelected([&](SceneObject& object) {
-                    object.vehicle.configPath = configPath;
-                    raceman::physics::VehicleConfig config;
-                    if (TryLoadVehicleConfigForPath(configPath, config)) {
-                        SyncVehicleWheelBindings(object.vehicle, config);
-                    } else if (configPath.empty()) {
-                        object.vehicle.wheelBindings.clear();
-                    }
-                });
-                markDirty();
+            std::string configDisplayName = "(mixed)";
+            if (!active.vehicle.configPath.empty()) {
+                configDisplayName = ProjectAssetDisplayFilename(active.vehicle.configPath);
+            }
+            const bool sameVehicleConfig = allSelected([&](const SceneObject& object) {
+                return object.vehicle.configPath == active.vehicle.configPath;
+            });
+            if (!sameVehicleConfig) {
+                configDisplayName = "(mixed)";
+            }
+            ImGui::TextDisabled("Config Asset:");
+            ImGui::SameLine();
+            const float multiVehicleConfigButtonWidth = (std::max)(1.0f, ImGui::GetContentRegionAvail().x);
+            if (ImGui::Button((configDisplayName + "##selectMultiVehicleConfig").c_str(), ImVec2(multiVehicleConfigButtonWidth, 0.0f))) {
+                assetPickerMode_ = ProjectAssetPickerMode::AssignVehicleConfig;
+            }
+            if (sameVehicleConfig && !active.vehicle.configPath.empty()) {
+                if (ImGui::Button("Edit Profile##multiVehicleConfigEdit")) {
+                    OpenVehicleConfigEditor(active.vehicle.configPath);
+                }
             }
             if (ImGui::BeginDragDropTarget()) {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
                     const char* projectPath = static_cast<const char*>(payload->Data);
                     if (projectPath != nullptr && IsVehicleConfigAssetPath(projectPath)) {
-                        PushUndoState();
-                        const std::string configPath = NormalizeSlashes(projectPath);
-                        forEachSelected([&](SceneObject& object) {
-                            object.vehicle.configPath = configPath;
-                            raceman::physics::VehicleConfig config;
-                            if (TryLoadVehicleConfigForPath(configPath, config)) {
-                                SyncVehicleWheelBindings(object.vehicle, config);
-                            }
-                        });
-                        markDirty();
+                        AssignVehicleConfigToSelected(projectPath);
                     }
                 }
                 ImGui::EndDragDropTarget();
@@ -2466,14 +2672,9 @@ void SceneEditor::RenderMultiSelectionInspector() {
                     forEachSelected([&](SceneObject& object) { object.meshCollider.isTrigger = isTrigger; });
                     markDirty();
                 }
-                MeshColliderBuildQuality buildQuality = active.meshCollider.buildQuality;
-                if (RenderMeshColliderBuildQualityCombo("Build Quality##multiColliderMesh", "multiColliderMeshBuildQuality", active.meshCollider.buildQuality, buildQuality)) {
-                    PushUndoState();
-                    forEachSelected([&](SceneObject& object) { object.meshCollider.buildQuality = buildQuality; });
-                    markDirty();
-                }
+                ImGui::TextDisabled("Build Quality: Quality (fixed)");
                 ImGui::TextDisabled("Mesh colliders use each object's Mesh Filter source.");
-                ImGui::TextDisabled("Use them for static world geometry.");
+                ImGui::TextDisabled("Mesh colliders are static-only in Jolt.");
             } else if (!sameColliderType) {
                 ImGui::TextDisabled("Type-specific fields are hidden while the selection has mixed collider types.");
             }
@@ -2591,15 +2792,20 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
     }
 
     const bool pickingMesh = (assetPickerMode_ == ProjectAssetPickerMode::ReplaceMesh);
+    const bool pickingMaterial = (assetPickerMode_ == ProjectAssetPickerMode::AssignMaterial);
+    const bool pickingVehicleConfig = (assetPickerMode_ == ProjectAssetPickerMode::AssignVehicleConfig);
     ImGui::SetNextWindowSize(ImVec2(460.0f, 360.0f), ImGuiCond_FirstUseEver);
-    const char* windowTitle = pickingMesh ? "Select Project Mesh" : "Select Project Material";
+    ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
+    const char* windowTitle = pickingMesh ? "Select Project Mesh" : (pickingVehicleConfig ? "Select Vehicle Config" : "Select Project Material");
     bool pickerOpen = true;
-    if (ImGui::Begin(windowTitle, &pickerOpen, ImGuiWindowFlags_NoCollapse)) {
+    if (ImGui::Begin(windowTitle, &pickerOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking)) {
         if (!pickerOpen || (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape))) {
             assetPickerMode_ = ProjectAssetPickerMode::None;
             pickerOpen = false;
         } else {
-            ImGui::TextUnformatted(pickingMesh ? "Select a mesh asset from the project" : "Select a material from the project");
+            ImGui::TextUnformatted(
+                pickingMesh ? "Select a mesh asset from the project"
+                : (pickingVehicleConfig ? "Select a vehicle config asset from the project" : "Select a material from the project"));
             ImGui::Separator();
 
             if (pickingMesh) {
@@ -2621,7 +2827,7 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
                 RefreshProjectFiles();
             }
 
-            if (!pickingMesh) {
+            if (pickingMaterial) {
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(190.0f);
                 ImGui::InputText("##newMaterialName", createMaterialNameBuffer_, sizeof(createMaterialNameBuffer_));
@@ -2638,12 +2844,32 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Create a material and assign it to the selected object.");
                 }
+            } else if (pickingVehicleConfig) {
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(190.0f);
+                ImGui::InputText("##newVehicleConfigName", createVehicleConfigNameBuffer_, sizeof(createVehicleConfigNameBuffer_));
+                ImGui::SameLine();
+                if (ImGui::Button("Add Vehicle Profile")) {
+                    std::string newConfigPath;
+                    if (CreateVehicleConfigAsset(createVehicleConfigNameBuffer_, &newConfigPath)) {
+                        createVehicleConfigNameBuffer_[0] = '\0';
+                        AssignVehicleConfigToSelected(newConfigPath);
+                        OpenVehicleConfigEditor(newConfigPath);
+                        assetPickerMode_ = ProjectAssetPickerMode::None;
+                        pickerOpen = false;
+                    }
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Create a vehicle profile and assign it to the selected vehicle.");
+                }
             }
 
             bool found = false;
             if (ImGui::BeginChild("ProjectAssetPickerList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing() * 2.0f), true)) {
                 for (const std::string& file : projectFiles_) {
-                    const bool matches = pickingMesh ? IsMeshAssetPath(file) : IsMaterialAssetPath(file);
+                    const bool matches = pickingMesh
+                        ? IsMeshAssetPath(file)
+                        : (pickingVehicleConfig ? IsVehicleConfigAssetPath(file) : IsMaterialAssetPath(file));
                     if (!matches) {
                         continue;
                     }
@@ -2653,6 +2879,8 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
                     if (ImGui::Selectable(label.c_str())) {
                         if (pickingMesh) {
                             ReplaceSelectedMeshFromObj(file);
+                        } else if (pickingVehicleConfig) {
+                            AssignVehicleConfigToSelected(file);
                         } else {
                             AssignMaterialToSelected(MaterialIdFromAssetPath(file));
                         }
@@ -2663,7 +2891,10 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
                 }
 
                 if (!found) {
-                    ImGui::TextDisabled("%s", pickingMesh ? "No mesh assets found in project assets." : "No material files found in project assets.");
+                    ImGui::TextDisabled("%s",
+                        pickingMesh
+                            ? "No mesh assets found in project assets."
+                            : (pickingVehicleConfig ? "No vehicle config files found in project assets." : "No material files found in project assets."));
                 }
             }
             ImGui::EndChild();
@@ -2676,6 +2907,417 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
         }
     }
     ImGui::End();
+}
+
+void SceneEditor::RenderVehicleConfigEditorWindow() {
+    if (!showVehicleConfigEditor_) {
+        return;
+    }
+    if (inspectedVehicleConfigPath_.empty()) {
+        showVehicleConfigEditor_ = false;
+        return;
+    }
+
+    if (!inspectedVehicleConfigLoaded_) {
+        inspectedVehicleConfigError_.clear();
+        try {
+            inspectedVehicleConfig_ = raceman::physics::VehicleConfigLoader::loadFromFile(
+                ProjectAssetPathToAbsolute(inspectedVehicleConfigPath_).string());
+            inspectedVehicleConfigLoaded_ = true;
+        } catch (const std::exception& ex) {
+            inspectedVehicleConfigLoaded_ = false;
+            inspectedVehicleConfigError_ = ex.what();
+        }
+    }
+
+    const ImVec4 accentPrimary{0.92f, 0.22f, 0.10f, 1.0f};
+    const ImVec4 accentSecondary{0.98f, 0.63f, 0.16f, 1.0f};
+    const ImVec4 cardBg{0.10f, 0.11f, 0.14f, 0.98f};
+
+    ImGui::SetNextWindowSize(ImVec2(860.0f, 760.0f), ImGuiCond_FirstUseEver);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
+    if (ImGui::Begin("Vehicle Profile Editor", &showVehicleConfigEditor_, ImGuiWindowFlags_NoCollapse)) {
+        vehicleConfigEditorHovered_ = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+        vehicleConfigEditorFocused_ = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+        auto beginVehicleConfigContinuousEdit = [&]() {
+            if (!vehicleConfigEditActive_) {
+                PushVehicleConfigUndoState();
+                vehicleConfigEditActive_ = true;
+            }
+        };
+        auto endVehicleConfigContinuousEdit = [&]() {
+            if (ImGui::IsItemDeactivated()) {
+                vehicleConfigEditActive_ = false;
+            }
+        };
+        auto applyTextEdit = [&](const char* label, const char* id, std::string& value, std::size_t bufferSize = 256) {
+            std::vector<char> buffer(bufferSize, '\0');
+            std::snprintf(buffer.data(), buffer.size(), "%s", value.c_str());
+            if (RenderInspectorInputText(label, id, buffer.data(), buffer.size())) {
+                beginVehicleConfigContinuousEdit();
+                value = buffer.data();
+            }
+            endVehicleConfigContinuousEdit();
+        };
+        auto applyDragFloatEdit = [&](const char* label, const char* id, float& value, float speed, float minValue = 0.0f, float maxValue = 0.0f) {
+            float edited = value;
+            if (RenderInspectorDragFloat(label, id, &edited, speed, minValue, maxValue)) {
+                beginVehicleConfigContinuousEdit();
+                value = edited;
+            }
+            endVehicleConfigContinuousEdit();
+        };
+        auto applyDragFloat3Edit = [&](const char* label, const char* id, auto& value, float speed) {
+            auto edited = value;
+            if (RenderInspectorDragFloat3(label, id, &edited.x, speed)) {
+                beginVehicleConfigContinuousEdit();
+                value = edited;
+            }
+            endVehicleConfigContinuousEdit();
+        };
+        auto applyCheckboxEdit = [&](const char* label, bool& value) {
+            bool edited = value;
+            if (ImGui::Checkbox(label, &edited)) {
+                PushVehicleConfigUndoState();
+                vehicleConfigEditActive_ = false;
+                value = edited;
+            }
+        };
+        auto applyTransmissionModeEdit = [&](const char* label, raceman::physics::TransmissionConfig::Mode& value) {
+            int currentIndex = value == raceman::physics::TransmissionConfig::Mode::Manual ? 1 : 0;
+            const char* options[] = {"Automatic", "Manual"};
+            if (ImGui::Combo(label, &currentIndex, options, IM_ARRAYSIZE(options))) {
+                PushVehicleConfigUndoState();
+                vehicleConfigEditActive_ = false;
+                value = currentIndex == 1
+                    ? raceman::physics::TransmissionConfig::Mode::Manual
+                    : raceman::physics::TransmissionConfig::Mode::Automatic;
+            }
+        };
+        auto beginCard = [&](const char* id, const char* title, const char* subtitle, const ImVec4& accent, float minHeight = 0.0f) {
+            ImGui::PushID(id);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, cardBg);
+            ImGui::BeginChild("##card", ImVec2(0.0f, minHeight), true);
+            ImGui::TextColored(accent, "%s", title);
+            if (subtitle != nullptr && subtitle[0] != '\0') {
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", subtitle);
+            }
+            ImGui::Separator();
+        };
+        auto endCard = [&]() {
+            ImGui::EndChild();
+            ImGui::PopStyleColor();
+            ImGui::PopID();
+        };
+        auto renderSuspensionSection = [&](const char* idPrefix, const char* title, raceman::physics::SuspensionConfig& suspension, const ImVec4& accent) {
+            beginCard(idPrefix, title, "Spring and damping", accent);
+            applyDragFloatEdit("Rest Length", (std::string("##") + idPrefix + "_restLength").c_str(), suspension.restLength, 0.01f, 0.001f, 100000.0f);
+            applyDragFloatEdit("Spring Rate", (std::string("##") + idPrefix + "_springRate").c_str(), suspension.springRate, 10.0f, 0.0f, 1000000.0f);
+            applyDragFloatEdit("Bump Stop Rate", (std::string("##") + idPrefix + "_bumpStopRate").c_str(), suspension.bumpStopRate, 10.0f, 0.0f, 1000000.0f);
+            applyDragFloatEdit("Compression Damping", (std::string("##") + idPrefix + "_compressionDamping").c_str(), suspension.compressionDamping, 10.0f, 0.0f, 1000000.0f);
+            applyDragFloatEdit("Rebound Damping", (std::string("##") + idPrefix + "_reboundDamping").c_str(), suspension.reboundDamping, 10.0f, 0.0f, 1000000.0f);
+            applyDragFloatEdit("Anti-Roll Stiffness", (std::string("##") + idPrefix + "_antiRollStiffness").c_str(), suspension.antiRollStiffness, 10.0f, 0.0f, 1000000.0f);
+            endCard();
+        };
+
+        beginCard("vehicleProfileHero", "Garage Tuning", "Race setup profile", accentPrimary, 108.0f);
+        ImGui::TextWrapped("%s", inspectedVehicleConfigPath_.c_str());
+        ImGui::Spacing();
+        if (ImGui::BeginTable("VehicleProfileHeroStats", 3, ImGuiTableFlags_SizingStretchSame)) {
+            ImGui::TableNextColumn();
+            ImGui::TextDisabled("WHEELS");
+            ImGui::Text("%.0f", static_cast<float>(inspectedVehicleConfig_.wheels.size()));
+            ImGui::TableNextColumn();
+            ImGui::TextDisabled("MASS");
+            ImGui::Text("%.0f kg", inspectedVehicleConfig_.chassis.mass);
+            ImGui::TableNextColumn();
+            ImGui::TextDisabled("REDLINE");
+            ImGui::Text("%.0f rpm", inspectedVehicleConfig_.engine.redlineRPM);
+            ImGui::EndTable();
+        }
+        ImGui::Spacing();
+        if (ImGui::Button("Save Profile##vehicleConfigAsset", ImVec2(150.0f, 0.0f))) {
+            SaveActiveAsset();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Undo##vehicleConfigAsset", ImVec2(90.0f, 0.0f))) {
+            UndoVehicleConfig();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Redo##vehicleConfigAsset", ImVec2(90.0f, 0.0f))) {
+            RedoVehicleConfig();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Reload##vehicleConfigAsset", ImVec2(120.0f, 0.0f))) {
+            inspectedVehicleConfigLoaded_ = false;
+            inspectedVehicleConfigError_.clear();
+            vehicleConfigUndoStack_.clear();
+            vehicleConfigRedoStack_.clear();
+            vehicleConfigEditActive_ = false;
+            endCard();
+            ImGui::End();
+            ImGui::PopStyleVar(3);
+            return;
+        }
+        ImGui::TextDisabled("Shortcuts: Ctrl+S / Ctrl+Z / Ctrl+Y");
+        endCard();
+
+        if (!inspectedVehicleConfigLoaded_) {
+            beginCard("vehicleProfileLoadError", "Load Failed", "Config could not be parsed", accentPrimary);
+            ImGui::TextWrapped("%s", inspectedVehicleConfigError_.empty() ? "Unknown vehicle config load error." : inspectedVehicleConfigError_.c_str());
+            if (ImGui::Button("Retry##vehicleConfigLoadRetry")) {
+                inspectedVehicleConfigLoaded_ = false;
+                inspectedVehicleConfigError_.clear();
+            }
+            endCard();
+            ImGui::End();
+            ImGui::PopStyleVar(3);
+            return;
+        }
+
+        if (ImGui::BeginTabBar("VehicleProfileEditorTabs")) {
+            if (ImGui::BeginTabItem("Setup")) {
+                beginCard("vehicleProfileSetupCard", "Profile Identity", "Asset metadata", accentPrimary);
+                applyTextEdit("Name", "##vehicleProfileName", inspectedVehicleConfig_.name);
+                RenderInspectorWrappedValue("Asset:", inspectedVehicleConfigPath_);
+                endCard();
+
+                beginCard("vehicleProfileChassisCard", "Chassis", "Mass, inertia and balance", accentSecondary);
+                applyDragFloatEdit("Mass", "##vehicleProfileChassisMass", inspectedVehicleConfig_.chassis.mass, 1.0f, 0.001f, 100000.0f);
+                applyDragFloatEdit("Yaw Inertia", "##vehicleProfileChassisYawInertia", inspectedVehicleConfig_.chassis.yawInertia, 1.0f, 0.001f, 100000.0f);
+                applyDragFloatEdit("Roll Inertia", "##vehicleProfileChassisRollInertia", inspectedVehicleConfig_.chassis.rollInertia, 1.0f, 0.001f, 100000.0f);
+                applyDragFloatEdit("Pitch Inertia", "##vehicleProfileChassisPitchInertia", inspectedVehicleConfig_.chassis.pitchInertia, 1.0f, 0.001f, 100000.0f);
+                applyDragFloat3Edit("Center of Mass", "##vehicleProfileChassisCenterOfMass", inspectedVehicleConfig_.chassis.centerOfMassOffset, 0.01f);
+                endCard();
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Handling")) {
+                if (ImGui::BeginTable("VehicleHandlingColumns", 2, ImGuiTableFlags_SizingStretchSame)) {
+                    ImGui::TableNextColumn();
+                    renderSuspensionSection("vehicleProfileFrontSuspension", "Front Suspension", inspectedVehicleConfig_.frontSuspension, accentPrimary);
+                    ImGui::TableNextColumn();
+                    renderSuspensionSection("vehicleProfileRearSuspension", "Rear Suspension", inspectedVehicleConfig_.rearSuspension, accentSecondary);
+                    ImGui::EndTable();
+                }
+
+                beginCard("vehicleProfileDifferentialCard", "Differential", "Axle split and lock response", accentPrimary);
+                applyDragFloatEdit("Torque Split", "##vehicleProfileDiffTorqueSplit", inspectedVehicleConfig_.differential.torqueSplit, 0.01f, 0.0f, 1.0f);
+                applyDragFloatEdit("Locking Coefficient", "##vehicleProfileDiffLockingCoefficient", inspectedVehicleConfig_.differential.lockingCoefficient, 0.01f, 0.0f, 1.0f);
+                applyCheckboxEdit("Limited Slip##vehicleProfileDiffLimitedSlip", inspectedVehicleConfig_.differential.limitedSlip);
+                endCard();
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Powertrain")) {
+                if (ImGui::BeginTable("VehiclePowertrainColumns", 2, ImGuiTableFlags_SizingStretchSame)) {
+                    ImGui::TableNextColumn();
+                    beginCard("vehicleProfileEngineCard", "Engine", "RPM and torque delivery", accentPrimary);
+                    applyDragFloatEdit("Idle RPM", "##vehicleProfileEngineIdleRpm", inspectedVehicleConfig_.engine.idleRPM, 10.0f, 0.0f, 100000.0f);
+                    applyDragFloatEdit("Redline RPM", "##vehicleProfileEngineRedlineRpm", inspectedVehicleConfig_.engine.redlineRPM, 10.0f, 0.0f, 100000.0f);
+                    applyDragFloatEdit("Stall RPM", "##vehicleProfileEngineStallRpm", inspectedVehicleConfig_.engine.stallRPM, 10.0f, 0.0f, 100000.0f);
+                    applyDragFloatEdit("Inertia", "##vehicleProfileEngineInertia", inspectedVehicleConfig_.engine.inertia, 0.01f, 0.0f, 1000.0f);
+                    ImGui::Spacing();
+                    ImGui::TextDisabled("Torque Curve");
+                    if (ImGui::Button("Add Torque Point##vehicleProfileTorquePoint")) {
+                        PushVehicleConfigUndoState();
+                        vehicleConfigEditActive_ = false;
+                        inspectedVehicleConfig_.engine.torqueCurve.push_back({1000.0f, 100.0f});
+                    }
+                    if (ImGui::BeginTable("VehicleTorqueCurveTable", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+                        ImGui::TableSetupColumn("RPM");
+                        ImGui::TableSetupColumn("Torque");
+                        ImGui::TableSetupColumn("");
+                        for (int pointIndex = 0; pointIndex < static_cast<int>(inspectedVehicleConfig_.engine.torqueCurve.size()); ++pointIndex) {
+                            raceman::physics::TorquePoint& point = inspectedVehicleConfig_.engine.torqueCurve[static_cast<std::size_t>(pointIndex)];
+                            ImGui::PushID(pointIndex);
+                            ImGui::TableNextRow();
+                            ImGui::TableNextColumn();
+                            ImGui::SetNextItemWidth(-1.0f);
+                            float pointRpm = point.rpm;
+                            if (ImGui::DragFloat("##rpm", &pointRpm, 10.0f, 0.0f, 100000.0f, "%.0f")) {
+                                beginVehicleConfigContinuousEdit();
+                                point.rpm = pointRpm;
+                            }
+                            endVehicleConfigContinuousEdit();
+                            ImGui::TableNextColumn();
+                            ImGui::SetNextItemWidth(-1.0f);
+                            float pointTorque = point.torque;
+                            if (ImGui::DragFloat("##torque", &pointTorque, 1.0f, 0.0f, 100000.0f, "%.1f")) {
+                                beginVehicleConfigContinuousEdit();
+                                point.torque = pointTorque;
+                            }
+                            endVehicleConfigContinuousEdit();
+                            ImGui::TableNextColumn();
+                            if (ImGui::SmallButton("X##removeTorquePoint")) {
+                                PushVehicleConfigUndoState();
+                                vehicleConfigEditActive_ = false;
+                                inspectedVehicleConfig_.engine.torqueCurve.erase(inspectedVehicleConfig_.engine.torqueCurve.begin() + pointIndex);
+                                ImGui::PopID();
+                                break;
+                            }
+                            ImGui::PopID();
+                        }
+                        ImGui::EndTable();
+                    }
+                    endCard();
+
+                    ImGui::TableNextColumn();
+                    beginCard("vehicleProfileTransmissionCard", "Transmission", "Gearbox and final drive", accentSecondary);
+                    applyTransmissionModeEdit("Mode##vehicleProfileTransmissionMode", inspectedVehicleConfig_.transmission.mode);
+                    applyDragFloatEdit("Final Drive Ratio", "##vehicleProfileTransmissionFinalDrive", inspectedVehicleConfig_.transmission.finalDriveRatio, 0.01f, -1000.0f, 1000.0f);
+                    applyDragFloatEdit("Reverse Ratio", "##vehicleProfileTransmissionReverseRatio", inspectedVehicleConfig_.transmission.reverseRatio, 0.01f, -1000.0f, 1000.0f);
+                    applyDragFloatEdit("Shift Time", "##vehicleProfileTransmissionShiftTime", inspectedVehicleConfig_.transmission.shiftTime, 0.01f, 0.0f, 1000.0f);
+                    if (inspectedVehicleConfig_.transmission.mode == raceman::physics::TransmissionConfig::Mode::Manual) {
+                        ImGui::TextDisabled("Manual: E/PageUp shift up, Q/PageDown shift down, N neutral, R reverse.");
+                    } else {
+                        ImGui::TextDisabled("Automatic: W drive, S brake then auto-reverse near stop.");
+                    }
+                    ImGui::Spacing();
+                    ImGui::TextDisabled("Gear Ratios");
+                    if (ImGui::Button("Add Gear##vehicleProfileGearRatio")) {
+                        PushVehicleConfigUndoState();
+                        vehicleConfigEditActive_ = false;
+                        inspectedVehicleConfig_.transmission.gearRatios.push_back(1.0f);
+                    }
+                    if (ImGui::BeginTable("VehicleGearRatioTable", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+                        ImGui::TableSetupColumn("Gear");
+                        ImGui::TableSetupColumn("Ratio");
+                        ImGui::TableSetupColumn("");
+                        for (int gearIndex = 0; gearIndex < static_cast<int>(inspectedVehicleConfig_.transmission.gearRatios.size()); ++gearIndex) {
+                            ImGui::PushID(gearIndex);
+                            ImGui::TableNextRow();
+                            ImGui::TableNextColumn();
+                            ImGui::Text("G%d", gearIndex + 1);
+                            ImGui::TableNextColumn();
+                            ImGui::SetNextItemWidth(-1.0f);
+                            float gearRatio = inspectedVehicleConfig_.transmission.gearRatios[static_cast<std::size_t>(gearIndex)];
+                            if (ImGui::DragFloat("##ratio", &gearRatio, 0.01f, -1000.0f, 1000.0f, "%.2f")) {
+                                beginVehicleConfigContinuousEdit();
+                                inspectedVehicleConfig_.transmission.gearRatios[static_cast<std::size_t>(gearIndex)] = gearRatio;
+                            }
+                            endVehicleConfigContinuousEdit();
+                            ImGui::TableNextColumn();
+                            if (ImGui::SmallButton("X##removeGearRatio")) {
+                                PushVehicleConfigUndoState();
+                                vehicleConfigEditActive_ = false;
+                                inspectedVehicleConfig_.transmission.gearRatios.erase(inspectedVehicleConfig_.transmission.gearRatios.begin() + gearIndex);
+                                ImGui::PopID();
+                                break;
+                            }
+                            ImGui::PopID();
+                        }
+                        ImGui::EndTable();
+                    }
+                    endCard();
+                    ImGui::EndTable();
+                }
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Wheels")) {
+                if (ImGui::Button("Add Wheel##vehicleProfileWheelAdd")) {
+                    PushVehicleConfigUndoState();
+                    vehicleConfigEditActive_ = false;
+                    inspectedVehicleConfig_.wheels.push_back({});
+                }
+                ImGui::Spacing();
+                for (int wheelIndex = 0; wheelIndex < static_cast<int>(inspectedVehicleConfig_.wheels.size()); ++wheelIndex) {
+                    raceman::physics::WheelConfig& wheel = inspectedVehicleConfig_.wheels[static_cast<std::size_t>(wheelIndex)];
+                    ImGui::PushID(wheelIndex);
+                    const bool frontAxle = wheel.mountPosition.z >= 0.0f;
+                    const ImVec4 wheelAccent = frontAxle ? accentPrimary : accentSecondary;
+                    const std::string title = wheel.name.empty() ? ("Wheel " + std::to_string(wheelIndex + 1)) : wheel.name;
+                    const std::string subtitle = std::string(frontAxle ? "Front axle" : "Rear axle")
+                        + (wheel.driven ? " | Driven" : "")
+                        + (wheel.hasBrake ? " | Brake" : "");
+                    beginCard("vehicleProfileWheelCard", title.c_str(), subtitle.c_str(), wheelAccent);
+                    auto renderWheelScalarPair = [&](const char* leftLabel,
+                                                     const char* leftId,
+                                                     float& leftValue,
+                                                     float leftSpeed,
+                                                     float leftMin,
+                                                     float leftMax,
+                                                     const char* rightLabel,
+                                                     const char* rightId,
+                                                     float& rightValue,
+                                                     float rightSpeed,
+                                                     float rightMin,
+                                                     float rightMax) {
+                        if (ImGui::BeginTable("##wheelScalarPair", 2, ImGuiTableFlags_SizingStretchSame)) {
+                            ImGui::TableNextColumn();
+                            applyDragFloatEdit(leftLabel, leftId, leftValue, leftSpeed, leftMin, leftMax);
+                            ImGui::TableNextColumn();
+                            applyDragFloatEdit(rightLabel, rightId, rightValue, rightSpeed, rightMin, rightMax);
+                            ImGui::EndTable();
+                        }
+                    };
+
+                    applyTextEdit("Name", "##vehicleProfileWheelName", wheel.name, 128);
+                    applyDragFloat3Edit("Mount Position", "##vehicleProfileWheelMountPosition", wheel.mountPosition, 0.01f);
+
+                    ImGui::Spacing();
+                    ImGui::TextDisabled("Geometry");
+                    renderWheelScalarPair("Radius", "##vehicleProfileWheelRadius", wheel.radius, 0.01f, 0.001f, 1000.0f,
+                                          "Width", "##vehicleProfileWheelWidth", wheel.width, 0.01f, 0.001f, 1000.0f);
+
+                    ImGui::TextDisabled("Mass");
+                    renderWheelScalarPair("Mass", "##vehicleProfileWheelMass", wheel.mass, 0.1f, 0.001f, 10000.0f,
+                                          "Inertia", "##vehicleProfileWheelInertia", wheel.inertia, 0.01f, 0.001f, 10000.0f);
+
+                    ImGui::TextDisabled("Alignment");
+                    if (ImGui::BeginTable("##wheelAlignmentRow", 3, ImGuiTableFlags_SizingStretchSame)) {
+                        ImGui::TableNextColumn();
+                        applyDragFloatEdit("Steer", "##vehicleProfileWheelMaxSteerAngle", wheel.maxSteerAngle, 0.01f, -10.0f, 10.0f);
+                        ImGui::TableNextColumn();
+                        applyDragFloatEdit("Camber", "##vehicleProfileWheelCamber", wheel.camber, 0.01f, -10.0f, 10.0f);
+                        ImGui::TableNextColumn();
+                        applyDragFloatEdit("Toe", "##vehicleProfileWheelToe", wheel.toe, 0.01f, -10.0f, 10.0f);
+                        ImGui::EndTable();
+                    }
+
+                    ImGui::TextDisabled("Tire");
+                    renderWheelScalarPair("Grip", "##vehicleProfileWheelGripFactor", wheel.gripFactor, 0.01f, 0.0f, 1000.0f,
+                                          "Brake Torque", "##vehicleProfileWheelMaxBrakingTorque", wheel.maxBrakingTorque, 10.0f, 0.0f, 1000000.0f);
+                    renderWheelScalarPair("Long Stiffness", "##vehicleProfileWheelLongitudinalStiffness", wheel.longitudinalStiffness, 10.0f, 0.0f, 1000000.0f,
+                                          "Lat Stiffness", "##vehicleProfileWheelLateralStiffness", wheel.lateralStiffness, 10.0f, 0.0f, 1000000.0f);
+
+                    if (ImGui::BeginTable("##wheelFlagsRow", 3, ImGuiTableFlags_SizingStretchProp)) {
+                        ImGui::TableNextColumn();
+                        applyCheckboxEdit("Driven##vehicleProfileWheelDriven", wheel.driven);
+                        ImGui::TableNextColumn();
+                        applyCheckboxEdit("Has Brake##vehicleProfileWheelHasBrake", wheel.hasBrake);
+                        ImGui::TableNextColumn();
+                        ImGui::Dummy(ImVec2(0.0f, 0.0f));
+                        ImGui::EndTable();
+                    }
+                    if (ImGui::Button("Remove Wheel##vehicleProfileWheel")) {
+                        PushVehicleConfigUndoState();
+                        vehicleConfigEditActive_ = false;
+                        inspectedVehicleConfig_.wheels.erase(inspectedVehicleConfig_.wheels.begin() + wheelIndex);
+                        endCard();
+                        ImGui::PopID();
+                        break;
+                    }
+                    endCard();
+                    ImGui::PopID();
+                }
+                ImGui::EndTabItem();
+            }
+
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleVar(3);
+    if (!showVehicleConfigEditor_) {
+        vehicleConfigEditorHovered_ = false;
+        vehicleConfigEditorFocused_ = false;
+        vehicleConfigEditActive_ = false;
+    }
 }
 
 void SceneEditor::RenderMaterialInspector() {
@@ -2947,6 +3589,99 @@ bool SceneEditor::AssignMaterialToSelected(const std::string& materialId) {
     }
     if (onDirty_) onDirty_();
     return assignedCount > 0;
+}
+
+bool SceneEditor::AssignVehicleConfigToSelected(const std::string& configPath) {
+    if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
+        return false;
+    }
+
+    const std::string normalizedConfigPath = NormalizeSlashes(configPath);
+    NormalizeSelection();
+
+    raceman::physics::VehicleConfig loadedConfig;
+    const bool configLoaded = !normalizedConfigPath.empty() && TryLoadVehicleConfigForPath(normalizedConfigPath, loadedConfig);
+    int assignableCount = 0;
+    for (int index : selectedIndices_) {
+        if (index < 0 || index >= static_cast<int>(objects_.size())) {
+            continue;
+        }
+
+        const SceneObject& object = objects_[index];
+        if (!object.hasVehicle) {
+            continue;
+        }
+
+        const bool configChanged = object.vehicle.configPath != normalizedConfigPath;
+        const bool shouldClearBindings = normalizedConfigPath.empty() && !object.vehicle.wheelBindings.empty();
+        if (configChanged || shouldClearBindings || configLoaded) {
+            ++assignableCount;
+        }
+    }
+
+    if (assignableCount <= 0) {
+        return false;
+    }
+
+    PushUndoState();
+    int assignedCount = 0;
+    for (int index : selectedIndices_) {
+        if (index < 0 || index >= static_cast<int>(objects_.size())) {
+            continue;
+        }
+
+        SceneObject& object = objects_[index];
+        if (!object.hasVehicle) {
+            continue;
+        }
+
+        const bool configChanged = object.vehicle.configPath != normalizedConfigPath;
+        const bool shouldClearBindings = normalizedConfigPath.empty() && !object.vehicle.wheelBindings.empty();
+        if (!configChanged && !shouldClearBindings && !configLoaded) {
+            continue;
+        }
+
+        object.vehicle.configPath = normalizedConfigPath;
+        if (configLoaded) {
+            SyncVehicleWheelBindings(object.vehicle, loadedConfig);
+        } else if (normalizedConfigPath.empty()) {
+            object.vehicle.wheelBindings.clear();
+        }
+
+        ++assignedCount;
+    }
+
+    if (console_) {
+        if (normalizedConfigPath.empty()) {
+            console_->AddLog("Cleared vehicle config on " + std::to_string(assignedCount) + " selected objects.");
+        } else if (assignedCount == 1) {
+            console_->AddLog("Assigned vehicle config " + normalizedConfigPath + " to " + objects_[selectedIndex_].name);
+        } else {
+            console_->AddLog("Assigned vehicle config " + normalizedConfigPath + " to " + std::to_string(assignedCount) + " selected objects.");
+        }
+    }
+    if (onDirty_) onDirty_();
+    return true;
+}
+
+void SceneEditor::OpenVehicleConfigEditor(const std::string& configPath) {
+    if (configPath.empty()) {
+        return;
+    }
+
+    const std::string normalizedPath = NormalizeSlashes(configPath);
+    const bool pathChanged = inspectedVehicleConfigPath_ != normalizedPath;
+    inspectedVehicleConfigPath_ = normalizedPath;
+    selectedProjectFile_ = inspectedVehicleConfigPath_;
+    selectedProjectDirectory_ = ParentProjectDirectory(inspectedVehicleConfigPath_);
+    if (pathChanged) {
+        inspectedVehicleConfigLoaded_ = false;
+        inspectedVehicleConfigError_.clear();
+        vehicleConfigUndoStack_.clear();
+        vehicleConfigRedoStack_.clear();
+        vehicleConfigEditActive_ = false;
+    }
+    showVehicleConfigEditor_ = true;
 }
 
 void SceneEditor::OpenMaterialEditor(const std::string& materialId) {

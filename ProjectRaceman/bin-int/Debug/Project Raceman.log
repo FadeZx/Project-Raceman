@@ -1,4 +1,11 @@
-﻿  Project Raceman.vcxproj -> D:\Project-Raceman\ProjectRaceman\bin\Debug\ProjectRaceman.exe
+﻿  SceneEditor.cpp
+  SceneEditorGizmo.cpp
+  SceneEditorHierarchy.cpp
+  SceneEditorInspector.cpp
+  SceneEditorProject.cpp
+  SceneEditorRuntime.cpp
+  Generating Code...
+  Project Raceman.vcxproj -> D:\Project-Raceman\ProjectRaceman\bin\Debug\ProjectRaceman.exe
           1 file(s) copied.
           1 file(s) copied.
           1 file(s) copied.

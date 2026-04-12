@@ -160,6 +160,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\ui\MenuController.cpp" />
     <ClCompile Include="src\ui\ObjImport.cpp" />
     <ClCompile Include="src\ui\SceneEditor.cpp" />
+    <ClCompile Include="src\ui\SceneEditorRuntime.cpp" />
     <ClCompile Include="src\ui\SceneEditorGizmo.cpp" />
     <ClCompile Include="src\ui\SceneEditorHierarchy.cpp" />
     <ClCompile Include="src\ui\SceneEditorInspector.cpp" />

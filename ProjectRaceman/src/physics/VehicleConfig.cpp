@@ -2,12 +2,34 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 
 namespace raceman::physics
 {
 namespace
 {
+std::string escapeJsonString(const std::string &value)
+{
+    std::string result;
+    result.reserve(value.size() + 2);
+    result.push_back('"');
+    for (char ch : value)
+    {
+        switch (ch)
+        {
+        case '\\': result += "\\\\"; break;
+        case '"': result += "\\\""; break;
+        case '\n': result += "\\n"; break;
+        case '\r': result += "\\r"; break;
+        case '\t': result += "\\t"; break;
+        default: result.push_back(ch); break;
+        }
+    }
+    result.push_back('"');
+    return result;
+}
+
 Vector3 readVector3(const json::Value &value)
 {
     const auto &array = value.as_array();
@@ -33,6 +55,25 @@ std::vector<TorquePoint> readTorqueCurve(const json::Value &value)
         curve.push_back(point);
     }
     return curve;
+}
+
+TransmissionConfig::Mode transmissionModeFromString(const std::string& value)
+{
+    if (value == "manual" || value == "Manual")
+    {
+        return TransmissionConfig::Mode::Manual;
+    }
+    return TransmissionConfig::Mode::Automatic;
+}
+
+const char* transmissionModeToString(TransmissionConfig::Mode mode)
+{
+    switch (mode)
+    {
+    case TransmissionConfig::Mode::Manual: return "manual";
+    case TransmissionConfig::Mode::Automatic:
+    default: return "automatic";
+    }
 }
 
 WheelConfig readWheel(const json::Value &value)
@@ -183,6 +224,10 @@ TransmissionConfig readTransmission(const json::Value &value)
 {
     TransmissionConfig transmission{};
     const auto &obj = value.as_object();
+    if (auto it = obj.find("mode"); it != obj.end())
+    {
+        transmission.mode = transmissionModeFromString(it->second.as_string());
+    }
     if (auto it = obj.find("gearRatios"); it != obj.end())
     {
         transmission.gearRatios.clear();
@@ -319,6 +364,112 @@ std::vector<VehicleConfig> VehicleConfigLoader::loadDirectory(const std::string 
         }
     }
     return configs;
+}
+
+bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfig &config, std::string *outError)
+{
+    std::ofstream stream(path, std::ios::out | std::ios::trunc);
+    if (!stream)
+    {
+        if (outError != nullptr)
+        {
+            *outError = "Unable to open vehicle config for writing: " + path;
+        }
+        return false;
+    }
+
+    stream << std::fixed << std::setprecision(3);
+    stream << "{\n";
+    stream << "  \"name\": " << escapeJsonString(config.name) << ",\n";
+    stream << "  \"chassis\": {\n";
+    stream << "    \"mass\": " << config.chassis.mass << ",\n";
+    stream << "    \"yawInertia\": " << config.chassis.yawInertia << ",\n";
+    stream << "    \"rollInertia\": " << config.chassis.rollInertia << ",\n";
+    stream << "    \"pitchInertia\": " << config.chassis.pitchInertia << ",\n";
+    stream << "    \"centerOfMassOffset\": [" << config.chassis.centerOfMassOffset.x << ", " << config.chassis.centerOfMassOffset.y << ", " << config.chassis.centerOfMassOffset.z << "]\n";
+    stream << "  },\n";
+    stream << "  \"frontSuspension\": {\n";
+    stream << "    \"restLength\": " << config.frontSuspension.restLength << ",\n";
+    stream << "    \"springRate\": " << config.frontSuspension.springRate << ",\n";
+    stream << "    \"bumpStopRate\": " << config.frontSuspension.bumpStopRate << ",\n";
+    stream << "    \"compressionDamping\": " << config.frontSuspension.compressionDamping << ",\n";
+    stream << "    \"reboundDamping\": " << config.frontSuspension.reboundDamping << ",\n";
+    stream << "    \"antiRollStiffness\": " << config.frontSuspension.antiRollStiffness << "\n";
+    stream << "  },\n";
+    stream << "  \"rearSuspension\": {\n";
+    stream << "    \"restLength\": " << config.rearSuspension.restLength << ",\n";
+    stream << "    \"springRate\": " << config.rearSuspension.springRate << ",\n";
+    stream << "    \"bumpStopRate\": " << config.rearSuspension.bumpStopRate << ",\n";
+    stream << "    \"compressionDamping\": " << config.rearSuspension.compressionDamping << ",\n";
+    stream << "    \"reboundDamping\": " << config.rearSuspension.reboundDamping << ",\n";
+    stream << "    \"antiRollStiffness\": " << config.rearSuspension.antiRollStiffness << "\n";
+    stream << "  },\n";
+    stream << "  \"differential\": {\n";
+    stream << "    \"torqueSplit\": " << config.differential.torqueSplit << ",\n";
+    stream << "    \"lockingCoefficient\": " << config.differential.lockingCoefficient << ",\n";
+    stream << "    \"limitedSlip\": " << (config.differential.limitedSlip ? "true" : "false") << "\n";
+    stream << "  },\n";
+    stream << "  \"engine\": {\n";
+    stream << "    \"idleRPM\": " << config.engine.idleRPM << ",\n";
+    stream << "    \"redlineRPM\": " << config.engine.redlineRPM << ",\n";
+    stream << "    \"stallRPM\": " << config.engine.stallRPM << ",\n";
+    stream << "    \"inertia\": " << config.engine.inertia << ",\n";
+    stream << "    \"torqueCurve\": [\n";
+    for (std::size_t i = 0; i < config.engine.torqueCurve.size(); ++i)
+    {
+        const TorquePoint &point = config.engine.torqueCurve[i];
+        stream << "      {\"rpm\": " << point.rpm << ", \"torque\": " << point.torque << "}";
+        stream << (i + 1 < config.engine.torqueCurve.size() ? ",\n" : "\n");
+    }
+    stream << "    ]\n";
+    stream << "  },\n";
+    stream << "  \"transmission\": {\n";
+    stream << "    \"mode\": " << escapeJsonString(transmissionModeToString(config.transmission.mode)) << ",\n";
+    stream << "    \"gearRatios\": [";
+    for (std::size_t i = 0; i < config.transmission.gearRatios.size(); ++i)
+    {
+        stream << config.transmission.gearRatios[i];
+        stream << (i + 1 < config.transmission.gearRatios.size() ? ", " : "");
+    }
+    stream << "],\n";
+    stream << "    \"finalDriveRatio\": " << config.transmission.finalDriveRatio << ",\n";
+    stream << "    \"reverseRatio\": " << config.transmission.reverseRatio << ",\n";
+    stream << "    \"shiftTime\": " << config.transmission.shiftTime << "\n";
+    stream << "  },\n";
+    stream << "  \"wheels\": [\n";
+    for (std::size_t i = 0; i < config.wheels.size(); ++i)
+    {
+        const WheelConfig &wheel = config.wheels[i];
+        stream << "    {\n";
+        stream << "      \"name\": " << escapeJsonString(wheel.name) << ",\n";
+        stream << "      \"mountPosition\": [" << wheel.mountPosition.x << ", " << wheel.mountPosition.y << ", " << wheel.mountPosition.z << "],\n";
+        stream << "      \"radius\": " << wheel.radius << ",\n";
+        stream << "      \"width\": " << wheel.width << ",\n";
+        stream << "      \"mass\": " << wheel.mass << ",\n";
+        stream << "      \"inertia\": " << wheel.inertia << ",\n";
+        stream << "      \"maxSteerAngle\": " << wheel.maxSteerAngle << ",\n";
+        stream << "      \"camber\": " << wheel.camber << ",\n";
+        stream << "      \"toe\": " << wheel.toe << ",\n";
+        stream << "      \"gripFactor\": " << wheel.gripFactor << ",\n";
+        stream << "      \"longitudinalStiffness\": " << wheel.longitudinalStiffness << ",\n";
+        stream << "      \"lateralStiffness\": " << wheel.lateralStiffness << ",\n";
+        stream << "      \"maxBrakingTorque\": " << wheel.maxBrakingTorque << ",\n";
+        stream << "      \"driven\": " << (wheel.driven ? "true" : "false") << ",\n";
+        stream << "      \"hasBrake\": " << (wheel.hasBrake ? "true" : "false") << "\n";
+        stream << "    }" << (i + 1 < config.wheels.size() ? ",\n" : "\n");
+    }
+    stream << "  ]\n";
+    stream << "}\n";
+
+    if (!stream.good())
+    {
+        if (outError != nullptr)
+        {
+            *outError = "Failed while writing vehicle config: " + path;
+        }
+        return false;
+    }
+    return true;
 }
 
 float sampleTorqueCurve(const EngineConfig &config, float rpm)

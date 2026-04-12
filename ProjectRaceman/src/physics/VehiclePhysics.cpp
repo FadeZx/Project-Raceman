@@ -126,6 +126,31 @@ void VehiclePhysics::setChassisTransform(const Transform &transform)
     m_body.transform = transform;
 }
 
+void VehiclePhysics::setRigidBodyState(const VehicleRigidBodyState &state)
+{
+    m_body = state;
+}
+
+const VehicleRigidBodyState &VehiclePhysics::getRigidBodyState() const
+{
+    return m_body;
+}
+
+const Vector3 &VehiclePhysics::getPendingChassisForce() const
+{
+    return m_pendingChassisForce;
+}
+
+const Vector3 &VehiclePhysics::getPendingChassisTorque() const
+{
+    return m_pendingChassisTorque;
+}
+
+void VehiclePhysics::setExternalBodySimulation(bool external)
+{
+    m_externalBodySimulation = external;
+}
+
 void VehiclePhysics::update(float dt)
 {
     if (dt < kEpsilon)
@@ -278,7 +303,12 @@ void VehiclePhysics::update(float dt)
 
     totalForce += Vector3{0.0f, 0.0f, -m_config.chassis.mass * kGravity};
 
-    integrateChassis(dt, totalForce, totalTorque);
+    m_pendingChassisForce = totalForce;
+    m_pendingChassisTorque = totalTorque;
+    if (!m_externalBodySimulation)
+    {
+        integrateChassis(dt, totalForce, totalTorque);
+    }
 
     float averageWheelSpeed = (drivenWheelCount > 0) ? (accumulatedWheelSpeed / drivenWheelCount) : 0.0f;
     integrateEngine(dt, driveRatio, averageWheelSpeed, totalDriveTorqueApplied, drivenWheelCount, throttleTorque, engineBrake);
@@ -287,6 +317,9 @@ void VehiclePhysics::update(float dt)
     m_lastTelemetry.throttle = m_input.throttle;
     m_lastTelemetry.brake = m_input.brake;
     m_lastTelemetry.steering = m_input.steering;
+    m_lastTelemetry.currentGear = m_isReverse ? -1 : (m_isNeutral ? 0 : (m_currentGear + 1));
+    m_lastTelemetry.isReverse = m_isReverse;
+    m_lastTelemetry.isNeutral = m_isNeutral;
     m_lastTelemetry.linearVelocity = m_body.linearVelocity;
     m_lastTelemetry.linearAcceleration = (m_body.linearVelocity - previousVelocity) / dt;
     Vector3 forward = m_body.transform.rotation.rotate({0.0f, 1.0f, 0.0f});

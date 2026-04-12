@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <limits>
+#include <unordered_map>
 #include <vector>
 
 #ifndef GLM_ENABLE_EXPERIMENTAL
@@ -46,15 +47,46 @@ glm::mat4 BuildObjectMatrixNoScale(const SceneObject& object) {
     return model;
 }
 
-Transform TransformFromMatrix(const glm::mat4& matrix) {
-    Transform transform;
-    glm::vec3 skew;
-    glm::vec4 perspective;
-    glm::quat orientation;
-    if (glm::decompose(matrix, transform.scale, orientation, transform.position, skew, perspective)) {
-        transform.rotationEuler = glm::degrees(glm::eulerAngles(orientation));
+struct CachedCollisionMesh {
+    ImportedCollisionMesh mesh;
+    bool valid{false};
+};
+
+CachedCollisionMesh& GetCollisionMeshCache(const std::string& key) {
+    static std::unordered_map<std::string, CachedCollisionMesh> cache;
+    return cache[key];
+}
+
+bool TryGetCollisionMeshForObject(const SceneObject& object, ImportedCollisionMesh& outMesh) {
+    if (!object.hasMeshFilter || object.meshFilter.sourcePath.empty()) {
+        return false;
     }
-    return transform;
+
+    const std::string key = NormalizeSlashes(object.meshFilter.sourcePath) + "#" + std::to_string(object.meshFilter.meshIndex);
+    CachedCollisionMesh& cached = GetCollisionMeshCache(key);
+    if (cached.valid) {
+        outMesh = cached.mesh;
+        return true;
+    }
+
+    std::shared_ptr<::Model> model = object.meshFilter.modelRef;
+    if (!model) {
+        std::string resolvedPath;
+        std::vector<ImportedMeshInfo> infos;
+        if (!TryLoadMeshAsset(object.meshFilter.sourcePath, resolvedPath, model, infos)) {
+            return false;
+        }
+    }
+
+    ImportedCollisionMesh mesh;
+    if (!GetCollisionMesh(model, static_cast<std::size_t>(object.meshFilter.meshIndex), mesh)) {
+        return false;
+    }
+
+    cached.mesh = std::move(mesh);
+    cached.valid = true;
+    outMesh = cached.mesh;
+    return true;
 }
 
 int HierarchyDepth(const std::vector<SceneObject>& objects, int index) {
@@ -210,10 +242,6 @@ float DistanceToProjectedRing(const glm::vec2& mouse, const glm::vec3& origin, c
     }
 
     return best;
-}
-
-glm::vec3 TransformPoint(const glm::mat4& transform, const glm::vec3& point) {
-    return glm::vec3(transform * glm::vec4(point, 1.0f));
 }
 
 void SubmitWireBox(Renderer& renderer, const glm::mat4& transform, const glm::vec3& center, const glm::vec3& size, const glm::vec4& color, float width, DebugLineDepthMode depthMode = DebugLineDepthMode::AlwaysOnTop) {
@@ -449,6 +477,58 @@ void SceneEditor::SelectProjectFile(const std::string& path) {
     selectedProjectFile_ = NormalizeSlashes(path);
     if (!selectedProjectFile_.empty()) {
         selectedProjectDirectory_ = ParentProjectDirectory(selectedProjectFile_);
+    }
+    inspectMaterial_ = false;
+    inspectedMaterialId_.clear();
+    inspectedVehicleConfigLoaded_ = false;
+    inspectedVehicleConfigError_.clear();
+    vehicleConfigUndoStack_.clear();
+    vehicleConfigRedoStack_.clear();
+    vehicleConfigEditActive_ = false;
+    if (IsVehicleConfigAssetPath(selectedProjectFile_)) {
+        inspectedVehicleConfigPath_ = selectedProjectFile_;
+        showVehicleConfigEditor_ = true;
+    } else {
+        inspectedVehicleConfigPath_.clear();
+        showVehicleConfigEditor_ = false;
+    }
+}
+
+void SubmitWireMesh(Renderer& renderer,
+                    const glm::mat4& transform,
+                    const std::vector<glm::vec3>& vertices,
+                    const std::vector<unsigned int>& indices,
+                    const glm::vec4& color,
+                    float width,
+                    DebugLineDepthMode depthMode,
+                    std::size_t maxTriangles = 2000) {
+    if (vertices.empty() || indices.size() < 3) {
+        return;
+    }
+
+    const std::size_t triangleCount = indices.size() / 3;
+    const std::size_t stride = triangleCount > maxTriangles ? (triangleCount + maxTriangles - 1) / maxTriangles : 1;
+
+    for (std::size_t tri = 0; tri < triangleCount; tri += stride) {
+        const std::size_t base = tri * 3;
+        if (base + 2 >= indices.size()) {
+            break;
+        }
+
+        const unsigned int i0 = indices[base + 0];
+        const unsigned int i1 = indices[base + 1];
+        const unsigned int i2 = indices[base + 2];
+        if (i0 >= vertices.size() || i1 >= vertices.size() || i2 >= vertices.size()) {
+            continue;
+        }
+
+        const glm::vec3 p0 = TransformPoint(transform, vertices[i0]);
+        const glm::vec3 p1 = TransformPoint(transform, vertices[i1]);
+        const glm::vec3 p2 = TransformPoint(transform, vertices[i2]);
+
+        renderer.SubmitLine({p0, p1, color, width, depthMode});
+        renderer.SubmitLine({p1, p2, color, width, depthMode});
+        renderer.SubmitLine({p2, p0, color, width, depthMode});
     }
 }
 
@@ -816,12 +896,24 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             helperDepthMode);
     }
     if (colliderType == SceneColliderType::Mesh && object.meshCollider.enabled) {
-        glm::vec3 boundsMin{0.0f};
-        glm::vec3 boundsMax{0.0f};
-        if (GetObjectLocalBounds(object, boundsMin, boundsMax)) {
-            const glm::vec3 size = boundsMax - boundsMin;
-            const glm::vec3 center = (boundsMin + boundsMax) * 0.5f;
-            SubmitWireBox(renderer, objectMatrix, center, size, glm::vec4{0.95f, 0.55f, 0.2f, 1.0f}, colliderWidth, helperDepthMode);
+        ImportedCollisionMesh mesh;
+        if (TryGetCollisionMeshForObject(object, mesh)) {
+            SubmitWireMesh(
+                renderer,
+                objectMatrix,
+                mesh.vertices,
+                mesh.indices,
+                glm::vec4{0.95f, 0.55f, 0.2f, 1.0f},
+                colliderWidth,
+                helperDepthMode);
+        } else {
+            glm::vec3 boundsMin{0.0f};
+            glm::vec3 boundsMax{0.0f};
+            if (GetObjectLocalBounds(object, boundsMin, boundsMax)) {
+                const glm::vec3 size = boundsMax - boundsMin;
+                const glm::vec3 center = (boundsMin + boundsMax) * 0.5f;
+                SubmitWireBox(renderer, objectMatrix, center, size, glm::vec4{0.95f, 0.55f, 0.2f, 1.0f}, colliderWidth, helperDepthMode);
+            }
         }
     }
     if (object.hasCharacterController && object.characterController.enabled) {

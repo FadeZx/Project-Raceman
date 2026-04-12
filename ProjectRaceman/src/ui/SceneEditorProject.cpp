@@ -12,6 +12,7 @@ const char* ProjectCreateAssetTypeTitle(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::Folder) return "Create Folder";
     if (type == ProjectCreateAssetType::Scene) return "Create Scene";
     if (type == ProjectCreateAssetType::Material) return "Create Material";
+    if (type == ProjectCreateAssetType::VehicleProfile) return "Create Vehicle Profile";
     if (type == ProjectCreateAssetType::Script) return "Create C++ Script";
     return "Create Asset";
 }
@@ -20,6 +21,7 @@ const char* ProjectCreateAssetTypeDefaultName(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::Folder) return "NewFolder";
     if (type == ProjectCreateAssetType::Scene) return "NewScene";
     if (type == ProjectCreateAssetType::Material) return "NewMaterial";
+    if (type == ProjectCreateAssetType::VehicleProfile) return "NewVehicleProfile";
     if (type == ProjectCreateAssetType::Script) return "NewScript";
     return "NewAsset";
 }
@@ -381,6 +383,16 @@ void SceneEditor::RenderProjectPanel() {
                             selectedProjectDirectory_ = directory;
                             selectedProjectFile_.clear();
                         }
+                        if (ImGui::BeginMenu("Vehicle")) {
+                            if (ImGui::MenuItem("Add Vehicle Profile")) {
+                                selectedProjectDirectory_ = directory;
+                                selectedProjectFile_.clear();
+                                createProjectAssetType_ = ProjectCreateAssetType::VehicleProfile;
+                                std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
+                                showCreateProjectAssetPopup_ = true;
+                            }
+                            ImGui::EndMenu();
+                        }
                         if (ImGui::MenuItem("Rename", "F2")) {
                             BeginProjectFileRename(directory);
                         }
@@ -541,6 +553,14 @@ void SceneEditor::RenderProjectPanel() {
                         }
                         ImGui::EndMenu();
                     }
+                    if (ImGui::BeginMenu("Vehicle")) {
+                        if (ImGui::MenuItem("Add Vehicle Profile")) {
+                            createProjectAssetType_ = ProjectCreateAssetType::VehicleProfile;
+                            std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
+                            showCreateProjectAssetPopup_ = true;
+                        }
+                        ImGui::EndMenu();
+                    }
                     if (ImGui::MenuItem("Refresh")) {
                         RefreshProjectFiles();
                     }
@@ -582,6 +602,7 @@ void SceneEditor::RenderProjectPanel() {
                     if (submit) {
                         bool created = false;
                         std::string createdScenePath;
+                        std::string createdVehicleConfigPath;
                         if (createProjectAssetType_ == ProjectCreateAssetType::Folder) {
                             created = CreateProjectFolder(createProjectAssetNameBuffer_);
                         } else if (createProjectAssetType_ == ProjectCreateAssetType::Scene) {
@@ -594,6 +615,11 @@ void SceneEditor::RenderProjectPanel() {
                             created = CreateMaterialAsset(createProjectAssetNameBuffer_, &materialId);
                             if (created) {
                                 selectedProjectFile_ = selectedProjectDirectory_ + "/" + materialId + ".mat.json";
+                            }
+                        } else if (createProjectAssetType_ == ProjectCreateAssetType::VehicleProfile) {
+                            created = CreateVehicleConfigAsset(createProjectAssetNameBuffer_, &createdVehicleConfigPath);
+                            if (created) {
+                                selectedProjectFile_ = createdVehicleConfigPath;
                             }
                         } else if (createProjectAssetType_ == ProjectCreateAssetType::Script) {
                             created = CreateScriptAsset(createProjectAssetNameBuffer_, false);

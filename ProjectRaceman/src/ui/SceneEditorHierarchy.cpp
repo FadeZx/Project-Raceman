@@ -25,10 +25,83 @@ Transform TransformFromMatrixLocal(const glm::mat4& matrix) {
     return transform;
 }
 
+std::string BuildHierarchyDragPayload(const std::vector<SceneObject>& objects, const std::vector<int>& selectedIndices) {
+    std::string payload;
+    bool first = true;
+    for (int index : selectedIndices) {
+        if (index < 0 || index >= static_cast<int>(objects.size())) {
+            continue;
+        }
+        if (!first) {
+            payload.push_back('\n');
+        }
+        payload += objects[index].id;
+        first = false;
+    }
+    return payload;
+}
+
+std::vector<std::string> ParseHierarchyDragPayload(const void* data, int dataSize) {
+    std::vector<std::string> ids;
+    if (data == nullptr || dataSize <= 0) {
+        return ids;
+    }
+
+    const char* bytes = static_cast<const char*>(data);
+    std::string current;
+    current.reserve(64);
+    for (int i = 0; i < dataSize; ++i) {
+        const char ch = bytes[i];
+        if (ch == '\0') {
+            break;
+        }
+        if (ch == '\n') {
+            if (!current.empty()) {
+                ids.push_back(current);
+                current.clear();
+            }
+            continue;
+        }
+        current.push_back(ch);
+    }
+    if (!current.empty()) {
+        ids.push_back(current);
+    }
+    return ids;
+}
+
+std::vector<int> ResolveIndicesFromIds(const std::vector<SceneObject>& objects, const std::vector<std::string>& ids) {
+    std::vector<int> indices;
+    indices.reserve(ids.size());
+    for (const std::string& id : ids) {
+        const auto it = std::find_if(objects.begin(), objects.end(), [&](const SceneObject& object) {
+            return object.id == id;
+        });
+        if (it == objects.end()) {
+            continue;
+        }
+        indices.push_back(static_cast<int>(std::distance(objects.begin(), it)));
+    }
+    return indices;
+}
+
+std::vector<int> SortedSelectedIndices(const std::vector<int>& selectedIndices, int fallbackIndex) {
+    std::vector<int> result = selectedIndices;
+    if (result.empty() && fallbackIndex >= 0) {
+        result.push_back(fallbackIndex);
+    }
+    std::sort(result.begin(), result.end());
+    result.erase(std::unique(result.begin(), result.end()), result.end());
+    return result;
+}
+
 } // namespace
 
 void SceneEditor::RenderScenePanel() {
     if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse)) {
+        scenePanelHovered_ = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+        scenePanelFocused_ = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+        hierarchyKeyboardTargetObjectId_.clear();
         auto sanitizeHierarchyCycles = [&]() {
             bool changed = false;
             bool warned = false;
@@ -229,6 +302,16 @@ void SceneEditor::RenderScenePanel() {
                     hierarchyChanged = true;
                 }
             }
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyMultiObjectPayload)) {
+                const std::vector<std::string> ids = ParseHierarchyDragPayload(payload->Data, payload->DataSize);
+                const std::vector<int> indices = ResolveIndicesFromIds(objects_, ids);
+                for (int childIndex : indices) {
+                    SetParent(childIndex, -1);
+                }
+                if (!indices.empty()) {
+                    hierarchyChanged = true;
+                }
+            }
             ImGui::EndDragDropTarget();
         }
 
@@ -287,7 +370,26 @@ void SceneEditor::RenderScenePanel() {
                     if (selected) {
                         flags |= ImGuiTreeNodeFlags_Selected;
                     }
+                    if (!children.empty()) {
+                        bool openState = true;
+                        const auto stateIt = hierarchyOpenStates_.find(objectId);
+                        if (stateIt != hierarchyOpenStates_.end()) {
+                            openState = stateIt->second;
+                        }
+                        if (pendingHierarchyToggleObjectId_ == objectId) {
+                            openState = !openState;
+                            hierarchyOpenStates_[objectId] = openState;
+                            pendingHierarchyToggleObjectId_.clear();
+                        }
+                        ImGui::SetNextItemOpen(openState, ImGuiCond_Always);
+                    }
                     const bool open = ImGui::TreeNodeEx(objects_[i].name.c_str(), flags);
+                    if (ImGui::IsItemHovered() || ImGui::IsItemFocused()) {
+                        hierarchyKeyboardTargetObjectId_ = objectId;
+                    }
+                    if (!children.empty() && ImGui::IsItemToggledOpen()) {
+                        hierarchyOpenStates_[objectId] = open;
+                    }
                     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
                         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                             pendingHierarchySelectIndex_ = i;
@@ -309,7 +411,13 @@ void SceneEditor::RenderScenePanel() {
                         if (pendingHierarchySelectIndex_ == i) {
                             pendingHierarchySelectionDragged_ = true;
                         }
-                        ImGui::SetDragDropPayload(kHierarchyObjectPayload, &i, sizeof(i));
+                        const std::vector<int> dragSelection = SortedSelectedIndices(selectedIndices_, i);
+                        if (dragSelection.size() > 1 && std::find(dragSelection.begin(), dragSelection.end(), i) != dragSelection.end()) {
+                            const std::string payload = BuildHierarchyDragPayload(objects_, dragSelection);
+                            ImGui::SetDragDropPayload(kHierarchyMultiObjectPayload, payload.data(), static_cast<int>(payload.size() + 1));
+                        } else {
+                            ImGui::SetDragDropPayload(kHierarchyObjectPayload, &i, sizeof(i));
+                        }
                         ImGui::TextUnformatted(objects_[i].name.c_str());
                         ImGui::EndDragDropSource();
                     }
@@ -318,6 +426,16 @@ void SceneEditor::RenderScenePanel() {
                             if (payload->DataSize == sizeof(int)) {
                                 int childIndex = *static_cast<const int*>(payload->Data);
                                 SetParent(childIndex, i);
+                                hierarchyChanged = true;
+                            }
+                        }
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyMultiObjectPayload)) {
+                            const std::vector<std::string> ids = ParseHierarchyDragPayload(payload->Data, payload->DataSize);
+                            const std::vector<int> indices = ResolveIndicesFromIds(objects_, ids);
+                            for (int childIndex : indices) {
+                                SetParent(childIndex, i);
+                            }
+                            if (!indices.empty()) {
                                 hierarchyChanged = true;
                             }
                         }
@@ -365,6 +483,23 @@ void SceneEditor::RenderScenePanel() {
                                 const int childIndex = *static_cast<const int*>(payload->Data);
                                 const int newParentIndex = FindObjectIndexById(objects_[i].parentId);
                                 if (MoveObjectInHierarchy(childIndex, newParentIndex, i)) {
+                                    hierarchyChanged = true;
+                                }
+                            }
+                        }
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyMultiObjectPayload)) {
+                            const std::vector<std::string> ids = ParseHierarchyDragPayload(payload->Data, payload->DataSize);
+                            std::vector<int> indices = ResolveIndicesFromIds(objects_, ids);
+                            std::sort(indices.begin(), indices.end());
+                            indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+                            const std::string dropTargetId = objects_[i].id;
+                            for (int childIndex : indices) {
+                                const int currentTargetIndex = FindObjectIndexById(dropTargetId);
+                                if (currentTargetIndex < 0) {
+                                    break;
+                                }
+                                const int newParentIndex = FindObjectIndexById(objects_[currentTargetIndex].parentId);
+                                if (MoveObjectInHierarchy(childIndex, newParentIndex, currentTargetIndex)) {
                                     hierarchyChanged = true;
                                 }
                             }
@@ -417,6 +552,17 @@ void SceneEditor::RenderScenePanel() {
                             }
                         }
                     }
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyMultiObjectPayload)) {
+                        const std::vector<std::string> ids = ParseHierarchyDragPayload(payload->Data, payload->DataSize);
+                        std::vector<int> indices = ResolveIndicesFromIds(objects_, ids);
+                        std::sort(indices.begin(), indices.end());
+                        indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+                        for (int childIndex : indices) {
+                            if (MoveObjectInHierarchy(childIndex, -1, objects_.empty() ? -1 : static_cast<int>(objects_.size()) - 1)) {
+                                hierarchyChanged = true;
+                            }
+                        }
+                    }
                     ImGui::EndDragDropTarget();
                 }
             }
@@ -461,6 +607,9 @@ void SceneEditor::RenderScenePanel() {
 
     }
     ImGui::End();
+    if (!scenePanelHovered_ && !scenePanelFocused_) {
+        hierarchyKeyboardTargetObjectId_.clear();
+    }
 }
 
 
