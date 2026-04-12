@@ -181,6 +181,7 @@ std::string SanitizeScriptClassName(std::string value) {
     return out.empty() ? std::string("NewObjectScript") : out;
 }
 
+#if 0
 bool ContainsText(const std::string& text, const std::string& needle) {
     return text.find(needle) != std::string::npos;
 }
@@ -352,6 +353,7 @@ fs::path ResolveEditorPath(const std::string& path) {
 
     return (ProjectRootPath() / normalized).lexically_normal();
 }
+#endif
 
 void MigrateLegacyProjectLayout() {
     const fs::path engineRoot = EngineRootPath();
@@ -1784,6 +1786,38 @@ void SceneEditor::NormalizeSelection() {
         || std::find(selectedIndices_.begin(), selectedIndices_.end(), selectedIndex_) == selectedIndices_.end()) {
         selectedIndex_ = selectedIndices_.back();
     }
+    QueueHierarchyRevealForSelection();
+}
+
+void SceneEditor::QueueHierarchyRevealForSelection() {
+    if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
+        pendingHierarchyRevealObjectId_.clear();
+        lastHierarchyRevealObjectId_.clear();
+        return;
+    }
+
+    const std::string& selectedId = objects_[selectedIndex_].id;
+    if (!lastHierarchyRevealObjectId_.empty() && lastHierarchyRevealObjectId_ == selectedId) {
+        return;
+    }
+
+    lastHierarchyRevealObjectId_ = selectedId;
+    pendingHierarchyRevealObjectId_ = selectedId;
+
+    std::string parentId = objects_[selectedIndex_].parentId;
+    std::unordered_set<std::string> visited;
+    while (!parentId.empty()) {
+        if (visited.find(parentId) != visited.end()) {
+            break;
+        }
+        visited.insert(parentId);
+        hierarchyOpenStates_[parentId] = true;
+        const int parentIndex = FindObjectIndexById(parentId);
+        if (parentIndex < 0 || parentIndex >= static_cast<int>(objects_.size())) {
+            break;
+        }
+        parentId = objects_[parentIndex].parentId;
+    }
 }
 
 void SceneEditor::PushUndoState() {
@@ -1859,239 +1893,7 @@ void SceneEditor::Redo() {
 }
 
 
-void SceneEditor::Save(const std::string& path) {
-    const fs::path targetPath = ResolveEditorPath(path);
-    try {
-        fs::create_directories(targetPath.parent_path());
-    } catch (...) {}
-
-    std::ofstream out(targetPath, std::ios::trunc);
-    if (!out.good()) return;
-
-    // Minimal JSON (manual)
-    out << "{\n  \"objects\": [\n";
-    for (size_t i = 0; i < objects_.size(); ++i) {
-        const auto& o = objects_[i];
-        const std::string meshType = o.meshFilter.meshType.empty() ? o.type : o.meshFilter.meshType;
-        out << "    {\n";
-        out << "      \"id\": \"" << JsonEscape(o.id) << "\",\n";
-        out << "      \"parentId\": \"" << JsonEscape(o.parentId) << "\",\n";
-        out << "      \"name\": \"" << JsonEscape(o.name) << "\",\n";
-        out << "      \"type\": \"" << JsonEscape(o.type) << "\",\n";
-        out << "      \"physicsLayer\": " << ClampPhysicsLayerIndex(o.physicsLayer) << ",\n";
-        out << "      \"enabled\": " << (o.enabled ? "true" : "false") << ",\n";
-        SceneObject orderedObject = o;
-        SyncInspectorComponentOrder(orderedObject);
-        out << "      \"componentOrder\": [";
-        for (std::size_t orderIndex = 0; orderIndex < orderedObject.inspectorComponentOrder.size(); ++orderIndex) {
-            out << "\"" << InspectorComponentTypeToString(orderedObject.inspectorComponentOrder[orderIndex]) << "\"";
-            if (orderIndex + 1 < orderedObject.inspectorComponentOrder.size()) {
-                out << ", ";
-            }
-        }
-        out << "],\n";
-        out << "      \"components\": [\n";
-        out << "        {\n";
-        out << "          \"type\": \"Transform\",\n";
-        out << "          \"position\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
-        out << "          \"rotationEuler\": [" << o.transform.rotationEuler.x << ", " << o.transform.rotationEuler.y << ", " << o.transform.rotationEuler.z << "],\n";
-        out << "          \"scale\": [" << o.transform.scale.x << ", " << o.transform.scale.y << ", " << o.transform.scale.z << "]\n";
-        out << "        }";
-        if (o.hasMeshFilter) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"MeshFilter\",\n";
-            out << "          \"enabled\": " << (o.meshFilter.enabled ? "true" : "false") << ",\n";
-            out << "          \"meshType\": \"" << JsonEscape(meshType) << "\",\n";
-            out << "          \"sourcePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.sourcePath)) << "\",\n";
-            out << "          \"meshIndex\": " << o.meshFilter.meshIndex << ",\n";
-            out << "          \"importedMaterialName\": \"" << JsonEscape(o.meshFilter.importedMaterialName) << "\",\n";
-            out << "          \"diffuseTexturePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.diffuseTexturePath)) << "\"\n";
-            out << "        }";
-        }
-        if (o.hasMeshRenderer) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"MeshRenderer\",\n";
-            out << "          \"enabled\": " << (o.meshRenderer.enabled ? "true" : "false") << ",\n";
-            out << "          \"materialId\": \"" << JsonEscape(o.meshRenderer.materialId.empty() ? "pbr_default" : o.meshRenderer.materialId) << "\",\n";
-            out << "          \"color\": [" << o.meshRenderer.color.r << ", " << o.meshRenderer.color.g << ", " << o.meshRenderer.color.b << ", " << o.meshRenderer.color.a << "]\n";
-            out << "        }";
-        }
-        if (o.hasScriptComponent) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Script\",\n";
-            out << "          \"enabled\": " << (o.scriptComponent.enabled ? "true" : "false") << ",\n";
-            out << "          \"attachments\": [\n";
-            for (size_t scriptIndex = 0; scriptIndex < o.scriptComponent.attachments.size(); ++scriptIndex) {
-                const ObjectScriptAttachment& script = o.scriptComponent.attachments[scriptIndex];
-                out << "            {\n";
-                out << "              \"enabled\": " << (script.enabled ? "true" : "false") << ",\n";
-                out << "              \"scriptName\": \"" << JsonEscape(script.scriptName) << "\",\n";
-                out << "              \"scriptPath\": \"" << JsonEscape(NormalizeSlashes(script.scriptPath)) << "\"";
-                if (!script.fields.empty()) {
-                    out << ",\n";
-                    out << "              \"fields\": [\n";
-                    for (std::size_t fieldIndex = 0; fieldIndex < script.fields.size(); ++fieldIndex) {
-                        const ScriptFieldEntry& field = script.fields[fieldIndex];
-                        out << "                {\n";
-                        out << "                  \"name\": \"" << JsonEscape(field.name) << "\",\n";
-                        out << "                  \"type\": \"" << ScriptFieldTypeToString(field.type) << "\",\n";
-                        WriteScriptFieldValue(out, field);
-                        out << "                }" << (fieldIndex + 1 < script.fields.size() ? ",\n" : "\n");
-                    }
-                    out << "              ]\n";
-                    out << "            }";
-                } else {
-                    out << "\n";
-                    out << "            }";
-                }
-                out << (scriptIndex + 1 < o.scriptComponent.attachments.size() ? ",\n" : "\n");
-            }
-            out << "          ]\n";
-            out << "        }";
-        }
-        if (o.hasRigidbody) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Rigidbody\",\n";
-            out << "          \"enabled\": " << (o.rigidbody.enabled ? "true" : "false") << ",\n";
-            out << "          \"bodyType\": \"" << RigidbodyBodyTypeToString(o.rigidbody.bodyType) << "\",\n";
-            out << "          \"mass\": " << o.rigidbody.mass << ",\n";
-            out << "          \"useGravity\": " << (o.rigidbody.useGravity ? "true" : "false") << ",\n";
-            out << "          \"linearDamping\": " << o.rigidbody.linearDamping << ",\n";
-            out << "          \"angularDamping\": " << o.rigidbody.angularDamping << ",\n";
-            out << "          \"friction\": " << o.rigidbody.friction << ",\n";
-            out << "          \"restitution\": " << o.rigidbody.restitution << ",\n";
-            out << "          \"velocity\": [" << o.rigidbody.velocity.x << ", " << o.rigidbody.velocity.y << ", " << o.rigidbody.velocity.z << "],\n";
-            out << "          \"angularVelocity\": [" << o.rigidbody.angularVelocity.x << ", " << o.rigidbody.angularVelocity.y << ", " << o.rigidbody.angularVelocity.z << "],\n";
-            out << "          \"freezePosition\": [" << (o.rigidbody.freezePositionX ? "true" : "false") << ", " << (o.rigidbody.freezePositionY ? "true" : "false") << ", " << (o.rigidbody.freezePositionZ ? "true" : "false") << "],\n";
-            out << "          \"freezeRotation\": [" << (o.rigidbody.freezeRotationX ? "true" : "false") << ", " << (o.rigidbody.freezeRotationY ? "true" : "false") << ", " << (o.rigidbody.freezeRotationZ ? "true" : "false") << "]\n";
-            out << "        }";
-        }
-        if (o.hasVehicle) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Vehicle\",\n";
-            out << "          \"enabled\": " << (o.vehicle.enabled ? "true" : "false") << ",\n";
-            out << "          \"configPath\": \"" << JsonEscape(NormalizeSlashes(o.vehicle.configPath)) << "\",\n";
-            out << "          \"chassisObjectIds\": [";
-            for (std::size_t chassisIndex = 0; chassisIndex < o.vehicle.chassisObjectIds.size(); ++chassisIndex) {
-                out << (chassisIndex == 0 ? "" : ", ") << "\"" << JsonEscape(o.vehicle.chassisObjectIds[chassisIndex]) << "\"";
-            }
-            out << "],\n";
-            out << "          \"wheelBindings\": [\n";
-            for (std::size_t wheelIndex = 0; wheelIndex < o.vehicle.wheelBindings.size(); ++wheelIndex) {
-                const VehicleWheelBinding& binding = o.vehicle.wheelBindings[wheelIndex];
-                out << "            {\n";
-                out << "              \"wheelName\": \"" << JsonEscape(binding.wheelName) << "\",\n";
-                out << "              \"objectId\": \"" << JsonEscape(binding.objectId) << "\",\n";
-                out << "              \"visualRotationEuler\": [" << binding.visualRotationEuler.x << ", " << binding.visualRotationEuler.y << ", " << binding.visualRotationEuler.z << "]\n";
-                out << "            }" << (wheelIndex + 1 < o.vehicle.wheelBindings.size() ? ",\n" : "\n");
-            }
-            out << "          ]\n";
-            out << "        }";
-        }
-        if (o.hasCharacterController) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"CharacterController\",\n";
-            out << "          \"enabled\": " << (o.characterController.enabled ? "true" : "false") << ",\n";
-            out << "          \"height\": " << o.characterController.height << ",\n";
-            out << "          \"radius\": " << o.characterController.radius << ",\n";
-            out << "          \"center\": [" << o.characterController.center.x << ", " << o.characterController.center.y << ", " << o.characterController.center.z << "],\n";
-            out << "          \"stepHeight\": " << o.characterController.stepHeight << ",\n";
-            out << "          \"slopeLimitDegrees\": " << o.characterController.slopeLimitDegrees << ",\n";
-            out << "          \"maxStrength\": " << o.characterController.maxStrength << ",\n";
-            out << "          \"mass\": " << o.characterController.mass << "\n";
-            out << "        }";
-        }
-        const SceneColliderType colliderType = GetActiveColliderType(o);
-        if (colliderType != SceneColliderType::None) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Collider\",\n";
-            out << "          \"colliderType\": \"" << SceneColliderTypeLabel(colliderType) << "\"";
-            if (colliderType == SceneColliderType::Box) {
-                out << ",\n";
-                out << "          \"enabled\": " << (o.boxCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.boxCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"center\": [" << o.boxCollider.center.x << ", " << o.boxCollider.center.y << ", " << o.boxCollider.center.z << "],\n";
-                out << "          \"size\": [" << o.boxCollider.size.x << ", " << o.boxCollider.size.y << ", " << o.boxCollider.size.z << "]\n";
-            } else if (colliderType == SceneColliderType::Sphere) {
-                out << ",\n";
-                out << "          \"enabled\": " << (o.sphereCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.sphereCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"center\": [" << o.sphereCollider.center.x << ", " << o.sphereCollider.center.y << ", " << o.sphereCollider.center.z << "],\n";
-                out << "          \"radius\": " << o.sphereCollider.radius << "\n";
-            } else if (colliderType == SceneColliderType::Capsule) {
-                out << ",\n";
-                out << "          \"enabled\": " << (o.capsuleCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.capsuleCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"center\": [" << o.capsuleCollider.center.x << ", " << o.capsuleCollider.center.y << ", " << o.capsuleCollider.center.z << "],\n";
-                out << "          \"radius\": " << o.capsuleCollider.radius << ",\n";
-                out << "          \"height\": " << o.capsuleCollider.height << "\n";
-            } else if (colliderType == SceneColliderType::Plane) {
-                out << ",\n";
-                out << "          \"enabled\": " << (o.planeCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.planeCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"normal\": [" << o.planeCollider.normal.x << ", " << o.planeCollider.normal.y << ", " << o.planeCollider.normal.z << "],\n";
-                out << "          \"offset\": " << o.planeCollider.offset << ",\n";
-                out << "          \"infinite\": " << (o.planeCollider.infinite ? "true" : "false") << ",\n";
-                out << "          \"halfExtent\": " << o.planeCollider.halfExtent << "\n";
-            } else if (colliderType == SceneColliderType::Mesh) {
-                out << ",\n";
-                out << "          \"enabled\": " << (o.meshCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.meshCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"buildQuality\": \"" << MeshColliderBuildQualityToString(o.meshCollider.buildQuality) << "\"\n";
-            }
-            out << "        }";
-        }
-        if (o.hasCamera) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Camera\",\n";
-            out << "          \"enabled\": " << (o.camera.enabled ? "true" : "false") << ",\n";
-            out << "          \"isMain\": " << (o.camera.isMain ? "true" : "false") << ",\n";
-            out << "          \"fieldOfViewDegrees\": " << o.camera.fieldOfViewDegrees << ",\n";
-            out << "          \"nearClip\": " << o.camera.nearClip << ",\n";
-            out << "          \"farClip\": " << o.camera.farClip << ",\n";
-            out << "          \"clearColor\": [" << o.camera.clearColor.r << ", " << o.camera.clearColor.g << ", " << o.camera.clearColor.b << ", " << o.camera.clearColor.a << "]\n";
-            out << "        }";
-        }
-        if (o.hasLight) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Light\",\n";
-            out << "          \"enabled\": " << (o.light.enabled ? "true" : "false") << ",\n";
-            out << "          \"lightType\": \"" << LightTypeToString(o.light.type) << "\",\n";
-            out << "          \"color\": [" << o.light.color.r << ", " << o.light.color.g << ", " << o.light.color.b << "],\n";
-            out << "          \"intensity\": " << o.light.intensity << ",\n";
-            out << "          \"range\": " << o.light.range << ",\n";
-            out << "          \"spotAngleDegrees\": " << o.light.spotAngleDegrees << "\n";
-            out << "        }";
-        }
-        out << "\n";
-        out << "      ]\n";
-        out << "    }" << (i + 1 < objects_.size() ? ",\n" : "\n");
-    }
-    out << "  ],\n";
-    out << "  \"hierarchyClosed\": [";
-    bool wroteClosed = false;
-    for (const auto& entry : hierarchyOpenStates_) {
-        if (entry.second) {
-            continue;
-        }
-        if (wroteClosed) {
-            out << ", ";
-        }
-        out << "\"" << JsonEscape(entry.first) << "\"";
-        wroteClosed = true;
-    }
-    out << "]\n}\n";
-}
-
+#if 0
 void SceneEditor::Load(const std::string& path) {
     using namespace raceman::physics::json;
     objects_.clear();
@@ -2562,6 +2364,10 @@ void SceneEditor::Load(const std::string& path) {
                                 if (ReadString(component, "buildQuality", buildQuality)) {
                                     so.meshCollider.buildQuality = MeshColliderBuildQualityFromString(buildQuality);
                                 }
+                                std::string meshMode;
+                                if (ReadString(component, "mode", meshMode)) {
+                                    so.meshCollider.mode = MeshColliderModeFromString(meshMode);
+                                }
                             }
                         }
                     } else if (componentType == "BoxCollider") {
@@ -2625,6 +2431,10 @@ void SceneEditor::Load(const std::string& path) {
                         std::string buildQuality;
                         if (ReadString(component, "buildQuality", buildQuality)) {
                             so.meshCollider.buildQuality = MeshColliderBuildQualityFromString(buildQuality);
+                        }
+                        std::string meshMode;
+                        if (ReadString(component, "mode", meshMode)) {
+                            so.meshCollider.mode = MeshColliderModeFromString(meshMode);
                         }
                     } else if (componentType == "Camera") {
                         so.hasCamera = true;
@@ -2959,6 +2769,8 @@ void SceneEditor::SaveProject() {
     }
 }
 
+#endif
+
 void SceneEditor::RedoVehicleConfig() {
     if (vehicleConfigRedoStack_.empty() || !showVehicleConfigEditor_) {
         return;
@@ -2970,6 +2782,7 @@ void SceneEditor::RedoVehicleConfig() {
     vehicleConfigEditActive_ = false;
 }
 
+#if 0
 void SceneEditor::NewScene() {
     NewScene("Untitled");
 }
@@ -3127,6 +2940,8 @@ void SceneEditor::SaveCurrentSceneAs() {
     savePath_ = MakeUniqueSceneAssetPath(baseName);
     SaveCurrentScene();
 }
+
+#endif
 
 bool SceneEditor::CreateSceneAsset(const std::string& requestedName, std::string* outScenePath) {
     std::string baseName = TrimCopyLocal(requestedName);

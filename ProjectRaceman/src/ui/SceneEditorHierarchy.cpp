@@ -274,6 +274,29 @@ void SceneEditor::RenderScenePanel() {
             ImGui::EndPopup();
         }
 
+        if (showImportMeshOptionsPopup_) { ImGui::OpenPopup("Import Mesh Options"); showImportMeshOptionsPopup_ = false; }
+        if (ImGui::BeginPopupModal("Import Mesh Options", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted("Pivot Handling");
+            ImGui::Separator();
+            ImGui::RadioButton("Shared origin (OBJ default)", &pendingImportMeshPivotMode_, 0);
+            ImGui::RadioButton("Center pivot per mesh (adds a parent object)", &pendingImportMeshPivotMode_, 1);
+            ImGui::Separator();
+            ImGui::TextDisabled("Shared origin keeps meshes aligned exactly as exported.");
+            ImGui::TextDisabled("Center pivot keeps world positions but creates a pivot parent for each mesh.");
+            ImGui::Separator();
+            if (ImGui::Button("Import")) {
+                ImportObjWithOptions(pendingImportMeshPath_, pendingImportMeshPivotMode_);
+                pendingImportMeshPath_.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                pendingImportMeshPath_.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
         ImGui::TextDisabled("Drag onto an object to parent it. Drag onto the line under an object to reorder it.");
         bool hierarchyChanged = false;
         if (ImGui::BeginDragDropTarget()) {
@@ -386,6 +409,11 @@ void SceneEditor::RenderScenePanel() {
                     const bool open = ImGui::TreeNodeEx(objects_[i].name.c_str(), flags);
                     if (ImGui::IsItemHovered() || ImGui::IsItemFocused()) {
                         hierarchyKeyboardTargetObjectId_ = objectId;
+                    }
+                    if (!pendingHierarchyRevealObjectId_.empty() && pendingHierarchyRevealObjectId_ == objectId) {
+                        ImGui::SetScrollHereY(0.3f);
+                        ImGui::SetItemDefaultFocus();
+                        pendingHierarchyRevealObjectId_.clear();
                     }
                     if (!children.empty() && ImGui::IsItemToggledOpen()) {
                         hierarchyOpenStates_[objectId] = open;

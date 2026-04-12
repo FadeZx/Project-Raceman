@@ -51,6 +51,13 @@ struct VehicleRigidBodyState
     Vector3 angularVelocity{};
 };
 
+struct VehicleRaycastHit
+{
+    Vector3 position{};
+    Vector3 normal{};
+    float distance{0.0f};
+};
+
 class VehiclePhysics
 {
 public:
@@ -58,6 +65,7 @@ public:
 
     void setInput(const VehicleControlInput &input);
     void setTelemetryCallback(std::function<void(const VehicleTelemetry &)> callback);
+    void setGroundRaycastCallback(std::function<bool(const Vector3 &origin, const Vector3 &direction, float maxDistance, VehicleRaycastHit &outHit)> callback);
 
     void update(float dt);
 
@@ -70,6 +78,7 @@ public:
     const Vector3 &getPendingChassisForce() const;
     const Vector3 &getPendingChassisTorque() const;
     void setExternalBodySimulation(bool external);
+    void setUseGroundPlane(bool enabled);
 
     const VehicleConfig &getConfig() const { return m_config; }
 
@@ -105,9 +114,11 @@ private:
     std::vector<Transform> m_wheelTransforms;
     VehicleTelemetry m_lastTelemetry{};
     std::function<void(const VehicleTelemetry &)> m_telemetryCallback{};
+    std::function<bool(const Vector3 &, const Vector3 &, float, VehicleRaycastHit &)> m_groundRaycast{};
     Vector3 m_pendingChassisForce{};
     Vector3 m_pendingChassisTorque{};
     bool m_externalBodySimulation{false};
+    bool m_useGroundPlane{true};
 
     float m_engineAngularVelocity{0.0f};
     float m_prevEngineRPM{0.0f};

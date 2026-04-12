@@ -1,67 +1,25 @@
 {
   "objects": [
     {
-      "id": "mesh_2",
-      "parentId": "",
-      "name": "Plane",
-      "type": "GameObject",
-      "physicsLayer": 1,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0.257328, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [10000, 10000, 10000]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Plane",
-          "sourcePath": "",
-          "meshIndex": 0,
-          "importedMaterialName": "",
-          "diffuseTexturePath": ""
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "pbr_default",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Plane",
-          "enabled": true,
-          "isTrigger": false,
-          "normal": [0, 1, 0],
-          "offset": 0,
-          "infinite": true,
-          "halfExtent": 1000
-        }
-      ]
-    },
-    {
       "id": "light_8",
       "parentId": "",
       "name": "Directional Light",
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Light"],
+      "componentOrder": ["Transform", "Light", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
           "position": [-2.31907, 3.14599, 3.95966],
           "rotationEuler": [-143.008, -3.50556, -24.6277],
           "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
         },
         {
           "type": "Light",
@@ -85,7 +43,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, -0.173415, 0],
+          "position": [0, -0.0892322, 0],
           "rotationEuler": [0, -0, 0],
           "scale": [0.41, 0.41, 0.41]
         },
@@ -109,8 +67,8 @@
           "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "center": [0, 0.95, 0],
-          "size": [2.601, 1.45, 6.8]
+          "center": [0, 0.75, 0],
+          "size": [2.95, 1.1, 6.25]
         }
       ]
     },
@@ -121,13 +79,19 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Camera"],
+      "componentOrder": ["Transform", "Camera", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
           "position": [0, 2, -5.59375],
           "rotationEuler": [180, 5.00896e-06, 180],
           "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
         },
         {
           "type": "Camera",
@@ -185,13 +149,19 @@
       "type": "GameObject",
       "physicsLayer": 2,
       "enabled": true,
-      "componentOrder": ["Transform", "Vehicle"],
+      "componentOrder": ["Transform", "Vehicle", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
-          "position": [0, 3.62708, 0],
+          "position": [10.0272, 4.44921, 0],
           "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
         },
         {
           "type": "Vehicle",
@@ -338,22 +308,28 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Light"],
+      "componentOrder": ["Transform", "Light", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
-          "position": [0.13943, 0.191543, 1.05395],
+          "position": [0.545645, 0.191543, 1.05395],
           "rotationEuler": [-160.062, -0, 0],
           "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
         },
         {
           "type": "Light",
           "enabled": true,
           "lightType": "Spot",
           "color": [1, 1, 1],
-          "intensity": 11.25,
-          "range": 33.3,
-          "spotAngleDegrees": 69.5
+          "intensity": 10.9,
+          "range": 72.8,
+          "spotAngleDegrees": 57
         }
       ]
     },
@@ -368,7 +344,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.0515632, 1.67931, 10.9635],
+          "position": [10.854, 1.67931, 10.9635],
           "rotationEuler": [4.32414e-05, 0.0143073, -7.47984e-06],
           "scale": [1, 1, 1]
         },
@@ -405,9 +381,10 @@
         {
           "type": "Collider",
           "colliderType": "Mesh",
-          "enabled": true,
+          "enabled": false,
           "isTrigger": false,
-          "buildQuality": "Balanced"
+          "buildQuality": "Balanced",
+          "mode": "ConvexHull"
         }
       ]
     },
@@ -583,13 +560,19 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform"],
+      "componentOrder": ["Transform", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
+          "position": [14.6335, 2.41024, 0],
           "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
         }
       ]
     },
@@ -654,14 +637,20 @@
       "name": "track3",
       "type": "GameObject",
       "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform"],
+      "enabled": false,
+      "componentOrder": ["Transform", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
           "position": [0, 0, 0],
           "rotationEuler": [0, -0, 0],
           "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
         }
       ]
     },
@@ -4244,7 +4233,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
       "components": [
         {
           "type": "Transform",
@@ -4272,6 +4261,14 @@
           "enabled": true,
           "attachments": [
           ]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Mesh",
+          "enabled": true,
+          "isTrigger": false,
+          "buildQuality": "BuildQuality",
+          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5346,7 +5343,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
       "components": [
         {
           "type": "Transform",
@@ -5374,6 +5371,14 @@
           "enabled": true,
           "attachments": [
           ]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Mesh",
+          "enabled": true,
+          "isTrigger": false,
+          "buildQuality": "BuildQuality",
+          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5600,7 +5605,196 @@
           "size": [1, 1, 1]
         }
       ]
+    },
+    {
+      "id": "mesh_2",
+      "parentId": "",
+      "name": "Plane",
+      "type": "GameObject",
+      "physicsLayer": 1,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, -0.179552, 0],
+          "rotationEuler": [0, -0, 0],
+          "scale": [10000, 10000, 10000]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Plane",
+          "sourcePath": "",
+          "meshIndex": 0,
+          "importedMaterialName": "",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Plane",
+          "enabled": true,
+          "isTrigger": false,
+          "normal": [0, 1, 0],
+          "offset": 0,
+          "infinite": false,
+          "halfExtent": 1000
+        }
+      ]
+    },
+    {
+      "id": "gameobject_9",
+      "parentId": "gameobject_1",
+      "name": "Spot Light Copy",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Light", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.38893, 0.191543, 1.05395],
+          "rotationEuler": [-160.062, -0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "lightType": "Spot",
+          "color": [1, 1, 1],
+          "intensity": 10.9,
+          "range": 72.8,
+          "spotAngleDegrees": 57
+        }
+      ]
+    },
+    {
+      "id": "gameobject_1635",
+      "parentId": "",
+      "name": "monacoGP",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 2.01719, 0],
+          "rotationEuler": [-90, 0, 0],
+          "scale": [1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_1636",
+      "parentId": "gameobject_1635",
+      "name": "monacoGP_0",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [69.6435, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/monaco-gp-racetrack/source/monacoGP.fbx",
+          "meshIndex": 0,
+          "importedMaterialName": "road",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "monacogp_road",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Mesh",
+          "enabled": true,
+          "isTrigger": false,
+          "buildQuality": "BuildQuality",
+          "mode": "TriangleMesh"
+        }
+      ]
+    },
+    {
+      "id": "mesh_1637",
+      "parentId": "gameobject_1635",
+      "name": "monacoGP_1",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [69.6435, 0, 0.3],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/track/monaco-gp-racetrack/source/monacoGP.fbx",
+          "meshIndex": 1,
+          "importedMaterialName": "wall",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "monacogp_wall",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Mesh",
+          "enabled": true,
+          "isTrigger": false,
+          "buildQuality": "BuildQuality",
+          "mode": "TriangleMesh"
+        }
+      ]
     }
   ],
-  "hierarchyClosed": ["gameobject_7", "gameobject_8", "gameobject_1"]
+  "hierarchyClosed": ["gameobject_8", "gameobject_7", "gameobject_10"]
 }

@@ -6,6 +6,7 @@
 #include "../rendering/PrimitivePlane.h"
 #include "../rendering/Renderer.h"
 #include "../physics/PhysicsWorld.h"
+#include "../physics/SimpleJson.h"
 #include "../physics/VehiclePhysics.h"
 
 #include <imgui/imgui.h>
@@ -20,6 +21,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #ifndef GLM_ENABLE_EXPERIMENTAL
@@ -43,6 +45,12 @@ namespace raceman::scene_editor_internal {
 
 namespace fs = std::filesystem;
 
+inline bool ReadVec2(const raceman::physics::json::Object& object, const std::string& key, glm::vec2& out);
+inline bool ReadVec3(const raceman::physics::json::Object& object, const std::string& key, glm::vec3& out);
+inline bool ReadVec4(const raceman::physics::json::Object& object, const std::string& key, glm::vec4& out);
+inline bool ReadBool(const raceman::physics::json::Object& object, const std::string& key, bool& out);
+inline bool ReadString(const raceman::physics::json::Object& object, const std::string& key, std::string& out);
+
 enum class SceneColliderType {
     None,
     Box,
@@ -63,6 +71,27 @@ inline SceneColliderType GetActiveColliderType(const SceneObject& object) {
 
 inline bool HasColliderComponent(const SceneObject& object) {
     return GetActiveColliderType(object) != SceneColliderType::None;
+}
+
+inline bool HasEnabledColliderComponent(const SceneObject& object) {
+    const SceneColliderType type = GetActiveColliderType(object);
+    switch (type) {
+    case SceneColliderType::Box: return object.boxCollider.enabled;
+    case SceneColliderType::Sphere: return object.sphereCollider.enabled;
+    case SceneColliderType::Capsule: return object.capsuleCollider.enabled;
+    case SceneColliderType::Plane: return object.planeCollider.enabled;
+    case SceneColliderType::Mesh: return object.meshCollider.enabled;
+    case SceneColliderType::None: return false;
+    }
+    return false;
+}
+
+inline SceneColliderType GetEnabledColliderType(const SceneObject& object) {
+    const SceneColliderType type = GetActiveColliderType(object);
+    if (!HasEnabledColliderComponent(object)) {
+        return SceneColliderType::None;
+    }
+    return type;
 }
 
 inline void ClearColliderComponent(SceneObject& object) {
@@ -527,6 +556,212 @@ inline std::string JsonEscape(const std::string& value) {
     return out;
 }
 
+inline bool ContainsText(const std::string& text, const std::string& needle) {
+    return text.find(needle) != std::string::npos;
+}
+
+inline bool ShouldFallbackToBuiltInPlane(const SceneObject& object) {
+    if (!object.hasMeshFilter || object.meshFilter.meshType != "Mesh") {
+        return false;
+    }
+    const std::string sourcePath = ToLowerCopy(NormalizeSlashes(object.meshFilter.sourcePath));
+    return sourcePath == "editor-assets/mesh/plane.obj" ||
+           sourcePath == "assets/mesh/plane.obj" ||
+           (ContainsText(sourcePath, "assets/imports/plane_") && EndsWith(sourcePath, "/plane.obj"));
+}
+
+inline std::string ScriptFieldTypeToString(ScriptFieldType type) {
+    switch (type) {
+    case ScriptFieldType::Bool: return "Bool";
+    case ScriptFieldType::Int: return "Int";
+    case ScriptFieldType::Float: return "Float";
+    case ScriptFieldType::String: return "String";
+    case ScriptFieldType::Vec2: return "Vec2";
+    case ScriptFieldType::Vec3: return "Vec3";
+    case ScriptFieldType::Vec4: return "Vec4";
+    }
+    return "Float";
+}
+
+inline ScriptFieldType ScriptFieldTypeFromString(const std::string& value) {
+    if (value == "Bool") return ScriptFieldType::Bool;
+    if (value == "Int") return ScriptFieldType::Int;
+    if (value == "String") return ScriptFieldType::String;
+    if (value == "Vec2") return ScriptFieldType::Vec2;
+    if (value == "Vec3") return ScriptFieldType::Vec3;
+    if (value == "Vec4") return ScriptFieldType::Vec4;
+    return ScriptFieldType::Float;
+}
+
+inline void WriteScriptFieldValue(std::ostream& out, const ScriptFieldEntry& field) {
+    switch (field.type) {
+    case ScriptFieldType::Bool:
+        out << "                \"value\": " << (std::get<bool>(field.value) ? "true" : "false") << "\n";
+        break;
+    case ScriptFieldType::Int:
+        out << "                \"value\": " << std::get<int>(field.value) << "\n";
+        break;
+    case ScriptFieldType::Float:
+        out << "                \"value\": " << std::get<float>(field.value) << "\n";
+        break;
+    case ScriptFieldType::String:
+        out << "                \"value\": \"" << JsonEscape(std::get<std::string>(field.value)) << "\"\n";
+        break;
+    case ScriptFieldType::Vec2: {
+        const glm::vec2 value = std::get<glm::vec2>(field.value);
+        out << "                \"value\": [" << value.x << ", " << value.y << "]\n";
+        break;
+    }
+    case ScriptFieldType::Vec3: {
+        const glm::vec3 value = std::get<glm::vec3>(field.value);
+        out << "                \"value\": [" << value.x << ", " << value.y << ", " << value.z << "]\n";
+        break;
+    }
+    case ScriptFieldType::Vec4: {
+        const glm::vec4 value = std::get<glm::vec4>(field.value);
+        out << "                \"value\": [" << value.x << ", " << value.y << ", " << value.z << ", " << value.w << "]\n";
+        break;
+    }
+    }
+}
+
+inline bool TryReadScriptFieldValue(const raceman::physics::json::Object& object, ScriptFieldType type, ScriptFieldValue& outValue) {
+    switch (type) {
+    case ScriptFieldType::Bool: {
+        bool value = false;
+        if (!ReadBool(object, "value", value)) return false;
+        outValue = value;
+        return true;
+    }
+    case ScriptFieldType::Int: {
+        auto it = object.find("value");
+        if (it == object.end() || !it->second.is_number()) return false;
+        outValue = static_cast<int>(it->second.as_number());
+        return true;
+    }
+    case ScriptFieldType::Float: {
+        auto it = object.find("value");
+        if (it == object.end() || !it->second.is_number()) return false;
+        outValue = static_cast<float>(it->second.as_number());
+        return true;
+    }
+    case ScriptFieldType::String: {
+        std::string value;
+        if (!ReadString(object, "value", value)) return false;
+        outValue = value;
+        return true;
+    }
+    case ScriptFieldType::Vec2: {
+        glm::vec2 value{0.0f};
+        if (!ReadVec2(object, "value", value)) return false;
+        outValue = value;
+        return true;
+    }
+    case ScriptFieldType::Vec3: {
+        glm::vec3 value{0.0f};
+        if (!ReadVec3(object, "value", value)) return false;
+        outValue = value;
+        return true;
+    }
+    case ScriptFieldType::Vec4: {
+        glm::vec4 value{0.0f};
+        if (!ReadVec4(object, "value", value)) return false;
+        outValue = value;
+        return true;
+    }
+    }
+    return false;
+}
+
+inline void AddDefaultPlaneColliderToPlane(SceneObject& object) {
+    SetActiveColliderType(object, SceneColliderType::Plane);
+    object.planeCollider.normal = {0.0f, 1.0f, 0.0f};
+    object.planeCollider.offset = 0.0f;
+    object.planeCollider.infinite = true;
+    object.planeCollider.halfExtent = 1000.0f;
+}
+
+inline void WriteTextFile(const fs::path& path, const std::string& content) {
+    fs::create_directories(path.parent_path());
+    std::ofstream out(path, std::ios::trunc);
+    out << content;
+}
+
+inline bool ReadTextFile(const fs::path& path, std::string& out) {
+    std::ifstream in(path);
+    if (!in.good()) {
+        return false;
+    }
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    out = buffer.str();
+    return true;
+}
+
+inline fs::path ProjectRootPath() {
+    return FindProjectRoot();
+}
+
+inline fs::path EngineRootPath() {
+    return FindEngineRoot();
+}
+
+inline fs::path ResolveEditorPath(const std::string& path) {
+    if (path.empty()) {
+        return {};
+    }
+
+    if (IsEditorAssetPath(path)) {
+        return EngineAssetPathToAbsolute(path);
+    }
+
+    const fs::path normalized = fs::path(NormalizeSlashes(path));
+    if (normalized.is_absolute()) {
+        return normalized.lexically_normal();
+    }
+
+    auto it = normalized.begin();
+    if (it != normalized.end() && *it == "assets") {
+        return ProjectAssetPathToAbsolute(path);
+    }
+
+    return (ProjectRootPath() / normalized).lexically_normal();
+}
+
+inline fs::path ResolveAssetPath(const std::string& path) {
+    return ResolveEditorPath(path);
+}
+
+inline void MigrateLegacyProjectLayout() {
+    const fs::path engineRoot = EngineRootPath();
+    const fs::path projectRoot = ProjectRootPath();
+    const fs::path assetsRoot = FindAssetsRoot();
+    const fs::path legacyAssets = LegacyAssetsRoot();
+
+    try {
+        fs::create_directories(projectRoot);
+        fs::create_directories(assetsRoot);
+
+        if (fs::exists(legacyAssets) && fs::is_directory(legacyAssets)) {
+            for (const auto& entry : fs::directory_iterator(legacyAssets)) {
+                const std::string name = entry.path().filename().string();
+                if (name == "editor") {
+                    CopyDirectoryIfMissing(entry.path(), engineRoot / "editor-assets");
+                    continue;
+                }
+
+                const fs::path dest = assetsRoot / entry.path().filename();
+                if (entry.is_directory()) {
+                    CopyDirectoryIfMissing(entry.path(), dest);
+                } else if (entry.is_regular_file() && !fs::exists(dest)) {
+                    fs::create_directories(dest.parent_path());
+                    fs::copy_file(entry.path(), dest, fs::copy_options::skip_existing);
+                }
+            }
+        }
+    } catch (...) {}
+}
+
 inline void CopyFileCreatingDirs(const fs::path& from, const fs::path& to) {
     if (!fs::exists(from) || !fs::is_regular_file(from)) {
         return;
@@ -902,6 +1137,16 @@ inline MeshColliderBuildQuality MeshColliderBuildQualityFromString(const std::st
     return MeshColliderBuildQuality::BuildQuality;
 }
 
+inline std::string MeshColliderModeToString(MeshColliderMode mode) {
+    if (mode == MeshColliderMode::ConvexHull) return "ConvexHull";
+    return "TriangleMesh";
+}
+
+inline MeshColliderMode MeshColliderModeFromString(const std::string& value) {
+    if (value == "ConvexHull") return MeshColliderMode::ConvexHull;
+    return MeshColliderMode::TriangleMesh;
+}
+
 inline const char* InspectorComponentTypeToString(SceneInspectorComponentType type) {
     switch (type) {
     case SceneInspectorComponentType::Transform: return "Transform";
@@ -957,6 +1202,32 @@ inline void RemapVehicleObjectReferences(SceneObject& object, const std::unorder
         if (it != idRemap.end()) {
             wheelBinding.objectId = it->second;
         }
+    }
+}
+
+inline void RemapVehicleObjectReferences(std::vector<SceneObject>& objects) {
+    std::unordered_set<std::string> ids;
+    ids.reserve(objects.size());
+    for (const auto& object : objects) {
+        ids.insert(object.id);
+    }
+
+    for (auto& object : objects) {
+        if (!object.hasVehicle) {
+            continue;
+        }
+
+        auto& chassisIds = object.vehicle.chassisObjectIds;
+        chassisIds.erase(
+            std::remove_if(chassisIds.begin(), chassisIds.end(),
+                           [&ids](const std::string& id) { return ids.find(id) == ids.end(); }),
+            chassisIds.end());
+
+        auto& bindings = object.vehicle.wheelBindings;
+        bindings.erase(
+            std::remove_if(bindings.begin(), bindings.end(),
+                           [&ids](const VehicleWheelBinding& binding) { return ids.find(binding.objectId) == ids.end(); }),
+            bindings.end());
     }
 }
 
@@ -1213,7 +1484,7 @@ inline bool IsVehicleWheelHelperObject(const VehicleComponent& vehicle, const st
 }
 
 inline bool HasVehicleChassisBindings(const SceneObject& object) {
-    return HasColliderComponent(object) || !object.vehicle.chassisObjectIds.empty();
+    return HasEnabledColliderComponent(object) || !object.vehicle.chassisObjectIds.empty();
 }
 
 inline bool AppendSupportedVehicleChassisColliders(const SceneObject& object,
@@ -1261,6 +1532,7 @@ inline bool AppendSupportedVehicleChassisColliders(const SceneObject& object,
         collider.meshAssetPath = object.meshFilter.sourcePath;
         collider.meshIndex = object.meshFilter.meshIndex;
         collider.meshBuildQuality = object.meshCollider.buildQuality;
+        collider.meshMode = object.meshCollider.mode;
         outColliders.push_back(std::move(collider));
     }
 

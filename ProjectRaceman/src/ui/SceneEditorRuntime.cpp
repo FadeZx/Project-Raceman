@@ -181,6 +181,21 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         }
     }
 
+    bool anyEnabledCollider = false;
+    bool anyEnabledPlaneCollider = false;
+    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
+        if (!IsObjectEffectivelyEnabled(objectIndex)) {
+            continue;
+        }
+        if (HasEnabledColliderComponent(objects_[objectIndex])) {
+            anyEnabledCollider = true;
+            if (GetEnabledColliderType(objects_[objectIndex]) == SceneColliderType::Plane) {
+                anyEnabledPlaneCollider = true;
+            }
+            break;
+        }
+    }
+
     for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
         if (!runtimeVehicle.instance || runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
             continue;
@@ -193,6 +208,37 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             !runtimeVehicle.chassisBodyObjectId.empty() &&
             physicsWorld_->HasBody(runtimeVehicle.chassisBodyObjectId);
         runtimeVehicle.instance->setExternalBodySimulation(hasPhysicsChassis);
+
+        const bool canRaycast = physicsWorld_ != nullptr;
+        if (canRaycast) {
+            runtimeVehicle.instance->setGroundRaycastCallback([this, &runtimeVehicle](const raceman::physics::Vector3 &origin,
+                                                                                      const raceman::physics::Vector3 &direction,
+                                                                                      float maxDistance,
+                                                                                      raceman::physics::VehicleRaycastHit &outHit) {
+                if (!physicsWorld_) {
+                    return false;
+                }
+                PhysicsRaycastHit sceneHit;
+                const glm::vec3 sceneOrigin = VehicleVectorToScene(origin);
+                const glm::vec3 sceneDirection = VehicleVectorToScene(direction);
+                const std::string *ignoreId = runtimeVehicle.chassisBodyObjectId.empty() ? nullptr : &runtimeVehicle.chassisBodyObjectId;
+                if (!physicsWorld_->Raycast(sceneOrigin, sceneDirection, maxDistance, sceneHit, ignoreId)) {
+                    return false;
+                }
+                if (!sceneHit.hit) {
+                    return false;
+                }
+                outHit.position = SceneVectorToVehicle(sceneHit.position);
+                outHit.normal = SceneVectorToVehicle(sceneHit.normal);
+                outHit.distance = sceneHit.distance;
+                return true;
+            });
+        } else {
+            runtimeVehicle.instance->setGroundRaycastCallback({});
+        }
+
+        const bool allowGroundPlane = !canRaycast && anyEnabledPlaneCollider && anyEnabledCollider;
+        runtimeVehicle.instance->setUseGroundPlane(allowGroundPlane);
 
         raceman::physics::VehicleRigidBodyState currentRigidBodyState = runtimeVehicle.instance->getRigidBodyState();
 
@@ -528,7 +574,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
             body.freezeRotationY = object.hasRigidbody ? object.rigidbody.freezeRotationY : false;
             body.freezeRotationZ = object.hasRigidbody ? object.rigidbody.freezeRotationZ : false;
 
-            const SceneColliderType colliderType = GetActiveColliderType(object);
+            const SceneColliderType colliderType = GetEnabledColliderType(object);
             if (colliderType == SceneColliderType::Box && object.boxCollider.enabled) {
                 PhysicsColliderDesc collider;
                 collider.type = PhysicsColliderType::Box;
@@ -571,6 +617,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
                 collider.meshAssetPath = object.meshFilter.sourcePath;
                 collider.meshIndex = object.meshFilter.meshIndex;
                 collider.meshBuildQuality = object.meshCollider.buildQuality;
+                collider.meshMode = object.meshCollider.mode;
                 body.colliders.push_back(collider);
             }
             if (!body.colliders.empty()) {

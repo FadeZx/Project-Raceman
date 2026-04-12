@@ -374,6 +374,37 @@ bool RenderColliderTypeCombo(const char* label, const char* comboId, SceneCollid
     return changed;
 }
 
+const char* MeshColliderModeLabel(MeshColliderMode mode) {
+    return mode == MeshColliderMode::ConvexHull ? "Convex Hull" : "Triangle Mesh";
+}
+
+bool RenderMeshColliderModeCombo(const char* label, const char* comboId, MeshColliderMode currentMode, const char* previewOverride, MeshColliderMode& outMode) {
+    const char* preview = previewOverride != nullptr ? previewOverride : MeshColliderModeLabel(currentMode);
+    if (!ImGui::BeginCombo(label, preview)) {
+        return false;
+    }
+
+    bool changed = false;
+    const MeshColliderMode modes[] = {
+        MeshColliderMode::TriangleMesh,
+        MeshColliderMode::ConvexHull
+    };
+    for (MeshColliderMode mode : modes) {
+        const bool selected = currentMode == mode;
+        const std::string selectableLabel = std::string(MeshColliderModeLabel(mode)) + "##" + comboId + "_" + MeshColliderModeLabel(mode);
+        if (ImGui::Selectable(selectableLabel.c_str(), selected)) {
+            outMode = mode;
+            changed = true;
+        }
+        if (selected) {
+            ImGui::SetItemDefaultFocus();
+        }
+    }
+
+    ImGui::EndCombo();
+    return changed;
+}
+
 bool RenderPhysicsLayerCombo(const char* label,
                              const char* comboId,
                              int currentLayer,
@@ -1805,11 +1836,23 @@ void SceneEditor::RenderInspectorPanel() {
                             if (onDirty_) onDirty_();
                         }
 
+                        MeshColliderMode meshMode = obj.meshCollider.mode;
+                        if (RenderMeshColliderModeCombo("Collider Mode", "meshColliderMode", meshMode, nullptr, meshMode) &&
+                            meshMode != obj.meshCollider.mode) {
+                            PushUndoState();
+                            obj.meshCollider.mode = meshMode;
+                            if (onDirty_) onDirty_();
+                        }
+
                         ImGui::TextDisabled("Build Quality: Quality (fixed)");
 
                         const bool hasMeshSource = obj.hasMeshFilter && !obj.meshFilter.sourcePath.empty();
                         ImGui::TextDisabled("%s", hasMeshSource ? obj.meshFilter.sourcePath.c_str() : "Mesh Collider requires a Mesh Filter source.");
-                        ImGui::TextDisabled("Mesh colliders are static-only in Jolt (use convex or primitives for dynamic).");
+                        if (obj.meshCollider.mode == MeshColliderMode::TriangleMesh) {
+                            ImGui::TextDisabled("Triangle mesh colliders are static-only in Jolt.");
+                        } else {
+                            ImGui::TextDisabled("Convex hull colliders support dynamic bodies.");
+                        }
                     }
                 }
             }
@@ -2672,9 +2715,21 @@ void SceneEditor::RenderMultiSelectionInspector() {
                     forEachSelected([&](SceneObject& object) { object.meshCollider.isTrigger = isTrigger; });
                     markDirty();
                 }
+                const bool sameMeshMode = allSelected([&](const SceneObject& object) { return object.meshCollider.mode == active.meshCollider.mode; });
+                MeshColliderMode meshMode = active.meshCollider.mode;
+                const char* previewOverride = sameMeshMode ? nullptr : "Mixed";
+                if (RenderMeshColliderModeCombo("Collider Mode##multiMeshCollider", "multiMeshColliderMode", meshMode, previewOverride, meshMode)) {
+                    PushUndoState();
+                    forEachSelected([&](SceneObject& object) { object.meshCollider.mode = meshMode; });
+                    markDirty();
+                }
                 ImGui::TextDisabled("Build Quality: Quality (fixed)");
                 ImGui::TextDisabled("Mesh colliders use each object's Mesh Filter source.");
-                ImGui::TextDisabled("Mesh colliders are static-only in Jolt.");
+                if (sameMeshMode && meshMode == MeshColliderMode::TriangleMesh) {
+                    ImGui::TextDisabled("Triangle mesh colliders are static-only in Jolt.");
+                } else if (sameMeshMode && meshMode == MeshColliderMode::ConvexHull) {
+                    ImGui::TextDisabled("Convex hull colliders support dynamic bodies.");
+                }
             } else if (!sameColliderType) {
                 ImGui::TextDisabled("Type-specific fields are hidden while the selection has mixed collider types.");
             }

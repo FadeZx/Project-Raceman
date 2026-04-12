@@ -8,6 +8,7 @@
 
 #include <glm/glm.hpp>
 #include "../physics/MeshColliderBuildQuality.h"
+#include "../physics/MeshColliderMode.h"
 #include "../physics/PhysicsLayers.h"
 #include "../physics/VehicleConfig.h"
 #include "../rendering/Renderer.h"
@@ -220,6 +221,7 @@ struct MeshColliderComponent {
     bool enabled{true};
     bool isTrigger{false};
     MeshColliderBuildQuality buildQuality{MeshColliderBuildQuality::BuildQuality};
+    MeshColliderMode mode{MeshColliderMode::TriangleMesh};
 };
 
 struct CameraComponent {
@@ -331,6 +333,7 @@ public:
     const std::string& GetProjectName() const { return projectName_; }
 
     void ImportObj(const std::string& path);
+    void ImportObjWithOptions(const std::string& path, int pivotMode);
     void ScanObjDir(const std::string& dir);
 
 private:
@@ -408,6 +411,7 @@ private:
     void ToggleSelect(int index);
     bool IsSelected(int index) const;
     void NormalizeSelection();
+    void QueueHierarchyRevealForSelection();
     int FindObjectIndexById(const std::string& id) const;
     bool IsObjectEffectivelyEnabled(int index) const;
     bool IsDescendantOf(const std::string& objectId, const std::string& potentialAncestorId) const;
@@ -456,6 +460,9 @@ private:
     std::string objScanDir_{"assets/mesh"};
     std::vector<std::string> objFiles_;
     int objSelectIndex_{-1};
+    bool showImportMeshOptionsPopup_{false};
+    int pendingImportMeshPivotMode_{0};
+    std::string pendingImportMeshPath_;
 
     std::vector<std::string> projectDirectories_;
     std::vector<std::string> projectFiles_;
@@ -516,6 +523,8 @@ private:
     bool scenePanelFocused_{false};
     std::string hierarchyKeyboardTargetObjectId_;
     std::string pendingHierarchyToggleObjectId_;
+    std::string pendingHierarchyRevealObjectId_;
+    std::string lastHierarchyRevealObjectId_;
     std::unordered_map<std::string, bool> hierarchyOpenStates_;
 
     std::string renamingProjectFile_;

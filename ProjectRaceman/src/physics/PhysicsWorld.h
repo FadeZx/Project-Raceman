@@ -2,6 +2,7 @@
 
 #include "PhysicsLayers.h"
 #include "MeshColliderBuildQuality.h"
+#include "MeshColliderMode.h"
 
 #include <array>
 #include <glm/glm.hpp>
@@ -48,6 +49,7 @@ struct PhysicsColliderDesc {
     std::string meshAssetPath;
     int meshIndex{0};
     MeshColliderBuildQuality meshBuildQuality{MeshColliderBuildQuality::BuildQuality};
+    MeshColliderMode meshMode{MeshColliderMode::TriangleMesh};
 };
 
 struct PhysicsBodyDesc {
@@ -109,6 +111,14 @@ struct PhysicsCharacterState {
     bool grounded{false};
 };
 
+struct PhysicsRaycastHit {
+    bool hit{false};
+    glm::vec3 position{0.0f};
+    glm::vec3 normal{0.0f, 1.0f, 0.0f};
+    float distance{0.0f};
+    std::string objectId;
+};
+
 class PhysicsWorld {
 public:
     explicit PhysicsWorld(const PhysicsLayerCollisionMatrix& collisionMatrix = {});
@@ -142,6 +152,8 @@ public:
     void SetCharacterTransform(const std::string& objectId, const glm::vec3& position, const glm::vec3& rotationEuler);
     void SetCharacterDesiredVelocity(const std::string& objectId, const glm::vec3& velocity);
     void AddCharacterJumpImpulse(const std::string& objectId, float impulse);
+
+    bool Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::string* ignoreObjectId = nullptr) const;
 
 private:
     class Impl;

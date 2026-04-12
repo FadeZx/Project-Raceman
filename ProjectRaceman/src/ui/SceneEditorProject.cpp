@@ -715,6 +715,14 @@ void SceneEditor::RenderProjectPhysicsSettings() {
 
 
 void SceneEditor::ImportObj(const std::string& path) {
+    if (path.empty()) {
+        return;
+    }
+    pendingImportMeshPath_ = path;
+    showImportMeshOptionsPopup_ = true;
+}
+
+void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
     namespace fs = std::filesystem;
     if (path.empty()) return;
     try {
@@ -727,6 +735,7 @@ void SceneEditor::ImportObj(const std::string& path) {
         std::string baseName;
         try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Mesh"; }
         PushUndoState();
+        const bool centerPivot = pivotMode == 1;
         std::string packageRootId;
         int firstImportedIndex = -1;
         if (infos.size() > 1) {
@@ -757,12 +766,45 @@ void SceneEditor::ImportObj(const std::string& path) {
 
         for (size_t i = 0; i < infos.size(); ++i) {
             const auto& info = infos[i];
+            const std::string meshBaseName = baseName + (infos.size() > 1 ? ("_" + std::to_string(i)) : "");
+            const glm::vec3 meshCenter = (info.localBoundsMin + info.localBoundsMax) * 0.5f;
+            std::string meshParentId = packageRootId;
+
+            if (centerPivot) {
+                SceneObject pivot;
+                pivot.id = MakeId("gameobject");
+                pivot.name = meshBaseName;
+                pivot.type = "GameObject";
+                pivot.parentId = packageRootId;
+                pivot.transform.position = meshCenter;
+                pivot.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
+                pivot.transform.scale = {1.0f, 1.0f, 1.0f};
+                pivot.hasMeshFilter = false;
+                pivot.hasMeshRenderer = false;
+                pivot.hasScriptComponent = false;
+                pivot.hasRigidbody = false;
+                pivot.hasVehicle = false;
+                pivot.hasCharacterController = false;
+                pivot.hasBoxCollider = false;
+                pivot.hasSphereCollider = false;
+                pivot.hasCapsuleCollider = false;
+                pivot.hasPlaneCollider = false;
+                pivot.hasMeshCollider = false;
+                pivot.hasCamera = false;
+                pivot.hasLight = false;
+                meshParentId = pivot.id;
+                objects_.push_back(std::move(pivot));
+                if (firstImportedIndex < 0 && infos.size() == 1) {
+                    firstImportedIndex = static_cast<int>(objects_.size()) - 1;
+                }
+            }
+
             SceneObject o;
             o.id = MakeId("mesh");
-            o.name = baseName + (infos.size() > 1 ? ("_" + std::to_string(i)) : "");
+            o.name = centerPivot ? (meshBaseName + "_Mesh") : meshBaseName;
             o.type = "GameObject";
-            o.parentId = packageRootId;
-            o.transform.position = {0.0f, 0.0f, 0.0f};
+            o.parentId = meshParentId;
+            o.transform.position = centerPivot ? -meshCenter : glm::vec3{0.0f, 0.0f, 0.0f};
             o.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
             o.transform.scale = {1.0f, 1.0f, 1.0f};
             o.hasMeshRenderer = true;

@@ -22,12 +22,19 @@
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/AllowedDOFs.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Body/BodyLock.h>
+#include <Jolt/Physics/Body/BodyFilter.h>
 #include <Jolt/Physics/Body/MotionQuality.h>
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
+#include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/CollisionGroup.h>
+#include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
+#include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/OffsetCenterOfMassShape.h>
 #include <Jolt/Physics/Collision/Shape/PlaneShape.h>
@@ -238,6 +245,32 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider) {
         return {};
     }
 
+    if (collider.meshMode == MeshColliderMode::ConvexHull) {
+        constexpr std::size_t maxPoints = 256;
+        const std::size_t totalPoints = collisionMesh.vertices.size();
+        if (totalPoints == 0) {
+            return {};
+        }
+
+        JPH::Array<JPH::Vec3> points;
+        points.reserve((std::min)(totalPoints, maxPoints));
+        if (totalPoints <= maxPoints) {
+            for (const glm::vec3& vertex : collisionMesh.vertices) {
+                points.push_back(ToJoltVec3(vertex));
+            }
+        } else {
+            const float stride = static_cast<float>(totalPoints) / static_cast<float>(maxPoints);
+            for (std::size_t i = 0; i < maxPoints; ++i) {
+                const std::size_t index = (std::min)(totalPoints - 1, static_cast<std::size_t>(i * stride));
+                points.push_back(ToJoltVec3(collisionMesh.vertices[index]));
+            }
+        }
+
+        JPH::ConvexHullShapeSettings settings(points);
+        JPH::ShapeSettings::ShapeResult result = settings.Create();
+        return result.IsValid() ? result.Get() : JPH::ShapeRefC{};
+    }
+
     JPH::VertexList vertices;
     vertices.reserve(collisionMesh.vertices.size());
     for (const glm::vec3& vertex : collisionMesh.vertices) {
@@ -375,7 +408,13 @@ public:
         JPH::BodyInterface& bodyInterface = physicsSystem_->GetBodyInterface();
         for (const PhysicsBodyDesc& body : bodies_) {
             const bool hasStaticOnlyCollider = std::any_of(body.colliders.begin(), body.colliders.end(), [](const PhysicsColliderDesc& collider) {
-                return collider.type == PhysicsColliderType::Plane || collider.type == PhysicsColliderType::Mesh;
+                if (collider.type == PhysicsColliderType::Plane) {
+                    return true;
+                }
+                if (collider.type == PhysicsColliderType::Mesh) {
+                    return collider.meshMode == MeshColliderMode::TriangleMesh;
+                }
+                return false;
             });
             const bool hasSolidCollider = std::any_of(body.colliders.begin(), body.colliders.end(), [](const PhysicsColliderDesc& collider) {
                 return !collider.isTrigger;
@@ -438,6 +477,7 @@ public:
 
             JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(settings, movable ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
             bodyIds_[body.objectId] = bodyId;
+            bodyIdToObjectId_[bodyId] = body.objectId;
             if (movable) {
                 activeBodies_.insert(body.objectId);
             }
@@ -490,6 +530,7 @@ public:
         }
 
         bodyIds_.clear();
+        bodyIdToObjectId_.clear();
         activeBodies_.clear();
         physicsSystem_.reset();
         jobSystem_.reset();
@@ -746,11 +787,76 @@ public:
         it->second.pendingJumpImpulse += impulse;
     }
 
+    bool Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::string* ignoreObjectId) const {
+        outHit = {};
+        if (!physicsSystem_ || maxDistance <= 0.0f) {
+            return false;
+        }
+
+        const float lengthSquared = glm::dot(direction, direction);
+        if (lengthSquared <= 0.000001f) {
+            return false;
+        }
+
+        const glm::vec3 dirNormalized = direction * (1.0f / std::sqrt(lengthSquared));
+        const JPH::RRayCast ray(ToJoltRVec3(origin), ToJoltVec3(dirNormalized * maxDistance));
+        JPH::RayCastSettings settings;
+        JPH::AllHitCollisionCollector<JPH::CastRayCollector> collector;
+
+        const JPH::BodyFilter* bodyFilterPtr = nullptr;
+        std::unique_ptr<JPH::IgnoreSingleBodyFilter> ignoreFilter;
+        JPH::BodyFilter defaultFilter;
+        if (ignoreObjectId) {
+            auto it = bodyIds_.find(*ignoreObjectId);
+            if (it != bodyIds_.end()) {
+                ignoreFilter = std::make_unique<JPH::IgnoreSingleBodyFilter>(it->second);
+                bodyFilterPtr = ignoreFilter.get();
+            }
+        }
+        const JPH::BodyFilter& bodyFilter = bodyFilterPtr ? *bodyFilterPtr : defaultFilter;
+        JPH::BroadPhaseLayerFilter broadPhaseFilter;
+        JPH::ObjectLayerFilter objectLayerFilter;
+        JPH::ShapeFilter shapeFilter;
+        physicsSystem_->GetNarrowPhaseQuery().CastRay(ray, settings, collector, broadPhaseFilter, objectLayerFilter, bodyFilter, shapeFilter);
+
+        if (!collector.HadHit()) {
+            return false;
+        }
+
+        collector.Sort();
+        for (const JPH::RayCastResult& hit : collector.mHits) {
+            JPH::BodyLockRead lock(physicsSystem_->GetBodyLockInterface(), hit.mBodyID);
+            if (!lock.Succeeded()) {
+                continue;
+            }
+            const JPH::Body& body = lock.GetBody();
+            if (body.IsSensor()) {
+                continue;
+            }
+
+            const JPH::RVec3 hitPosition = ray.GetPointOnRay(hit.mFraction);
+            const JPH::Vec3 hitNormal = body.GetWorldSpaceSurfaceNormal(hit.mSubShapeID2, hitPosition);
+
+            outHit.hit = true;
+            outHit.position = FromJoltRVec3(hitPosition);
+            outHit.normal = FromJoltVec3(hitNormal);
+            outHit.distance = maxDistance * hit.mFraction;
+            auto idIt = bodyIdToObjectId_.find(hit.mBodyID);
+            if (idIt != bodyIdToObjectId_.end()) {
+                outHit.objectId = idIt->second;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
 private:
     PhysicsLayerCollisionMatrix collisionMatrix_{};
     std::vector<PhysicsBodyDesc> bodies_;
     std::unordered_map<std::string, PhysicsBodyState> states_;
     std::unordered_map<std::string, JPH::BodyID> bodyIds_;
+    std::unordered_map<JPH::BodyID, std::string> bodyIdToObjectId_;
     std::unordered_set<std::string> activeBodies_;
     std::unordered_map<std::string, CharacterRecord> characters_;
     std::unordered_map<std::string, PhysicsCharacterState> characterStates_;
@@ -860,6 +966,10 @@ void PhysicsWorld::SetCharacterDesiredVelocity(const std::string& objectId, cons
 
 void PhysicsWorld::AddCharacterJumpImpulse(const std::string& objectId, float impulse) {
     impl_->AddCharacterJumpImpulse(objectId, impulse);
+}
+
+bool PhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::string* ignoreObjectId) const {
+    return impl_->Raycast(origin, direction, maxDistance, outHit, ignoreObjectId);
 }
 
 } // namespace raceman

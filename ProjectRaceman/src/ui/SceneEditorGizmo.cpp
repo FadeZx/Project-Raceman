@@ -156,6 +156,36 @@ bool GetObjectLocalBounds(const SceneObject& object, glm::vec3& outMin, glm::vec
     return false;
 }
 
+bool ComputeWorldAabb(const glm::mat4& model, const glm::vec3& localMin, const glm::vec3& localMax, glm::vec3& outMin, glm::vec3& outMax) {
+    const glm::vec3 corners[8] = {
+        {localMin.x, localMin.y, localMin.z},
+        {localMax.x, localMin.y, localMin.z},
+        {localMax.x, localMax.y, localMin.z},
+        {localMin.x, localMax.y, localMin.z},
+        {localMin.x, localMin.y, localMax.z},
+        {localMax.x, localMin.y, localMax.z},
+        {localMax.x, localMax.y, localMax.z},
+        {localMin.x, localMax.y, localMax.z}
+    };
+
+    outMin = TransformPoint(model, corners[0]);
+    outMax = outMin;
+    for (int i = 1; i < 8; ++i) {
+        const glm::vec3 worldPoint = TransformPoint(model, corners[i]);
+        outMin = {
+            (std::min)(outMin.x, worldPoint.x),
+            (std::min)(outMin.y, worldPoint.y),
+            (std::min)(outMin.z, worldPoint.z)
+        };
+        outMax = {
+            (std::max)(outMax.x, worldPoint.x),
+            (std::max)(outMax.y, worldPoint.y),
+            (std::max)(outMax.z, worldPoint.z)
+        };
+    }
+    return true;
+}
+
 bool MakeMouseRay(const Renderer& renderer, const glm::vec2& mouse, glm::vec3& outOrigin, glm::vec3& outDirection) {
     const auto& viewport = renderer.GetViewport();
     if (viewport.width <= 0 || viewport.height <= 0) {
@@ -208,7 +238,11 @@ bool IntersectRayAabb(const glm::vec3& origin, const glm::vec3& direction, const
         }
     }
 
-    outT = tMin;
+    if (tMax < 0.0f) {
+        return false;
+    }
+
+    outT = (tMin >= 0.0f) ? tMin : tMax;
     return true;
 }
 
@@ -547,6 +581,8 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
 
     int bestIndex = -1;
     float bestT = (std::numeric_limits<float>::max)();
+    int bestPlaneIndex = -1;
+    float bestPlaneT = (std::numeric_limits<float>::max)();
     for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
         if (!IsObjectEffectivelyEnabled(i)) {
             continue;
@@ -558,22 +594,29 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
         }
 
         const glm::mat4 model = GetObjectWorldMatrix(i);
-        const float det = glm::determinant(model);
-        if (std::abs(det) < 0.000001f) {
+        glm::vec3 worldMin;
+        glm::vec3 worldMax;
+        if (!ComputeWorldAabb(model, boundsMin, boundsMax, worldMin, worldMax)) {
             continue;
         }
 
-        const glm::mat4 invModel = glm::inverse(model);
-        const glm::vec3 localOrigin = glm::vec3(invModel * glm::vec4(rayOrigin, 1.0f));
-        const glm::vec3 localDirectionRaw = glm::vec3(invModel * glm::vec4(rayDirection, 0.0f));
-        if (glm::length(localDirectionRaw) < 0.0001f) {
-            continue;
-        }
         float t = 0.0f;
-        if (IntersectRayAabb(localOrigin, localDirectionRaw, boundsMin, boundsMax, t) && t < bestT) {
-            bestT = t;
-            bestIndex = i;
+        if (IntersectRayAabb(rayOrigin, rayDirection, worldMin, worldMax, t)) {
+            const std::string meshType = objects_[i].meshFilter.meshType;
+            if (meshType == "Plane") {
+                if (t < bestPlaneT) {
+                    bestPlaneT = t;
+                    bestPlaneIndex = i;
+                }
+            } else if (t < bestT) {
+                bestT = t;
+                bestIndex = i;
+            }
         }
+    }
+
+    if (bestIndex < 0 && bestPlaneIndex >= 0) {
+        bestIndex = bestPlaneIndex;
     }
 
     if (bestIndex >= 0) {

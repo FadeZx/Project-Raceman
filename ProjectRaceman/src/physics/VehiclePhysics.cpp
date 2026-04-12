@@ -66,6 +66,11 @@ void VehiclePhysics::setTelemetryCallback(std::function<void(const VehicleTeleme
     m_telemetryCallback = std::move(callback);
 }
 
+void VehiclePhysics::setGroundRaycastCallback(std::function<bool(const Vector3 &origin, const Vector3 &direction, float maxDistance, VehicleRaycastHit &outHit)> callback)
+{
+    m_groundRaycast = std::move(callback);
+}
+
 void VehiclePhysics::shiftUp()
 {
     if (m_isNeutral)
@@ -151,6 +156,11 @@ void VehiclePhysics::setExternalBodySimulation(bool external)
     m_externalBodySimulation = external;
 }
 
+void VehiclePhysics::setUseGroundPlane(bool enabled)
+{
+    m_useGroundPlane = enabled;
+}
+
 void VehiclePhysics::update(float dt)
 {
     if (dt < kEpsilon)
@@ -220,16 +230,54 @@ void VehiclePhysics::update(float dt)
         wheel.steerAngle += (targetSteer - wheel.steerAngle) * clamp(dt * 8.0f, 0.0f, 1.0f);
 
         Vector3 mountWorld = m_body.transform.position + m_body.transform.rotation.rotate(wheel.config.mountPosition);
-        float unsprungLength = mountWorld.z - wheel.config.radius;
-        float suspensionLength = clamp(unsprungLength, 0.0f, suspension.restLength);
+        float suspensionLength = suspension.restLength;
         float previousCompression = wheel.compression;
-        wheel.compression = clamp(suspension.restLength - suspensionLength, 0.0f, suspension.restLength);
-        wheel.compressionVelocity = (wheel.compression - previousCompression) / dt;
+        Vector3 contactNormal = m_body.transform.rotation.rotate({0.0f, 0.0f, 1.0f});
+        if (m_groundRaycast)
+        {
+            constexpr float kRayPadding = 0.25f;
+            const float rayLength = suspension.restLength + wheel.config.radius + kRayPadding;
+            VehicleRaycastHit hit{};
+            if (m_groundRaycast(mountWorld, {0.0f, 0.0f, -1.0f}, rayLength, hit))
+            {
+                if (dot(hit.normal, hit.normal) > kEpsilon)
+                {
+                    contactNormal = normalize(hit.normal);
+                }
+                suspensionLength = clamp(hit.distance - wheel.config.radius, 0.0f, suspension.restLength);
+                wheel.compression = clamp(suspension.restLength - suspensionLength, 0.0f, suspension.restLength);
+                wheel.compressionVelocity = (wheel.compression - previousCompression) / dt;
 
-        float springForce = wheel.compression * suspension.springRate;
-        float damping = wheel.compressionVelocity >= 0.0f ? wheel.compressionVelocity * suspension.compressionDamping : wheel.compressionVelocity * suspension.reboundDamping;
-        float bumpStop = std::max(0.0f, wheel.compression - suspension.restLength) * suspension.bumpStopRate;
-        wheel.normalForce = std::max(0.0f, springForce + damping + bumpStop);
+                float springForce = wheel.compression * suspension.springRate;
+                float damping = wheel.compressionVelocity >= 0.0f ? wheel.compressionVelocity * suspension.compressionDamping : wheel.compressionVelocity * suspension.reboundDamping;
+                float bumpStop = std::max(0.0f, wheel.compression - suspension.restLength) * suspension.bumpStopRate;
+                wheel.normalForce = std::max(0.0f, springForce + damping + bumpStop);
+            }
+            else
+            {
+                wheel.compression = 0.0f;
+                wheel.compressionVelocity = 0.0f;
+                wheel.normalForce = 0.0f;
+            }
+        }
+        else if (m_useGroundPlane)
+        {
+            float unsprungLength = mountWorld.z - wheel.config.radius;
+            suspensionLength = clamp(unsprungLength, 0.0f, suspension.restLength);
+            wheel.compression = clamp(suspension.restLength - suspensionLength, 0.0f, suspension.restLength);
+            wheel.compressionVelocity = (wheel.compression - previousCompression) / dt;
+
+            float springForce = wheel.compression * suspension.springRate;
+            float damping = wheel.compressionVelocity >= 0.0f ? wheel.compressionVelocity * suspension.compressionDamping : wheel.compressionVelocity * suspension.reboundDamping;
+            float bumpStop = std::max(0.0f, wheel.compression - suspension.restLength) * suspension.bumpStopRate;
+            wheel.normalForce = std::max(0.0f, springForce + damping + bumpStop);
+        }
+        else
+        {
+            wheel.compression = 0.0f;
+            wheel.compressionVelocity = 0.0f;
+            wheel.normalForce = 0.0f;
+        }
 
         float suspensionLengthCurrent = suspension.restLength - wheel.compression;
         Vector3 localWheelPos = wheel.config.mountPosition + Vector3{0.0f, 0.0f, -suspensionLengthCurrent};
@@ -244,7 +292,7 @@ void VehiclePhysics::update(float dt)
 
         Vector3 forward = wheelOrientation.rotate({0.0f, 1.0f, 0.0f});
         Vector3 right = wheelOrientation.rotate({1.0f, 0.0f, 0.0f});
-        Vector3 up = wheelOrientation.rotate({0.0f, 0.0f, 1.0f});
+        Vector3 up = contactNormal;
 
         Vector3 relPos = wheelWorldPos - m_body.transform.position;
         Vector3 wheelVelocity = m_body.linearVelocity + cross(m_body.angularVelocity, relPos);

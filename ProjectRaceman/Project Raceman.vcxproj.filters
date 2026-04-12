@@ -158,6 +158,12 @@
     <ClCompile Include="src\ui\SceneEditor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\SceneEditorRuntime.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\SceneEditorPersistence.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\ui\SceneEditorGizmo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
