@@ -1,6 +1,7 @@
 #include "PhysicsWorld.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <thread>
@@ -49,6 +50,79 @@
 namespace raceman {
 
 namespace {
+
+struct CollisionMeshCacheEntry {
+    std::shared_ptr<::Model> model;
+    ImportedCollisionMesh collisionMesh;
+    std::uint64_t triangleCount{0};
+    bool valid{false};
+};
+
+struct ShapeCacheEntry {
+    JPH::ShapeRefC shape;
+    std::uint64_t triangleCount{0};
+    bool valid{false};
+};
+
+std::unordered_map<std::string, CollisionMeshCacheEntry>& GetCollisionMeshCache() {
+    static std::unordered_map<std::string, CollisionMeshCacheEntry> cache;
+    return cache;
+}
+
+std::unordered_map<std::string, ShapeCacheEntry>& GetShapeCache() {
+    static std::unordered_map<std::string, ShapeCacheEntry> cache;
+    return cache;
+}
+
+std::filesystem::path FindProjectAssetAbsolutePath(const std::string& assetPath);
+
+std::string BuildMeshCacheKey(const std::string& assetPath, int meshIndex) {
+    return assetPath + "#" + std::to_string(meshIndex);
+}
+
+std::string BuildShapeCacheKey(const PhysicsColliderDesc& collider) {
+    return BuildMeshCacheKey(collider.meshAssetPath, collider.meshIndex) + "#" +
+           std::to_string(static_cast<int>(collider.meshMode)) + "#" +
+           std::to_string(static_cast<int>(collider.meshBuildQuality));
+}
+
+bool GetCachedCollisionMesh(const PhysicsColliderDesc& collider,
+                            ImportedCollisionMesh& outMesh,
+                            std::uint64_t* outTriangleCount = nullptr) {
+    if (collider.meshAssetPath.empty()) {
+        return false;
+    }
+
+    const std::string cacheKey = BuildMeshCacheKey(collider.meshAssetPath, collider.meshIndex);
+    CollisionMeshCacheEntry& entry = GetCollisionMeshCache()[cacheKey];
+    if (!entry.valid) {
+        const std::filesystem::path resolvedPath = FindProjectAssetAbsolutePath(collider.meshAssetPath);
+        if (!std::filesystem::exists(resolvedPath)) {
+            return false;
+        }
+
+        entry.model = raceman::LoadModelFromFile(resolvedPath.string());
+        if (!entry.model) {
+            return false;
+        }
+
+        ImportedCollisionMesh mesh;
+        const std::size_t meshIndex = collider.meshIndex >= 0 ? static_cast<std::size_t>(collider.meshIndex) : 0;
+        if (!raceman::GetCollisionMesh(entry.model, meshIndex, mesh)) {
+            return false;
+        }
+
+        entry.collisionMesh = std::move(mesh);
+        entry.triangleCount = entry.collisionMesh.indices.size() / 3;
+        entry.valid = true;
+    }
+
+    outMesh = entry.collisionMesh;
+    if (outTriangleCount) {
+        *outTriangleCount = entry.triangleCount;
+    }
+    return true;
+}
 
 float MaxAbsComponent(const glm::vec3& value) {
     return (std::max)((std::max)(std::abs(value.x), std::abs(value.y)), std::abs(value.z));
@@ -223,26 +297,20 @@ std::filesystem::path FindProjectAssetAbsolutePath(const std::string& assetPath)
     return (std::filesystem::current_path() / assetPath).lexically_normal();
 }
 
-JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider) {
-    if (collider.meshAssetPath.empty()) {
-        return {};
-    }
-
-    const std::filesystem::path resolvedPath = FindProjectAssetAbsolutePath(collider.meshAssetPath);
-    if (!std::filesystem::exists(resolvedPath)) {
-        return {};
-    }
-
-    auto model = raceman::LoadModelFromFile(resolvedPath.string());
-    std::vector<ImportedMeshInfo> infos = raceman::GetMeshInfos(model);
-    if (infos.empty()) {
-        return {};
-    }
-
-    const std::size_t meshIndex = collider.meshIndex >= 0 ? static_cast<std::size_t>(collider.meshIndex) : 0;
+JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_t* outTriangleCount = nullptr) {
     ImportedCollisionMesh collisionMesh;
-    if (!raceman::GetCollisionMesh(model, meshIndex, collisionMesh)) {
+    std::uint64_t triangleCount = 0;
+    if (!GetCachedCollisionMesh(collider, collisionMesh, &triangleCount)) {
         return {};
+    }
+
+    const std::string cacheKey = BuildShapeCacheKey(collider);
+    ShapeCacheEntry& shapeCache = GetShapeCache()[cacheKey];
+    if (shapeCache.valid && shapeCache.shape) {
+        if (outTriangleCount) {
+            *outTriangleCount = shapeCache.triangleCount;
+        }
+        return shapeCache.shape;
     }
 
     if (collider.meshMode == MeshColliderMode::ConvexHull) {
@@ -268,7 +336,17 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider) {
 
         JPH::ConvexHullShapeSettings settings(points);
         JPH::ShapeSettings::ShapeResult result = settings.Create();
-        return result.IsValid() ? result.Get() : JPH::ShapeRefC{};
+        if (!result.IsValid()) {
+            return {};
+        }
+
+        shapeCache.shape = result.Get();
+        shapeCache.triangleCount = triangleCount;
+        shapeCache.valid = true;
+        if (outTriangleCount) {
+            *outTriangleCount = triangleCount;
+        }
+        return shapeCache.shape;
     }
 
     JPH::VertexList vertices;
@@ -286,7 +364,17 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider) {
     JPH::MeshShapeSettings settings(std::move(vertices), std::move(triangles));
     settings.mBuildQuality = ToMeshBuildQuality(collider.meshBuildQuality);
     JPH::ShapeSettings::ShapeResult result = settings.Create();
-    return result.IsValid() ? result.Get() : JPH::ShapeRefC{};
+    if (!result.IsValid()) {
+        return {};
+    }
+
+    shapeCache.shape = result.Get();
+    shapeCache.triangleCount = triangleCount;
+    shapeCache.valid = true;
+    if (outTriangleCount) {
+        *outTriangleCount = triangleCount;
+    }
+    return shapeCache.shape;
 }
 
 JPH::ShapeRefC CreateBaseShape(const PhysicsColliderDesc& collider, const glm::vec3& scale) {
@@ -390,12 +478,32 @@ public:
     }
 
     void Build(const std::vector<PhysicsBodyDesc>& inputBodies, const std::vector<PhysicsCharacterDesc>& inputCharacters) {
+        const auto buildStart = std::chrono::steady_clock::now();
         Clear();
         EnsureJoltInitialized();
+        stats_ = {};
 
         bodies_ = inputBodies;
+        stats_.bodyCount = static_cast<std::uint32_t>(inputBodies.size());
+        stats_.characterCount = static_cast<std::uint32_t>(inputCharacters.size());
         for (const PhysicsBodyDesc& body : bodies_) {
             states_[body.objectId] = {body.objectId, body.position, body.rotationEuler, body.velocity, body.angularVelocity};
+            for (const PhysicsColliderDesc& collider : body.colliders) {
+                switch (collider.type) {
+                case PhysicsColliderType::Box: ++stats_.boxColliderCount; break;
+                case PhysicsColliderType::Sphere: ++stats_.sphereColliderCount; break;
+                case PhysicsColliderType::Capsule: ++stats_.capsuleColliderCount; break;
+                case PhysicsColliderType::Plane: ++stats_.planeColliderCount; break;
+                case PhysicsColliderType::Mesh:
+                    ++stats_.meshColliderCount;
+                    if (collider.meshMode == MeshColliderMode::ConvexHull) {
+                        ++stats_.convexHullColliderCount;
+                    } else {
+                        ++stats_.triangleMeshColliderCount;
+                    }
+                    break;
+                }
+            }
         }
 
         tempAllocator_ = std::make_unique<JPH::TempAllocatorImpl>(10 * 1024 * 1024);
@@ -406,7 +514,7 @@ public:
         collisionGroupFilter_ = new ProjectLayerGroupFilter(collisionMatrix_);
 
         JPH::BodyInterface& bodyInterface = physicsSystem_->GetBodyInterface();
-        for (const PhysicsBodyDesc& body : bodies_) {
+            for (const PhysicsBodyDesc& body : bodies_) {
             const bool hasStaticOnlyCollider = std::any_of(body.colliders.begin(), body.colliders.end(), [](const PhysicsColliderDesc& collider) {
                 if (collider.type == PhysicsColliderType::Plane) {
                     return true;
@@ -513,6 +621,10 @@ public:
             characterStates_[desc.objectId] = record.state;
             characters_[desc.objectId] = std::move(record);
         }
+
+        RefreshMeshContributorStats();
+        stats_.lastBuildTimeMs =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - buildStart).count();
     }
 
     void Clear() {
@@ -544,6 +656,7 @@ public:
         if (deltaTime <= 0.0f || !physicsSystem_) {
             return;
         }
+        const auto stepStart = std::chrono::steady_clock::now();
 
         const float step = (std::min)(deltaTime, 0.05f);
         JPH::BodyInterface& bodyInterface = physicsSystem_->GetBodyInterface();
@@ -608,6 +721,12 @@ public:
             stateIt->second.velocity = FromJoltVec3(bodyInterface.GetLinearVelocity(bodyIt->second));
             stateIt->second.angularVelocity = FromJoltVec3(bodyInterface.GetAngularVelocity(bodyIt->second));
         }
+        stats_.lastStepTimeMs =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - stepStart).count();
+    }
+
+    const PhysicsWorldStats& GetStats() const {
+        return stats_;
     }
 
     bool HasBody(const std::string& objectId) const {
@@ -852,6 +971,46 @@ public:
     }
 
 private:
+    void RefreshMeshContributorStats() {
+        std::unordered_map<std::string, PhysicsMeshContributorStats> meshStats;
+        for (const PhysicsBodyDesc& body : bodies_) {
+            for (const PhysicsColliderDesc& collider : body.colliders) {
+                if (collider.type != PhysicsColliderType::Mesh || collider.meshAssetPath.empty()) {
+                    continue;
+                }
+
+                ImportedCollisionMesh ignoredMesh;
+                std::uint64_t triangleCount = 0;
+                GetCachedCollisionMesh(collider, ignoredMesh, &triangleCount);
+
+                const std::string key = BuildMeshCacheKey(collider.meshAssetPath, collider.meshIndex) + "#" +
+                                        std::to_string(static_cast<int>(collider.meshMode));
+                PhysicsMeshContributorStats& contributor = meshStats[key];
+                contributor.meshAssetPath = collider.meshAssetPath;
+                contributor.meshIndex = collider.meshIndex;
+                contributor.meshMode = collider.meshMode;
+                contributor.triangleCount = triangleCount;
+                ++contributor.usageCount;
+            }
+        }
+
+        stats_.meshContributors.clear();
+        stats_.meshContributors.reserve(meshStats.size());
+        for (auto& [key, contributor] : meshStats) {
+            (void)key;
+            stats_.meshContributors.push_back(std::move(contributor));
+        }
+        std::sort(stats_.meshContributors.begin(), stats_.meshContributors.end(),
+                  [](const PhysicsMeshContributorStats& a, const PhysicsMeshContributorStats& b) {
+                      const std::uint64_t scoreA = static_cast<std::uint64_t>(a.usageCount) * (std::max<std::uint64_t>)(1, a.triangleCount);
+                      const std::uint64_t scoreB = static_cast<std::uint64_t>(b.usageCount) * (std::max<std::uint64_t>)(1, b.triangleCount);
+                      if (scoreA != scoreB) {
+                          return scoreA > scoreB;
+                      }
+                      return a.meshAssetPath < b.meshAssetPath;
+                  });
+    }
+
     PhysicsLayerCollisionMatrix collisionMatrix_{};
     std::vector<PhysicsBodyDesc> bodies_;
     std::unordered_map<std::string, PhysicsBodyState> states_;
@@ -869,6 +1028,7 @@ private:
     std::unique_ptr<JPH::PhysicsSystem> physicsSystem_;
     std::unique_ptr<JPH::TempAllocatorImpl> tempAllocator_;
     std::unique_ptr<JPH::JobSystemThreadPool> jobSystem_;
+    PhysicsWorldStats stats_{};
 };
 
 PhysicsWorld::PhysicsWorld(const PhysicsLayerCollisionMatrix& collisionMatrix)
@@ -970,6 +1130,10 @@ void PhysicsWorld::AddCharacterJumpImpulse(const std::string& objectId, float im
 
 bool PhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::string* ignoreObjectId) const {
     return impl_->Raycast(origin, direction, maxDistance, outHit, ignoreObjectId);
+}
+
+const PhysicsWorldStats& PhysicsWorld::GetStats() const {
+    return impl_->GetStats();
 }
 
 } // namespace raceman

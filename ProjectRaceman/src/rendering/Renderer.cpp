@@ -68,6 +68,10 @@ void Renderer::BeginFrame() {
 
 void Renderer::EndFrame() { Flush(); }
 
+void Renderer::ResetFrameStats() {
+    frameStats_ = {};
+}
+
 void Renderer::Resize(int width, int height) {
     config_.width = (std::max)(1, width);
     config_.height = (std::max)(1, height);
@@ -229,9 +233,16 @@ const Renderer::ViewportTarget& Renderer::GetViewportTarget(ViewportRenderTarget
     return target == ViewportRenderTarget::Game ? gameViewportTarget_ : sceneViewportTarget_;
 }
 
-void Renderer::SubmitMesh(const MeshDrawCommand& cmd) { drawList_.push_back(cmd); }
+void Renderer::SubmitMesh(const MeshDrawCommand& cmd) {
+    drawList_.push_back(cmd);
+    ++frameStats_.submittedMeshCount;
+    frameStats_.submittedTriangleCount += cmd.indexCount / 3;
+}
 
-void Renderer::SubmitLight(const LightDrawCommand& cmd) { lightDrawList_.push_back(cmd); }
+void Renderer::SubmitLight(const LightDrawCommand& cmd) {
+    lightDrawList_.push_back(cmd);
+    ++frameStats_.submittedLightCount;
+}
 
 void Renderer::SubmitLine(const DebugLineCommand& cmd) { lineDrawList_.push_back(cmd); }
 
@@ -316,6 +327,7 @@ void Renderer::Flush() {
 
         glBindVertexArray(cmd.vao);
         glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, nullptr);
+        ++frameStats_.drawCallCount;
     }
     glBindVertexArray(0);
     drawList_.clear();

@@ -32,6 +32,8 @@ public:
     void Render(Renderer& renderer,
                 bool vsyncEnabled = true,
                 const std::function<void(bool)>& setVSync = std::function<void(bool)>(),
+                bool profilerVisible = true,
+                const std::function<void(bool)>& setProfilerVisible = std::function<void(bool)>(),
                 const std::function<void()>& onAddMeshPlane = std::function<void()>(),
                 Console* console = nullptr,
                 EditorProjectMenu projectMenu = {},
@@ -40,7 +42,9 @@ public:
 private:
     // Panels
     void RenderMainMenu(const std::function<void()>& onAddMeshPlane,
-                        const EditorProjectMenu& projectMenu);
+                        const EditorProjectMenu& projectMenu,
+                        bool profilerVisible,
+                        const std::function<void(bool)>& setProfilerVisible);
 
     void RenderSkyboxPanel(const std::function<void(const SkyboxFaces&)>& onSkyboxChosen);
 

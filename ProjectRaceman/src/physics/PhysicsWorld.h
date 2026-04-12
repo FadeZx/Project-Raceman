@@ -14,6 +14,29 @@
 
 namespace raceman {
 
+struct PhysicsMeshContributorStats {
+    std::string meshAssetPath;
+    int meshIndex{0};
+    std::uint32_t usageCount{0};
+    std::uint64_t triangleCount{0};
+    MeshColliderMode meshMode{MeshColliderMode::TriangleMesh};
+};
+
+struct PhysicsWorldStats {
+    std::uint32_t bodyCount{0};
+    std::uint32_t characterCount{0};
+    std::uint32_t boxColliderCount{0};
+    std::uint32_t sphereColliderCount{0};
+    std::uint32_t capsuleColliderCount{0};
+    std::uint32_t planeColliderCount{0};
+    std::uint32_t meshColliderCount{0};
+    std::uint32_t triangleMeshColliderCount{0};
+    std::uint32_t convexHullColliderCount{0};
+    double lastBuildTimeMs{0.0};
+    double lastStepTimeMs{0.0};
+    std::vector<PhysicsMeshContributorStats> meshContributors;
+};
+
 enum class PhysicsBodyType {
     Static,
     Kinematic,
@@ -154,6 +177,7 @@ public:
     void AddCharacterJumpImpulse(const std::string& objectId, float impulse);
 
     bool Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::string* ignoreObjectId = nullptr) const;
+    const PhysicsWorldStats& GetStats() const;
 
 private:
     class Impl;

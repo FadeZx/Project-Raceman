@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <cstdint>
 #include <unordered_map>
 
 #include <glm/glm.hpp>
@@ -279,6 +280,29 @@ struct SceneObject {
     LightComponent light;
 };
 
+struct SceneMeshContributorStats {
+    std::string meshAssetPath;
+    int meshIndex{0};
+    std::uint32_t objectCount{0};
+    std::uint64_t triangleCount{0};
+    MeshColliderMode meshMode{MeshColliderMode::TriangleMesh};
+};
+
+struct SceneProfilerStats {
+    std::uint32_t visibleMeshCount{0};
+    std::uint32_t visibleLightCount{0};
+    std::uint32_t bodyCount{0};
+    std::uint32_t characterCount{0};
+    std::uint32_t boxColliderCount{0};
+    std::uint32_t sphereColliderCount{0};
+    std::uint32_t capsuleColliderCount{0};
+    std::uint32_t planeColliderCount{0};
+    std::uint32_t meshColliderCount{0};
+    std::uint32_t triangleMeshColliderCount{0};
+    std::uint32_t convexHullColliderCount{0};
+    std::vector<SceneMeshContributorStats> meshContributors;
+};
+
 class SceneEditor {
 public:
     SceneEditor();
@@ -328,9 +352,11 @@ public:
     bool OpenSceneAsset(const std::string& path);
     void SaveProject();
     void RenderProjectPhysicsSettings();
+    SceneProfilerStats CollectProfilerStats() const;
     std::vector<std::string> GetSceneAssetPaths() const;
     const std::string& GetCurrentScenePath() const { return savePath_; }
     const std::string& GetProjectName() const { return projectName_; }
+    const PhysicsWorld* GetPhysicsWorld() const { return physicsWorld_.get(); }
 
     void ImportObj(const std::string& path);
     void ImportObjWithOptions(const std::string& path, int pivotMode);
@@ -594,6 +620,7 @@ private:
     HistoryState playModeSnapshot_{};
     bool hasPlayModeSnapshot_{false};
     std::unique_ptr<PhysicsWorld> physicsWorld_;
+    SceneProfilerStats profilerStats_{};
 
     std::function<void()> onDirty_{};
     std::function<void(const glm::vec3&, float)> onFocusObject_{};

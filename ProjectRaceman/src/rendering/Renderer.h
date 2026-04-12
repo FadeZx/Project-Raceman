@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,6 +29,13 @@ struct RendererSettings {
     glm::vec3 clearColor{0.02f, 0.02f, 0.02f};
     bool enableShadows{true};
     bool showEnvironmentDebugView{false};
+};
+
+struct RendererFrameStats {
+    std::uint32_t submittedMeshCount{0};
+    std::uint32_t submittedLightCount{0};
+    std::uint32_t drawCallCount{0};
+    std::uint64_t submittedTriangleCount{0};
 };
 
 struct MeshDrawCommand {
@@ -107,6 +115,7 @@ public:
     void SubmitLight(const LightDrawCommand& cmd);
     void SubmitLine(const DebugLineCommand& cmd);
     void Flush();
+    void ResetFrameStats();
 
     // Fallback camera setup used by simple pipeline; later swap to scene camera
     void SetCamera(const glm::mat4& view, const glm::mat4& proj);
@@ -118,6 +127,7 @@ public:
     const RendererSettings& GetSettings() const { return settings_; }
     const RendererConfig& GetConfig() const;
     const RendererViewport& GetViewport() const { return viewport_; }
+    const RendererFrameStats& GetFrameStats() const { return frameStats_; }
 
 private:
     struct ViewportTarget {
@@ -149,6 +159,7 @@ private:
     ViewportTarget gameViewportTarget_{};
     std::vector<unsigned int> shadowMaps_;
     std::vector<DebugLineCommand> lineDrawList_;
+    RendererFrameStats frameStats_{};
 
     // Simple fallback pipeline state
     std::unique_ptr<Shader> simpleShader_;

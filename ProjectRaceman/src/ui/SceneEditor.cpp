@@ -3193,6 +3193,90 @@ std::string SceneEditor::MakeId(const std::string& base) {
     }
 }
 
+SceneProfilerStats SceneEditor::CollectProfilerStats() const {
+    SceneProfilerStats stats;
+    std::unordered_map<std::string, SceneMeshContributorStats> meshContributors;
+
+    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
+        const SceneObject& object = objects_[objectIndex];
+        if (!IsObjectEffectivelyEnabled(objectIndex)) {
+            continue;
+        }
+
+        if (object.hasMeshFilter && object.hasMeshRenderer && object.meshFilter.enabled && object.meshRenderer.enabled &&
+            object.meshFilter.vao != 0 && object.meshFilter.indexCount > 0) {
+            ++stats.visibleMeshCount;
+        }
+        if (object.hasLight && object.light.enabled) {
+            ++stats.visibleLightCount;
+        }
+        if (object.hasCharacterController && object.characterController.enabled) {
+            ++stats.characterCount;
+            continue;
+        }
+
+        const SceneColliderType colliderType = GetEnabledColliderType(object);
+        if (colliderType == SceneColliderType::None) {
+            continue;
+        }
+
+        ++stats.bodyCount;
+        switch (colliderType) {
+        case SceneColliderType::Box:
+            ++stats.boxColliderCount;
+            break;
+        case SceneColliderType::Sphere:
+            ++stats.sphereColliderCount;
+            break;
+        case SceneColliderType::Capsule:
+            ++stats.capsuleColliderCount;
+            break;
+        case SceneColliderType::Plane:
+            ++stats.planeColliderCount;
+            break;
+        case SceneColliderType::Mesh: {
+            ++stats.meshColliderCount;
+            if (object.meshCollider.mode == MeshColliderMode::ConvexHull) {
+                ++stats.convexHullColliderCount;
+            } else {
+                ++stats.triangleMeshColliderCount;
+            }
+
+            if (object.hasMeshFilter && !object.meshFilter.sourcePath.empty()) {
+                const std::string key = object.meshFilter.sourcePath + "#" + std::to_string(object.meshFilter.meshIndex) +
+                                        "#" + std::to_string(static_cast<int>(object.meshCollider.mode));
+                SceneMeshContributorStats& contributor = meshContributors[key];
+                contributor.meshAssetPath = object.meshFilter.sourcePath;
+                contributor.meshIndex = object.meshFilter.meshIndex;
+                contributor.meshMode = object.meshCollider.mode;
+                contributor.triangleCount = object.meshFilter.indexCount / 3;
+                ++contributor.objectCount;
+            }
+            break;
+        }
+        case SceneColliderType::None:
+            break;
+        }
+    }
+
+    stats.meshContributors.reserve(meshContributors.size());
+    for (auto& [key, contributor] : meshContributors) {
+        (void)key;
+        stats.meshContributors.push_back(std::move(contributor));
+    }
+    std::sort(stats.meshContributors.begin(), stats.meshContributors.end(),
+              [](const SceneMeshContributorStats& a, const SceneMeshContributorStats& b) {
+                  const std::uint64_t scoreA = static_cast<std::uint64_t>(a.objectCount) * (std::max<std::uint64_t>)(1, a.triangleCount);
+                  const std::uint64_t scoreB = static_cast<std::uint64_t>(b.objectCount) * (std::max<std::uint64_t>)(1, b.triangleCount);
+                  if (scoreA != scoreB) {
+                      return scoreA > scoreB;
+                  }
+                  return a.meshAssetPath < b.meshAssetPath;
+              });
+
+    return stats;
+}
+
 void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
     if (editorInteraction) {
         UpdateGizmo(renderer);

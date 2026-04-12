@@ -1,6 +1,7 @@
 #include "Application.h"
 
 #include "input/InputManager.h"
+#include "physics/PhysicsWorld.h"
 #include "rendering/Renderer.h"
 #include "rendering/SkyboxController.h"
 #include "ui/DebugUI.h"
@@ -299,6 +300,7 @@ void Application::Update(float deltaTime) {
 
     if (config_.enableImGui) {
         debugUi_->BeginFrame();
+        debugUi_->RenderProfilerHud();
 
         // Unity-like Scene Editor panels (Scene hierarchy + Inspector)
         if (sceneEditor_) {
@@ -306,12 +308,18 @@ void Application::Update(float deltaTime) {
             sceneEditor_->SetGameViewportTexture(renderer_->GetViewportRenderTargetTexture(ViewportRenderTarget::Game));
             sceneEditor_->RenderUI(deltaTime);
         }
-
+        const SceneProfilerStats sceneStats = sceneEditor_ ? sceneEditor_->CollectProfilerStats() : SceneProfilerStats{};
+        const PhysicsWorldStats* physicsStats = nullptr;
+        if (sceneEditor_ && sceneEditor_->GetPhysicsWorld()) {
+            physicsStats = &sceneEditor_->GetPhysicsWorld()->GetStats();
+        }
 
         // Centralized menu (no renderer panel duplication; skybox selection only if wired)
         menuController_->Render(*renderer_,
             vsyncEnabled_,
             [this](bool enabled){ SetVSync(enabled); },
+            debugUi_->IsProfilerVisible(),
+            [this](bool visible){ debugUi_->SetProfilerVisible(visible); },
             [this](){
                 if (sceneEditor_) sceneEditor_->AddMeshPlane();
             },
@@ -343,6 +351,8 @@ void Application::Update(float deltaTime) {
                 }
             });
 
+        debugUi_->RenderAppMetrics(deltaTime, *renderer_, sceneEditor_ ? &sceneStats : nullptr, physicsStats);
+
         debugUi_->EndFrame();
     }
 }
@@ -351,6 +361,7 @@ void Application::Render() {
     const auto& cfg = renderer_->GetConfig();
     RendererSettings& rendererSettings = renderer_->GetSettings();
     const glm::vec3 previousClearColor = rendererSettings.clearColor;
+    renderer_->ResetFrameStats();
 
     glDisable(GL_SCISSOR_TEST);
     glViewport(0, 0, cfg.width, cfg.height);

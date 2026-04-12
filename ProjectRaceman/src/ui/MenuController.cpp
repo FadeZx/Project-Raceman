@@ -44,13 +44,15 @@ MenuController::~MenuController() { SaveState(); }
 void MenuController::Render(Renderer& renderer,
                             bool vsyncEnabled,
                             const std::function<void(bool)>& setVSync,
+                            bool profilerVisible,
+                            const std::function<void(bool)>& setProfilerVisible,
                             const std::function<void()>& onAddMeshPlane,
                             Console* console,
                             EditorProjectMenu projectMenu,
                             const std::function<void(const SkyboxFaces&)>& onSkyboxChosen) {
     (void)renderer;
 
-    RenderMainMenu(onAddMeshPlane, projectMenu);
+    RenderMainMenu(onAddMeshPlane, projectMenu, profilerVisible, setProfilerVisible);
 
     if (showProjectSettings_) {
         if (ImGui::Begin("Project Settings", &showProjectSettings_, ImGuiWindowFlags_NoCollapse)) {
@@ -140,7 +142,9 @@ void MenuController::Render(Renderer& renderer,
 }
 
 void MenuController::RenderMainMenu(const std::function<void()>& onAddMeshPlane,
-                                    const EditorProjectMenu& projectMenu) {
+                                    const EditorProjectMenu& projectMenu,
+                                    bool profilerVisible,
+                                    const std::function<void(bool)>& setProfilerVisible) {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New Scene...")) {
@@ -185,6 +189,10 @@ void MenuController::RenderMainMenu(const std::function<void()>& onAddMeshPlane,
             if (ImGui::MenuItem("Project Settings...", nullptr, showProjectSettings_)) {
                 showProjectSettings_ = !showProjectSettings_;
                 SaveState();
+            }
+            bool showProfiler = profilerVisible;
+            if (ImGui::MenuItem("Profiler", nullptr, showProfiler) && setProfilerVisible) {
+                setProfilerVisible(!showProfiler);
             }
             ImGui::EndMenu();
         }

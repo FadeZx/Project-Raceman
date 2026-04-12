@@ -434,6 +434,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
 
     if (running) {
         SaveCurrentScene();
+        profilerStats_ = CollectProfilerStats();
         playModeSnapshot_ = {objects_, selectedIndex_, selectedIndices_};
         hasPlayModeSnapshot_ = true;
         activeViewport_ = SceneEditorActiveViewport::Game;
@@ -656,6 +657,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
         if (console_) {
             console_->AddLog("Play mode stopped.");
         }
+        profilerStats_ = CollectProfilerStats();
     }
 }
 
