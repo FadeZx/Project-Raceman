@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -16,6 +17,7 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include <Jolt/Jolt.h>
+#include <Jolt/Core/StreamWrapper.h>
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
@@ -84,6 +86,71 @@ std::string BuildShapeCacheKey(const PhysicsColliderDesc& collider) {
     return BuildMeshCacheKey(collider.meshAssetPath, collider.meshIndex) + "#" +
            std::to_string(static_cast<int>(collider.meshMode)) + "#" +
            std::to_string(static_cast<int>(collider.meshBuildQuality));
+}
+
+// --- Disk-based shape cache ---
+
+std::uint64_t FnvHash64(const std::string& s) {
+    std::uint64_t hash = 14695981039346656037ULL;
+    for (const unsigned char c : s) {
+        hash ^= c;
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
+std::filesystem::path GetShapeCacheDir() {
+    return (std::filesystem::current_path() / "Project" / ".collision-cache").lexically_normal();
+}
+
+// Cache filename encodes both the key and the source file mtime so it
+// auto-invalidates whenever the source mesh is modified.
+std::filesystem::path BuildDiskCachePath(const std::string& cacheKey,
+                                         const std::filesystem::file_time_type& mtime) {
+    const auto mtimeCount = mtime.time_since_epoch().count();
+    const std::string filename =
+        std::to_string(FnvHash64(cacheKey)) + "_" + std::to_string(mtimeCount) + ".joltshape";
+    return GetShapeCacheDir() / filename;
+}
+
+JPH::ShapeRefC TryLoadShapeFromDisk(const std::filesystem::path& path) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f.is_open()) {
+        std::fprintf(stdout, "[CollisionCache] MISS  %s\n", path.string().c_str());
+        std::fflush(stdout);
+        return {};
+    }
+    JPH::StreamInWrapper stream(f);
+    JPH::Shape::ShapeResult result = JPH::Shape::sRestoreFromBinaryState(stream);
+    if (!result.IsValid()) {
+        std::fprintf(stdout, "[CollisionCache] CORRUPT %s\n", path.string().c_str());
+        std::fflush(stdout);
+        return {};
+    }
+    std::fprintf(stdout, "[CollisionCache] HIT    %s\n", path.string().c_str());
+    std::fflush(stdout);
+    return result.Get();
+}
+
+void SaveShapeToDisk(const std::filesystem::path& path, const JPH::ShapeRefC& shape) {
+    std::error_code ec;
+    std::filesystem::create_directories(path.parent_path(), ec);
+    if (ec) {
+        std::fprintf(stdout, "[CollisionCache] SAVE FAILED (mkdir) %s : %s\n",
+                     path.string().c_str(), ec.message().c_str());
+        std::fflush(stdout);
+        return;
+    }
+    std::ofstream f(path, std::ios::binary | std::ios::trunc);
+    if (!f.is_open()) {
+        std::fprintf(stdout, "[CollisionCache] SAVE FAILED (open) %s\n", path.string().c_str());
+        std::fflush(stdout);
+        return;
+    }
+    JPH::StreamOutWrapper stream(f);
+    shape->SaveBinaryState(stream);
+    std::fprintf(stdout, "[CollisionCache] SAVED  %s\n", path.string().c_str());
+    std::fflush(stdout);
 }
 
 bool GetCachedCollisionMesh(const PhysicsColliderDesc& collider,
@@ -313,6 +380,25 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
         return shapeCache.shape;
     }
 
+    // Check disk cache before cooking. The cache file name includes the source
+    // mesh's last-write-time, so it is automatically invalidated when the mesh
+    // is modified on disk.
+    const std::filesystem::path resolvedPath = FindProjectAssetAbsolutePath(collider.meshAssetPath);
+    std::error_code ec;
+    const std::filesystem::file_time_type mtime = std::filesystem::last_write_time(resolvedPath, ec);
+    if (!ec) {
+        const std::filesystem::path diskCachePath = BuildDiskCachePath(cacheKey, mtime);
+        if (JPH::ShapeRefC loaded = TryLoadShapeFromDisk(diskCachePath)) {
+            shapeCache.shape = std::move(loaded);
+            shapeCache.triangleCount = triangleCount;
+            shapeCache.valid = true;
+            if (outTriangleCount) {
+                *outTriangleCount = triangleCount;
+            }
+            return shapeCache.shape;
+        }
+    }
+
     if (collider.meshMode == MeshColliderMode::ConvexHull) {
         constexpr std::size_t maxPoints = 256;
         const std::size_t totalPoints = collisionMesh.vertices.size();
@@ -343,6 +429,9 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
         shapeCache.shape = result.Get();
         shapeCache.triangleCount = triangleCount;
         shapeCache.valid = true;
+        if (!ec) {
+            SaveShapeToDisk(BuildDiskCachePath(cacheKey, mtime), shapeCache.shape);
+        }
         if (outTriangleCount) {
             *outTriangleCount = triangleCount;
         }
@@ -371,6 +460,9 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
     shapeCache.shape = result.Get();
     shapeCache.triangleCount = triangleCount;
     shapeCache.valid = true;
+    if (!ec) {
+        SaveShapeToDisk(BuildDiskCachePath(cacheKey, mtime), shapeCache.shape);
+    }
     if (outTriangleCount) {
         *outTriangleCount = triangleCount;
     }
@@ -979,9 +1071,15 @@ private:
                     continue;
                 }
 
-                ImportedCollisionMesh ignoredMesh;
+                // Read triangle count from the shape cache — it was stored there during
+                // Build() (from disk cache or after cooking). Avoids re-loading the mesh
+                // file via Assimp just to get stats.
                 std::uint64_t triangleCount = 0;
-                GetCachedCollisionMesh(collider, ignoredMesh, &triangleCount);
+                const auto& shapeCache = GetShapeCache();
+                const auto shapeIt = shapeCache.find(BuildShapeCacheKey(collider));
+                if (shapeIt != shapeCache.end() && shapeIt->second.valid) {
+                    triangleCount = shapeIt->second.triangleCount;
+                }
 
                 const std::string key = BuildMeshCacheKey(collider.meshAssetPath, collider.meshIndex) + "#" +
                                         std::to_string(static_cast<int>(collider.meshMode));

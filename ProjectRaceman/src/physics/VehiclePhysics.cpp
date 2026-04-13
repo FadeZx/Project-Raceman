@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 namespace raceman::physics
 {
@@ -202,8 +203,23 @@ void VehiclePhysics::update(float dt)
         }
     }
 
+    // Disable drive/steer when the vehicle is flipped or rolled past 90 degrees.
+    // vehicleUp.z > 0 means the car's roof is facing upward (normal/driveable).
+    const Vector3 vehicleUp = m_body.transform.rotation.rotate(Vector3{0.0f, 0.0f, 1.0f});
+    const bool isUprightEnough = vehicleUp.z > 0.0f;
+
+    // Check if any wheel had ground contact last frame (normalForce persists from the
+    // previous update, so reading here gives us the previous-frame contact state).
+    bool anyWheelGrounded = false;
+    for (const auto& w : m_wheels)
+    {
+        if (w.normalForce > 0.0f) { anyWheelGrounded = true; break; }
+    }
+    // Steering and drive are only active when at least one wheel is grounded and upright.
+    const bool canControl = isUprightEnough && anyWheelGrounded;
+
     float totalDriveTorque = 0.0f;
-    if (std::abs(driveRatio) > kEpsilon && drivenWheelCount > 0)
+    if (canControl && std::abs(driveRatio) > kEpsilon && drivenWheelCount > 0)
     {
         totalDriveTorque = throttleTorque * driveRatio * clutchFactor;
     }
@@ -226,7 +242,7 @@ void VehiclePhysics::update(float dt)
         const SuspensionConfig &suspension = *wheel.suspension;
 
         bool isFront = wheel.config.mountPosition.y >= 0.0f;
-        float targetSteer = isFront ? (m_input.steering * wheel.config.maxSteerAngle) : 0.0f;
+        float targetSteer = (isFront && canControl) ? (m_input.steering * wheel.config.maxSteerAngle) : 0.0f;
         wheel.steerAngle += (targetSteer - wheel.steerAngle) * clamp(dt * 8.0f, 0.0f, 1.0f);
 
         Vector3 mountWorld = m_body.transform.position + m_body.transform.rotation.rotate(wheel.config.mountPosition);
@@ -323,7 +339,9 @@ void VehiclePhysics::update(float dt)
         float handbrakeInput = (!isFront) ? m_input.handbrake : 0.0f;
         wheel.brakeTorque = (brakeInput + handbrakeInput) * wheel.config.maxBrakingTorque;
 
-        wheel.driveTorque = wheel.config.driven ? perWheelDriveTorque : 0.0f;
+        // Only drive wheels that have ground contact — prevents wheels spinning
+        // to unrealistic RPM while airborne then launching the car on landing.
+        wheel.driveTorque = (wheel.config.driven && wheel.normalForce > 0.0f) ? perWheelDriveTorque : 0.0f;
         if (wheel.config.driven)
         {
             totalDriveTorqueApplied += wheel.driveTorque;

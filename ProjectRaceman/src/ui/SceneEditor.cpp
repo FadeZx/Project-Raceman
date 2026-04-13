@@ -649,33 +649,6 @@ void SceneEditor::AddEmptyObject() {
 void SceneEditor::RenderUI(float deltaTime) {
     HandleEditorShortcuts();
 
-    // --- Play-mode loading overlay (two-frame deferred start) ---
-    // Frame ShowOverlay: open the modal so it renders this frame, advance state
-    if (playModeStartState_ == PlayModeStartState::ShowOverlay) {
-        ImGui::OpenPopup("##PlayModeLoading");
-        playModeStartState_ = PlayModeStartState::Build;
-    }
-    // Render the modal every frame while it is open
-    const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(280, 0), ImGuiCond_Always);
-    if (ImGui::BeginPopupModal("##PlayModeLoading", nullptr,
-            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Spacing();
-        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize("Building scene...").x) * 0.5f);
-        ImGui::TextUnformatted("Building scene...");
-        ImGui::Spacing();
-        // Frame Build: actually build physics + scripts, then close
-        if (playModeStartState_ == PlayModeStartState::Build) {
-            playModeStartState_ = PlayModeStartState::None;
-            SetScriptsRunning(true);
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
-    // ---
-
     UpdateScripts(deltaTime);
     UpdateVehiclePhysics(deltaTime);
     UpdatePhysics(deltaTime);

@@ -518,9 +518,6 @@ private:
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
     bool scriptsRunning_{false};
     bool scriptsPaused_{false};
-    // Two-frame deferred start: frame N shows overlay, frame N+1 builds physics/scripts
-    enum class PlayModeStartState { None, ShowOverlay, Build };
-    PlayModeStartState playModeStartState_{PlayModeStartState::None};
     bool showCreateScriptPopup_{false};
     char createScriptNameBuffer_[128]{};
     char createMaterialNameBuffer_[128]{};

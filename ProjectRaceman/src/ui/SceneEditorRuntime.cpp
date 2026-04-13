@@ -5,7 +5,9 @@
 #include "../scripting/ScriptRegistry.h"
 
 #include <GLFW/glfw3.h>
+#include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <unordered_set>
 
 namespace fs = std::filesystem;
@@ -433,6 +435,10 @@ void SceneEditor::SetScriptsRunning(bool running) {
     }
 
     if (running) {
+        std::fprintf(stdout, "[Play] Building scene...\n");
+        std::fflush(stdout);
+        const auto buildStart = std::chrono::high_resolution_clock::now();
+
         SaveCurrentScene();
         profilerStats_ = CollectProfilerStats();
         playModeSnapshot_ = {objects_, selectedIndex_, selectedIndices_};
@@ -634,6 +640,12 @@ void SceneEditor::SetScriptsRunning(bool running) {
         physicsWorld_->Build(physicsBodies, physicsCharacters);
         RebuildVehicleRuntime();
         RebuildScriptRuntime();
+        {
+            const auto buildEnd = std::chrono::high_resolution_clock::now();
+            const double ms = std::chrono::duration<double, std::milli>(buildEnd - buildStart).count();
+            std::fprintf(stdout, "[Play] Build complete in %.1f ms\n", ms);
+            std::fflush(stdout);
+        }
         if (console_) {
             console_->AddLog("Play mode started.");
         }

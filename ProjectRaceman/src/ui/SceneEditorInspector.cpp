@@ -1425,6 +1425,44 @@ void SceneEditor::RenderInspectorPanel() {
                                 telemetry.throttle,
                                 telemetry.brake,
                                 telemetry.steering);
+
+                            // Per-wheel contact debug table
+                            if (!telemetry.wheels.empty() &&
+                                ImGui::BeginTable("##WheelDebug", 5,
+                                    ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                    ImGuiTableFlags_SizingFixedFit)) {
+                                ImGui::TableSetupColumn("Wheel");
+                                ImGui::TableSetupColumn("Contact");
+                                ImGui::TableSetupColumn("NormalF");
+                                ImGui::TableSetupColumn("SuspTravel");
+                                ImGui::TableSetupColumn("RPM");
+                                ImGui::TableHeadersRow();
+                                for (std::size_t wi = 0; wi < telemetry.wheels.size(); ++wi) {
+                                    const raceman::physics::WheelTelemetry& wt = telemetry.wheels[wi];
+                                    const bool grounded = wt.normalForce > 0.0f;
+                                    ImGui::TableNextRow();
+                                    ImGui::TableSetColumnIndex(0);
+                                    if (wi < loadedConfig.wheels.size()) {
+                                        ImGui::TextUnformatted(loadedConfig.wheels[wi].name.c_str());
+                                    } else {
+                                        ImGui::Text("%d", static_cast<int>(wi));
+                                    }
+                                    ImGui::TableSetColumnIndex(1);
+                                    if (grounded) {
+                                        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "ON");
+                                    } else {
+                                        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "OFF");
+                                    }
+                                    ImGui::TableSetColumnIndex(2);
+                                    ImGui::Text("%.0f N", wt.normalForce);
+                                    ImGui::TableSetColumnIndex(3);
+                                    ImGui::Text("%.3f m", wt.suspensionTravel);
+                                    ImGui::TableSetColumnIndex(4);
+                                    const float rpm = wt.angularVelocity * (60.0f / (2.0f * 3.14159f));
+                                    ImGui::Text("%.0f", rpm);
+                                }
+                                ImGui::EndTable();
+                            }
                             ImGui::Separator();
                         }
                     }

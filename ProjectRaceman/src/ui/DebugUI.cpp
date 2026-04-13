@@ -12,10 +12,44 @@
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 
 namespace raceman {
 
 namespace {
+
+static constexpr const char* kEditorStatePath = "config/editor_state.json";
+
+void SaveEditorState(bool showProfiler) {
+    std::filesystem::create_directories("config");
+    std::ofstream f(kEditorStatePath, std::ios::trunc);
+    if (!f.is_open()) {
+        return;
+    }
+    f << "{\n  \"showProfiler\": " << (showProfiler ? "true" : "false") << "\n}\n";
+}
+
+bool LoadEditorStateShowProfiler(bool defaultValue) {
+    std::ifstream f(kEditorStatePath);
+    if (!f.is_open()) {
+        return defaultValue;
+    }
+    std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    const auto pos = content.find("\"showProfiler\"");
+    if (pos == std::string::npos) {
+        return defaultValue;
+    }
+    const auto colon = content.find(':', pos);
+    if (colon == std::string::npos) {
+        return defaultValue;
+    }
+    const auto valStart = content.find_first_not_of(" \t\r\n", colon + 1);
+    if (valStart == std::string::npos) {
+        return defaultValue;
+    }
+    return content.compare(valStart, 4, "true") == 0;
+}
 
 template <typename Contributor>
 void RenderContributorRows(const std::vector<Contributor>& contributors, std::size_t maxCount) {
@@ -61,6 +95,8 @@ void DebugUI::Initialize(GLFWwindow* window) {
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
 
+    showProfiler_ = LoadEditorStateShowProfiler(showProfiler_);
+
     // Persist window positions/sizes to config/imgui.ini
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = "config/imgui.ini"; // ImGui will auto-load/save this
@@ -77,6 +113,7 @@ void DebugUI::Shutdown() {
 
     // Ensure settings are flushed to disk
     ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename ? ImGui::GetIO().IniFilename : "imgui.ini");
+    SaveEditorState(showProfiler_);
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
