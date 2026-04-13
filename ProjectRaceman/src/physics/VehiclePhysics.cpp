@@ -409,13 +409,24 @@ void VehiclePhysics::integrateChassis(float dt, const Vector3 &totalForce, const
     m_body.linearVelocity += acceleration * dt;
     m_body.transform.position += m_body.linearVelocity * dt;
 
+    // Yaw (rotation around up/Z axis)
     float yawInertia = std::max(kEpsilon, m_config.chassis.yawInertia);
-    float yawAcceleration = totalTorque.z / yawInertia;
-    m_body.angularVelocity.z += yawAcceleration * dt;
+    m_body.angularVelocity.z += (totalTorque.z / yawInertia) * dt;
 
-    float yawDelta = m_body.angularVelocity.z * dt;
-    Quaternion yawRotation = Quaternion::fromAxisAngle({0.0f, 0.0f, 1.0f}, yawDelta);
-    m_body.transform.rotation = (yawRotation * m_body.transform.rotation).normalized();
+    // Pitch (rotation around lateral/X axis — nose up/down)
+    float pitchInertia = std::max(kEpsilon, m_config.chassis.pitchInertia);
+    m_body.angularVelocity.x += (totalTorque.x / pitchInertia) * dt;
+    m_body.angularVelocity.x *= std::max(0.0f, 1.0f - 3.5f * dt);  // angular damping
+
+    // Roll (rotation around forward/Y axis — tilt left/right)
+    float rollInertia = std::max(kEpsilon, m_config.chassis.rollInertia);
+    m_body.angularVelocity.y += (totalTorque.y / rollInertia) * dt;
+    m_body.angularVelocity.y *= std::max(0.0f, 1.0f - 3.5f * dt);  // angular damping
+
+    Quaternion pitchRotation = Quaternion::fromAxisAngle({1.0f, 0.0f, 0.0f}, m_body.angularVelocity.x * dt);
+    Quaternion rollRotation  = Quaternion::fromAxisAngle({0.0f, 1.0f, 0.0f}, m_body.angularVelocity.y * dt);
+    Quaternion yawRotation   = Quaternion::fromAxisAngle({0.0f, 0.0f, 1.0f}, m_body.angularVelocity.z * dt);
+    m_body.transform.rotation = (yawRotation * rollRotation * pitchRotation * m_body.transform.rotation).normalized();
 }
 
 } // namespace raceman::physics

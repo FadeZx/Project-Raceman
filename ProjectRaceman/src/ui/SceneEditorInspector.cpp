@@ -3500,7 +3500,7 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
     editTexturePath("AO", "matTexAo", material->texAo);
 
     ImGui::Separator();
-    if (ImGui::Button("Save Material")) {
+    if (ImGui::Button("Save Material (Ctrl+S)")) {
         if (materialManager_.Save(materialId, *material)) {
             materialManager_.LoadAll();
             if (console_) {

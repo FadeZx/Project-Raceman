@@ -211,7 +211,8 @@ void SceneEditor::RenderScenePanel() {
             if (scriptsRunning_) {
                 SetScriptsPaused(!scriptsPaused_);
             } else {
-                SetScriptsRunning(true);
+                // Deferred: show loading overlay for one frame before building
+                playModeStartState_ = PlayModeStartState::ShowOverlay;
             }
         }
         if (ImGui::IsItemHovered()) {

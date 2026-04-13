@@ -72,6 +72,10 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         sceneEditor_->SetOnFocusObject([this](const glm::vec3& target, float radius) {
             FocusEditorCameraOn(target, radius);
         });
+        // Wire the Game View "Stats" button to DebugUI's profiler visibility
+        sceneEditor_->SetProfilerCallbacks(
+            [this]() { return debugUi_->IsProfilerVisible(); },
+            [this](bool v) { debugUi_->SetProfilerVisible(v); });
     }
 
     lastFrameTime_ = glfwGetTime();
@@ -300,7 +304,7 @@ void Application::Update(float deltaTime) {
 
     if (config_.enableImGui) {
         debugUi_->BeginFrame();
-        debugUi_->RenderProfilerHud();
+        // Note: RenderProfilerHud() removed — toggle button is now in the Game View toolbar
 
         // Unity-like Scene Editor panels (Scene hierarchy + Inspector)
         if (sceneEditor_) {
@@ -351,7 +355,15 @@ void Application::Update(float deltaTime) {
                 }
             });
 
-        debugUi_->RenderAppMetrics(deltaTime, *renderer_, sceneEditor_ ? &sceneStats : nullptr, physicsStats);
+        // Anchor the stats overlay to the top-left of the Game View
+        glm::vec2 statsAnchor(-1.0f);
+        if (sceneEditor_) {
+            const glm::vec2 gpSize = sceneEditor_->GetGameViewportSize();
+            if (gpSize.x > 1.0f && gpSize.y > 1.0f) {
+                statsAnchor = sceneEditor_->GetGameViewportPos();
+            }
+        }
+        debugUi_->RenderAppMetrics(deltaTime, *renderer_, sceneEditor_ ? &sceneStats : nullptr, physicsStats, statsAnchor);
 
         debugUi_->EndFrame();
     }

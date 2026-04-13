@@ -340,6 +340,16 @@ public:
     void SetOnDirty(std::function<void()> cb) { onDirty_ = std::move(cb); }
     void SetOnFocusObject(std::function<void(const glm::vec3&, float)> cb) { onFocusObject_ = std::move(cb); }
 
+    // Profiler stats toggle wired from Game View "Stats" button
+    void SetProfilerCallbacks(std::function<bool()> getter, std::function<void(bool)> setter) {
+        getProfilerVisible_ = std::move(getter);
+        setProfilerVisible_ = std::move(setter);
+    }
+
+    // Game viewport position/size — used by Application to anchor the profiler overlay
+    glm::vec2 GetGameViewportPos()  const { return gameViewportPos_; }
+    glm::vec2 GetGameViewportSize() const { return gameViewportSize_; }
+
     // Control persistence location and access from Application
     void SetSavePath(const std::string& path);
     void Save(const std::string& path);
@@ -508,6 +518,9 @@ private:
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
     bool scriptsRunning_{false};
     bool scriptsPaused_{false};
+    // Two-frame deferred start: frame N shows overlay, frame N+1 builds physics/scripts
+    enum class PlayModeStartState { None, ShowOverlay, Build };
+    PlayModeStartState playModeStartState_{PlayModeStartState::None};
     bool showCreateScriptPopup_{false};
     char createScriptNameBuffer_[128]{};
     char createMaterialNameBuffer_[128]{};
@@ -624,6 +637,8 @@ private:
 
     std::function<void()> onDirty_{};
     std::function<void(const glm::vec3&, float)> onFocusObject_{};
+    std::function<bool()> getProfilerVisible_{};
+    std::function<void(bool)> setProfilerVisible_{};
 };
 
 } // namespace raceman

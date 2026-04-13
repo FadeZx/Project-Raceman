@@ -115,8 +115,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0.501839, 1.90735e-06, 0.870393],
-          "rotationEuler": [0, 180, 1.70734e-06],
+          "position": [0.501835, 1.90735e-06, 0.870392],
+          "rotationEuler": [16.2945, 0.107009, 179.99],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -153,8 +153,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [10.0272, 4.44921, 0],
-          "rotationEuler": [0, 0, 0],
+          "position": [-4.89515, 0.972931, -144.086],
+          "rotationEuler": [179.934, 13.418, 179.935],
           "scale": [1, 1, 1]
         },
         {
@@ -204,8 +204,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.516759, 1.90735e-06, 0.876059],
-          "rotationEuler": [173.161, -0.00634183, 6.40356e-07],
+          "position": [-0.516762, 1.90735e-06, 0.876053],
+          "rotationEuler": [127.336, -0.111426, -0.00506933],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -242,8 +242,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0.51343, 1.90735e-06, -0.635101],
-          "rotationEuler": [0, 180, 1.70734e-06],
+          "position": [0.513424, 1.96695e-06, -0.635101],
+          "rotationEuler": [136.529, 0.107058, 179.99],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -280,8 +280,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.53694, 1.90735e-06, -0.634251],
-          "rotationEuler": [-171.995, -0.00633159, -2.13443e-07],
+          "position": [-0.536942, 1.96695e-06, -0.634247],
+          "rotationEuler": [-163.421, -0.113321, -0.0105699],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -399,8 +399,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-1.28613, 1.84894, 20.8288],
-          "rotationEuler": [0, -0, 0],
+          "position": [-1.28907, -1.93028, 20.8297],
+          "rotationEuler": [0.000129547, -0.442339, -0.00509379],
           "scale": [1, 1, 1]
         },
         {
@@ -454,8 +454,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0.557211, 3.5249, 20.8288],
-          "rotationEuler": [0, -0, 0],
+          "position": [0.545529, -0.950458, 20.834],
+          "rotationEuler": [0.000394615, 0.130971, 0.0191589],
           "scale": [1, 1, 1]
         },
         {
@@ -509,8 +509,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.0441393, 4.96454, 20.8288],
-          "rotationEuler": [0, -0, 0],
+          "position": [-0.0475016, 0.0293496, 20.8352],
+          "rotationEuler": [0.000591906, 0.222926, -0.000858474],
           "scale": [1, 1, 1]
         },
         {
@@ -587,8 +587,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [1.30498, 1.84894, 20.8288],
-          "rotationEuler": [0, -0, 0],
+          "position": [1.30193, -1.93027, 20.8288],
+          "rotationEuler": [0.000157493, -0.389624, 0.00286459],
           "scale": [1, 1, 1]
         },
         {
@@ -6507,8 +6507,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, 1.80687, 20.8288],
-          "rotationEuler": [0, -0, 0],
+          "position": [0.00249767, -1.93042, 20.8301],
+          "rotationEuler": [0.000225969, -0.443502, 0.00294493],
           "scale": [1, 1, 1]
         },
         {
@@ -6562,8 +6562,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.850579, 3.5249, 20.8288],
-          "rotationEuler": [0, -0, 0],
+          "position": [-0.853542, -0.950391, 20.8329],
+          "rotationEuler": [0.000518942, -0.0407101, -0.0225994],
           "scale": [1, 1, 1]
         },
         {

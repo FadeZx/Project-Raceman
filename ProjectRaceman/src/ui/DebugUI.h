@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/glm.hpp>
+
 struct GLFWwindow;
 
 namespace raceman {
@@ -28,7 +30,8 @@ public:
     void RenderAppMetrics(float deltaTime,
                           Renderer& renderer,
                           const SceneProfilerStats* sceneStats = nullptr,
-                          const PhysicsWorldStats* physicsStats = nullptr);
+                          const PhysicsWorldStats* physicsStats = nullptr,
+                          glm::vec2 windowAnchor = glm::vec2(-1.0f));
 
     bool IsEnabled() const { return enabled_; }
     bool IsProfilerVisible() const { return showProfiler_; }

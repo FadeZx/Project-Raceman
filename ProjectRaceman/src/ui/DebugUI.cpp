@@ -111,32 +111,15 @@ void DebugUI::RenderDrawData() {
 }
 
 void DebugUI::RenderProfilerHud() {
-    if (!enabled_) {
-        return;
-    }
-
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const ImVec2 buttonSize(86.0f, 28.0f);
-    const ImVec2 padding(12.0f, 12.0f);
-    ImGui::SetNextWindowPos(
-        ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - buttonSize.x - padding.x, viewport->WorkPos.y + padding.y),
-        ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.45f);
-    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-                                   ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-                                   ImGuiWindowFlags_NoNav;
-    if (ImGui::Begin("##ProfilerHud", nullptr, flags)) {
-        if (ImGui::Button(showProfiler_ ? "Hide Profiler" : "Show Profiler", buttonSize)) {
-            showProfiler_ = !showProfiler_;
-        }
-    }
-    ImGui::End();
+    // Toggle button moved to the Game View toolbar ("Stats" button).
+    // This function is intentionally empty — kept for API compatibility.
 }
 
 void DebugUI::RenderAppMetrics(float deltaTime,
                                Renderer& renderer,
                                const SceneProfilerStats* sceneStats,
-                               const PhysicsWorldStats* physicsStats) {
+                               const PhysicsWorldStats* physicsStats,
+                               glm::vec2 windowAnchor) {
     if (!enabled_ || !showProfiler_) {
         return;
     }
@@ -149,9 +132,17 @@ void DebugUI::RenderAppMetrics(float deltaTime,
     auto& settings = renderer.GetSettings();
     const RendererFrameStats& rendererStats = renderer.GetFrameStats();
 
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 420.0f, viewport->WorkPos.y + 52.0f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(400.0f, 520.0f), ImGuiCond_FirstUseEver);
+    // Position the window: if the caller supplies a game-viewport anchor, float
+    // the overlay near the top-left of that anchor region (like Unity's Stats
+    // panel).  Otherwise fall back to the top-right of the main viewport.
+    if (windowAnchor.x >= 0.0f && windowAnchor.y >= 0.0f) {
+        ImGui::SetNextWindowPos(ImVec2(windowAnchor.x + 8.0f, windowAnchor.y + 30.0f), ImGuiCond_Appearing);
+        ImGui::SetNextWindowSize(ImVec2(380.0f, 500.0f), ImGuiCond_Appearing);
+    } else {
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 420.0f, viewport->WorkPos.y + 52.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(400.0f, 520.0f), ImGuiCond_FirstUseEver);
+    }
 
     if (ImGui::Begin("Profiler", &showProfiler_)) {
         ImGui::Text("Frame time: %.2f ms", frameTimeMs);

@@ -648,6 +648,34 @@ void SceneEditor::AddEmptyObject() {
 
 void SceneEditor::RenderUI(float deltaTime) {
     HandleEditorShortcuts();
+
+    // --- Play-mode loading overlay (two-frame deferred start) ---
+    // Frame ShowOverlay: open the modal so it renders this frame, advance state
+    if (playModeStartState_ == PlayModeStartState::ShowOverlay) {
+        ImGui::OpenPopup("##PlayModeLoading");
+        playModeStartState_ = PlayModeStartState::Build;
+    }
+    // Render the modal every frame while it is open
+    const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(280, 0), ImGuiCond_Always);
+    if (ImGui::BeginPopupModal("##PlayModeLoading", nullptr,
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Spacing();
+        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize("Building scene...").x) * 0.5f);
+        ImGui::TextUnformatted("Building scene...");
+        ImGui::Spacing();
+        // Frame Build: actually build physics + scripts, then close
+        if (playModeStartState_ == PlayModeStartState::Build) {
+            playModeStartState_ = PlayModeStartState::None;
+            SetScriptsRunning(true);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    // ---
+
     UpdateScripts(deltaTime);
     UpdateVehiclePhysics(deltaTime);
     UpdatePhysics(deltaTime);
@@ -805,6 +833,40 @@ void SceneEditor::RenderViewportPanel() {
         gameViewportSize_ = glm::vec2(0.0f);
     }
     ImGui::End();
+
+    // ── Stats toggle button ────────────────────────────────────────────────
+    // Floats in the top-right corner of the Game View, like Unity's "Stats"
+    if (gameViewportSize_.x > 1.0f && gameViewportSize_.y > 1.0f &&
+        getProfilerVisible_ && setProfilerVisible_) {
+        const bool profilerOn = getProfilerVisible_();
+        const float btnW = 52.0f, btnH = 22.0f;
+        const ImVec2 btnPos(
+            gameViewportPos_.x + gameViewportSize_.x - btnW - 4.0f,
+            gameViewportPos_.y + 4.0f);
+        ImGui::SetNextWindowPos(btnPos, ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.0f);
+        ImGui::SetNextWindowSize(ImVec2(btnW + 6.0f, btnH + 6.0f), ImGuiCond_Always);
+        const ImGuiWindowFlags sbFlags =
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav |
+            ImGuiWindowFlags_NoMove;
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(3.0f, 3.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(0.0f, 0.0f));
+        if (ImGui::Begin("##GameStatsBtn", nullptr, sbFlags)) {
+            ImGui::PushStyleColor(ImGuiCol_Button,
+                profilerOn ? ImVec4(0.22f, 0.45f, 0.88f, 0.92f)
+                           : ImVec4(0.13f, 0.15f, 0.19f, 0.82f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.52f, 0.95f, 0.95f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.18f, 0.38f, 0.80f, 1.00f));
+            if (ImGui::Button("Stats##gsb", ImVec2(btnW, btnH))) {
+                setProfilerVisible_(!profilerOn);
+            }
+            ImGui::PopStyleColor(3);
+        }
+        ImGui::End();
+        ImGui::PopStyleVar(2);
+    }
 
     const bool hasSceneViewport = sceneViewportSize_.x > 1.0f && sceneViewportSize_.y > 1.0f;
     const bool hasGameViewport = gameViewportSize_.x > 1.0f && gameViewportSize_.y > 1.0f;

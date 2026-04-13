@@ -471,9 +471,10 @@ void SceneEditor::SetScriptsRunning(bool running) {
             body.friction = object.hasRigidbody ? object.rigidbody.friction : 0.8f;
             body.restitution = object.hasRigidbody ? object.rigidbody.restitution : 0.0f;
             body.linearDamping = object.hasRigidbody ? object.rigidbody.linearDamping : 0.0f;
-            body.angularDamping = object.hasRigidbody ? object.rigidbody.angularDamping : 0.0f;
-            body.freezeRotationX = true;
-            body.freezeRotationZ = true;
+            // Allow roll/pitch tilt momentum — use moderate damping to prevent wild oscillation
+            body.angularDamping = object.hasRigidbody ? object.rigidbody.angularDamping : 0.4f;
+            // freezeRotationX / freezeRotationZ intentionally not set — tilt is now simulated
+            body.motionQuality = PhysicsMotionQuality::Continuous;  // prevent tunneling at high speed
             body.overrideCenterOfMass = true;
             body.centerOfMassOffset = VehicleVectorToScene(chassisConfig.chassis.centerOfMassOffset);
             body.overrideMassProperties = true;
@@ -574,6 +575,10 @@ void SceneEditor::SetScriptsRunning(bool running) {
             body.freezeRotationX = object.hasRigidbody ? object.rigidbody.freezeRotationX : false;
             body.freezeRotationY = object.hasRigidbody ? object.rigidbody.freezeRotationY : false;
             body.freezeRotationZ = object.hasRigidbody ? object.rigidbody.freezeRotationZ : false;
+            // Enable CCD for dynamic bodies so fast-moving objects don't tunnel through colliders
+            if (body.bodyType == PhysicsBodyType::Dynamic) {
+                body.motionQuality = PhysicsMotionQuality::Continuous;
+            }
 
             const SceneColliderType colliderType = GetEnabledColliderType(object);
             if (colliderType == SceneColliderType::Box && object.boxCollider.enabled) {
