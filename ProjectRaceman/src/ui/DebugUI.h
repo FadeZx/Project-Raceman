@@ -37,13 +37,17 @@ public:
     bool IsProfilerVisible() const { return showProfiler_; }
     void SetProfilerVisible(bool visible) { showProfiler_ = visible; }
     bool ShowCullingDebug() const { return showCullingDebug_; }
+    bool ShowFrustumCullDebug() const { return showFrustumCullDebug_; }
 
 private:
     bool enabled_{false};
     bool showProfiler_{true};
     float rollingFrameTimeMs_{0.0f};
-    float lowestFps_{0.0f};
+    float averageFpsAccum_{0.0f};
+    int   averageFpsSamples_{0};
+    float averageFps_{0.0f};
     bool showCullingDebug_{false};
+    bool showFrustumCullDebug_{false};
 };
 
 } // namespace raceman

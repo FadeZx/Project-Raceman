@@ -51,6 +51,12 @@ std::vector<ImportedMeshInfo> GetMeshInfos(const std::shared_ptr<::Model>& model
                 break;
             }
         }
+        // Store CPU vertex positions and indices for mouse-pick narrow phase.
+        info.pickVertices.reserve(m.vertices.size());
+        for (const ::Vertex& v : m.vertices) {
+            info.pickVertices.push_back(v.Position);
+        }
+        info.pickIndices = m.indices;
         out.push_back(info);
     }
     return out;

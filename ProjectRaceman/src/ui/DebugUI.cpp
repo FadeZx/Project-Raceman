@@ -184,9 +184,12 @@ void DebugUI::RenderAppMetrics(float deltaTime,
     const float frameTimeMs = deltaTime * 1000.0f;
     const float fps = deltaTime > 0.0f ? 1.0f / deltaTime : 0.0f;
     rollingFrameTimeMs_ = rollingFrameTimeMs_ <= 0.0f ? frameTimeMs : (rollingFrameTimeMs_ * 0.9f + frameTimeMs * 0.1f);
-    lowestFps_ = (fps > 0.0f && (lowestFps_ <= 0.0f || fps < lowestFps_)) ? fps : lowestFps_;
+    if (fps > 0.0f) {
+        averageFpsAccum_ += fps;
+        ++averageFpsSamples_;
+        averageFps_ = averageFpsAccum_ / static_cast<float>(averageFpsSamples_);
+    }
 
-    auto& settings = renderer.GetSettings();
     const RendererFrameStats& rendererStats = renderer.GetFrameStats();
 
     // Position the window: if the caller supplies a game-viewport anchor, float
@@ -205,11 +208,23 @@ void DebugUI::RenderAppMetrics(float deltaTime,
         ImGui::Text("Frame time: %.2f ms", frameTimeMs);
         ImGui::Text("FPS: %.1f", fps);
         ImGui::Text("Rolling frame: %.2f ms", rollingFrameTimeMs_);
-        ImGui::Text("Lowest FPS: %.1f", lowestFps_);
+        ImGui::Text("Average FPS: %.1f  (%d samples)", averageFps_, averageFpsSamples_);
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Reset")) {
+            averageFpsAccum_ = 0.0f;
+            averageFpsSamples_ = 0;
+            averageFps_ = 0.0f;
+            rollingFrameTimeMs_ = 0.0f;
+        }
         ImGui::Separator();
 
         ImGui::TextUnformatted("Rendering");
         ImGui::Text("Submitted meshes: %u", rendererStats.submittedMeshCount);
+        ImGui::Text("Frustum culled: %u", rendererStats.frustumCulledMeshCount);
+        ImGui::SameLine();
+        if (ImGui::SmallButton(showFrustumCullDebug_ ? "Hide##fcd" : "Show##fcd")) {
+            showFrustumCullDebug_ = !showFrustumCullDebug_;
+        }
         ImGui::Text("Submitted lights: %u", rendererStats.submittedLightCount);
         ImGui::Text("Draw calls: %u", rendererStats.drawCallCount);
         ImGui::Text("Submitted triangles: %llu", static_cast<unsigned long long>(rendererStats.submittedTriangleCount));
@@ -274,14 +289,6 @@ void DebugUI::RenderAppMetrics(float deltaTime,
             ImGui::TextWrapped("Recommendation: this scene has many triangle-mesh colliders. Keep them for large static track surfaces, but prefer primitive colliders, convex hulls, or dedicated low-poly collision meshes for movable and decorative geometry.");
         }
 
-        ImGui::Separator();
-        ImGui::TextUnformatted("Renderer Settings");
-
-        ImGui::SliderFloat("Exposure", &settings.exposure, 0.1f, 5.0f, "%.2f");
-        ImGui::SliderFloat("Gamma", &settings.gamma, 1.0f, 3.0f, "%.2f");
-        ImGui::ColorEdit3("Clear Color", &settings.clearColor.x);
-        ImGui::Checkbox("Enable Shadows", &settings.enableShadows);
-        ImGui::Checkbox("Show Env Debug", &settings.showEnvironmentDebugView);
     }
     ImGui::End();
 }

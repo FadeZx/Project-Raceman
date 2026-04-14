@@ -185,14 +185,6 @@ void Renderer::BakeBrdfLut() {
 }
 
 void Renderer::CreateShadowMaps(int resolution) {
-    if (!settings_.enableShadows) {
-        if (!shadowMaps_.empty()) {
-            glDeleteTextures(static_cast<GLsizei>(shadowMaps_.size()), shadowMaps_.data());
-            shadowMaps_.clear();
-        }
-        return;
-    }
-
     unsigned int shadowMap = 0;
     glGenTextures(1, &shadowMap);
     glBindTexture(GL_TEXTURE_2D, shadowMap);
@@ -286,8 +278,18 @@ void Renderer::Flush() {
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
+    // Sort draw calls to minimize GPU state changes (texture binds, VAO switches).
+    if (settings_.enableDrawCallSorting && drawList_.size() > 1) {
+        std::sort(drawList_.begin(), drawList_.end(), [](const MeshDrawCommand& a, const MeshDrawCommand& b) {
+            if (a.diffuseTextureId != b.diffuseTextureId) return a.diffuseTextureId < b.diffuseTextureId;
+            if (a.vao != b.vao) return a.vao < b.vao;
+            return a.materialId < b.materialId;
+        });
+    }
+
     simpleShader_->use();
     simpleShader_->setInt("uDiffuseTexture", 0);
+    simpleShader_->setVec3("uAmbientColor", settings_.ambientColor);
     const int lightCount = static_cast<int>((std::min)(lightDrawList_.size(), static_cast<std::size_t>(8)));
     simpleShader_->setInt("uLightCount", lightCount);
     simpleShader_->setVec3("uCameraPosition", glm::vec3(glm::inverse(view_)[3]));

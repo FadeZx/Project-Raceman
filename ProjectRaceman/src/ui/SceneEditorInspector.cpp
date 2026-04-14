@@ -626,6 +626,15 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                 }
+                if (!obj.hasCinemachine) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Cinemachine Camera")) {
+                        PushUndoState();
+                        obj.hasCinemachine = true;
+                        obj.cinemachine = CinemachineCameraComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
                 if (!obj.hasLight) {
                     anyAvailable = true;
                     if (ImGui::BeginMenu("Light")) {
@@ -704,6 +713,7 @@ void SceneEditor::RenderInspectorPanel() {
                 case SceneInspectorComponentType::CharacterController: typeName = "CharacterController"; break;
                 case SceneInspectorComponentType::Collider: typeName = "Collider"; break;
                 case SceneInspectorComponentType::Camera: typeName = "Camera"; break;
+                case SceneInspectorComponentType::Cinemachine: typeName = "Cinemachine"; break;
                 case SceneInspectorComponentType::Light: typeName = "Light"; break;
                 }
                 return obj.id + "|" + typeName;
@@ -1293,11 +1303,12 @@ void SceneEditor::RenderInspectorPanel() {
                 if (onDirty_) onDirty_();
             }
             if (obj.hasVehicle && vehicleOpen) {
+                if (ImGui::CollapsingHeader("Config", ImGuiTreeNodeFlags_DefaultOpen)) {
                 std::string configDisplayName = "(none)";
                 if (!obj.vehicle.configPath.empty()) {
                     configDisplayName = ProjectAssetDisplayFilename(obj.vehicle.configPath);
                 }
-                ImGui::TextDisabled("Config Asset:");
+                ImGui::TextDisabled("Asset:");
                 ImGui::SameLine();
                 const float vehicleConfigButtonWidth = (std::max)(1.0f, ImGui::GetContentRegionAvail().x);
                 if (ImGui::Button((configDisplayName + "##selectVehicleConfig").c_str(), ImVec2(vehicleConfigButtonWidth, 0.0f))) {
@@ -1317,7 +1328,21 @@ void SceneEditor::RenderInspectorPanel() {
                     }
                     ImGui::EndDragDropTarget();
                 }
+                } // Config header
 
+                if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+                const bool canTiltBefore = obj.vehicle.canTilt;
+                if (ImGui::Checkbox("Can Tilt", &obj.vehicle.canTilt)) {
+                    const bool canTiltAfter = obj.vehicle.canTilt;
+                    obj.vehicle.canTilt = canTiltBefore;
+                    PushUndoState();
+                    obj.vehicle.canTilt = canTiltAfter;
+                    if (onDirty_) onDirty_();
+                }
+                ImGui::TextDisabled("When disabled, vehicle cannot roll or pitch.");
+                } // Settings header
+
+                if (ImGui::CollapsingHeader("Chassis", ImGuiTreeNodeFlags_DefaultOpen)) {
                 if (ImGui::Button("Add Chassis Part")) {
                     PushUndoState();
                     obj.vehicle.chassisObjectIds.push_back({});
@@ -1398,20 +1423,20 @@ void SceneEditor::RenderInspectorPanel() {
                     ImGui::PopID();
                 }
 
+                } // Chassis header
+
                 raceman::physics::VehicleConfig loadedConfig;
                 if (TryLoadVehicleConfigForPath(obj.vehicle.configPath, loadedConfig)) {
-                    ImGui::TextDisabled("Vehicle: %s", loadedConfig.name.c_str());
-                    ImGui::TextDisabled("Wheels: %d", static_cast<int>(loadedConfig.wheels.size()));
                     if (scriptsRunning_) {
                         const auto runtimeVehicleIt = std::find_if(runtimeVehicles_.begin(), runtimeVehicles_.end(),
                             [&](const RuntimeVehicleInstance& runtimeVehicle) {
                                 return runtimeVehicle.objectIndex == selectedIndex_ && runtimeVehicle.instance != nullptr;
                             });
                         if (runtimeVehicleIt != runtimeVehicles_.end()) {
+                            if (ImGui::CollapsingHeader("Runtime Debug")) {
                             const raceman::physics::VehicleTelemetry& telemetry = runtimeVehicleIt->instance->getTelemetry();
                             const float speed = glm::length(glm::vec3(telemetry.linearVelocity.x, telemetry.linearVelocity.y, telemetry.linearVelocity.z));
-                            ImGui::Separator();
-                            ImGui::TextDisabled("Runtime Debug");
+                            ImGui::TextDisabled("Vehicle: %s  |  Wheels: %d", loadedConfig.name.c_str(), static_cast<int>(loadedConfig.wheels.size()));
                             ImGui::TextDisabled("Speed: %.2f m/s", speed);
                             ImGui::TextDisabled("Engine RPM: %.0f", telemetry.engineRPM);
                             if (telemetry.isReverse) {
@@ -1463,9 +1488,11 @@ void SceneEditor::RenderInspectorPanel() {
                                 }
                                 ImGui::EndTable();
                             }
-                            ImGui::Separator();
+                            } // Runtime Debug header
                         }
                     }
+                    if (ImGui::CollapsingHeader("Wheels", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::TextDisabled("Config: %s  |  Wheels: %d", loadedConfig.name.c_str(), static_cast<int>(loadedConfig.wheels.size()));
                     for (const raceman::physics::WheelConfig& wheel : loadedConfig.wheels) {
                         auto bindingIt = std::find_if(obj.vehicle.wheelBindings.begin(), obj.vehicle.wheelBindings.end(),
                             [&](const VehicleWheelBinding& candidate) {
@@ -1546,26 +1573,14 @@ void SceneEditor::RenderInspectorPanel() {
                             [&](const VehicleWheelBinding& candidate) {
                                 return candidate.wheelName == wheel.name;
                             });
-                        if (bindingIt != obj.vehicle.wheelBindings.end()) {
-                            glm::vec3 visualRotation = bindingIt->visualRotationEuler;
-                            const std::string rotationLabel = "Mesh Rotation Offset##vehicleWheelRotation_" + wheel.name;
-                            if (RenderInspectorDragFloat3(rotationLabel.c_str(), ("##vehicleWheelRotationValues_" + wheel.name).c_str(), &visualRotation.x, 0.5f)) {
-                                beginInspectorContinuousEdit();
-                                bindingIt->visualRotationEuler = visualRotation;
-                                if (onDirty_) onDirty_();
-                            }
-                            endInspectorContinuousEdit();
-                        }
+                        (void)bindingIt;
                     }
+                    } // Wheels header
                 } else if (!obj.vehicle.configPath.empty()) {
                     ImGui::TextDisabled("Vehicle config could not be loaded.");
                 } else {
-                    ImGui::TextDisabled("Assign a `.vehicle.json` asset to author this vehicle.");
+                    ImGui::TextDisabled("Assign a `.vehicle.json` asset in the Config section.");
                 }
-                ImGui::TextDisabled("Play mode uses bound wheel object transforms as the wheel rest pose.");
-                ImGui::TextDisabled("Bind chassis child objects here to merge their colliders into one chassis body.");
-                ImGui::TextDisabled("Use the wheel object's own transform for placement. Use Mesh Rotation Offset only if the mesh faces the wrong axis.");
-                ImGui::TextDisabled("Wheel-bound child objects are excluded from the chassis build.");
             }
             }
 
@@ -1969,6 +1984,180 @@ void SceneEditor::RenderInspectorPanel() {
             }
             }
 
+            if (currentComponentToRender == SceneInspectorComponentType::Cinemachine) {
+            bool removeCinemachine = false;
+            bool cinemachineOpen = false;
+            bool cinemachineEnabledChanged = false;
+            bool cinemachineHeaderActive = false;
+            bool cinemachineHeaderToggledOpen = false;
+            const bool cinemachineEnabledBefore = obj.cinemachine.enabled;
+            if (obj.hasCinemachine) {
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::Cinemachine;
+                const std::string cinemachineComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Cinemachine);
+                cinemachineOpen = RenderRemovableComponentHeader("Cinemachine Camera", "CinemachineHeader", GetComponentIconTexture("component-camera.png"), &obj.cinemachine.enabled, cinemachineEnabledChanged, removeCinemachine, &componentType, &reorderDraggedType, &reorderTargetType, &cinemachineHeaderActive, &cinemachineHeaderToggledOpen);
+                finishComponentHeaderState(cinemachineComponentKey, SceneInspectorComponentType::Cinemachine, cinemachineHeaderActive, cinemachineHeaderToggledOpen, cinemachineOpen);
+            }
+            if (removeCinemachine) {
+                PushUndoState();
+                obj.hasCinemachine = false;
+                obj.cinemachine = CinemachineCameraComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasCinemachine && cinemachineEnabledChanged) {
+                const bool enabledAfter = obj.cinemachine.enabled;
+                obj.cinemachine.enabled = cinemachineEnabledBefore;
+                PushUndoState();
+                obj.cinemachine.enabled = enabledAfter;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasCinemachine && cinemachineOpen) {
+                // Camera type combo
+                const char* cineTypeNames[] = {"Follow", "Look At", "Follow & Look At"};
+                int cineTypeIndex = static_cast<int>(obj.cinemachine.type);
+                if (ImGui::Combo("Type##cinemachineType", &cineTypeIndex, cineTypeNames, 3)) {
+                    PushUndoState();
+                    obj.cinemachine.type = static_cast<CinemachineCameraType>(cineTypeIndex);
+                    if (onDirty_) onDirty_();
+                }
+
+                // Follow target
+                if (obj.cinemachine.type != CinemachineCameraType::LookAt) {
+                    int followTargetIndex = -1;
+                    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                        if (objects_[i].id == obj.cinemachine.followTargetId) {
+                            followTargetIndex = i;
+                            break;
+                        }
+                    }
+                    std::string followPreview = followTargetIndex >= 0
+                        ? (objects_[followTargetIndex].name.empty() ? "(unnamed)" : objects_[followTargetIndex].name)
+                        : "(none)";
+                    if (ImGui::BeginCombo("Follow Target##cinemachineFollow", followPreview.c_str())) {
+                        if (ImGui::Selectable("(none)", followTargetIndex < 0)) {
+                            PushUndoState();
+                            obj.cinemachine.followTargetId.clear();
+                            if (onDirty_) onDirty_();
+                        }
+                        for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                            if (objects_[i].id == obj.id) continue;
+                            const std::string itemName = objects_[i].name.empty() ? "(unnamed)" : objects_[i].name;
+                            if (ImGui::Selectable((itemName + "##cinemachineFollowObj_" + objects_[i].id).c_str(), i == followTargetIndex)) {
+                                PushUndoState();
+                                obj.cinemachine.followTargetId = objects_[i].id;
+                                if (onDirty_) onDirty_();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
+                            if (payload->DataSize == sizeof(int)) {
+                                const int droppedIndex = *static_cast<const int*>(payload->Data);
+                                if (droppedIndex >= 0 && droppedIndex < static_cast<int>(objects_.size()) && objects_[droppedIndex].id != obj.id) {
+                                    PushUndoState();
+                                    obj.cinemachine.followTargetId = objects_[droppedIndex].id;
+                                    if (onDirty_) onDirty_();
+                                }
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+
+                    glm::vec3 offset = obj.cinemachine.followOffset;
+                    if (RenderInspectorDragFloat3("Follow Offset", "##cinemachineOffset", &offset.x, 0.05f)) {
+                        beginInspectorContinuousEdit();
+                        obj.cinemachine.followOffset = offset;
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                }
+
+                // Look-at target (optional override)
+                if (obj.cinemachine.type != CinemachineCameraType::Follow) {
+                    int lookAtTargetIndex = -1;
+                    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                        if (objects_[i].id == obj.cinemachine.lookAtTargetId) {
+                            lookAtTargetIndex = i;
+                            break;
+                        }
+                    }
+                    const bool usingFollowAsLookAt = obj.cinemachine.lookAtTargetId.empty();
+                    std::string lookAtPreview = usingFollowAsLookAt
+                        ? "(same as follow)"
+                        : (lookAtTargetIndex >= 0 ? (objects_[lookAtTargetIndex].name.empty() ? "(unnamed)" : objects_[lookAtTargetIndex].name) : "(none)");
+                    if (ImGui::BeginCombo("Look At Target##cinemachineLookAt", lookAtPreview.c_str())) {
+                        if (ImGui::Selectable("(same as follow)", usingFollowAsLookAt)) {
+                            PushUndoState();
+                            obj.cinemachine.lookAtTargetId.clear();
+                            if (onDirty_) onDirty_();
+                        }
+                        for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                            if (objects_[i].id == obj.id) continue;
+                            const std::string itemName = objects_[i].name.empty() ? "(unnamed)" : objects_[i].name;
+                            if (ImGui::Selectable((itemName + "##cinemachineLookAtObj_" + objects_[i].id).c_str(), i == lookAtTargetIndex)) {
+                                PushUndoState();
+                                obj.cinemachine.lookAtTargetId = objects_[i].id;
+                                if (onDirty_) onDirty_();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
+                            if (payload->DataSize == sizeof(int)) {
+                                const int droppedIndex = *static_cast<const int*>(payload->Data);
+                                if (droppedIndex >= 0 && droppedIndex < static_cast<int>(objects_.size()) && objects_[droppedIndex].id != obj.id) {
+                                    PushUndoState();
+                                    obj.cinemachine.lookAtTargetId = objects_[droppedIndex].id;
+                                    if (onDirty_) onDirty_();
+                                }
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+                }
+
+                // Rotation offsets
+                if (obj.cinemachine.type != CinemachineCameraType::Follow) {
+                    float pitchOffset = obj.cinemachine.pitchOffset;
+                    if (ImGui::DragFloat("Pitch Offset", &pitchOffset, 0.5f, -89.0f, 89.0f, "%.1f deg")) {
+                        beginInspectorContinuousEdit();
+                        obj.cinemachine.pitchOffset = (std::max)(-89.0f, (std::min)(89.0f, pitchOffset));
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+
+                    float yawOffset = obj.cinemachine.yawOffset;
+                    if (ImGui::DragFloat("Yaw Offset", &yawOffset, 0.5f, -180.0f, 180.0f, "%.1f deg")) {
+                        beginInspectorContinuousEdit();
+                        obj.cinemachine.yawOffset = yawOffset;
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                }
+
+                // Damping
+                float posDamping = obj.cinemachine.positionDamping;
+                if (ImGui::DragFloat("Position Damping", &posDamping, 0.1f, 0.0f, 50.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.cinemachine.positionDamping = (std::max)(0.0f, posDamping);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float rotDamping = obj.cinemachine.rotationDamping;
+                if (ImGui::DragFloat("Rotation Damping", &rotDamping, 0.1f, 0.0f, 50.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.cinemachine.rotationDamping = (std::max)(0.0f, rotDamping);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                if (!scriptsRunning_) {
+                    ImGui::TextDisabled("Activates in Play mode.");
+                }
+            }
+            }
+
             if (currentComponentToRender == SceneInspectorComponentType::Light) {
             bool removeLight = false;
             bool lightOpen = false;
@@ -2303,6 +2492,19 @@ void SceneEditor::RenderMultiSelectionInspector() {
                         object.camera = CameraComponent{};
                         object.camera.isMain = !hasAnyCamera && !assignedMainCamera;
                         assignedMainCamera = assignedMainCamera || object.camera.isMain;
+                    }
+                });
+                markDirty();
+            }
+        }
+        if (anySelected([](const SceneObject& object) { return !object.hasCinemachine; })) {
+            anyAvailable = true;
+            if (ImGui::MenuItem("Cinemachine Camera")) {
+                PushUndoState();
+                forEachSelected([&](SceneObject& object) {
+                    if (!object.hasCinemachine) {
+                        object.hasCinemachine = true;
+                        object.cinemachine = CinemachineCameraComponent{};
                     }
                 });
                 markDirty();

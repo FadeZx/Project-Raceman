@@ -24,15 +24,14 @@ struct RendererViewport {
 };
 
 struct RendererSettings {
-    float exposure{1.0f};
-    float gamma{2.2f};
     glm::vec3 clearColor{0.02f, 0.02f, 0.02f};
-    bool enableShadows{true};
-    bool showEnvironmentDebugView{false};
+    glm::vec3 ambientColor{0.08f, 0.08f, 0.08f};
+    bool enableDrawCallSorting{true};
 };
 
 struct RendererFrameStats {
     std::uint32_t submittedMeshCount{0};
+    std::uint32_t frustumCulledMeshCount{0};
     std::uint32_t submittedLightCount{0};
     std::uint32_t drawCallCount{0};
     std::uint64_t submittedTriangleCount{0};
@@ -112,6 +111,7 @@ public:
     void CreateShadowMaps(int resolution);
 
     void SubmitMesh(const MeshDrawCommand& cmd);
+    void ReportFrustumCulled() { ++frameStats_.frustumCulledMeshCount; }
     void SubmitLight(const LightDrawCommand& cmd);
     void SubmitLine(const DebugLineCommand& cmd);
     void Flush();

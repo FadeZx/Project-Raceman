@@ -91,6 +91,12 @@ void SceneEditor::NewScene(const std::string& sceneName) {
 }
 
 void SceneEditor::SaveCurrentScene() {
+    // Never write runtime transforms to disk.
+    // The destructor sets scriptsRunning_ = false before calling here,
+    // so snapshot restoration still saves correctly on app close.
+    if (scriptsRunning_) {
+        return;
+    }
     if (!IsSceneAssetPath(savePath_)) {
         savePath_ = MakeUniqueSceneAssetPath("Untitled");
     }
@@ -287,6 +293,7 @@ void SceneEditor::Save(const std::string& path) {
             out << "        {\n";
             out << "          \"type\": \"Vehicle\",\n";
             out << "          \"enabled\": " << (o.vehicle.enabled ? "true" : "false") << ",\n";
+            out << "          \"canTilt\": " << (o.vehicle.canTilt ? "true" : "false") << ",\n";
             out << "          \"configPath\": \"" << JsonEscape(NormalizeSlashes(o.vehicle.configPath)) << "\",\n";
             out << "          \"chassisObjectIds\": [";
             for (std::size_t chassisIndex = 0; chassisIndex < o.vehicle.chassisObjectIds.size(); ++chassisIndex) {
@@ -371,6 +378,29 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"nearClip\": " << o.camera.nearClip << ",\n";
             out << "          \"farClip\": " << o.camera.farClip << ",\n";
             out << "          \"clearColor\": [" << o.camera.clearColor.r << ", " << o.camera.clearColor.g << ", " << o.camera.clearColor.b << ", " << o.camera.clearColor.a << "]\n";
+            out << "        }";
+        }
+        if (o.hasCinemachine) {
+            const auto cinemachineTypeStr = [](CinemachineCameraType t) -> const char* {
+                switch (t) {
+                    case CinemachineCameraType::Follow:          return "Follow";
+                    case CinemachineCameraType::LookAt:          return "LookAt";
+                    case CinemachineCameraType::FollowAndLookAt: return "FollowAndLookAt";
+                }
+                return "FollowAndLookAt";
+            };
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Cinemachine\",\n";
+            out << "          \"enabled\": " << (o.cinemachine.enabled ? "true" : "false") << ",\n";
+            out << "          \"cameraType\": \"" << cinemachineTypeStr(o.cinemachine.type) << "\",\n";
+            out << "          \"followTargetId\": \"" << JsonEscape(o.cinemachine.followTargetId) << "\",\n";
+            out << "          \"lookAtTargetId\": \"" << JsonEscape(o.cinemachine.lookAtTargetId) << "\",\n";
+            out << "          \"followOffset\": [" << o.cinemachine.followOffset.x << ", " << o.cinemachine.followOffset.y << ", " << o.cinemachine.followOffset.z << "],\n";
+            out << "          \"pitchOffset\": " << o.cinemachine.pitchOffset << ",\n";
+            out << "          \"yawOffset\": " << o.cinemachine.yawOffset << ",\n";
+            out << "          \"positionDamping\": " << o.cinemachine.positionDamping << ",\n";
+            out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << "\n";
             out << "        }";
         }
         if (o.hasLight) {
@@ -637,6 +667,7 @@ void SceneEditor::Load(const std::string& path) {
                 so.hasPlaneCollider = false;
                 so.hasMeshCollider = false;
                 so.hasCamera = false;
+                so.hasCinemachine = false;
                 so.hasLight = false;
 
                 const auto& components = componentsIt->second.as_array();
@@ -766,6 +797,8 @@ void SceneEditor::Load(const std::string& path) {
                     } else if (componentType == "Vehicle") {
                         so.hasVehicle = true;
                         ReadBool(component, "enabled", so.vehicle.enabled);
+                        so.vehicle.canTilt = true;  // default — override if saved
+                        ReadBool(component, "canTilt", so.vehicle.canTilt);
                         ReadString(component, "configPath", so.vehicle.configPath);
                         so.vehicle.configPath = NormalizeSlashes(so.vehicle.configPath);
                         so.vehicle.chassisObjectIds.clear();
@@ -974,6 +1007,38 @@ void SceneEditor::Load(const std::string& path) {
                         if (farIt != component.end() && farIt->second.is_number()) {
                             so.camera.farClip = (std::max)(so.camera.nearClip + 0.001f, static_cast<float>(farIt->second.as_number()));
                         }
+                    } else if (componentType == "Cinemachine") {
+                        so.hasCinemachine = true;
+                        ReadBool(component, "enabled", so.cinemachine.enabled);
+                        std::string cameraTypeStr;
+                        if (ReadString(component, "cameraType", cameraTypeStr)) {
+                            if (cameraTypeStr == "Follow") {
+                                so.cinemachine.type = CinemachineCameraType::Follow;
+                            } else if (cameraTypeStr == "LookAt") {
+                                so.cinemachine.type = CinemachineCameraType::LookAt;
+                            } else {
+                                so.cinemachine.type = CinemachineCameraType::FollowAndLookAt;
+                            }
+                        }
+                        ReadString(component, "followTargetId", so.cinemachine.followTargetId);
+                        ReadString(component, "lookAtTargetId", so.cinemachine.lookAtTargetId);
+                        ReadVec3(component, "followOffset", so.cinemachine.followOffset);
+                        auto pitchIt = component.find("pitchOffset");
+                        if (pitchIt != component.end() && pitchIt->second.is_number()) {
+                            so.cinemachine.pitchOffset = static_cast<float>(pitchIt->second.as_number());
+                        }
+                        auto yawIt = component.find("yawOffset");
+                        if (yawIt != component.end() && yawIt->second.is_number()) {
+                            so.cinemachine.yawOffset = static_cast<float>(yawIt->second.as_number());
+                        }
+                        auto posDampingIt = component.find("positionDamping");
+                        if (posDampingIt != component.end() && posDampingIt->second.is_number()) {
+                            so.cinemachine.positionDamping = (std::max)(0.0f, static_cast<float>(posDampingIt->second.as_number()));
+                        }
+                        auto rotDampingIt = component.find("rotationDamping");
+                        if (rotDampingIt != component.end() && rotDampingIt->second.is_number()) {
+                            so.cinemachine.rotationDamping = (std::max)(0.0f, static_cast<float>(rotDampingIt->second.as_number()));
+                        }
                     } else if (componentType == "Light") {
                         so.hasLight = true;
                         ReadBool(component, "enabled", so.light.enabled);
@@ -1048,7 +1113,7 @@ void SceneEditor::Load(const std::string& path) {
 
             if (!so.hasMeshFilter && !so.hasMeshRenderer && !so.hasScriptComponent && !so.hasRigidbody &&
                 !so.hasVehicle && !so.hasCharacterController && !so.hasBoxCollider && !so.hasSphereCollider &&
-                !so.hasCapsuleCollider && !so.hasPlaneCollider && !so.hasMeshCollider && !so.hasCamera && !so.hasLight) {
+                !so.hasCapsuleCollider && !so.hasPlaneCollider && !so.hasMeshCollider && !so.hasCamera && !so.hasCinemachine && !so.hasLight) {
                 so.hasMeshFilter = true;
                 so.hasMeshRenderer = true;
                 so.meshFilter.meshType = "Plane";

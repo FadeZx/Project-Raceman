@@ -10,29 +10,29 @@
   "frontSuspension": {
     "restLength": 0.350,
     "springRate": 35000.000,
-    "bumpStopRate": 90000.000,
+    "bumpStopRate": 84500.000,
     "compressionDamping": 2500.000,
     "reboundDamping": 2000.000,
-    "antiRollStiffness": 5000.000
+    "antiRollStiffness": 5790.000
   },
   "rearSuspension": {
     "restLength": 0.350,
     "springRate": 35000.000,
-    "bumpStopRate": 90000.000,
+    "bumpStopRate": 84050.000,
     "compressionDamping": 2500.000,
     "reboundDamping": 2000.000,
-    "antiRollStiffness": 5000.000
+    "antiRollStiffness": 5750.000
   },
   "differential": {
-    "torqueSplit": 0.500,
+    "torqueSplit": 1.000,
     "lockingCoefficient": 0.150,
     "limitedSlip": true
   },
   "engine": {
     "idleRPM": 900.000,
-    "redlineRPM": 7500.000,
-    "stallRPM": 600.000,
-    "inertia": 0.250,
+    "redlineRPM": 12150.000,
+    "stallRPM": 1110.000,
+    "inertia": 0.630,
     "torqueCurve": [
       {"rpm": 1000.000, "torque": 200.000},
       {"rpm": 6500.000, "torque": 220.000}

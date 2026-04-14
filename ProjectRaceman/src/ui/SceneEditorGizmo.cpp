@@ -505,6 +505,33 @@ void SubmitLightIcon(Renderer& renderer, const SceneObject& object, const glm::m
     renderer.SubmitLine({origin + glm::vec3{0.0f, 0.0f, -iconRadius * 1.4f}, origin + glm::vec3{0.0f, 0.0f, iconRadius * 1.4f}, color, width, depthMode});
 }
 
+struct PickCandidate {
+    int   index;
+    float tAabb;
+};
+
+// Möller–Trumbore ray-triangle intersection.
+bool IntersectRayTriangle(
+    const glm::vec3& orig, const glm::vec3& dir,
+    const glm::vec3& v0,   const glm::vec3& v1, const glm::vec3& v2,
+    float& outT)
+{
+    const glm::vec3 e1 = v1 - v0;
+    const glm::vec3 e2 = v2 - v0;
+    const glm::vec3 h  = glm::cross(dir, e2);
+    const float     a  = glm::dot(e1, h);
+    if (a > -1e-6f && a < 1e-6f) return false;
+    const float     f  = 1.0f / a;
+    const glm::vec3 s  = orig - v0;
+    const float     u  = f * glm::dot(s, h);
+    if (u < 0.0f || u > 1.0f) return false;
+    const glm::vec3 q  = glm::cross(s, e1);
+    const float     v  = f * glm::dot(dir, q);
+    if (v < 0.0f || u + v > 1.0f) return false;
+    outT = f * glm::dot(e2, q);
+    return outT > 1e-5f;
+}
+
 } // namespace
 
 void SceneEditor::SelectProjectFile(const std::string& path) {
@@ -568,7 +595,12 @@ void SubmitWireMesh(Renderer& renderer,
 
 void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantTextInput || io.MouseDown[1] || !io.MouseClicked[0] || !ContainsSceneViewportPoint(io.MousePos.x, io.MousePos.y)) {
+
+    // Only pick when the scene viewport is the one under the mouse.
+    // sceneViewportHovered_ tracks the actual ImGui widget hover, which is
+    // more reliable than a raw bounds check (prevents clicks on the game
+    // viewport from triggering scene picks).
+    if (io.WantTextInput || io.MouseDown[1] || !io.MouseClicked[0] || !sceneViewportHovered_) {
         return;
     }
 
@@ -579,44 +611,80 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
         return;
     }
 
-    int bestIndex = -1;
-    float bestT = (std::numeric_limits<float>::max)();
-    int bestPlaneIndex = -1;
-    float bestPlaneT = (std::numeric_limits<float>::max)();
+    // --- Phase 1: broad phase — AABB test, collect candidates ---
+    std::vector<PickCandidate> candidates;
+    candidates.reserve(32);
+
     for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
-        if (!IsObjectEffectivelyEnabled(i)) {
-            continue;
-        }
-        glm::vec3 boundsMin;
-        glm::vec3 boundsMax;
-        if (!GetObjectLocalBounds(objects_[i], boundsMin, boundsMax)) {
-            continue;
+        if (!IsObjectEffectivelyEnabled(i)) continue;
+
+        glm::vec3 localMin, localMax;
+        if (!GetObjectLocalBounds(objects_[i], localMin, localMax)) continue;
+
+        // Apply pivotOffset to the model matrix (same as in SubmitDraws)
+        glm::mat4 meshMatrix = GetObjectWorldMatrix(i);
+        const glm::vec3& po = objects_[i].meshFilter.pivotOffset;
+        if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
+            meshMatrix = meshMatrix * glm::translate(glm::mat4(1.0f), -po);
         }
 
-        const glm::mat4 model = GetObjectWorldMatrix(i);
-        glm::vec3 worldMin;
-        glm::vec3 worldMax;
-        if (!ComputeWorldAabb(model, boundsMin, boundsMax, worldMin, worldMax)) {
-            continue;
-        }
+        glm::vec3 worldMin, worldMax;
+        if (!ComputeWorldAabb(meshMatrix, localMin, localMax, worldMin, worldMax)) continue;
 
-        float t = 0.0f;
-        if (IntersectRayAabb(rayOrigin, rayDirection, worldMin, worldMax, t)) {
-            const std::string meshType = objects_[i].meshFilter.meshType;
-            if (meshType == "Plane") {
-                if (t < bestPlaneT) {
-                    bestPlaneT = t;
-                    bestPlaneIndex = i;
-                }
-            } else if (t < bestT) {
-                bestT = t;
-                bestIndex = i;
-            }
+        float tAabb = 0.0f;
+        if (IntersectRayAabb(rayOrigin, rayDirection, worldMin, worldMax, tAabb)) {
+            candidates.push_back({i, tAabb});
         }
     }
 
-    if (bestIndex < 0 && bestPlaneIndex >= 0) {
-        bestIndex = bestPlaneIndex;
+    // Sort nearest AABB hit first so narrow phase stops at the front-most hit
+    std::sort(candidates.begin(), candidates.end(),
+              [](const PickCandidate& a, const PickCandidate& b) { return a.tAabb < b.tAabb; });
+
+    // --- Phase 2: narrow phase — mesh triangle test ---
+    int   bestIndex = -1;
+    float bestT     = (std::numeric_limits<float>::max)();
+
+    for (const PickCandidate& cand : candidates) {
+        // Early-out: if a nearer candidate already scored a triangle hit, any
+        // candidate whose AABB starts beyond that hit can be skipped.
+        if (cand.tAabb >= bestT) break;
+
+        const SceneObject& obj = objects_[cand.index];
+
+        // Apply pivotOffset to the mesh matrix
+        glm::mat4 meshMatrix = GetObjectWorldMatrix(cand.index);
+        const glm::vec3& po = obj.meshFilter.pivotOffset;
+        if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
+            meshMatrix = meshMatrix * glm::translate(glm::mat4(1.0f), -po);
+        }
+
+        // If the object has CPU pick data, test triangles in world space.
+        // Vertices are transformed per-click, which is fine (picking is infrequent).
+        bool narrowTested = false;
+        const std::vector<glm::vec3>&    pv = obj.meshFilter.pickVertices;
+        const std::vector<unsigned int>& pi = obj.meshFilter.pickIndices;
+        if (!pv.empty() && pi.size() >= 3) {
+            const std::size_t triCount = pi.size() / 3;
+            for (std::size_t tri = 0; tri < triCount; ++tri) {
+                const glm::vec3 wv0 = glm::vec3(meshMatrix * glm::vec4(pv[pi[tri * 3 + 0]], 1.0f));
+                const glm::vec3 wv1 = glm::vec3(meshMatrix * glm::vec4(pv[pi[tri * 3 + 1]], 1.0f));
+                const glm::vec3 wv2 = glm::vec3(meshMatrix * glm::vec4(pv[pi[tri * 3 + 2]], 1.0f));
+                float tTri = 0.0f;
+                if (IntersectRayTriangle(rayOrigin, rayDirection, wv0, wv1, wv2, tTri) && tTri < bestT) {
+                    bestT     = tTri;
+                    bestIndex = cand.index;
+                }
+            }
+            narrowTested = true;
+        }
+
+        // Fallback for primitives (Plane, primitive meshes without modelRef):
+        // accept the AABB hit as the pick result.
+        if (!narrowTested && cand.tAabb < bestT) {
+            bestT     = cand.tAabb;
+            bestIndex = cand.index;
+        }
     }
 
     if (bestIndex >= 0) {
@@ -939,11 +1007,20 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             helperDepthMode);
     }
     if (colliderType == SceneColliderType::Mesh && object.meshCollider.enabled) {
+        // Mesh vertices are in the asset's original coordinate space. For center-pivot
+        // objects the object sits at meshCenter in the hierarchy, but the pivot offset
+        // is pre-subtracted at render time (T(-pivotOffset)). Apply the same correction
+        // here so the wire overlay aligns with the rendered mesh.
+        glm::mat4 meshGizmoMatrix = objectMatrix;
+        const glm::vec3& po = object.meshFilter.pivotOffset;
+        if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
+            meshGizmoMatrix = meshGizmoMatrix * glm::translate(glm::mat4(1.0f), -po);
+        }
         ImportedCollisionMesh mesh;
         if (TryGetCollisionMeshForObject(object, mesh)) {
             SubmitWireMesh(
                 renderer,
-                objectMatrix,
+                meshGizmoMatrix,
                 mesh.vertices,
                 mesh.indices,
                 glm::vec4{0.95f, 0.55f, 0.2f, 1.0f},
@@ -955,7 +1032,7 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             if (GetObjectLocalBounds(object, boundsMin, boundsMax)) {
                 const glm::vec3 size = boundsMax - boundsMin;
                 const glm::vec3 center = (boundsMin + boundsMax) * 0.5f;
-                SubmitWireBox(renderer, objectMatrix, center, size, glm::vec4{0.95f, 0.55f, 0.2f, 1.0f}, colliderWidth, helperDepthMode);
+                SubmitWireBox(renderer, meshGizmoMatrix, center, size, glm::vec4{0.95f, 0.55f, 0.2f, 1.0f}, colliderWidth, helperDepthMode);
             }
         }
     }

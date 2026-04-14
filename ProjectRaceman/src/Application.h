@@ -65,6 +65,10 @@ private:
     bool running_{true};
     double lastFrameTime_{0.0};
 
+    // Render/physics debug toggles (edited via Project Settings)
+    bool frustumCullingEnabled_{true};
+    bool physicsCullingEnabled_{true};
+
     // FPS tracking for window title
     double fpsAccum_{0.0};
     int fpsFrames_{0};

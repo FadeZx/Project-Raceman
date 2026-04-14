@@ -19,6 +19,9 @@ struct ImportedMeshInfo {
     std::string diffuseTexturePath;
     glm::vec3 localBoundsMin{0.0f};
     glm::vec3 localBoundsMax{0.0f};
+    // CPU-side vertex positions and triangle indices for picking (narrow phase).
+    std::vector<glm::vec3>    pickVertices;
+    std::vector<unsigned int> pickIndices;
 };
 
 struct ImportedCollisionMesh {

@@ -353,7 +353,9 @@ void Application::Update(float deltaTime) {
                     skyboxController_->SetFaces(faces);
                     skyboxController_->Reload();
                 }
-            });
+            },
+            &frustumCullingEnabled_,
+            &physicsCullingEnabled_);
 
         // Anchor the stats overlay to the top-left of the Game View
         glm::vec2 statsAnchor(-1.0f);
@@ -367,6 +369,9 @@ void Application::Update(float deltaTime) {
 
         if (sceneEditor_) {
             sceneEditor_->SetShowCullingDebug(debugUi_->ShowCullingDebug());
+            sceneEditor_->SetShowFrustumCullDebug(debugUi_->ShowFrustumCullDebug());
+            sceneEditor_->SetFrustumCullingEnabled(frustumCullingEnabled_);
+            sceneEditor_->SetPhysicsCullingEnabled(physicsCullingEnabled_);
         }
 
         debugUi_->EndFrame();
@@ -423,6 +428,9 @@ void Application::Render() {
         if (viewport.width <= 1 || viewport.height <= 1) {
             return;
         }
+        // Reset stats here so the profiler shows game-pass numbers only,
+        // not the cumulative total across both scene and game passes.
+        renderer_->ResetFrameStats();
 
         const float aspect = static_cast<float>(viewport.width) / static_cast<float>(viewport.height);
         glm::mat4 view{1.0f};

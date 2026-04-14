@@ -26,9 +26,53 @@
           "enabled": true,
           "lightType": "Directional",
           "color": [1, 1, 1],
-          "intensity": 1.75,
+          "intensity": 1.3,
           "range": 100,
           "spotAngleDegrees": 30
+        }
+      ]
+    },
+    {
+      "id": "camera_1",
+      "parentId": "",
+      "name": "Camera",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Camera", "MeshRenderer", "Cinemachine"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 5.56745, -11.6021],
+          "rotationEuler": [180, 5.9887e-06, 180],
+          "scale": [1.5, 1.5, 1.5]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": true,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.1,
+          "farClip": 500,
+          "clearColor": [0.02, 0.02, 0.02, 1]
+        },
+        {
+          "type": "Cinemachine",
+          "enabled": true,
+          "cameraType": "FollowAndLookAt",
+          "followTargetId": "mesh_6",
+          "lookAtTargetId": "mesh_6",
+          "followOffset": [0, 4.1, -7],
+          "pitchOffset": 16.5,
+          "yawOffset": 0,
+          "positionDamping": 9.6,
+          "rotationDamping": 5
         }
       ]
     },
@@ -73,38 +117,6 @@
       ]
     },
     {
-      "id": "camera_1",
-      "parentId": "gameobject_1",
-      "name": "Camera",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "Camera", "MeshRenderer"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 2, -5.59375],
-          "rotationEuler": [180, 5.00896e-06, 180],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "pbr_default",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Camera",
-          "enabled": true,
-          "isMain": true,
-          "fieldOfViewDegrees": 60,
-          "nearClip": 0.1,
-          "farClip": 500,
-          "clearColor": [0.02, 0.02, 0.02, 1]
-        }
-      ]
-    },
-    {
       "id": "mesh_3",
       "parentId": "gameobject_1",
       "name": "FLWheel",
@@ -115,8 +127,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0.501839, 1.19209e-06, 0.870407],
-          "rotationEuler": [145.677, 1.97661, -179.48],
+          "position": [0.501831, 1.01328e-06, 0.870411],
+          "rotationEuler": [0, 0, 180],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -153,8 +165,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.010766, 2.073, -3.345],
-          "rotationEuler": [0.00399163, 0, 0],
+          "position": [0, 2.6, -5.2],
+          "rotationEuler": [0, 0, 0],
           "scale": [1.5, 1.5, 1.5]
         },
         {
@@ -166,6 +178,7 @@
         {
           "type": "Vehicle",
           "enabled": true,
+          "canTilt": true,
           "configPath": "assets/car/Test1.vehicle.json",
           "chassisObjectIds": ["mesh_6"],
           "wheelBindings": [
@@ -204,8 +217,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.516769, 1.49012e-06, 0.87606],
-          "rotationEuler": [22.2678, -2.41984, -0.77938],
+          "position": [-0.516769, 1.13249e-06, 0.87606],
+          "rotationEuler": [0, 0, 0],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -242,8 +255,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0.51342, 1.13249e-06, -0.635094],
-          "rotationEuler": [-158.916, 1.09194, -178.56],
+          "position": [0.51342, 9.53674e-07, -0.635094],
+          "rotationEuler": [0, 0, 180],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -280,8 +293,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.536942, 1.54972e-06, -0.634239],
-          "rotationEuler": [113.494, 3.87646, -1.18598],
+          "position": [-0.536949, 1.43051e-06, -0.634237],
+          "rotationEuler": [0, 0, 0],
           "scale": [0.5, 0.5, 0.5]
         },
         {
@@ -327,64 +340,9 @@
           "enabled": true,
           "lightType": "Spot",
           "color": [1, 1, 1],
-          "intensity": 10.9,
+          "intensity": 4.1,
           "range": 72.8,
           "spotAngleDegrees": 57
-        }
-      ]
-    },
-    {
-      "id": "mesh_7",
-      "parentId": "",
-      "name": "collider test wheel",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Rigidbody", "Collider"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [10.854, 1.67931, 10.9635],
-          "rotationEuler": [4.32414e-05, 0.0143073, -7.47984e-06],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "D:/Project-Raceman/ProjectRaceman/Project/assets/car/Chevrolet-nascar-FLWheel.obj",
-          "meshIndex": 0,
-          "importedMaterialName": "wheel",
-          "diffuseTexturePath": "wheel.png"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "chevrolet-nascar-flwheel_wheel",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Rigidbody",
-          "enabled": true,
-          "bodyType": "Dynamic",
-          "mass": 15,
-          "useGravity": true,
-          "linearDamping": 0.05,
-          "angularDamping": 0.05,
-          "friction": 0.68,
-          "restitution": 0.42,
-          "velocity": [0, 0, 0],
-          "angularVelocity": [0, 0, 0],
-          "freezePosition": [false, false, false],
-          "freezeRotation": [false, false, false]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": false,
-          "isTrigger": false,
-          "buildQuality": "Balanced",
-          "mode": "ConvexHull"
         }
       ]
     },
@@ -399,8 +357,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-1.28768, -1.92899, 20.8333],
-          "rotationEuler": [0.134503, -0.518341, -0.00655397],
+          "position": [0, 0, 1.27527],
+          "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -454,8 +412,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0.539475, -0.950107, 20.842],
-          "rotationEuler": [0.0301342, 0.160494, 0.0121],
+          "position": [0, 0, -1.26158],
+          "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -509,8 +467,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.0502615, 0.0305667, 20.8495],
-          "rotationEuler": [0.0933255, 0.174505, -0.0387913],
+          "position": [0, 1.35232, 0.696201],
+          "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -564,7 +522,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [14.6335, 2.41024, 0],
+          "position": [0.709813, 8.93584, -55.219],
           "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
@@ -587,8 +545,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [1.298, -1.93021, 20.8317],
-          "rotationEuler": [0.003548, -0.399536, 0.00290778],
+          "position": [0, 1.39835, -0.583702],
+          "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -642,8 +600,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0.000799179, -1.93026, 20.8332],
-          "rotationEuler": [0.00598633, -0.452021, -0.00160069],
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -697,8 +655,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.851251, -0.948789, 20.8404],
-          "rotationEuler": [0.111182, -0.112072, -0.0731084],
+          "position": [0, 2.63489, 0],
+          "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -943,13 +901,19 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform"],
+      "componentOrder": ["Transform", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
           "position": [0, 0, 0],
           "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
         }
       ]
     },
@@ -6923,5 +6887,5 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1"]
+  "hierarchyClosed": ["gameobject_10", "gameobject_1635"]
 }

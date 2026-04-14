@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include "../physics/MeshColliderBuildQuality.h"
 #include "../physics/MeshColliderMode.h"
 #include "../physics/PhysicsLayers.h"
@@ -79,6 +80,7 @@ enum class SceneInspectorComponentType {
     CharacterController,
     Collider,
     Camera,
+    Cinemachine,
     Light
 };
 
@@ -120,6 +122,8 @@ struct MeshFilterComponent {
     unsigned int indexCount{0};
     glm::vec3 localBoundsMin{-0.5f, -0.5f, -0.5f};
     glm::vec3 localBoundsMax{0.5f, 0.5f, 0.5f};
+    std::vector<glm::vec3>    pickVertices; // CPU positions for picking narrow phase
+    std::vector<unsigned int> pickIndices;
     std::shared_ptr<::Model> modelRef;
 };
 
@@ -184,6 +188,7 @@ struct VehicleWheelBinding {
 
 struct VehicleComponent {
     bool enabled{true};
+    bool canTilt{true};
     std::string configPath;
     std::vector<std::string> chassisObjectIds;
     std::vector<VehicleWheelBinding> wheelBindings;
@@ -236,6 +241,24 @@ struct CameraComponent {
     glm::vec4 clearColor{0.02f, 0.02f, 0.02f, 1.0f};
 };
 
+enum class CinemachineCameraType {
+    Follow,           // offset from target, camera looks in its own forward direction
+    LookAt,           // camera stays fixed, rotates to look at target
+    FollowAndLookAt,  // follows at offset and always looks at target
+};
+
+struct CinemachineCameraComponent {
+    bool enabled{true};
+    CinemachineCameraType type{CinemachineCameraType::FollowAndLookAt};
+    std::string followTargetId;
+    std::string lookAtTargetId;  // if empty, uses followTargetId
+    glm::vec3 followOffset{0.0f, 2.0f, -5.0f};  // offset in target-local space
+    float pitchOffset{0.0f};  // degrees — tilts camera up/down after look-at
+    float yawOffset{0.0f};    // degrees — rotates camera left/right after look-at
+    float positionDamping{5.0f};
+    float rotationDamping{5.0f};
+};
+
 struct LightComponent {
     bool enabled{true};
     LightType type{LightType::Point};
@@ -266,6 +289,7 @@ struct SceneObject {
     bool hasPlaneCollider{false};
     bool hasMeshCollider{false};
     bool hasCamera{false};
+    bool hasCinemachine{false};
     bool hasLight{false};
     MeshFilterComponent meshFilter;
     MeshRendererComponent meshRenderer;
@@ -279,6 +303,7 @@ struct SceneObject {
     PlaneColliderComponent planeCollider;
     MeshColliderComponent meshCollider;
     CameraComponent camera;
+    CinemachineCameraComponent cinemachine;
     LightComponent light;
 };
 
@@ -371,6 +396,12 @@ public:
     const std::string& GetProjectName() const { return projectName_; }
     const PhysicsWorld* GetPhysicsWorld() const { return physicsWorld_.get(); }
     void SetShowCullingDebug(bool show) { showCullingDebug_ = show; }
+    bool IsPhysicsCullingEnabled() const { return enablePhysicsCulling_; }
+    void SetPhysicsCullingEnabled(bool v) { enablePhysicsCulling_ = v; }
+    bool IsFrustumCullingEnabled() const { return enableFrustumCulling_; }
+    void SetFrustumCullingEnabled(bool v) { enableFrustumCulling_ = v; }
+    bool ShowFrustumCullDebug() const { return showFrustumCullDebug_; }
+    void SetShowFrustumCullDebug(bool v) { showFrustumCullDebug_ = v; }
 
     void ImportObj(const std::string& path);
     void ImportObjWithOptions(const std::string& path, int pivotMode);
@@ -394,6 +425,8 @@ private:
     void UpdateVehiclePhysics(float deltaTime);
     void UpdatePhysics(float deltaTime);
     void UpdateVehicles(float deltaTime);
+    void UpdateCinemachine(float deltaTime);
+    void PreviewCinemachineInEditor();
     void ResetPhysicsVelocities();
     void SetScriptsRunning(bool running);
     void SetScriptsPaused(bool paused);
@@ -551,6 +584,13 @@ private:
     };
     std::vector<RuntimeVehicleInstance> runtimeVehicles_;
 
+    struct RuntimeCinemachineState {
+        glm::vec3 smoothedPosition{0.0f};
+        glm::quat smoothedRotation{1.0f, 0.0f, 0.0f, 0.0f};
+        bool initialized{false};
+    };
+    std::unordered_map<std::string, RuntimeCinemachineState> runtimeCinemachineStates_;
+
     int renamingObjectIndex_{-1};
     bool focusObjectRename_{false};
     char objectRenameBuffer_[128]{};
@@ -584,6 +624,9 @@ private:
     std::vector<glm::mat4> gizmoDragStartWorldMatrices_;
     bool gizmoDirtyDuringDrag_{false};
     bool showCullingDebug_{false};
+    bool enablePhysicsCulling_{true};
+    bool enableFrustumCulling_{true};
+    bool showFrustumCullDebug_{false};
     bool inspectorEditActive_{false};
     bool linkedScaleValues_{true};
     bool linkedMultiScaleValues_{true};

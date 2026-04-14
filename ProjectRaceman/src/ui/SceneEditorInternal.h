@@ -169,6 +169,7 @@ inline std::vector<SceneInspectorComponentType> DefaultInspectorComponentOrder()
         SceneInspectorComponentType::CharacterController,
         SceneInspectorComponentType::Collider,
         SceneInspectorComponentType::Camera,
+        SceneInspectorComponentType::Cinemachine,
         SceneInspectorComponentType::Light
     };
 }
@@ -193,6 +194,8 @@ inline bool HasInspectorComponent(const SceneObject& object, SceneInspectorCompo
         return HasColliderComponent(object);
     case SceneInspectorComponentType::Camera:
         return object.hasCamera;
+    case SceneInspectorComponentType::Cinemachine:
+        return object.hasCinemachine;
     case SceneInspectorComponentType::Light:
         return object.hasLight;
     }
@@ -880,6 +883,8 @@ inline void ApplyMeshInfoToSceneObject(SceneObject& object, const ImportedMeshIn
     object.meshFilter.diffuseTextureId = info.diffuseTextureId;
     object.meshFilter.localBoundsMin = info.localBoundsMin;
     object.meshFilter.localBoundsMax = info.localBoundsMax;
+    object.meshFilter.pickVertices = info.pickVertices;
+    object.meshFilter.pickIndices  = info.pickIndices;
     object.meshFilter.modelRef = model;
 }
 
@@ -1159,6 +1164,7 @@ inline const char* InspectorComponentTypeToString(SceneInspectorComponentType ty
     case SceneInspectorComponentType::CharacterController: return "CharacterController";
     case SceneInspectorComponentType::Collider: return "Collider";
     case SceneInspectorComponentType::Camera: return "Camera";
+    case SceneInspectorComponentType::Cinemachine: return "Cinemachine";
     case SceneInspectorComponentType::Light: return "Light";
     }
     return "Transform";
@@ -1174,6 +1180,7 @@ inline bool InspectorComponentTypeFromString(const std::string& value, SceneInsp
     if (value == "CharacterController") { outType = SceneInspectorComponentType::CharacterController; return true; }
     if (value == "Collider") { outType = SceneInspectorComponentType::Collider; return true; }
     if (value == "Camera") { outType = SceneInspectorComponentType::Camera; return true; }
+    if (value == "Cinemachine") { outType = SceneInspectorComponentType::Cinemachine; return true; }
     if (value == "Light") { outType = SceneInspectorComponentType::Light; return true; }
     return false;
 }

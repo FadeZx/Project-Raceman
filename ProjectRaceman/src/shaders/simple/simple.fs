@@ -23,6 +23,7 @@ struct Light {
     float spotAngleDegrees;
 };
 
+uniform vec3 uAmbientColor;
 uniform int uLightCount;
 uniform Light uLights[8];
 
@@ -43,7 +44,7 @@ void main() {
     float roughness = clamp(uRoughness, 0.02, 1.0);
     float shininess = mix(96.0, 8.0, roughness);
     vec3 specularColor = mix(vec3(0.04), albedo.rgb, metallic);
-    vec3 lit = albedo.rgb * 0.08;
+    vec3 lit = albedo.rgb * uAmbientColor;
 
     for (int i = 0; i < uLightCount; ++i) {
         Light light = uLights[i];

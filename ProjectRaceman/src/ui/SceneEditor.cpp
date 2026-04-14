@@ -565,6 +565,17 @@ SceneEditor::SceneEditor() {
 }
 
 SceneEditor::~SceneEditor() {
+    // If the app is closed while in play mode, restore the pre-play snapshot so
+    // the saved scene on disk reflects the authored state, not runtime transforms.
+    if (scriptsRunning_ && hasPlayModeSnapshot_) {
+        objects_ = playModeSnapshot_.objects;
+        selectedIndex_ = playModeSnapshot_.selectedIndex;
+        selectedIndices_ = playModeSnapshot_.selectedIndices;
+        playModeSnapshot_ = {};
+        hasPlayModeSnapshot_ = false;
+        scriptsRunning_ = false;
+        SaveCurrentScene();
+    }
     for (const auto& [filename, textureId] : componentIconTextures_) {
         (void)filename;
         if (textureId != 0) {
@@ -653,6 +664,8 @@ void SceneEditor::RenderUI(float deltaTime) {
     UpdateVehiclePhysics(deltaTime);
     UpdatePhysics(deltaTime);
     UpdateVehicles(deltaTime);
+    UpdateCinemachine(deltaTime);
+    PreviewCinemachineInEditor();
 
     RenderDockspaceHost();
     RenderScenePanel();
@@ -1099,6 +1112,10 @@ bool SceneEditor::PasteInspectorComponentFromClipboard(const std::vector<int>& t
         case SceneInspectorComponentType::Camera:
             target.hasCamera = true;
             target.camera = componentClipboard_.sourceObject.camera;
+            break;
+        case SceneInspectorComponentType::Cinemachine:
+            target.hasCinemachine = true;
+            target.cinemachine = componentClipboard_.sourceObject.cinemachine;
             break;
         case SceneInspectorComponentType::Light:
             target.hasLight = true;
@@ -2153,6 +2170,7 @@ void SceneEditor::Load(const std::string& path) {
                 so.hasPlaneCollider = false;
                 so.hasMeshCollider = false;
                 so.hasCamera = false;
+                so.hasCinemachine = false;
                 so.hasLight = false;
 
                 const auto& components = componentsIt->second.as_array();
@@ -2489,6 +2507,38 @@ void SceneEditor::Load(const std::string& path) {
                         auto farIt = component.find("farClip");
                         if (farIt != component.end() && farIt->second.is_number()) {
                             so.camera.farClip = (std::max)(so.camera.nearClip + 0.001f, static_cast<float>(farIt->second.as_number()));
+                        }
+                    } else if (componentType == "Cinemachine") {
+                        so.hasCinemachine = true;
+                        ReadBool(component, "enabled", so.cinemachine.enabled);
+                        std::string cameraTypeStr;
+                        if (ReadString(component, "cameraType", cameraTypeStr)) {
+                            if (cameraTypeStr == "Follow") {
+                                so.cinemachine.type = CinemachineCameraType::Follow;
+                            } else if (cameraTypeStr == "LookAt") {
+                                so.cinemachine.type = CinemachineCameraType::LookAt;
+                            } else {
+                                so.cinemachine.type = CinemachineCameraType::FollowAndLookAt;
+                            }
+                        }
+                        ReadString(component, "followTargetId", so.cinemachine.followTargetId);
+                        ReadString(component, "lookAtTargetId", so.cinemachine.lookAtTargetId);
+                        ReadVec3(component, "followOffset", so.cinemachine.followOffset);
+                        auto pitchIt = component.find("pitchOffset");
+                        if (pitchIt != component.end() && pitchIt->second.is_number()) {
+                            so.cinemachine.pitchOffset = static_cast<float>(pitchIt->second.as_number());
+                        }
+                        auto yawIt = component.find("yawOffset");
+                        if (yawIt != component.end() && yawIt->second.is_number()) {
+                            so.cinemachine.yawOffset = static_cast<float>(yawIt->second.as_number());
+                        }
+                        auto posDampIt = component.find("positionDamping");
+                        if (posDampIt != component.end() && posDampIt->second.is_number()) {
+                            so.cinemachine.positionDamping = (std::max)(0.0f, static_cast<float>(posDampIt->second.as_number()));
+                        }
+                        auto rotDampIt = component.find("rotationDamping");
+                        if (rotDampIt != component.end() && rotDampIt->second.is_number()) {
+                            so.cinemachine.rotationDamping = (std::max)(0.0f, static_cast<float>(rotDampIt->second.as_number()));
                         }
                     } else if (componentType == "Light") {
                         so.hasLight = true;
@@ -3343,6 +3393,19 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
         renderer.SubmitLight(light);
     }
 
+    // Extract frustum planes from clip matrix (Gribb-Hartmann method)
+    // Column-major glm: vp[col][row]
+    glm::vec4 frustumPlanes[6];
+    if (enableFrustumCulling_) {
+        const glm::mat4 vp = renderer.GetProj() * renderer.GetView();
+        frustumPlanes[0] = { vp[0][3] + vp[0][0], vp[1][3] + vp[1][0], vp[2][3] + vp[2][0], vp[3][3] + vp[3][0] }; // Left
+        frustumPlanes[1] = { vp[0][3] - vp[0][0], vp[1][3] - vp[1][0], vp[2][3] - vp[2][0], vp[3][3] - vp[3][0] }; // Right
+        frustumPlanes[2] = { vp[0][3] + vp[0][1], vp[1][3] + vp[1][1], vp[2][3] + vp[2][1], vp[3][3] + vp[3][1] }; // Bottom
+        frustumPlanes[3] = { vp[0][3] - vp[0][1], vp[1][3] - vp[1][1], vp[2][3] - vp[2][1], vp[3][3] - vp[3][1] }; // Top
+        frustumPlanes[4] = { vp[0][3] + vp[0][2], vp[1][3] + vp[1][2], vp[2][3] + vp[2][2], vp[3][3] + vp[3][2] }; // Near
+        frustumPlanes[5] = { vp[0][3] - vp[0][2], vp[1][3] - vp[1][2], vp[2][3] - vp[2][2], vp[3][3] - vp[3][2] }; // Far
+    }
+
     for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
         const auto& o = objects_[i];
         if (!IsObjectEffectivelyEnabled(i)) continue;
@@ -3361,6 +3424,50 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
             }
             cmd.modelMatrix = m;
         }
+
+        // Frustum culling: test world-space AABB against all 6 planes
+        if (enableFrustumCulling_) {
+            const glm::vec3& lMin = o.meshFilter.localBoundsMin;
+            const glm::vec3& lMax = o.meshFilter.localBoundsMax;
+            const glm::vec3 corners[8] = {
+                {lMin.x, lMin.y, lMin.z}, {lMax.x, lMin.y, lMin.z},
+                {lMax.x, lMax.y, lMin.z}, {lMin.x, lMax.y, lMin.z},
+                {lMin.x, lMin.y, lMax.z}, {lMax.x, lMin.y, lMax.z},
+                {lMax.x, lMax.y, lMax.z}, {lMin.x, lMax.y, lMax.z}
+            };
+            glm::vec3 worldMin = glm::vec3(cmd.modelMatrix * glm::vec4(corners[0], 1.0f));
+            glm::vec3 worldMax = worldMin;
+            for (int c = 1; c < 8; ++c) {
+                const glm::vec3 wp = glm::vec3(cmd.modelMatrix * glm::vec4(corners[c], 1.0f));
+                if (wp.x < worldMin.x) worldMin.x = wp.x;
+                if (wp.y < worldMin.y) worldMin.y = wp.y;
+                if (wp.z < worldMin.z) worldMin.z = wp.z;
+                if (wp.x > worldMax.x) worldMax.x = wp.x;
+                if (wp.y > worldMax.y) worldMax.y = wp.y;
+                if (wp.z > worldMax.z) worldMax.z = wp.z;
+            }
+            bool culled = false;
+            for (int p = 0; p < 6; ++p) {
+                const glm::vec4& plane = frustumPlanes[p];
+                // Positive vertex: pick the corner that maximises dot(n, v)
+                const glm::vec3 pv = {
+                    plane.x >= 0.0f ? worldMax.x : worldMin.x,
+                    plane.y >= 0.0f ? worldMax.y : worldMin.y,
+                    plane.z >= 0.0f ? worldMax.z : worldMin.z
+                };
+                if (plane.x * pv.x + plane.y * pv.y + plane.z * pv.z + plane.w < 0.0f) {
+                    culled = true;
+                    break;
+                }
+            }
+            if (culled) {
+                renderer.ReportFrustumCulled();
+                // When frustum cull debug is on, culled objects are simply not drawn
+                // so you see exactly what the camera renders — no extra gizmos.
+                continue;
+            }
+        }
+
         cmd.materialId = o.meshRenderer.materialId.empty() ? std::string("pbr_default") : o.meshRenderer.materialId;
         if (const Material* material = materialManager_.Get(cmd.materialId)) {
             cmd.color = {

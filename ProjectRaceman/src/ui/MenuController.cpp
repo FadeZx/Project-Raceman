@@ -49,8 +49,9 @@ void MenuController::Render(Renderer& renderer,
                             const std::function<void()>& onAddMeshPlane,
                             Console* console,
                             EditorProjectMenu projectMenu,
-                            const std::function<void(const SkyboxFaces&)>& onSkyboxChosen) {
-    (void)renderer;
+                            const std::function<void(const SkyboxFaces&)>& onSkyboxChosen,
+                            bool* frustumCullingEnabled,
+                            bool* physicsCullingEnabled) {
 
     RenderMainMenu(onAddMeshPlane, projectMenu, profilerVisible, setProfilerVisible);
 
@@ -59,12 +60,8 @@ void MenuController::Render(Renderer& renderer,
             if (ImGui::BeginTabBar("GlobalProjectSettingsTabs")) {
                 if (ImGui::BeginTabItem("Rendering")) {
                     auto& settings = renderer.GetSettings();
-                    ImGui::TextUnformatted("Renderer Settings");
-                    ImGui::SliderFloat("Exposure", &settings.exposure, 0.1f, 5.0f, "%.2f");
-                    ImGui::SliderFloat("Gamma", &settings.gamma, 1.0f, 3.0f, "%.2f");
                     ImGui::ColorEdit3("Clear Color", &settings.clearColor.x);
-                    ImGui::Checkbox("Enable Shadows", &settings.enableShadows);
-                    ImGui::Checkbox("Show Env Debug", &settings.showEnvironmentDebugView);
+                    ImGui::ColorEdit3("Ambient Light", &settings.ambientColor.x);
 
                     bool vs = vsyncEnabled;
                     if (ImGui::Checkbox("VSync", &vs)) {
@@ -72,6 +69,13 @@ void MenuController::Render(Renderer& renderer,
                             setVSync(vs);
                         }
                     }
+
+                    ImGui::Separator();
+                    ImGui::TextUnformatted("Optimizations");
+                    if (frustumCullingEnabled) {
+                        ImGui::Checkbox("Frustum Culling", frustumCullingEnabled);
+                    }
+                    ImGui::Checkbox("Draw Call Sorting", &settings.enableDrawCallSorting);
 
                     ImGui::Separator();
                     if (showSkybox_) {
@@ -120,6 +124,10 @@ void MenuController::Render(Renderer& renderer,
                 }
 
                 if (ImGui::BeginTabItem("Physics")) {
+                    if (physicsCullingEnabled) {
+                        ImGui::Checkbox("Physics Body Culling", physicsCullingEnabled);
+                        ImGui::Separator();
+                    }
                     if (projectMenu.renderProjectSettings) {
                         projectMenu.renderProjectSettings();
                     } else {

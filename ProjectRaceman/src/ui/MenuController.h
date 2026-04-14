@@ -37,7 +37,9 @@ public:
                 const std::function<void()>& onAddMeshPlane = std::function<void()>(),
                 Console* console = nullptr,
                 EditorProjectMenu projectMenu = {},
-                const std::function<void(const SkyboxFaces&)>& onSkyboxChosen = {});
+                const std::function<void(const SkyboxFaces&)>& onSkyboxChosen = {},
+                bool* frustumCullingEnabled = nullptr,
+                bool* physicsCullingEnabled = nullptr);
 
 private:
     // Panels
