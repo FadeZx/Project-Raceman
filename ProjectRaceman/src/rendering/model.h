@@ -228,7 +228,7 @@ private:
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
 
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures, materialName);
+        return Mesh(vertices, indices, textures, materialName, std::string(mesh->mName.C_Str()));
 
     }
 

@@ -14,6 +14,7 @@ struct ImportedMeshInfo {
     unsigned int indexCount;
     unsigned int diffuseTextureId;
     unsigned int meshIndex;
+    std::string meshName;
     std::string materialName;
     std::string diffuseTexturePath;
     glm::vec3 localBoundsMin{0.0f};

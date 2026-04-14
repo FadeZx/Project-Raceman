@@ -30,6 +30,7 @@ std::vector<ImportedMeshInfo> GetMeshInfos(const std::shared_ptr<::Model>& model
         info.vao = m.VAO;
         info.indexCount = static_cast<unsigned int>(m.indices.size());
         info.meshIndex = static_cast<unsigned int>(i);
+        info.meshName = m.name;
         info.materialName = m.materialName;
         if (!m.vertices.empty()) {
             info.localBoundsMin = m.vertices.front().Position;

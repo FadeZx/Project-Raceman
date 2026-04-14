@@ -768,48 +768,21 @@ void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
             const auto& info = infos[i];
             const std::string meshBaseName = baseName + (infos.size() > 1 ? ("_" + std::to_string(i)) : "");
             const glm::vec3 meshCenter = (info.localBoundsMin + info.localBoundsMax) * 0.5f;
-            std::string meshParentId = packageRootId;
-
-            if (centerPivot) {
-                SceneObject pivot;
-                pivot.id = MakeId("gameobject");
-                pivot.name = meshBaseName;
-                pivot.type = "GameObject";
-                pivot.parentId = packageRootId;
-                pivot.transform.position = meshCenter;
-                pivot.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
-                pivot.transform.scale = {1.0f, 1.0f, 1.0f};
-                pivot.hasMeshFilter = false;
-                pivot.hasMeshRenderer = false;
-                pivot.hasScriptComponent = false;
-                pivot.hasRigidbody = false;
-                pivot.hasVehicle = false;
-                pivot.hasCharacterController = false;
-                pivot.hasBoxCollider = false;
-                pivot.hasSphereCollider = false;
-                pivot.hasCapsuleCollider = false;
-                pivot.hasPlaneCollider = false;
-                pivot.hasMeshCollider = false;
-                pivot.hasCamera = false;
-                pivot.hasLight = false;
-                meshParentId = pivot.id;
-                objects_.push_back(std::move(pivot));
-                if (firstImportedIndex < 0 && infos.size() == 1) {
-                    firstImportedIndex = static_cast<int>(objects_.size()) - 1;
-                }
-            }
 
             SceneObject o;
             o.id = MakeId("mesh");
-            o.name = centerPivot ? (meshBaseName + "_Mesh") : meshBaseName;
+            o.name = meshBaseName;
             o.type = "GameObject";
-            o.parentId = meshParentId;
-            o.transform.position = centerPivot ? -meshCenter : glm::vec3{0.0f, 0.0f, 0.0f};
+            o.parentId = packageRootId;
+            o.transform.position = centerPivot ? meshCenter : glm::vec3{0.0f, 0.0f, 0.0f};
             o.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
             o.transform.scale = {1.0f, 1.0f, 1.0f};
             o.hasMeshRenderer = true;
             o.meshRenderer.color = {1.0f, 1.0f, 1.0f, 1.0f};
             o.meshFilter.sourcePath = importPath;
+            if (centerPivot) {
+                o.meshFilter.pivotOffset = meshCenter;
+            }
             ApplyMeshInfoToSceneObject(o, info, model);
             o.meshRenderer.materialId = EnsureImportedMaterialAsset(materialManager_, importPath, baseName, info);
             objects_.push_back(std::move(o));

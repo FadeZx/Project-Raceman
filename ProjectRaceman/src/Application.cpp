@@ -365,6 +365,10 @@ void Application::Update(float deltaTime) {
         }
         debugUi_->RenderAppMetrics(deltaTime, *renderer_, sceneEditor_ ? &sceneStats : nullptr, physicsStats, statsAnchor);
 
+        if (sceneEditor_) {
+            sceneEditor_->SetShowCullingDebug(debugUi_->ShowCullingDebug());
+        }
+
         debugUi_->EndFrame();
     }
 }

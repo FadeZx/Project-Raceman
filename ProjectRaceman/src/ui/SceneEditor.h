@@ -111,6 +111,8 @@ struct MeshFilterComponent {
     std::string meshType; // e.g., "Plane" or "Mesh"
     std::string sourcePath;
     int meshIndex{0};
+    std::string meshName; // sub-object name from the asset (e.g. Assimp mName)
+    glm::vec3 pivotOffset{0.0f, 0.0f, 0.0f}; // centre-pivot import: vertices are at pivotOffset in world-space; rendering pre-translates by -pivotOffset
     std::string importedMaterialName;
     std::string diffuseTexturePath;
     unsigned int diffuseTextureId{0};
@@ -282,6 +284,7 @@ struct SceneObject {
 
 struct SceneMeshContributorStats {
     std::string meshAssetPath;
+    std::string meshName;
     int meshIndex{0};
     std::uint32_t objectCount{0};
     std::uint64_t triangleCount{0};
@@ -367,6 +370,7 @@ public:
     const std::string& GetCurrentScenePath() const { return savePath_; }
     const std::string& GetProjectName() const { return projectName_; }
     const PhysicsWorld* GetPhysicsWorld() const { return physicsWorld_.get(); }
+    void SetShowCullingDebug(bool show) { showCullingDebug_ = show; }
 
     void ImportObj(const std::string& path);
     void ImportObjWithOptions(const std::string& path, int pivotMode);
@@ -399,6 +403,7 @@ private:
     void HandleConsoleCommand(const std::string& command);
     void UpdateGizmo(Renderer& renderer);
     void SubmitGizmo(Renderer& renderer);
+    void SubmitCullingDebug(Renderer& renderer);
     void TrySelectObjectAtMouse(Renderer& renderer);
     void PushUndoState();
     void Undo();
@@ -578,6 +583,7 @@ private:
     std::vector<Transform> gizmoDragStartLocalTransforms_;
     std::vector<glm::mat4> gizmoDragStartWorldMatrices_;
     bool gizmoDirtyDuringDrag_{false};
+    bool showCullingDebug_{false};
     bool inspectorEditActive_{false};
     bool linkedScaleValues_{true};
     bool linkedMultiScaleValues_{true};

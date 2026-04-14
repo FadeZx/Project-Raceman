@@ -44,15 +44,17 @@ public:
     vector<unsigned int> indices;
     vector<Texture>      textures;
     string materialName;
+    string name;
     unsigned int VAO;
 
     // constructor
-    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures, string materialName = "")
+    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures, string materialName = "", string name = "")
     {
         this->vertices = vertices;
         this->indices = indices;
         this->textures = textures;
         this->materialName = materialName;
+        this->name = name;
 
         // now that we have all the required data, set the vertex buffers and its attribute pointers.
         setupMesh();

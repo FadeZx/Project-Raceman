@@ -211,7 +211,14 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"sourcePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.sourcePath)) << "\",\n";
             out << "          \"meshIndex\": " << o.meshFilter.meshIndex << ",\n";
             out << "          \"importedMaterialName\": \"" << JsonEscape(o.meshFilter.importedMaterialName) << "\",\n";
-            out << "          \"diffuseTexturePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.diffuseTexturePath)) << "\"\n";
+            out << "          \"diffuseTexturePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.diffuseTexturePath)) << "\"";
+            {
+                const glm::vec3& po = o.meshFilter.pivotOffset;
+                if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
+                    out << ",\n          \"pivotOffset\": [" << po.x << ", " << po.y << ", " << po.z << "]";
+                }
+            }
+            out << "\n";
             out << "        }";
         }
         if (o.hasMeshRenderer) {
@@ -661,6 +668,7 @@ void SceneEditor::Load(const std::string& path) {
                         ReadString(component, "importedMaterialName", so.meshFilter.importedMaterialName);
                         ReadString(component, "diffuseTexturePath", so.meshFilter.diffuseTexturePath);
                         so.meshFilter.diffuseTexturePath = NormalizeSlashes(so.meshFilter.diffuseTexturePath);
+                        ReadVec3(component, "pivotOffset", so.meshFilter.pivotOffset);
                     } else if (componentType == "MeshRenderer") {
                         so.hasMeshRenderer = true;
                         ReadBool(component, "enabled", so.meshRenderer.enabled);

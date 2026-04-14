@@ -975,5 +975,38 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
     }
 }
 
+void SceneEditor::SubmitCullingDebug(Renderer& renderer) {
+    if (!showCullingDebug_ || !physicsWorld_) {
+        return;
+    }
+
+    const PhysicsCullingDebugInfo info = physicsWorld_->GetCullingDebugInfo();
+
+    // Draw activation and deactivation radius rings around each activator.
+    // Green  = wake zone  (body inside → stays/becomes active)
+    // Orange = sleep zone (body outside → deactivated)
+    if (info.hasActivators) {
+        const glm::vec4 kWakeColor  {0.2f, 1.0f, 0.2f, 1.0f};
+        const glm::vec4 kSleepColor {1.0f, 0.55f, 0.1f, 1.0f};
+        constexpr int kSegments = 64;
+        for (const glm::vec3& apos : info.activatorPositions) {
+            SubmitWireCircle(renderer, apos, 1, info.activationRadius,   kWakeColor,  2.0f, kSegments, DebugLineDepthMode::DepthTestedOverlay);
+            SubmitWireCircle(renderer, apos, 1, info.deactivationRadius, kSleepColor, 2.0f, kSegments, DebugLineDepthMode::DepthTestedOverlay);
+        }
+    }
+
+    // Draw a small cross at each dynamic body position.
+    // Bright green = currently active, dark grey = sleeping.
+    const glm::vec4 kActiveColor  {0.1f, 1.0f, 0.1f, 1.0f};
+    const glm::vec4 kSleepingColor{0.4f, 0.4f, 0.4f, 1.0f};
+    constexpr float kCrossHalf = 0.4f;
+    for (const PhysicsCullingDebugInfo::BodyDebug& bd : info.dynamicBodies) {
+        const glm::vec4& col = bd.isActive ? kActiveColor : kSleepingColor;
+        renderer.SubmitLine({bd.position - glm::vec3{kCrossHalf, 0, 0}, bd.position + glm::vec3{kCrossHalf, 0, 0}, col, 2.0f, DebugLineDepthMode::AlwaysOnTop});
+        renderer.SubmitLine({bd.position - glm::vec3{0, kCrossHalf, 0}, bd.position + glm::vec3{0, kCrossHalf, 0}, col, 2.0f, DebugLineDepthMode::AlwaysOnTop});
+        renderer.SubmitLine({bd.position - glm::vec3{0, 0, kCrossHalf}, bd.position + glm::vec3{0, 0, kCrossHalf}, col, 2.0f, DebugLineDepthMode::AlwaysOnTop});
+    }
+}
+
 } // namespace raceman
 

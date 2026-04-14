@@ -2184,6 +2184,7 @@ void SceneEditor::Load(const std::string& path) {
                         ReadString(component, "importedMaterialName", so.meshFilter.importedMaterialName);
                         ReadString(component, "diffuseTexturePath", so.meshFilter.diffuseTexturePath);
                         so.meshFilter.diffuseTexturePath = NormalizeSlashes(so.meshFilter.diffuseTexturePath);
+                        ReadVec3(component, "pivotOffset", so.meshFilter.pivotOffset);
                     } else if (componentType == "MeshRenderer") {
                         so.hasMeshRenderer = true;
                         ReadBool(component, "enabled", so.meshRenderer.enabled);
@@ -3282,6 +3283,7 @@ SceneProfilerStats SceneEditor::CollectProfilerStats() const {
                                         "#" + std::to_string(static_cast<int>(object.meshCollider.mode));
                 SceneMeshContributorStats& contributor = meshContributors[key];
                 contributor.meshAssetPath = object.meshFilter.sourcePath;
+                contributor.meshName = object.meshFilter.meshName;
                 contributor.meshIndex = object.meshFilter.meshIndex;
                 contributor.meshMode = object.meshCollider.mode;
                 contributor.triangleCount = object.meshFilter.indexCount / 3;
@@ -3351,7 +3353,14 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
         MeshDrawCommand cmd;
         cmd.vao = o.meshFilter.vao;
         cmd.indexCount = o.meshFilter.indexCount;
-        cmd.modelMatrix = GetObjectWorldMatrix(i);
+        {
+            glm::mat4 m = GetObjectWorldMatrix(i);
+            const glm::vec3& po = o.meshFilter.pivotOffset;
+            if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
+                m = m * glm::translate(glm::mat4(1.0f), -po);
+            }
+            cmd.modelMatrix = m;
+        }
         cmd.materialId = o.meshRenderer.materialId.empty() ? std::string("pbr_default") : o.meshRenderer.materialId;
         if (const Material* material = materialManager_.Get(cmd.materialId)) {
             cmd.color = {
@@ -3379,6 +3388,7 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
 
     if (editorInteraction) {
         SubmitGizmo(renderer);
+        SubmitCullingDebug(renderer);
     }
 }
 

@@ -57,12 +57,22 @@ void RenderContributorRows(const std::vector<Contributor>& contributors, std::si
     for (std::size_t i = 0; i < rowCount; ++i) {
         const Contributor& contributor = contributors[i];
         const char* modeLabel = contributor.meshMode == MeshColliderMode::ConvexHull ? "ConvexHull" : "TriangleMesh";
-        ImGui::BulletText("%s [mesh %d] x%u, %llu tris, %s",
-                          contributor.meshAssetPath.c_str(),
-                          contributor.meshIndex,
-                          contributor.usageCount,
-                          static_cast<unsigned long long>(contributor.triangleCount),
-                          modeLabel);
+        const std::string& subName = contributor.meshName;
+        if (subName.empty()) {
+            ImGui::BulletText("%s [mesh %d] x%u, %llu tris, %s",
+                              contributor.meshAssetPath.c_str(),
+                              contributor.meshIndex,
+                              contributor.usageCount,
+                              static_cast<unsigned long long>(contributor.triangleCount),
+                              modeLabel);
+        } else {
+            ImGui::BulletText("%s [%s] x%u, %llu tris, %s",
+                              contributor.meshAssetPath.c_str(),
+                              subName.c_str(),
+                              contributor.usageCount,
+                              static_cast<unsigned long long>(contributor.triangleCount),
+                              modeLabel);
+        }
     }
 }
 
@@ -71,12 +81,22 @@ void RenderSceneContributorRows(const std::vector<SceneMeshContributorStats>& co
     for (std::size_t i = 0; i < rowCount; ++i) {
         const SceneMeshContributorStats& contributor = contributors[i];
         const char* modeLabel = contributor.meshMode == MeshColliderMode::ConvexHull ? "ConvexHull" : "TriangleMesh";
-        ImGui::BulletText("%s [mesh %d] x%u, %llu tris, %s",
-                          contributor.meshAssetPath.c_str(),
-                          contributor.meshIndex,
-                          contributor.objectCount,
-                          static_cast<unsigned long long>(contributor.triangleCount),
-                          modeLabel);
+        const std::string& subName = contributor.meshName;
+        if (subName.empty()) {
+            ImGui::BulletText("%s [mesh %d] x%u, %llu tris, %s",
+                              contributor.meshAssetPath.c_str(),
+                              contributor.meshIndex,
+                              contributor.objectCount,
+                              static_cast<unsigned long long>(contributor.triangleCount),
+                              modeLabel);
+        } else {
+            ImGui::BulletText("%s [%s] x%u, %llu tris, %s",
+                              contributor.meshAssetPath.c_str(),
+                              subName.c_str(),
+                              contributor.objectCount,
+                              static_cast<unsigned long long>(contributor.triangleCount),
+                              modeLabel);
+        }
     }
 }
 
@@ -164,7 +184,7 @@ void DebugUI::RenderAppMetrics(float deltaTime,
     const float frameTimeMs = deltaTime * 1000.0f;
     const float fps = deltaTime > 0.0f ? 1.0f / deltaTime : 0.0f;
     rollingFrameTimeMs_ = rollingFrameTimeMs_ <= 0.0f ? frameTimeMs : (rollingFrameTimeMs_ * 0.9f + frameTimeMs * 0.1f);
-    worstFrameTimeMs_ = (std::max)(worstFrameTimeMs_ * 0.98f, frameTimeMs);
+    lowestFps_ = (fps > 0.0f && (lowestFps_ <= 0.0f || fps < lowestFps_)) ? fps : lowestFps_;
 
     auto& settings = renderer.GetSettings();
     const RendererFrameStats& rendererStats = renderer.GetFrameStats();
@@ -185,7 +205,7 @@ void DebugUI::RenderAppMetrics(float deltaTime,
         ImGui::Text("Frame time: %.2f ms", frameTimeMs);
         ImGui::Text("FPS: %.1f", fps);
         ImGui::Text("Rolling frame: %.2f ms", rollingFrameTimeMs_);
-        ImGui::Text("Worst frame: %.2f ms", worstFrameTimeMs_);
+        ImGui::Text("Lowest FPS: %.1f", lowestFps_);
         ImGui::Separator();
 
         ImGui::TextUnformatted("Rendering");
@@ -230,6 +250,18 @@ void DebugUI::RenderAppMetrics(float deltaTime,
             ImGui::Text("TriangleMesh/ConvexHull: %u / %u",
                         physicsStats->triangleMeshColliderCount,
                         physicsStats->convexHullColliderCount);
+            if (physicsStats->dynamicBodyCount > 0) {
+                const bool cullingActive = physicsStats->activeDynamicCount < physicsStats->dynamicBodyCount;
+                if (cullingActive) {
+                    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f),
+                        "Dynamic active: %u / %u (culling on)",
+                        physicsStats->activeDynamicCount, physicsStats->dynamicBodyCount);
+                } else {
+                    ImGui::Text("Dynamic active: %u / %u",
+                        physicsStats->activeDynamicCount, physicsStats->dynamicBodyCount);
+                }
+                ImGui::Checkbox("Show Culling Zones", &showCullingDebug_);
+            }
             if (!physicsStats->meshContributors.empty()) {
                 ImGui::Separator();
                 ImGui::TextUnformatted("Cooked Mesh Contributors");

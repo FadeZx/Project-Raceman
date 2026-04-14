@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -83,9 +85,16 @@ std::string BuildMeshCacheKey(const std::string& assetPath, int meshIndex) {
 }
 
 std::string BuildShapeCacheKey(const PhysicsColliderDesc& collider) {
-    return BuildMeshCacheKey(collider.meshAssetPath, collider.meshIndex) + "#" +
-           std::to_string(static_cast<int>(collider.meshMode)) + "#" +
-           std::to_string(static_cast<int>(collider.meshBuildQuality));
+    std::string key = BuildMeshCacheKey(collider.meshAssetPath, collider.meshIndex) + "#" +
+                      std::to_string(static_cast<int>(collider.meshMode)) + "#" +
+                      std::to_string(static_cast<int>(collider.meshBuildQuality));
+    const glm::vec3& o = collider.meshPivotOffset;
+    if (o.x != 0.0f || o.y != 0.0f || o.z != 0.0f) {
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "@%.4f_%.4f_%.4f", o.x, o.y, o.z);
+        key += buf;
+    }
+    return key;
 }
 
 // --- Disk-based shape cache ---
@@ -399,6 +408,9 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
         }
     }
 
+    const glm::vec3 pivotOffset = collider.meshPivotOffset;
+    const bool hasPivot = (pivotOffset.x != 0.0f || pivotOffset.y != 0.0f || pivotOffset.z != 0.0f);
+
     if (collider.meshMode == MeshColliderMode::ConvexHull) {
         constexpr std::size_t maxPoints = 256;
         const std::size_t totalPoints = collisionMesh.vertices.size();
@@ -410,13 +422,14 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
         points.reserve((std::min)(totalPoints, maxPoints));
         if (totalPoints <= maxPoints) {
             for (const glm::vec3& vertex : collisionMesh.vertices) {
-                points.push_back(ToJoltVec3(vertex));
+                points.push_back(ToJoltVec3(hasPivot ? (vertex - pivotOffset) : vertex));
             }
         } else {
             const float stride = static_cast<float>(totalPoints) / static_cast<float>(maxPoints);
             for (std::size_t i = 0; i < maxPoints; ++i) {
                 const std::size_t index = (std::min)(totalPoints - 1, static_cast<std::size_t>(i * stride));
-                points.push_back(ToJoltVec3(collisionMesh.vertices[index]));
+                const glm::vec3& v = collisionMesh.vertices[index];
+                points.push_back(ToJoltVec3(hasPivot ? (v - pivotOffset) : v));
             }
         }
 
@@ -441,7 +454,8 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
     JPH::VertexList vertices;
     vertices.reserve(collisionMesh.vertices.size());
     for (const glm::vec3& vertex : collisionMesh.vertices) {
-        vertices.push_back(JPH::Float3(vertex.x, vertex.y, vertex.z));
+        const glm::vec3 v = hasPivot ? (vertex - pivotOffset) : vertex;
+        vertices.push_back(JPH::Float3(v.x, v.y, v.z));
     }
 
     JPH::IndexedTriangleList triangles;
@@ -681,6 +695,9 @@ public:
             if (movable) {
                 activeBodies_.insert(body.objectId);
             }
+            if (dynamic && !bodyId.IsInvalid()) {
+                dynamicBodyList_.emplace_back(bodyId, body.objectId);
+            }
         }
 
         physicsSystem_->OptimizeBroadPhase();
@@ -736,6 +753,8 @@ public:
         bodyIds_.clear();
         bodyIdToObjectId_.clear();
         activeBodies_.clear();
+        dynamicBodyList_.clear();
+        activatorPositions_.clear();
         physicsSystem_.reset();
         jobSystem_.reset();
         tempAllocator_.reset();
@@ -763,6 +782,42 @@ public:
         }
 
         physicsSystem_->Update(step, 1, tempAllocator_.get(), jobSystem_.get());
+
+        // Spatial activation culling: deactivate dynamic bodies far from all activators,
+        // reactivate those that come within range. Hysteresis prevents rapid toggling.
+        std::uint32_t activeDynamicCount = 0;
+        if (!activatorPositions_.empty() && !dynamicBodyList_.empty()) {
+            JPH::BodyInterface& bi = physicsSystem_->GetBodyInterface();
+            for (const auto& [bodyId, objectId] : dynamicBodyList_) {
+                if (bodyId.IsInvalid()) {
+                    continue;
+                }
+                const glm::vec3 bodyPos = FromJoltRVec3(bi.GetPosition(bodyId));
+                float minDistSq = std::numeric_limits<float>::max();
+                for (const auto& activatorPos : activatorPositions_) {
+                    const glm::vec3 delta = bodyPos - activatorPos;
+                    const float dSq = glm::dot(delta, delta);
+                    if (dSq < minDistSq) {
+                        minDistSq = dSq;
+                    }
+                }
+                if (minDistSq < activationRadiusSq_) {
+                    if (!bi.IsActive(bodyId)) {
+                        bi.ActivateBody(bodyId);
+                    }
+                } else if (minDistSq > deactivationRadiusSq_ && bi.IsActive(bodyId)) {
+                    bi.DeactivateBody(bodyId);
+                }
+                if (bi.IsActive(bodyId)) {
+                    ++activeDynamicCount;
+                }
+            }
+        } else {
+            // Culling disabled — count all dynamic bodies as active.
+            activeDynamicCount = static_cast<std::uint32_t>(dynamicBodyList_.size());
+        }
+        stats_.dynamicBodyCount = static_cast<std::uint32_t>(dynamicBodyList_.size());
+        stats_.activeDynamicCount = activeDynamicCount;
 
         const JPH::Vec3 gravity = JPH::Vec3(0.0f, -9.81f, 0.0f);
         const JPH::DefaultBroadPhaseLayerFilter broadPhaseFilter(objectVsBroadPhaseLayerFilter_, Layers::Moving);
@@ -952,6 +1007,12 @@ public:
         }
     }
 
+    void SetActivatorPositions(const std::vector<glm::vec3>& positions, float activationRadius, float deactivationRadius) {
+        activatorPositions_ = positions;
+        activationRadiusSq_ = activationRadius * activationRadius;
+        deactivationRadiusSq_ = deactivationRadius * deactivationRadius;
+    }
+
     bool HasCharacter(const std::string& objectId) const {
         return characters_.find(objectId) != characters_.end();
     }
@@ -1025,9 +1086,11 @@ public:
             }
         }
         const JPH::BodyFilter& bodyFilter = bodyFilterPtr ? *bodyFilterPtr : defaultFilter;
-        JPH::BroadPhaseLayerFilter broadPhaseFilter;
-        JPH::ObjectLayerFilter objectLayerFilter;
-        JPH::ShapeFilter shapeFilter;
+        // Use the same layer filters as the simulation so sensors are culled in broad phase
+        // rather than after the narrow phase test.
+        const JPH::DefaultBroadPhaseLayerFilter broadPhaseFilter(objectVsBroadPhaseLayerFilter_, Layers::Moving);
+        const JPH::DefaultObjectLayerFilter objectLayerFilter(objectLayerPairFilter_, Layers::Moving);
+        const JPH::ShapeFilter shapeFilter;
         physicsSystem_->GetNarrowPhaseQuery().CastRay(ray, settings, collector, broadPhaseFilter, objectLayerFilter, bodyFilter, shapeFilter);
 
         if (!collector.HadHit()) {
@@ -1062,6 +1125,28 @@ public:
         return false;
     }
 
+    PhysicsCullingDebugInfo GetCullingDebugInfo() const {
+        PhysicsCullingDebugInfo info;
+        info.hasActivators = !activatorPositions_.empty();
+        info.activationRadius = std::sqrt(activationRadiusSq_);
+        info.deactivationRadius = std::sqrt(deactivationRadiusSq_);
+        info.activatorPositions = activatorPositions_;
+        if (physicsSystem_ && !dynamicBodyList_.empty()) {
+            const JPH::BodyInterface& bi = physicsSystem_->GetBodyInterface();
+            info.dynamicBodies.reserve(dynamicBodyList_.size());
+            for (const auto& [bodyId, objectId] : dynamicBodyList_) {
+                if (bodyId.IsInvalid()) {
+                    continue;
+                }
+                PhysicsCullingDebugInfo::BodyDebug bd;
+                bd.position = FromJoltRVec3(bi.GetPosition(bodyId));
+                bd.isActive = bi.IsActive(bodyId);
+                info.dynamicBodies.push_back(bd);
+            }
+        }
+        return info;
+    }
+
 private:
     void RefreshMeshContributorStats() {
         std::unordered_map<std::string, PhysicsMeshContributorStats> meshStats;
@@ -1085,6 +1170,7 @@ private:
                                         std::to_string(static_cast<int>(collider.meshMode));
                 PhysicsMeshContributorStats& contributor = meshStats[key];
                 contributor.meshAssetPath = collider.meshAssetPath;
+                contributor.meshName = collider.meshName;
                 contributor.meshIndex = collider.meshIndex;
                 contributor.meshMode = collider.meshMode;
                 contributor.triangleCount = triangleCount;
@@ -1115,6 +1201,12 @@ private:
     std::unordered_map<std::string, JPH::BodyID> bodyIds_;
     std::unordered_map<JPH::BodyID, std::string> bodyIdToObjectId_;
     std::unordered_set<std::string> activeBodies_;
+
+    // Spatial activation culling: dynamic props far from all activators are deactivated.
+    std::vector<std::pair<JPH::BodyID, std::string>> dynamicBodyList_;
+    std::vector<glm::vec3> activatorPositions_;
+    float activationRadiusSq_{150.0f * 150.0f};
+    float deactivationRadiusSq_{200.0f * 200.0f};
     std::unordered_map<std::string, CharacterRecord> characters_;
     std::unordered_map<std::string, PhysicsCharacterState> characterStates_;
     JPH::CharacterVsCharacterCollisionSimple characterVsCharacterCollision_;
@@ -1202,6 +1294,10 @@ void PhysicsWorld::SleepBody(const std::string& objectId) {
     impl_->SleepBody(objectId);
 }
 
+void PhysicsWorld::SetActivatorPositions(const std::vector<glm::vec3>& positions, float activationRadius, float deactivationRadius) {
+    impl_->SetActivatorPositions(positions, activationRadius, deactivationRadius);
+}
+
 bool PhysicsWorld::HasCharacter(const std::string& objectId) const {
     return impl_->HasCharacter(objectId);
 }
@@ -1232,6 +1328,10 @@ bool PhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& direction, 
 
 const PhysicsWorldStats& PhysicsWorld::GetStats() const {
     return impl_->GetStats();
+}
+
+PhysicsCullingDebugInfo PhysicsWorld::GetCullingDebugInfo() const {
+    return impl_->GetCullingDebugInfo();
 }
 
 } // namespace raceman

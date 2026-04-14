@@ -874,6 +874,7 @@ inline void ApplyMeshInfoToSceneObject(SceneObject& object, const ImportedMeshIn
     object.meshFilter.vao = info.vao;
     object.meshFilter.indexCount = info.indexCount;
     object.meshFilter.meshIndex = static_cast<int>(info.meshIndex);
+    object.meshFilter.meshName = info.meshName;
     object.meshFilter.importedMaterialName = info.materialName;
     object.meshFilter.diffuseTexturePath = NormalizeSlashes(info.diffuseTexturePath);
     object.meshFilter.diffuseTextureId = info.diffuseTextureId;
@@ -1531,6 +1532,8 @@ inline bool AppendSupportedVehicleChassisColliders(const SceneObject& object,
         collider.scale = relativeScale;
         collider.meshAssetPath = object.meshFilter.sourcePath;
         collider.meshIndex = object.meshFilter.meshIndex;
+        collider.meshName = object.meshFilter.meshName;
+        collider.meshPivotOffset = object.meshFilter.pivotOffset;
         collider.meshBuildQuality = object.meshCollider.buildQuality;
         collider.meshMode = object.meshCollider.mode;
         outColliders.push_back(std::move(collider));

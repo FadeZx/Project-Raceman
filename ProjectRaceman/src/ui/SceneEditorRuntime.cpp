@@ -83,6 +83,27 @@ void SceneEditor::UpdatePhysics(float deltaTime) {
         }
     }
 
+    // Feed activator positions to the spatial culling system.
+    // Vehicles and characters are the "hot" objects that keep nearby dynamic props awake.
+    {
+        std::vector<glm::vec3> activatorPositions;
+        for (const RuntimeVehicleInstance& rv : runtimeVehicles_) {
+            if (!rv.chassisBodyObjectId.empty()) {
+                PhysicsBodyState s;
+                if (physicsWorld_->GetBodyState(rv.chassisBodyObjectId, s)) {
+                    activatorPositions.push_back(s.position);
+                }
+            }
+        }
+        for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
+            const SceneObject& object = objects_[objectIndex];
+            if (object.hasCharacterController && object.characterController.enabled && physicsWorld_->HasCharacter(object.id)) {
+                activatorPositions.push_back(TransformFromMatrix(GetObjectWorldMatrix(objectIndex)).position);
+            }
+        }
+        physicsWorld_->SetActivatorPositions(activatorPositions);
+    }
+
     physicsWorld_->Step(deltaTime);
 
     for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
@@ -628,6 +649,8 @@ void SceneEditor::SetScriptsRunning(bool running) {
                 collider.isTrigger = object.meshCollider.isTrigger;
                 collider.meshAssetPath = object.meshFilter.sourcePath;
                 collider.meshIndex = object.meshFilter.meshIndex;
+                collider.meshName = object.meshFilter.meshName;
+                collider.meshPivotOffset = object.meshFilter.pivotOffset;
                 collider.meshBuildQuality = object.meshCollider.buildQuality;
                 collider.meshMode = object.meshCollider.mode;
                 body.colliders.push_back(collider);

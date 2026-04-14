@@ -279,10 +279,10 @@ void SceneEditor::RenderScenePanel() {
             ImGui::TextUnformatted("Pivot Handling");
             ImGui::Separator();
             ImGui::RadioButton("Shared origin (OBJ default)", &pendingImportMeshPivotMode_, 0);
-            ImGui::RadioButton("Center pivot per mesh (adds a parent object)", &pendingImportMeshPivotMode_, 1);
+            ImGui::RadioButton("Center pivot per mesh", &pendingImportMeshPivotMode_, 1);
             ImGui::Separator();
             ImGui::TextDisabled("Shared origin keeps meshes aligned exactly as exported.");
-            ImGui::TextDisabled("Center pivot keeps world positions but creates a pivot parent for each mesh.");
+            ImGui::TextDisabled("Center pivot places each mesh at its bounding-box center.");
             ImGui::Separator();
             if (ImGui::Button("Import")) {
                 ImportObjWithOptions(pendingImportMeshPath_, pendingImportMeshPivotMode_);

@@ -36,12 +36,14 @@ public:
     bool IsEnabled() const { return enabled_; }
     bool IsProfilerVisible() const { return showProfiler_; }
     void SetProfilerVisible(bool visible) { showProfiler_ = visible; }
+    bool ShowCullingDebug() const { return showCullingDebug_; }
 
 private:
     bool enabled_{false};
     bool showProfiler_{true};
     float rollingFrameTimeMs_{0.0f};
-    float worstFrameTimeMs_{0.0f};
+    float lowestFps_{0.0f};
+    bool showCullingDebug_{false};
 };
 
 } // namespace raceman

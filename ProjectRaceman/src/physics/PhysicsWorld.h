@@ -16,6 +16,7 @@ namespace raceman {
 
 struct PhysicsMeshContributorStats {
     std::string meshAssetPath;
+    std::string meshName;
     int meshIndex{0};
     std::uint32_t usageCount{0};
     std::uint64_t triangleCount{0};
@@ -32,9 +33,24 @@ struct PhysicsWorldStats {
     std::uint32_t meshColliderCount{0};
     std::uint32_t triangleMeshColliderCount{0};
     std::uint32_t convexHullColliderCount{0};
+    std::uint32_t dynamicBodyCount{0};
+    std::uint32_t activeDynamicCount{0};
     double lastBuildTimeMs{0.0};
     double lastStepTimeMs{0.0};
     std::vector<PhysicsMeshContributorStats> meshContributors;
+};
+
+// Snapshot used for debug visualisation of the spatial activation culling.
+struct PhysicsCullingDebugInfo {
+    struct BodyDebug {
+        glm::vec3 position;
+        bool isActive{false};
+    };
+    bool hasActivators{false};
+    float activationRadius{0.0f};
+    float deactivationRadius{0.0f};
+    std::vector<glm::vec3> activatorPositions;
+    std::vector<BodyDebug> dynamicBodies;
 };
 
 enum class PhysicsBodyType {
@@ -70,7 +86,9 @@ struct PhysicsColliderDesc {
     bool infinite{true};
     float halfExtent{1000.0f};
     std::string meshAssetPath;
+    std::string meshName;
     int meshIndex{0};
+    glm::vec3 meshPivotOffset{0.0f}; // vertex-space offset applied as translate(-offset) before body placement
     MeshColliderBuildQuality meshBuildQuality{MeshColliderBuildQuality::BuildQuality};
     MeshColliderMode meshMode{MeshColliderMode::TriangleMesh};
 };
@@ -169,6 +187,14 @@ public:
     void WakeBody(const std::string& objectId);
     void SleepBody(const std::string& objectId);
 
+    // Spatial activation culling. Call each frame with the world positions of active
+    // drivers/cameras. Dynamic bodies farther than deactivationRadius from every activator
+    // are put to sleep; bodies closer than activationRadius are woken. Hysteresis between
+    // the two radii prevents rapid toggling. Pass an empty vector to disable culling.
+    void SetActivatorPositions(const std::vector<glm::vec3>& positions,
+                               float activationRadius   = 150.0f,
+                               float deactivationRadius = 200.0f);
+
     bool HasCharacter(const std::string& objectId) const;
     bool GetCharacterState(const std::string& objectId, PhysicsCharacterState& outState) const;
     glm::vec3 GetCharacterVelocity(const std::string& objectId) const;
@@ -178,6 +204,7 @@ public:
 
     bool Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::string* ignoreObjectId = nullptr) const;
     const PhysicsWorldStats& GetStats() const;
+    PhysicsCullingDebugInfo GetCullingDebugInfo() const;
 
 private:
     class Impl;
