@@ -308,8 +308,13 @@ void SceneEditor::RenderScenePanel() {
             }
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
                 const char* projectObjPath = static_cast<const char*>(payload->Data);
-                if (projectObjPath != nullptr && projectObjPath[0] != '\0' && IsMeshAssetPath(projectObjPath)) {
-                    ImportObj(projectObjPath);
+                if (projectObjPath != nullptr && projectObjPath[0] != '\0') {
+                    if (IsPrefabAssetPath(projectObjPath)) {
+                        InstantiatePrefab(projectObjPath);
+                        hierarchyChanged = true;
+                    } else if (IsMeshAssetPath(projectObjPath)) {
+                        ImportObj(projectObjPath);
+                    }
                 }
             }
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
@@ -469,6 +474,53 @@ void SceneEditor::RenderScenePanel() {
                         }
                         ImGui::EndDragDropTarget();
                     }
+                    if (ImGui::BeginPopupContextItem("##HierarchyObjectCtx")) {
+                        if (!IsSelected(i)) {
+                            Select(i);
+                        }
+                        ImGui::TextDisabled("%s", objects_[i].name.c_str());
+                        ImGui::Separator();
+                        if (ImGui::MenuItem("Copy", "Ctrl+C")) {
+                            CopySelectedObjectsToClipboard();
+                        }
+                        const bool canPaste = objectClipboard_.hasValue && !objectClipboard_.objects.empty();
+                        if (ImGui::MenuItem("Paste as Child", nullptr, false, canPaste)) {
+                            const std::size_t sizeBefore = objects_.size();
+                            PasteObjectsFromClipboard();
+                            // Reparent newly added root objects to i (undo already captured by Paste)
+                            const std::string parentId = (i < (int)objects_.size()) ? objects_[i].id : std::string{};
+                            if (!parentId.empty()) {
+                                for (int idx = static_cast<int>(sizeBefore); idx < (int)objects_.size(); ++idx) {
+                                    if (objects_[idx].parentId.empty()) {
+                                        objects_[idx].parentId = parentId;
+                                    }
+                                }
+                            }
+                            hierarchyChanged = true;
+                        }
+                        ImGui::Separator();
+                        if (ImGui::MenuItem("Rename", "F2")) {
+                            BeginObjectRename(i);
+                        }
+                        if (ImGui::MenuItem("Delete", "Del")) {
+                            if (open && !children.empty()) {
+                                ImGui::TreePop();
+                            }
+                            ImGui::EndPopup();
+                            DeleteSelectedObject();
+                            hierarchyDeleted = true;
+                            renderPath.erase(objectId);
+                            ImGui::PopID();
+                            return;
+                        }
+                        ImGui::Separator();
+                        if (ImGui::MenuItem("Make Prefab")) {
+                            pendingPrefabObjectIndex_ = i;
+                            std::snprintf(savePrefabNameBuffer_, sizeof(savePrefabNameBuffer_), "%s", objects_[i].name.c_str());
+                            showSavePrefabPopup_ = true;
+                        }
+                        ImGui::EndPopup();
+                    }
                     if (ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_F2)) {
                         BeginObjectRename(i);
                     }
@@ -562,8 +614,13 @@ void SceneEditor::RenderScenePanel() {
                     }
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
                         const char* projectObjPath = static_cast<const char*>(payload->Data);
-                        if (projectObjPath != nullptr && projectObjPath[0] != '\0' && IsMeshAssetPath(projectObjPath)) {
-                            ImportObj(projectObjPath);
+                        if (projectObjPath != nullptr && projectObjPath[0] != '\0') {
+                            if (IsPrefabAssetPath(projectObjPath)) {
+                                InstantiatePrefab(projectObjPath);
+                                hierarchyChanged = true;
+                            } else if (IsMeshAssetPath(projectObjPath)) {
+                                ImportObj(projectObjPath);
+                            }
                         }
                     }
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {

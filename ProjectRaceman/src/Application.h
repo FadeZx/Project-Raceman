@@ -63,6 +63,7 @@ private:
     std::unique_ptr<SkyboxController> skyboxController_;
 
     bool running_{true};
+    bool pendingExit_{false};  // set when user clicks X with unsaved changes
     double lastFrameTime_{0.0};
 
     // Render/physics debug toggles (edited via Project Settings)

@@ -365,7 +365,14 @@ public:
     void SetGameViewportTexture(unsigned int textureId) { gameViewportTextureId_ = textureId; }
 
     // Notify app when editor content changes
-    void SetOnDirty(std::function<void()> cb) { onDirty_ = std::move(cb); }
+    void SetOnDirty(std::function<void()> cb) {
+        onDirty_ = [this, inner = std::move(cb)]() {
+            sceneDirty_ = true;
+            if (inner) inner();
+        };
+    }
+    bool IsSceneDirty() const { return sceneDirty_; }
+    void MarkSceneClean() { sceneDirty_ = false; }
     void SetOnFocusObject(std::function<void(const glm::vec3&, float)> cb) { onFocusObject_ = std::move(cb); }
 
     // Profiler stats toggle wired from Game View "Stats" button
@@ -465,6 +472,8 @@ private:
     bool CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath = nullptr);
     bool CreateSceneAsset(const std::string& requestedName, std::string* outScenePath = nullptr);
     bool CreateProjectFolder(const std::string& requestedName);
+    bool SaveObjectAsPrefab(int objectIndex, const std::string& path);
+    bool InstantiatePrefab(const std::string& path);
     void SyncScriptProjectFiles();
     void OpenMaterialEditor(const std::string& materialId);
     void OpenVehicleConfigEditor(const std::string& configPath);
@@ -474,6 +483,7 @@ private:
     void DeleteProjectFile(const std::string& path);
     void DeleteProjectFolder(const std::string& path);
     bool MoveProjectFile(const std::string& path, const std::string& targetDirectory);
+    bool CopyProjectFileTo(const std::string& sourcePath, const std::string& targetDirectory);
     void SelectProjectFile(const std::string& path);
     void RefreshProjectFiles();
     void LoadProject();
@@ -564,6 +574,10 @@ private:
     ProjectCreateAssetType createProjectAssetType_{ProjectCreateAssetType::None};
     char createProjectAssetNameBuffer_[128]{};
 
+    bool showSavePrefabPopup_{false};
+    int pendingPrefabObjectIndex_{-1};
+    char savePrefabNameBuffer_[128]{};
+
     struct RuntimeScriptInstance {
         std::string objectId;
         std::size_t attachmentIndex{0};
@@ -611,6 +625,11 @@ private:
     std::string renamingProjectFile_;
     bool focusProjectRename_{false};
     char projectRenameBuffer_[260]{};
+
+    struct FileClipboardState {
+        std::string path;
+        bool isCut{false};
+    } fileClipboard_;
 
     int hoveredGizmoAxis_{-1};
     int activeGizmoAxis_{-1};
@@ -681,6 +700,7 @@ private:
     std::unique_ptr<PhysicsWorld> physicsWorld_;
     SceneProfilerStats profilerStats_{};
 
+    bool sceneDirty_{false};
     std::function<void()> onDirty_{};
     std::function<void(const glm::vec3&, float)> onFocusObject_{};
     std::function<bool()> getProfilerVisible_{};

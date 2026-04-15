@@ -5,7 +5,9 @@
 #include "MeshColliderMode.h"
 
 #include <array>
+#include <atomic>
 #include <glm/glm.hpp>
+#include <mutex>
 
 #include <cstdint>
 #include <memory>
@@ -13,6 +15,30 @@
 #include <vector>
 
 namespace raceman {
+
+// Shared state between the main thread (UI) and the background physics build thread.
+// All fields that cross the thread boundary use atomics or a mutex.
+struct PhysicsBuildProgress {
+    std::atomic<int>  stepsDone{0};
+    std::atomic<int>  stepsTotal{0};
+    std::atomic<bool> cancelRequested{false};
+    std::atomic<bool> isDone{false};
+    std::atomic<bool> wasCancelled{false};
+
+    // Current task description — mutex-protected so it is safe to write from
+    // the build thread and read from the main thread each frame.
+    mutable std::mutex taskMutex;
+    std::string        currentTask;
+
+    void SetTask(std::string task) {
+        std::lock_guard<std::mutex> lk(taskMutex);
+        currentTask = std::move(task);
+    }
+    std::string GetTask() const {
+        std::lock_guard<std::mutex> lk(taskMutex);
+        return currentTask;
+    }
+};
 
 struct PhysicsMeshContributorStats {
     std::string meshAssetPath;
@@ -170,6 +196,10 @@ public:
 
     void Build(const std::vector<PhysicsBodyDesc>& bodies);
     void Build(const std::vector<PhysicsBodyDesc>& bodies, const std::vector<PhysicsCharacterDesc>& characters);
+    // Async-friendly overload: reports per-body progress and supports cancellation.
+    // Pass a non-null PhysicsBuildProgress* — the caller owns its lifetime.
+    void Build(const std::vector<PhysicsBodyDesc>& bodies, const std::vector<PhysicsCharacterDesc>& characters,
+               PhysicsBuildProgress* progress);
     void Clear();
     void Step(float deltaTime);
 

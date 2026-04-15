@@ -344,6 +344,10 @@ inline bool IsSceneAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".scene.json");
 }
 
+inline bool IsPrefabAssetPath(const std::string& path) {
+    return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".prefab.json");
+}
+
 inline std::string MaterialIdFromAssetPath(const std::string& path) {
     std::string filename = fs::path(path).filename().string();
     const std::string suffix = ".mat.json";
@@ -372,6 +376,15 @@ inline std::string ProjectAssetDisplayFilename(const std::string& path) {
         if (EndsWith(ToLowerCopy(filename), suffix)) {
             filename.resize(filename.size() - suffix.size());
             filename += ".vehicle";
+        }
+        return filename;
+    }
+    if (IsPrefabAssetPath(path)) {
+        std::string filename = fs::path(path).filename().string();
+        const std::string suffix = ".prefab.json";
+        if (EndsWith(ToLowerCopy(filename), suffix)) {
+            filename.resize(filename.size() - suffix.size());
+            filename += ".prefab";
         }
         return filename;
     }

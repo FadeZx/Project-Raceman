@@ -71,6 +71,7 @@ std::string AssetIconForProjectFile(const std::string& path) {
     if (IsMaterialAssetPath(path)) return "asset-material.png";
     if (IsVehicleConfigAssetPath(path)) return "asset-vehicle.png";
     if (IsMeshAssetPath(path)) return "asset-mesh.png";
+    if (IsPrefabAssetPath(path)) return "asset-prefab.png";
     if (extension == ".h" || extension == ".cpp") return "asset-script.png";
     if (extension == ".png" || extension == ".jpg" || extension == ".jpeg" || extension == ".webp" || extension == ".hdr") return "asset-image.png";
     if (lower.find("/skybox/") != std::string::npos) return "asset-skybox.png";
@@ -416,6 +417,7 @@ void SceneEditor::RenderProjectPanel() {
                     const bool isMesh = IsMeshAssetPath(file);
                     const bool isMaterial = IsMaterialAssetPath(file);
                     const bool isScene = IsSceneAssetPath(file);
+                    const bool isPrefab = IsPrefabAssetPath(file);
                     std::string filename = ProjectAssetDisplayFilename(file);
 
                     ImGui::PushID(file.c_str());
@@ -431,6 +433,12 @@ void SceneEditor::RenderProjectPanel() {
                                     sceneToOpen = file;
                                 } else if (isMaterial) {
                                     OpenMaterialEditor(MaterialIdFromAssetPath(file));
+                                } else if (isPrefab) {
+                                    if (InstantiatePrefab(file)) {
+                                        if (console_) console_->AddLog("Instantiated prefab: " + file);
+                                    } else if (console_) {
+                                        console_->AddError("Failed to instantiate prefab: " + file);
+                                    }
                                 } else if (OpenProjectAssetInDefaultEditor(file)) {
                                     if (console_) {
                                         console_->AddLog("Opened project file: " + file);
@@ -447,6 +455,14 @@ void SceneEditor::RenderProjectPanel() {
                             if (isScene) {
                                 if (ImGui::MenuItem("Open")) {
                                     sceneToOpen = file;
+                                }
+                            } else if (isPrefab) {
+                                if (ImGui::MenuItem("Instantiate")) {
+                                    if (InstantiatePrefab(file)) {
+                                        if (console_) console_->AddLog("Instantiated prefab: " + file);
+                                    } else if (console_) {
+                                        console_->AddError("Failed to instantiate prefab: " + file);
+                                    }
                                 }
                             } else if (isMaterial) {
                                 if (ImGui::MenuItem("Edit")) {
@@ -493,6 +509,15 @@ void SceneEditor::RenderProjectPanel() {
                                 }
                                 ImGui::EndMenu();
                             }
+                            ImGui::Separator();
+                            if (ImGui::MenuItem("Copy", "Ctrl+C")) {
+                                fileClipboard_.path = file;
+                                fileClipboard_.isCut = false;
+                            }
+                            if (ImGui::MenuItem("Cut", "Ctrl+X")) {
+                                fileClipboard_.path = file;
+                                fileClipboard_.isCut = true;
+                            }
                             if (ImGui::MenuItem("Rename", "F2")) {
                                 BeginProjectFileRename(file);
                             }
@@ -529,7 +554,41 @@ void SceneEditor::RenderProjectPanel() {
                 if (!hasTiles) {
                     ImGui::TextDisabled("No assets in this folder.");
                 }
+                // Keyboard shortcuts for copy/cut/paste (when panel is focused, not typing)
+                if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput) {
+                    const bool ctrl = ImGui::GetIO().KeyCtrl;
+                    if (ctrl && ImGui::IsKeyPressed(ImGuiKey_C) && !selectedProjectFile_.empty() && !fs::is_directory(ProjectAssetPathToAbsolute(selectedProjectFile_))) {
+                        fileClipboard_.path = selectedProjectFile_;
+                        fileClipboard_.isCut = false;
+                    }
+                    if (ctrl && ImGui::IsKeyPressed(ImGuiKey_X) && !selectedProjectFile_.empty() && !fs::is_directory(ProjectAssetPathToAbsolute(selectedProjectFile_))) {
+                        fileClipboard_.path = selectedProjectFile_;
+                        fileClipboard_.isCut = true;
+                    }
+                    if (ctrl && ImGui::IsKeyPressed(ImGuiKey_V) && !fileClipboard_.path.empty()) {
+                        if (fileClipboard_.isCut) {
+                            if (MoveProjectFile(fileClipboard_.path, selectedProjectDirectory_)) {
+                                fileClipboard_.path.clear();
+                            }
+                        } else {
+                            CopyProjectFileTo(fileClipboard_.path, selectedProjectDirectory_);
+                        }
+                    }
+                }
                 if (ImGui::BeginPopupContextWindow("ProjectFilesEmptyContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+                    if (!fileClipboard_.path.empty()) {
+                        const std::string pasteLabel = std::string("Paste  ") + ProjectAssetDisplayFilename(fileClipboard_.path) + (fileClipboard_.isCut ? "  (cut)" : "  (copy)");
+                        if (ImGui::MenuItem(pasteLabel.c_str(), "Ctrl+V")) {
+                            if (fileClipboard_.isCut) {
+                                if (MoveProjectFile(fileClipboard_.path, selectedProjectDirectory_)) {
+                                    fileClipboard_.path.clear();
+                                }
+                            } else {
+                                CopyProjectFileTo(fileClipboard_.path, selectedProjectDirectory_);
+                            }
+                        }
+                        ImGui::Separator();
+                    }
                     if (ImGui::BeginMenu("Create")) {
                         if (ImGui::MenuItem("Folder")) {
                             createProjectAssetType_ = ProjectCreateAssetType::Folder;
@@ -584,6 +643,58 @@ void SceneEditor::RenderProjectPanel() {
                 const std::string selectedPath = selectedProjectFile_.empty() ? selectedProjectDirectory_ : selectedProjectFile_;
                 ImGui::TextDisabled("Selected: %s", selectedPath.c_str());
                 ImGui::EndChild();
+                // Accept hierarchy-object drag onto the project files pane to create a prefab.
+                // Must be called after EndChild() so the child window is the last item.
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
+                        if (payload->DataSize == sizeof(int)) {
+                            pendingPrefabObjectIndex_ = *static_cast<const int*>(payload->Data);
+                            const std::string defaultName =
+                                (pendingPrefabObjectIndex_ >= 0 && pendingPrefabObjectIndex_ < (int)objects_.size())
+                                ? SanitizeAssetBaseName(objects_[pendingPrefabObjectIndex_].name)
+                                : std::string("NewPrefab");
+                            std::snprintf(savePrefabNameBuffer_, sizeof(savePrefabNameBuffer_), "%s", defaultName.c_str());
+                            showSavePrefabPopup_ = true;
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+                if (showSavePrefabPopup_) {
+                    ImGui::OpenPopup("Save Prefab");
+                    showSavePrefabPopup_ = false;
+                }
+                if (ImGui::BeginPopupModal("Save Prefab", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::TextUnformatted("Save as Prefab");
+                    ImGui::TextDisabled("Directory: %s", selectedProjectDirectory_.c_str());
+                    ImGui::SetNextItemWidth(260.0f);
+                    if (ImGui::IsWindowAppearing()) {
+                        ImGui::SetKeyboardFocusHere();
+                    }
+                    const bool enterPressed = ImGui::InputText("Name##prefabName", savePrefabNameBuffer_, sizeof(savePrefabNameBuffer_),
+                        ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+                    const bool submit = ImGui::Button("Save") || enterPressed;
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+                        pendingPrefabObjectIndex_ = -1;
+                        ImGui::CloseCurrentPopup();
+                    }
+                    if (submit && pendingPrefabObjectIndex_ >= 0) {
+                        const std::string sanitized = SanitizeAssetBaseName(savePrefabNameBuffer_);
+                        if (!sanitized.empty()) {
+                            const std::string prefabPath = selectedProjectDirectory_ + "/" + sanitized + ".prefab.json";
+                            if (SaveObjectAsPrefab(pendingPrefabObjectIndex_, prefabPath)) {
+                                RefreshProjectFiles();
+                                selectedProjectFile_ = prefabPath;
+                                if (console_) console_->AddLog("Saved prefab: " + prefabPath);
+                            } else if (console_) {
+                                console_->AddError("Failed to save prefab: " + prefabPath);
+                            }
+                            pendingPrefabObjectIndex_ = -1;
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                    ImGui::EndPopup();
+                }
                 if (showCreateProjectAssetPopup_) {
                     ImGui::OpenPopup("Create Project Asset");
                     showCreateProjectAssetPopup_ = false;
@@ -1337,6 +1448,49 @@ bool SceneEditor::MoveProjectFile(const std::string& path, const std::string& ta
     }
 }
 
+
+bool SceneEditor::CopyProjectFileTo(const std::string& sourcePath, const std::string& targetDirectory) {
+    const std::string srcProjectPath = NormalizeSlashes(sourcePath);
+    const std::string targetProjectDir = NormalizeSlashes(targetDirectory.empty() ? std::string("assets") : targetDirectory);
+    if (srcProjectPath.empty()) return false;
+
+    try {
+        const fs::path assetsRoot  = FindAssetsRoot();
+        const fs::path srcAbsolute = ProjectAssetPathToAbsolute(srcProjectPath);
+        const fs::path targetAbsDir = ProjectAssetPathToAbsolute(targetProjectDir);
+
+        if (!IsUnderPath(srcAbsolute, assetsRoot) || !fs::exists(srcAbsolute) || !fs::is_regular_file(srcAbsolute)) {
+            return false;
+        }
+
+        // Build a unique destination filename: "stem (1).ext", "stem (2).ext", …
+        const std::string stem = srcAbsolute.stem().string();
+        const std::string ext  = srcAbsolute.extension().string();
+        fs::create_directories(targetAbsDir);
+
+        fs::path destAbsolute = targetAbsDir / srcAbsolute.filename();
+        if (fs::exists(destAbsolute)) {
+            for (int n = 1; ; ++n) {
+                destAbsolute = targetAbsDir / (stem + " (" + std::to_string(n) + ")" + ext);
+                if (!fs::exists(destAbsolute)) break;
+            }
+        }
+
+        if (!IsUnderPath(destAbsolute, assetsRoot)) return false;
+
+        fs::copy_file(srcAbsolute, destAbsolute);
+
+        const std::string destProjectPath = ToProjectAssetPath(destAbsolute, assetsRoot);
+        selectedProjectDirectory_ = targetProjectDir;
+        selectedProjectFile_ = destProjectPath;
+        RefreshProjectFiles();
+        if (console_) console_->AddLog("Copied " + srcProjectPath + " -> " + destProjectPath);
+        return true;
+    } catch (...) {
+        if (console_) console_->AddError("Failed to copy project file: " + srcProjectPath);
+        return false;
+    }
+}
 
 void SceneEditor::RefreshProjectFiles() {
     projectDirectories_.clear();

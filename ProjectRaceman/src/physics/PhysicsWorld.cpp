@@ -97,6 +97,11 @@ std::string BuildShapeCacheKey(const PhysicsColliderDesc& collider) {
     return key;
 }
 
+// Thread-local pointer to the active build progress reporter.
+// Set by the progress-aware Build overload so free functions (CreateMeshShape)
+// can report without needing an extra parameter through every call site.
+static thread_local PhysicsBuildProgress* s_activeBuildProgress = nullptr;
+
 // --- Disk-based shape cache ---
 
 std::uint64_t FnvHash64(const std::string& s) {
@@ -112,12 +117,17 @@ std::filesystem::path GetShapeCacheDir() {
     return (std::filesystem::current_path() / "Project" / ".collision-cache").lexically_normal();
 }
 
+// Bump this whenever the cooking logic changes so old cached shapes are not loaded.
+// v2: added degenerate-triangle filtering (zero-area / NaN vertex rejection).
+static constexpr int kShapeCacheVersion = 2;
+
 // Cache filename encodes both the key and the source file mtime so it
 // auto-invalidates whenever the source mesh is modified.
 std::filesystem::path BuildDiskCachePath(const std::string& cacheKey,
                                          const std::filesystem::file_time_type& mtime) {
     const auto mtimeCount = mtime.time_since_epoch().count();
     const std::string filename =
+        "v" + std::to_string(kShapeCacheVersion) + "_" +
         std::to_string(FnvHash64(cacheKey)) + "_" + std::to_string(mtimeCount) + ".joltshape";
     return GetShapeCacheDir() / filename;
 }
@@ -455,13 +465,56 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
     vertices.reserve(collisionMesh.vertices.size());
     for (const glm::vec3& vertex : collisionMesh.vertices) {
         const glm::vec3 v = hasPivot ? (vertex - pivotOffset) : vertex;
-        vertices.push_back(JPH::Float3(v.x, v.y, v.z));
+        // Skip NaN/Inf vertices — replace with zero so indices still align;
+        // any triangle referencing them will be culled below.
+        const float vx = std::isfinite(v.x) ? v.x : 0.0f;
+        const float vy = std::isfinite(v.y) ? v.y : 0.0f;
+        const float vz = std::isfinite(v.z) ? v.z : 0.0f;
+        vertices.push_back(JPH::Float3(vx, vy, vz));
     }
 
+    // Minimum squared edge length and area threshold to reject degenerate triangles.
+    // Jolt's EPA/GJK can crash or loop infinitely on zero-area faces.
+    constexpr float kMinEdgeLenSq = 1e-8f;   // ~0.0001 m minimum edge
+    constexpr float kMinAreaSq    = 1e-10f;  // discard near-zero area triangles
+
+    const std::size_t vertexCount = vertices.size();
     JPH::IndexedTriangleList triangles;
     triangles.reserve(collisionMesh.indices.size() / 3);
     for (std::size_t i = 0; i + 2 < collisionMesh.indices.size(); i += 3) {
-        triangles.emplace_back(collisionMesh.indices[i], collisionMesh.indices[i + 1], collisionMesh.indices[i + 2], 0);
+        const std::uint32_t i0 = collisionMesh.indices[i];
+        const std::uint32_t i1 = collisionMesh.indices[i + 1];
+        const std::uint32_t i2 = collisionMesh.indices[i + 2];
+
+        // Reject out-of-range indices.
+        if (i0 >= vertexCount || i1 >= vertexCount || i2 >= vertexCount) continue;
+
+        // Reject triangles with duplicate indices (guaranteed zero area).
+        if (i0 == i1 || i1 == i2 || i0 == i2) continue;
+
+        const JPH::Float3& f0 = vertices[i0];
+        const JPH::Float3& f1 = vertices[i1];
+        const JPH::Float3& f2 = vertices[i2];
+
+        // Reject triangles whose vertices landed on a NaN-collapsed zero vertex
+        // (all three at origin) — check via edge lengths.
+        const float e0x = f1.x - f0.x, e0y = f1.y - f0.y, e0z = f1.z - f0.z;
+        const float e1x = f2.x - f0.x, e1y = f2.y - f0.y, e1z = f2.z - f0.z;
+        if (e0x*e0x + e0y*e0y + e0z*e0z < kMinEdgeLenSq) continue;
+        if (e1x*e1x + e1y*e1y + e1z*e1z < kMinEdgeLenSq) continue;
+
+        // Cross product magnitude squared = (2 * triangle area)^2
+        const float cx = e0y*e1z - e0z*e1y;
+        const float cy = e0z*e1x - e0x*e1z;
+        const float cz = e0x*e1y - e0y*e1x;
+        if (cx*cx + cy*cy + cz*cz < kMinAreaSq) continue;
+
+        triangles.emplace_back(i0, i1, i2, 0);
+    }
+
+    if (triangles.empty()) {
+        // Every triangle was degenerate — can't build a mesh shape.
+        return {};
     }
 
     JPH::MeshShapeSettings settings(std::move(vertices), std::move(triangles));

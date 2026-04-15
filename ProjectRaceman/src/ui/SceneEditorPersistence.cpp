@@ -101,6 +101,7 @@ void SceneEditor::SaveCurrentScene() {
         savePath_ = MakeUniqueSceneAssetPath("Untitled");
     }
     Save(savePath_);
+    sceneDirty_ = false;
     lastScenePath_ = NormalizeSlashes(savePath_);
     if (defaultScenePath_.empty()) {
         defaultScenePath_ = lastScenePath_;
@@ -433,6 +434,255 @@ void SceneEditor::Save(const std::string& path) {
         wroteClosed = true;
     }
     out << "]\n}\n";
+}
+
+bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
+    if (objectIndex < 0 || objectIndex >= (int)objects_.size()) return false;
+
+    // Collect the root object and all its descendants in order.
+    std::vector<int> subtree;
+    std::function<void(int)> collect = [&](int idx) {
+        subtree.push_back(idx);
+        const std::string& oid = objects_[idx].id;
+        for (int i = 0; i < (int)objects_.size(); ++i) {
+            if (objects_[i].parentId == oid) collect(i);
+        }
+    };
+    collect(objectIndex);
+
+    const fs::path targetPath = ResolveEditorPath(path);
+    try { fs::create_directories(targetPath.parent_path()); } catch (...) {}
+
+    std::ofstream out(targetPath, std::ios::trunc);
+    if (!out.good()) return false;
+
+    out << "{\n  \"prefab\": true,\n  \"objects\": [\n";
+    for (std::size_t si = 0; si < subtree.size(); ++si) {
+        SceneObject o = objects_[subtree[si]];
+        if (si == 0) o.parentId.clear();  // prefab root has no external parent
+
+        const std::string meshType = o.meshFilter.meshType.empty() ? o.type : o.meshFilter.meshType;
+        out << "    {\n";
+        out << "      \"id\": \"" << JsonEscape(o.id) << "\",\n";
+        out << "      \"parentId\": \"" << JsonEscape(o.parentId) << "\",\n";
+        out << "      \"name\": \"" << JsonEscape(o.name) << "\",\n";
+        out << "      \"type\": \"" << JsonEscape(o.type) << "\",\n";
+        out << "      \"physicsLayer\": " << ClampPhysicsLayerIndex(o.physicsLayer) << ",\n";
+        out << "      \"enabled\": " << (o.enabled ? "true" : "false") << ",\n";
+        SceneObject orderedObject = o;
+        SyncInspectorComponentOrder(orderedObject);
+        out << "      \"componentOrder\": [";
+        for (std::size_t orderIndex = 0; orderIndex < orderedObject.inspectorComponentOrder.size(); ++orderIndex) {
+            out << "\"" << InspectorComponentTypeToString(orderedObject.inspectorComponentOrder[orderIndex]) << "\"";
+            if (orderIndex + 1 < orderedObject.inspectorComponentOrder.size()) out << ", ";
+        }
+        out << "],\n";
+        out << "      \"components\": [\n";
+        out << "        {\n";
+        out << "          \"type\": \"Transform\",\n";
+        out << "          \"position\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
+        out << "          \"rotationEuler\": [" << o.transform.rotationEuler.x << ", " << o.transform.rotationEuler.y << ", " << o.transform.rotationEuler.z << "],\n";
+        out << "          \"scale\": [" << o.transform.scale.x << ", " << o.transform.scale.y << ", " << o.transform.scale.z << "]\n";
+        out << "        }";
+        if (o.hasMeshFilter) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"MeshFilter\",\n";
+            out << "          \"enabled\": " << (o.meshFilter.enabled ? "true" : "false") << ",\n";
+            out << "          \"meshType\": \"" << JsonEscape(meshType) << "\",\n";
+            out << "          \"sourcePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.sourcePath)) << "\",\n";
+            out << "          \"meshIndex\": " << o.meshFilter.meshIndex << ",\n";
+            out << "          \"importedMaterialName\": \"" << JsonEscape(o.meshFilter.importedMaterialName) << "\",\n";
+            out << "          \"diffuseTexturePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.diffuseTexturePath)) << "\"";
+            const glm::vec3& po = o.meshFilter.pivotOffset;
+            if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
+                out << ",\n          \"pivotOffset\": [" << po.x << ", " << po.y << ", " << po.z << "]";
+            }
+            out << "\n        }";
+        }
+        if (o.hasMeshRenderer) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"MeshRenderer\",\n";
+            out << "          \"enabled\": " << (o.meshRenderer.enabled ? "true" : "false") << ",\n";
+            out << "          \"materialId\": \"" << JsonEscape(o.meshRenderer.materialId.empty() ? "pbr_default" : o.meshRenderer.materialId) << "\",\n";
+            out << "          \"color\": [" << o.meshRenderer.color.r << ", " << o.meshRenderer.color.g << ", " << o.meshRenderer.color.b << ", " << o.meshRenderer.color.a << "]\n";
+            out << "        }";
+        }
+        if (o.hasScriptComponent) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Script\",\n";
+            out << "          \"enabled\": " << (o.scriptComponent.enabled ? "true" : "false") << ",\n";
+            out << "          \"attachments\": [\n";
+            for (std::size_t scriptIndex = 0; scriptIndex < o.scriptComponent.attachments.size(); ++scriptIndex) {
+                const ObjectScriptAttachment& script = o.scriptComponent.attachments[scriptIndex];
+                out << "            {\n";
+                out << "              \"enabled\": " << (script.enabled ? "true" : "false") << ",\n";
+                out << "              \"scriptName\": \"" << JsonEscape(script.scriptName) << "\",\n";
+                out << "              \"scriptPath\": \"" << JsonEscape(NormalizeSlashes(script.scriptPath)) << "\"";
+                if (!script.fields.empty()) {
+                    out << ",\n              \"fields\": [\n";
+                    for (std::size_t fieldIndex = 0; fieldIndex < script.fields.size(); ++fieldIndex) {
+                        const ScriptFieldEntry& field = script.fields[fieldIndex];
+                        out << "                {\n";
+                        out << "                  \"name\": \"" << JsonEscape(field.name) << "\",\n";
+                        out << "                  \"type\": \"" << ScriptFieldTypeToString(field.type) << "\",\n";
+                        WriteScriptFieldValue(out, field);
+                        out << "                }" << (fieldIndex + 1 < script.fields.size() ? ",\n" : "\n");
+                    }
+                    out << "              ]\n            }";
+                } else {
+                    out << "\n            }";
+                }
+                out << (scriptIndex + 1 < o.scriptComponent.attachments.size() ? ",\n" : "\n");
+            }
+            out << "          ]\n        }";
+        }
+        if (o.hasRigidbody) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Rigidbody\",\n";
+            out << "          \"enabled\": " << (o.rigidbody.enabled ? "true" : "false") << ",\n";
+            out << "          \"bodyType\": \"" << RigidbodyBodyTypeToString(o.rigidbody.bodyType) << "\",\n";
+            out << "          \"mass\": " << o.rigidbody.mass << ",\n";
+            out << "          \"useGravity\": " << (o.rigidbody.useGravity ? "true" : "false") << ",\n";
+            out << "          \"linearDamping\": " << o.rigidbody.linearDamping << ",\n";
+            out << "          \"angularDamping\": " << o.rigidbody.angularDamping << ",\n";
+            out << "          \"friction\": " << o.rigidbody.friction << ",\n";
+            out << "          \"restitution\": " << o.rigidbody.restitution << ",\n";
+            out << "          \"velocity\": [" << o.rigidbody.velocity.x << ", " << o.rigidbody.velocity.y << ", " << o.rigidbody.velocity.z << "],\n";
+            out << "          \"angularVelocity\": [" << o.rigidbody.angularVelocity.x << ", " << o.rigidbody.angularVelocity.y << ", " << o.rigidbody.angularVelocity.z << "],\n";
+            out << "          \"freezePosition\": [" << (o.rigidbody.freezePositionX ? "true" : "false") << ", " << (o.rigidbody.freezePositionY ? "true" : "false") << ", " << (o.rigidbody.freezePositionZ ? "true" : "false") << "],\n";
+            out << "          \"freezeRotation\": [" << (o.rigidbody.freezeRotationX ? "true" : "false") << ", " << (o.rigidbody.freezeRotationY ? "true" : "false") << ", " << (o.rigidbody.freezeRotationZ ? "true" : "false") << "]\n";
+            out << "        }";
+        }
+        if (o.hasVehicle) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Vehicle\",\n";
+            out << "          \"enabled\": " << (o.vehicle.enabled ? "true" : "false") << ",\n";
+            out << "          \"canTilt\": " << (o.vehicle.canTilt ? "true" : "false") << ",\n";
+            out << "          \"configPath\": \"" << JsonEscape(NormalizeSlashes(o.vehicle.configPath)) << "\",\n";
+            out << "          \"chassisObjectIds\": [";
+            for (std::size_t chassisIndex = 0; chassisIndex < o.vehicle.chassisObjectIds.size(); ++chassisIndex) {
+                out << (chassisIndex == 0 ? "" : ", ") << "\"" << JsonEscape(o.vehicle.chassisObjectIds[chassisIndex]) << "\"";
+            }
+            out << "],\n";
+            out << "          \"wheelBindings\": [\n";
+            for (std::size_t wheelIndex = 0; wheelIndex < o.vehicle.wheelBindings.size(); ++wheelIndex) {
+                const VehicleWheelBinding& binding = o.vehicle.wheelBindings[wheelIndex];
+                out << "            {\n";
+                out << "              \"wheelName\": \"" << JsonEscape(binding.wheelName) << "\",\n";
+                out << "              \"objectId\": \"" << JsonEscape(binding.objectId) << "\",\n";
+                out << "              \"visualRotationEuler\": [" << binding.visualRotationEuler.x << ", " << binding.visualRotationEuler.y << ", " << binding.visualRotationEuler.z << "]\n";
+                out << "            }" << (wheelIndex + 1 < o.vehicle.wheelBindings.size() ? ",\n" : "\n");
+            }
+            out << "          ]\n        }";
+        }
+        if (o.hasCharacterController) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"CharacterController\",\n";
+            out << "          \"enabled\": " << (o.characterController.enabled ? "true" : "false") << ",\n";
+            out << "          \"height\": " << o.characterController.height << ",\n";
+            out << "          \"radius\": " << o.characterController.radius << ",\n";
+            out << "          \"center\": [" << o.characterController.center.x << ", " << o.characterController.center.y << ", " << o.characterController.center.z << "],\n";
+            out << "          \"stepHeight\": " << o.characterController.stepHeight << ",\n";
+            out << "          \"slopeLimitDegrees\": " << o.characterController.slopeLimitDegrees << ",\n";
+            out << "          \"maxStrength\": " << o.characterController.maxStrength << ",\n";
+            out << "          \"mass\": " << o.characterController.mass << "\n";
+            out << "        }";
+        }
+        const SceneColliderType colliderType = GetActiveColliderType(o);
+        if (colliderType != SceneColliderType::None) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Collider\",\n";
+            out << "          \"colliderType\": \"" << SceneColliderTypeLabel(colliderType) << "\"";
+            if (colliderType == SceneColliderType::Box) {
+                out << ",\n          \"enabled\": " << (o.boxCollider.enabled ? "true" : "false") << ",\n";
+                out << "          \"isTrigger\": " << (o.boxCollider.isTrigger ? "true" : "false") << ",\n";
+                out << "          \"center\": [" << o.boxCollider.center.x << ", " << o.boxCollider.center.y << ", " << o.boxCollider.center.z << "],\n";
+                out << "          \"size\": [" << o.boxCollider.size.x << ", " << o.boxCollider.size.y << ", " << o.boxCollider.size.z << "]\n";
+            } else if (colliderType == SceneColliderType::Sphere) {
+                out << ",\n          \"enabled\": " << (o.sphereCollider.enabled ? "true" : "false") << ",\n";
+                out << "          \"isTrigger\": " << (o.sphereCollider.isTrigger ? "true" : "false") << ",\n";
+                out << "          \"center\": [" << o.sphereCollider.center.x << ", " << o.sphereCollider.center.y << ", " << o.sphereCollider.center.z << "],\n";
+                out << "          \"radius\": " << o.sphereCollider.radius << "\n";
+            } else if (colliderType == SceneColliderType::Capsule) {
+                out << ",\n          \"enabled\": " << (o.capsuleCollider.enabled ? "true" : "false") << ",\n";
+                out << "          \"isTrigger\": " << (o.capsuleCollider.isTrigger ? "true" : "false") << ",\n";
+                out << "          \"center\": [" << o.capsuleCollider.center.x << ", " << o.capsuleCollider.center.y << ", " << o.capsuleCollider.center.z << "],\n";
+                out << "          \"radius\": " << o.capsuleCollider.radius << ",\n";
+                out << "          \"height\": " << o.capsuleCollider.height << "\n";
+            } else if (colliderType == SceneColliderType::Plane) {
+                out << ",\n          \"enabled\": " << (o.planeCollider.enabled ? "true" : "false") << ",\n";
+                out << "          \"isTrigger\": " << (o.planeCollider.isTrigger ? "true" : "false") << ",\n";
+                out << "          \"normal\": [" << o.planeCollider.normal.x << ", " << o.planeCollider.normal.y << ", " << o.planeCollider.normal.z << "],\n";
+                out << "          \"offset\": " << o.planeCollider.offset << ",\n";
+                out << "          \"infinite\": " << (o.planeCollider.infinite ? "true" : "false") << ",\n";
+                out << "          \"halfExtent\": " << o.planeCollider.halfExtent << "\n";
+            } else if (colliderType == SceneColliderType::Mesh) {
+                out << ",\n          \"enabled\": " << (o.meshCollider.enabled ? "true" : "false") << ",\n";
+                out << "          \"isTrigger\": " << (o.meshCollider.isTrigger ? "true" : "false") << ",\n";
+                out << "          \"buildQuality\": \"" << MeshColliderBuildQualityToString(o.meshCollider.buildQuality) << "\",\n";
+                out << "          \"mode\": \"" << MeshColliderModeToString(o.meshCollider.mode) << "\"\n";
+            }
+            out << "        }";
+        }
+        if (o.hasCamera) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Camera\",\n";
+            out << "          \"enabled\": " << (o.camera.enabled ? "true" : "false") << ",\n";
+            out << "          \"isMain\": " << (o.camera.isMain ? "true" : "false") << ",\n";
+            out << "          \"fieldOfViewDegrees\": " << o.camera.fieldOfViewDegrees << ",\n";
+            out << "          \"nearClip\": " << o.camera.nearClip << ",\n";
+            out << "          \"farClip\": " << o.camera.farClip << ",\n";
+            out << "          \"clearColor\": [" << o.camera.clearColor.r << ", " << o.camera.clearColor.g << ", " << o.camera.clearColor.b << ", " << o.camera.clearColor.a << "]\n";
+            out << "        }";
+        }
+        if (o.hasCinemachine) {
+            const auto cinemachineTypeStr = [](CinemachineCameraType t) -> const char* {
+                switch (t) {
+                    case CinemachineCameraType::Follow:          return "Follow";
+                    case CinemachineCameraType::LookAt:          return "LookAt";
+                    case CinemachineCameraType::FollowAndLookAt: return "FollowAndLookAt";
+                }
+                return "FollowAndLookAt";
+            };
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Cinemachine\",\n";
+            out << "          \"enabled\": " << (o.cinemachine.enabled ? "true" : "false") << ",\n";
+            out << "          \"cameraType\": \"" << cinemachineTypeStr(o.cinemachine.type) << "\",\n";
+            out << "          \"followTargetId\": \"" << JsonEscape(o.cinemachine.followTargetId) << "\",\n";
+            out << "          \"lookAtTargetId\": \"" << JsonEscape(o.cinemachine.lookAtTargetId) << "\",\n";
+            out << "          \"followOffset\": [" << o.cinemachine.followOffset.x << ", " << o.cinemachine.followOffset.y << ", " << o.cinemachine.followOffset.z << "],\n";
+            out << "          \"pitchOffset\": " << o.cinemachine.pitchOffset << ",\n";
+            out << "          \"yawOffset\": " << o.cinemachine.yawOffset << ",\n";
+            out << "          \"positionDamping\": " << o.cinemachine.positionDamping << ",\n";
+            out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << "\n";
+            out << "        }";
+        }
+        if (o.hasLight) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"Light\",\n";
+            out << "          \"enabled\": " << (o.light.enabled ? "true" : "false") << ",\n";
+            out << "          \"lightType\": \"" << LightTypeToString(o.light.type) << "\",\n";
+            out << "          \"color\": [" << o.light.color.r << ", " << o.light.color.g << ", " << o.light.color.b << "],\n";
+            out << "          \"intensity\": " << o.light.intensity << ",\n";
+            out << "          \"range\": " << o.light.range << ",\n";
+            out << "          \"spotAngleDegrees\": " << o.light.spotAngleDegrees << "\n";
+            out << "        }";
+        }
+        out << "\n      ]\n    }";
+        out << (si + 1 < subtree.size() ? ",\n" : "\n");
+    }
+    out << "  ]\n}\n";
+    return out.good();
 }
 
 void SceneEditor::Load(const std::string& path) {
@@ -1256,6 +1506,376 @@ void SceneEditor::Load(const std::string& path) {
     }
 
     NormalizeSelection();
+}
+
+bool SceneEditor::InstantiatePrefab(const std::string& path) {
+    using namespace raceman::physics::json;
+    using raceman::physics::json::Value;
+    using raceman::physics::json::parse;
+    using scene_editor_internal::ReadBool;
+    using scene_editor_internal::ReadString;
+    using scene_editor_internal::ReadVec3;
+    using scene_editor_internal::ReadVec4;
+
+    const fs::path sourcePath = ResolveEditorPath(path);
+    if (!fs::exists(sourcePath)) return false;
+
+    std::ifstream in(sourcePath);
+    if (!in.good()) return false;
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+
+    struct MeshCache {
+        bool attempted{false};
+        bool loaded{false};
+        std::string resolvedPath;
+        std::shared_ptr<::Model> model;
+        std::vector<ImportedMeshInfo> infos;
+    };
+    std::unordered_map<std::string, MeshCache> meshAssetCache;
+
+    std::vector<SceneObject> newObjects;
+    try {
+        Value root = parse(buffer.str());
+        if (!root.is_object()) return false;
+        const auto& obj = root.as_object();
+        auto arrIt = obj.find("objects");
+        if (arrIt == obj.end() || !arrIt->second.is_array()) return false;
+
+        for (const auto& v : arrIt->second.as_array()) {
+            if (!v.is_object()) continue;
+            const auto& o = v.as_object();
+
+            SceneObject so;
+            so.inspectorComponentOrder = DefaultInspectorComponentOrder();
+
+            auto idIt = o.find("id");
+            so.id = (idIt != o.end() && idIt->second.is_string()) ? idIt->second.as_string() : MakeId("obj");
+            ReadString(o, "parentId", so.parentId);
+            auto nameIt = o.find("name");
+            so.name = (nameIt != o.end() && nameIt->second.is_string()) ? nameIt->second.as_string() : "Object";
+            so.type = "GameObject";
+            so.physicsLayer = 0;
+            ReadBool(o, "enabled", so.enabled);
+            if (auto layerIt = o.find("physicsLayer"); layerIt != o.end() && layerIt->second.is_number()) {
+                so.physicsLayer = ClampPhysicsLayerIndex(static_cast<int>(layerIt->second.as_number()));
+            }
+            if (auto orderIt = o.find("componentOrder"); orderIt != o.end() && orderIt->second.is_array()) {
+                so.inspectorComponentOrder.clear();
+                for (const auto& orderValue : orderIt->second.as_array()) {
+                    if (!orderValue.is_string()) continue;
+                    SceneInspectorComponentType componentType;
+                    if (InspectorComponentTypeFromString(orderValue.as_string(), componentType)) {
+                        so.inspectorComponentOrder.push_back(componentType);
+                    }
+                }
+            }
+
+            auto componentsIt = o.find("components");
+            if (componentsIt != o.end() && componentsIt->second.is_array()) {
+                so.hasMeshFilter = false;
+                so.hasMeshRenderer = false;
+                so.hasScriptComponent = false;
+                so.hasRigidbody = false;
+                so.hasVehicle = false;
+                so.hasCharacterController = false;
+                so.hasBoxCollider = false;
+                so.hasSphereCollider = false;
+                so.hasCapsuleCollider = false;
+                so.hasPlaneCollider = false;
+                so.hasMeshCollider = false;
+                so.hasCamera = false;
+                so.hasCinemachine = false;
+                so.hasLight = false;
+
+                for (const auto& componentValue : componentsIt->second.as_array()) {
+                    if (!componentValue.is_object()) continue;
+                    const auto& component = componentValue.as_object();
+                    std::string componentType;
+                    ReadString(component, "type", componentType);
+
+                    if (componentType == "Transform") {
+                        ReadVec3(component, "position", so.transform.position);
+                        ReadVec3(component, "rotationEuler", so.transform.rotationEuler);
+                        ReadVec3(component, "scale", so.transform.scale);
+                    } else if (componentType == "MeshFilter") {
+                        so.hasMeshFilter = true;
+                        ReadBool(component, "enabled", so.meshFilter.enabled);
+                        ReadString(component, "meshType", so.meshFilter.meshType);
+                        ReadString(component, "sourcePath", so.meshFilter.sourcePath);
+                        so.meshFilter.sourcePath = NormalizeSlashes(so.meshFilter.sourcePath);
+                        if (auto mi = component.find("meshIndex"); mi != component.end() && mi->second.is_number()) {
+                            so.meshFilter.meshIndex = static_cast<int>(mi->second.as_number());
+                        }
+                        ReadString(component, "importedMaterialName", so.meshFilter.importedMaterialName);
+                        ReadString(component, "diffuseTexturePath", so.meshFilter.diffuseTexturePath);
+                        so.meshFilter.diffuseTexturePath = NormalizeSlashes(so.meshFilter.diffuseTexturePath);
+                        ReadVec3(component, "pivotOffset", so.meshFilter.pivotOffset);
+                    } else if (componentType == "MeshRenderer") {
+                        so.hasMeshRenderer = true;
+                        ReadBool(component, "enabled", so.meshRenderer.enabled);
+                        ReadString(component, "materialId", so.meshRenderer.materialId);
+                        ReadVec4(component, "color", so.meshRenderer.color);
+                    } else if (componentType == "Script") {
+                        so.hasScriptComponent = true;
+                        ReadBool(component, "enabled", so.scriptComponent.enabled);
+                        so.scriptComponent.attachments.clear();
+                        auto attachIt = component.find("attachments");
+                        if (attachIt != component.end() && attachIt->second.is_array()) {
+                            for (const auto& sv : attachIt->second.as_array()) {
+                                if (!sv.is_object()) continue;
+                                const auto& so2 = sv.as_object();
+                                ObjectScriptAttachment script;
+                                ReadBool(so2, "enabled", script.enabled);
+                                ReadString(so2, "scriptName", script.scriptName);
+                                ReadString(so2, "scriptPath", script.scriptPath);
+                                script.scriptPath = NormalizeSlashes(script.scriptPath);
+                                auto fieldsIt = so2.find("fields");
+                                if (fieldsIt != so2.end() && fieldsIt->second.is_array()) {
+                                    for (const auto& fv : fieldsIt->second.as_array()) {
+                                        if (!fv.is_object()) continue;
+                                        const auto& fo = fv.as_object();
+                                        ScriptFieldEntry field;
+                                        std::string typeName;
+                                        if (!ReadString(fo, "name", field.name) || !ReadString(fo, "type", typeName)) continue;
+                                        field.type = ScriptFieldTypeFromString(typeName);
+                                        if (!TryReadScriptFieldValue(fo, field.type, field.value)) continue;
+                                        script.fields.push_back(std::move(field));
+                                    }
+                                }
+                                if (!script.scriptName.empty()) {
+                                    SyncAttachmentScriptFields(script);
+                                    so.scriptComponent.attachments.push_back(std::move(script));
+                                }
+                            }
+                        }
+                    } else if (componentType == "Rigidbody") {
+                        so.hasRigidbody = true;
+                        ReadBool(component, "enabled", so.rigidbody.enabled);
+                        std::string bodyTypeStr;
+                        if (ReadString(component, "bodyType", bodyTypeStr)) so.rigidbody.bodyType = RigidbodyBodyTypeFromString(bodyTypeStr);
+                        if (auto m = component.find("mass"); m != component.end() && m->second.is_number()) so.rigidbody.mass = (std::max)(0.0001f, static_cast<float>(m->second.as_number()));
+                        ReadBool(component, "useGravity", so.rigidbody.useGravity);
+                        if (auto d = component.find("linearDamping"); d != component.end() && d->second.is_number()) so.rigidbody.linearDamping = (std::max)(0.0f, static_cast<float>(d->second.as_number()));
+                        if (auto d = component.find("angularDamping"); d != component.end() && d->second.is_number()) so.rigidbody.angularDamping = (std::max)(0.0f, static_cast<float>(d->second.as_number()));
+                        if (auto f = component.find("friction"); f != component.end() && f->second.is_number()) so.rigidbody.friction = (std::max)(0.0f, static_cast<float>(f->second.as_number()));
+                        if (auto r = component.find("restitution"); r != component.end() && r->second.is_number()) so.rigidbody.restitution = (std::max)(0.0f, static_cast<float>(r->second.as_number()));
+                        ReadVec3(component, "velocity", so.rigidbody.velocity);
+                        ReadVec3(component, "angularVelocity", so.rigidbody.angularVelocity);
+                        if (auto fp = component.find("freezePosition"); fp != component.end() && fp->second.is_array()) {
+                            const auto& a = fp->second.as_array();
+                            if (a.size() == 3 && a[0].is_bool() && a[1].is_bool() && a[2].is_bool()) {
+                                so.rigidbody.freezePositionX = a[0].as_bool(); so.rigidbody.freezePositionY = a[1].as_bool(); so.rigidbody.freezePositionZ = a[2].as_bool();
+                            }
+                        }
+                        if (auto fr = component.find("freezeRotation"); fr != component.end() && fr->second.is_array()) {
+                            const auto& a = fr->second.as_array();
+                            if (a.size() == 3 && a[0].is_bool() && a[1].is_bool() && a[2].is_bool()) {
+                                so.rigidbody.freezeRotationX = a[0].as_bool(); so.rigidbody.freezeRotationY = a[1].as_bool(); so.rigidbody.freezeRotationZ = a[2].as_bool();
+                            }
+                        }
+                    } else if (componentType == "Vehicle") {
+                        so.hasVehicle = true;
+                        ReadBool(component, "enabled", so.vehicle.enabled);
+                        so.vehicle.canTilt = true;
+                        ReadBool(component, "canTilt", so.vehicle.canTilt);
+                        ReadString(component, "configPath", so.vehicle.configPath);
+                        so.vehicle.configPath = NormalizeSlashes(so.vehicle.configPath);
+                        so.vehicle.chassisObjectIds.clear();
+                        if (auto cids = component.find("chassisObjectIds"); cids != component.end() && cids->second.is_array()) {
+                            for (const auto& cv : cids->second.as_array()) {
+                                if (cv.is_string() && !cv.as_string().empty()) so.vehicle.chassisObjectIds.push_back(cv.as_string());
+                            }
+                        }
+                        so.vehicle.wheelBindings.clear();
+                        if (auto wbs = component.find("wheelBindings"); wbs != component.end() && wbs->second.is_array()) {
+                            for (const auto& bv : wbs->second.as_array()) {
+                                if (!bv.is_object()) continue;
+                                const auto& bo = bv.as_object();
+                                VehicleWheelBinding binding;
+                                ReadString(bo, "wheelName", binding.wheelName);
+                                ReadString(bo, "objectId", binding.objectId);
+                                ReadVec3(bo, "visualRotationEuler", binding.visualRotationEuler);
+                                if (!binding.wheelName.empty()) so.vehicle.wheelBindings.push_back(std::move(binding));
+                            }
+                        }
+                    } else if (componentType == "CharacterController") {
+                        so.hasCharacterController = true;
+                        ReadBool(component, "enabled", so.characterController.enabled);
+                        if (auto h = component.find("height"); h != component.end() && h->second.is_number()) so.characterController.height = (std::max)(0.001f, static_cast<float>(h->second.as_number()));
+                        if (auto r = component.find("radius"); r != component.end() && r->second.is_number()) so.characterController.radius = (std::max)(0.001f, static_cast<float>(r->second.as_number()));
+                        so.characterController.height = (std::max)(so.characterController.radius * 2.0f, so.characterController.height);
+                        ReadVec3(component, "center", so.characterController.center);
+                        if (auto sh = component.find("stepHeight"); sh != component.end() && sh->second.is_number()) so.characterController.stepHeight = (std::max)(0.0f, static_cast<float>(sh->second.as_number()));
+                        if (auto sl = component.find("slopeLimitDegrees"); sl != component.end() && sl->second.is_number()) so.characterController.slopeLimitDegrees = (std::max)(1.0f, (std::min)(89.0f, static_cast<float>(sl->second.as_number())));
+                        if (auto ms = component.find("maxStrength"); ms != component.end() && ms->second.is_number()) so.characterController.maxStrength = (std::max)(0.0f, static_cast<float>(ms->second.as_number()));
+                        if (auto m = component.find("mass"); m != component.end() && m->second.is_number()) so.characterController.mass = (std::max)(0.001f, static_cast<float>(m->second.as_number()));
+                    } else if (componentType == "Collider") {
+                        std::string colliderTypeName;
+                        if (ReadString(component, "colliderType", colliderTypeName)) {
+                            const std::string lt = ToLowerCopy(colliderTypeName);
+                            if (lt == "box") {
+                                SetActiveColliderType(so, SceneColliderType::Box);
+                                ReadBool(component, "enabled", so.boxCollider.enabled);
+                                ReadBool(component, "isTrigger", so.boxCollider.isTrigger);
+                                ReadVec3(component, "center", so.boxCollider.center);
+                                ReadVec3(component, "size", so.boxCollider.size);
+                                so.boxCollider.size = { (std::max)(0.001f, so.boxCollider.size.x), (std::max)(0.001f, so.boxCollider.size.y), (std::max)(0.001f, so.boxCollider.size.z) };
+                            } else if (lt == "sphere") {
+                                SetActiveColliderType(so, SceneColliderType::Sphere);
+                                ReadBool(component, "enabled", so.sphereCollider.enabled);
+                                ReadBool(component, "isTrigger", so.sphereCollider.isTrigger);
+                                ReadVec3(component, "center", so.sphereCollider.center);
+                                if (auto r = component.find("radius"); r != component.end() && r->second.is_number()) so.sphereCollider.radius = (std::max)(0.001f, static_cast<float>(r->second.as_number()));
+                            } else if (lt == "capsule") {
+                                SetActiveColliderType(so, SceneColliderType::Capsule);
+                                ReadBool(component, "enabled", so.capsuleCollider.enabled);
+                                ReadBool(component, "isTrigger", so.capsuleCollider.isTrigger);
+                                ReadVec3(component, "center", so.capsuleCollider.center);
+                                if (auto r = component.find("radius"); r != component.end() && r->second.is_number()) so.capsuleCollider.radius = (std::max)(0.001f, static_cast<float>(r->second.as_number()));
+                                if (auto h = component.find("height"); h != component.end() && h->second.is_number()) so.capsuleCollider.height = (std::max)(so.capsuleCollider.radius * 2.0f, static_cast<float>(h->second.as_number()));
+                            } else if (lt == "plane") {
+                                SetActiveColliderType(so, SceneColliderType::Plane);
+                                ReadBool(component, "enabled", so.planeCollider.enabled);
+                                ReadBool(component, "isTrigger", so.planeCollider.isTrigger);
+                                ReadVec3(component, "normal", so.planeCollider.normal);
+                                if (glm::length2(so.planeCollider.normal) <= 0.000001f) so.planeCollider.normal = {0.0f, 1.0f, 0.0f}; else so.planeCollider.normal = glm::normalize(so.planeCollider.normal);
+                                if (auto of = component.find("offset"); of != component.end() && of->second.is_number()) so.planeCollider.offset = static_cast<float>(of->second.as_number());
+                                ReadBool(component, "infinite", so.planeCollider.infinite);
+                                if (auto he = component.find("halfExtent"); he != component.end() && he->second.is_number()) so.planeCollider.halfExtent = (std::max)(0.001f, static_cast<float>(he->second.as_number()));
+                            } else if (lt == "mesh") {
+                                SetActiveColliderType(so, SceneColliderType::Mesh);
+                                ReadBool(component, "enabled", so.meshCollider.enabled);
+                                ReadBool(component, "isTrigger", so.meshCollider.isTrigger);
+                                std::string bq; if (ReadString(component, "buildQuality", bq)) so.meshCollider.buildQuality = MeshColliderBuildQualityFromString(bq);
+                                std::string mm; if (ReadString(component, "mode", mm)) so.meshCollider.mode = MeshColliderModeFromString(mm);
+                            }
+                        }
+                    } else if (componentType == "Camera") {
+                        so.hasCamera = true;
+                        ReadBool(component, "enabled", so.camera.enabled);
+                        ReadBool(component, "isMain", so.camera.isMain);
+                        ReadVec4(component, "clearColor", so.camera.clearColor);
+                        if (auto fov = component.find("fieldOfViewDegrees"); fov != component.end() && fov->second.is_number()) so.camera.fieldOfViewDegrees = (std::max)(1.0f, (std::min)(179.0f, static_cast<float>(fov->second.as_number())));
+                        if (auto nc = component.find("nearClip"); nc != component.end() && nc->second.is_number()) so.camera.nearClip = (std::max)(0.001f, static_cast<float>(nc->second.as_number()));
+                        if (auto fc = component.find("farClip"); fc != component.end() && fc->second.is_number()) so.camera.farClip = (std::max)(so.camera.nearClip + 0.001f, static_cast<float>(fc->second.as_number()));
+                    } else if (componentType == "Cinemachine") {
+                        so.hasCinemachine = true;
+                        ReadBool(component, "enabled", so.cinemachine.enabled);
+                        std::string cameraTypeStr;
+                        if (ReadString(component, "cameraType", cameraTypeStr)) {
+                            if (cameraTypeStr == "Follow") so.cinemachine.type = CinemachineCameraType::Follow;
+                            else if (cameraTypeStr == "LookAt") so.cinemachine.type = CinemachineCameraType::LookAt;
+                            else so.cinemachine.type = CinemachineCameraType::FollowAndLookAt;
+                        }
+                        ReadString(component, "followTargetId", so.cinemachine.followTargetId);
+                        ReadString(component, "lookAtTargetId", so.cinemachine.lookAtTargetId);
+                        ReadVec3(component, "followOffset", so.cinemachine.followOffset);
+                        if (auto p = component.find("pitchOffset"); p != component.end() && p->second.is_number()) so.cinemachine.pitchOffset = static_cast<float>(p->second.as_number());
+                        if (auto y = component.find("yawOffset"); y != component.end() && y->second.is_number()) so.cinemachine.yawOffset = static_cast<float>(y->second.as_number());
+                        if (auto pd = component.find("positionDamping"); pd != component.end() && pd->second.is_number()) so.cinemachine.positionDamping = (std::max)(0.0f, static_cast<float>(pd->second.as_number()));
+                        if (auto rd = component.find("rotationDamping"); rd != component.end() && rd->second.is_number()) so.cinemachine.rotationDamping = (std::max)(0.0f, static_cast<float>(rd->second.as_number()));
+                    } else if (componentType == "Light") {
+                        so.hasLight = true;
+                        ReadBool(component, "enabled", so.light.enabled);
+                        ReadVec3(component, "color", so.light.color);
+                        std::string lightTypeStr;
+                        if (ReadString(component, "lightType", lightTypeStr)) so.light.type = LightTypeFromString(lightTypeStr);
+                        if (auto i = component.find("intensity"); i != component.end() && i->second.is_number()) so.light.intensity = (std::max)(0.0f, static_cast<float>(i->second.as_number()));
+                        if (auto r = component.find("range"); r != component.end() && r->second.is_number()) so.light.range = (std::max)(0.001f, static_cast<float>(r->second.as_number()));
+                        if (auto sa = component.find("spotAngleDegrees"); sa != component.end() && sa->second.is_number()) so.light.spotAngleDegrees = (std::max)(1.0f, (std::min)(179.0f, static_cast<float>(sa->second.as_number())));
+                    }
+                }
+            }
+
+            SyncInspectorComponentOrder(so);
+
+            if (so.meshRenderer.materialId.empty()) so.meshRenderer.materialId = "pbr_default";
+            if (so.meshFilter.meshType == "Mesh" && so.meshFilter.meshIndex < 0) so.meshFilter.meshIndex = 0;
+
+            const std::string meshType = so.meshFilter.meshType.empty() ? std::string("Mesh") : so.meshFilter.meshType;
+            if (so.hasMeshFilter && IsBuiltInPrimitiveMeshType(meshType)) {
+                ConfigureBuiltInPrimitive(so, meshType, builtInPrimitiveMeshes_);
+            } else if (so.hasMeshFilter && meshType == "Mesh" && !so.meshFilter.sourcePath.empty()) {
+                try {
+                    const std::string cacheKey = NormalizeSlashes(so.meshFilter.sourcePath);
+                    MeshCache& cacheEntry = meshAssetCache[cacheKey];
+                    if (!cacheEntry.attempted) {
+                        cacheEntry.attempted = true;
+                        cacheEntry.loaded = TryLoadMeshAsset(so.meshFilter.sourcePath, cacheEntry.resolvedPath, cacheEntry.model, cacheEntry.infos);
+                    }
+                    if (cacheEntry.loaded && so.meshFilter.meshIndex >= 0 && so.meshFilter.meshIndex < static_cast<int>(cacheEntry.infos.size())) {
+                        so.meshFilter.meshType = "Mesh";
+                        so.meshFilter.sourcePath = cacheEntry.resolvedPath;
+                        ApplyMeshInfoToSceneObject(so, cacheEntry.infos[static_cast<std::size_t>(so.meshFilter.meshIndex)], cacheEntry.model);
+                    }
+                } catch (...) {}
+            }
+
+            newObjects.push_back(std::move(so));
+        }
+    } catch (...) {
+        return false;
+    }
+
+    if (newObjects.empty()) return false;
+
+    // Remap all IDs to new unique IDs so there are no collisions with the existing scene.
+    std::unordered_map<std::string, std::string> idRemap;
+    idRemap.reserve(newObjects.size());
+    for (auto& so : newObjects) {
+        idRemap.emplace(so.id, MakeId("gameobject"));
+    }
+    for (auto& so : newObjects) {
+        so.id = idRemap[so.id];
+        auto parentIt = idRemap.find(so.parentId);
+        so.parentId = (parentIt != idRemap.end()) ? parentIt->second : std::string{};
+        RemapVehicleObjectReferences(so, idRemap);
+        if (so.hasCinemachine) {
+            auto fi = idRemap.find(so.cinemachine.followTargetId);
+            if (fi != idRemap.end()) so.cinemachine.followTargetId = fi->second;
+            auto li = idRemap.find(so.cinemachine.lookAtTargetId);
+            if (li != idRemap.end()) so.cinemachine.lookAtTargetId = li->second;
+        }
+    }
+
+    // Deduplicate names against existing scene objects so nothing is confusingly
+    // named the same as something already in the scene.
+    {
+        std::unordered_set<std::string> existingNames;
+        existingNames.reserve(objects_.size());
+        for (const auto& existing : objects_) {
+            existingNames.insert(existing.name);
+        }
+        auto makeUniqueName = [&](const std::string& base) -> std::string {
+            if (existingNames.find(base) == existingNames.end()) return base;
+            for (int n = 1; ; ++n) {
+                std::string candidate = base + " (" + std::to_string(n) + ")";
+                if (existingNames.find(candidate) == existingNames.end()) return candidate;
+            }
+        };
+        for (auto& so : newObjects) {
+            const std::string unique = makeUniqueName(so.name);
+            existingNames.insert(unique);   // reserve so siblings don't clash either
+            so.name = unique;
+        }
+    }
+
+    PushUndoState();
+
+    const std::size_t insertStart = objects_.size();
+    for (auto& so : newObjects) {
+        objects_.push_back(std::move(so));
+    }
+
+    // Select the new root object.
+    selectedIndices_.clear();
+    selectedIndex_ = static_cast<int>(insertStart);
+    selectedIndices_.push_back(selectedIndex_);
+    NormalizeSelection();
+
+    if (onDirty_) onDirty_();
+    return true;
 }
 
 void SceneEditor::LoadProject() {

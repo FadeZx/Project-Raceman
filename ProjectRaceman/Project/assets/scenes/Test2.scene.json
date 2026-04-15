@@ -43,9 +43,9 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, 5.56745, -11.6021],
-          "rotationEuler": [180, 5.9887e-06, 180],
-          "scale": [1.5, 1.5, 1.5]
+          "position": [-0.68707, 4.98765, -11.8331],
+          "rotationEuler": [166.142, -0, -180],
+          "scale": [1, 1, 1]
         },
         {
           "type": "MeshRenderer",
@@ -165,7 +165,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, 2.6, -5.2],
+          "position": [-0.68707, 2.6, -7.5281],
           "rotationEuler": [0, 0, 0],
           "scale": [1.5, 1.5, 1.5]
         },
@@ -5530,7 +5530,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -5561,12 +5561,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -5577,7 +5592,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -5608,12 +5623,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -5624,7 +5654,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -5655,12 +5685,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -5671,7 +5716,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -5702,12 +5747,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -5718,7 +5778,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -5749,12 +5809,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -5765,7 +5840,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -5796,12 +5871,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -5812,7 +5902,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -5843,12 +5933,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 1,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -5859,7 +5964,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -5890,12 +5995,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -5906,7 +6026,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -5937,12 +6057,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -5953,7 +6088,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -5984,12 +6119,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -6000,7 +6150,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -6031,12 +6181,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -6047,7 +6212,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider", "Rigidbody"],
       "components": [
         {
           "type": "Transform",
@@ -6078,12 +6243,27 @@
           ]
         },
         {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 0.2,
+          "useGravity": true,
+          "linearDamping": 0.05,
+          "angularDamping": 0.05,
+          "friction": 0.2,
+          "restitution": 0,
+          "velocity": [0, 0, 0],
+          "angularVelocity": [0, 0, 0],
+          "freezePosition": [false, false, false],
+          "freezeRotation": [false, false, false]
+        },
+        {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -6887,5 +7067,5 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1635"]
+  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_1635", "gameobject_7", "gameobject_8"]
 }

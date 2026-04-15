@@ -555,6 +555,8 @@ std::string BuildScriptRegistrySource(const std::vector<ScriptSourceInfo>& scrip
 } // namespace
 
 SceneEditor::SceneEditor() {
+    // Default dirty callback just marks the scene dirty; SetOnDirty() chains on top.
+    onDirty_ = [this]() { sceneDirty_ = true; };
     ResetPhysicsLayerSettings();
     // Load materials at startup
     materialManager_.LoadAll();
@@ -807,6 +809,16 @@ void SceneEditor::RenderViewportPanel() {
     bool sceneWindowOpen = ImGui::Begin("Scene View", nullptr, viewportWindowFlags);
     if (sceneWindowOpen) {
         renderViewportSurface("SceneViewportSurface", SceneEditorActiveViewport::Scene, sceneViewportTextureId_, sceneViewportPos_, sceneViewportSize_, sceneViewportHovered_);
+        // Accept prefab drag from the project browser onto the viewport.
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                const char* droppedPath = static_cast<const char*>(payload->Data);
+                if (droppedPath != nullptr && droppedPath[0] != '\0' && IsPrefabAssetPath(droppedPath)) {
+                    InstantiatePrefab(droppedPath);
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
     } else {
         sceneViewportSize_ = glm::vec2(0.0f);
     }

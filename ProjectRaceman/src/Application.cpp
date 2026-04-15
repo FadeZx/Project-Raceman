@@ -93,8 +93,19 @@ Application::~Application() {
 }
 
 void Application::Run() {
-    while (running_ && !glfwWindowShouldClose(window_)) {
+    while (running_) {
         PollEvents();
+
+        // Intercept the OS close request here — safe because all members are alive.
+        if (glfwWindowShouldClose(window_)) {
+            if (sceneEditor_ && sceneEditor_->IsSceneDirty()) {
+                // Cancel GLFW's close flag and ask the user via the ImGui modal.
+                glfwSetWindowShouldClose(window_, GLFW_FALSE);
+                pendingExit_ = true;
+            } else {
+                break;  // clean scene — exit immediately
+            }
+        }
 
         double currentTime = glfwGetTime();
         float deltaTime = static_cast<float>(currentTime - lastFrameTime_);
@@ -177,6 +188,7 @@ void Application::ShutdownGlfw() {
     glfwDestroyWindow(window_);
     glfwTerminate();
 }
+
 
 void Application::PollEvents() {
     glfwPollEvents();
@@ -372,6 +384,42 @@ void Application::Update(float deltaTime) {
             sceneEditor_->SetShowFrustumCullDebug(debugUi_->ShowFrustumCullDebug());
             sceneEditor_->SetFrustumCullingEnabled(frustumCullingEnabled_);
             sceneEditor_->SetPhysicsCullingEnabled(physicsCullingEnabled_);
+        }
+
+        // ── Unsaved-changes exit dialog ────────────────────────────────────────
+        if (pendingExit_) {
+            ImGui::OpenPopup("Unsaved Changes##exitDlg");
+            pendingExit_ = false;
+        }
+        // Centre the popup over the main display area.
+        ImVec2 centre = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(centre, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        if (ImGui::BeginPopupModal("Unsaved Changes##exitDlg", nullptr,
+                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+            ImGui::TextUnformatted("The scene has unsaved changes.");
+            ImGui::TextDisabled("Do you want to save before exiting?");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            const float btnW = 110.0f;
+            if (ImGui::Button("Save & Exit", ImVec2(btnW, 0))) {
+                if (sceneEditor_) sceneEditor_->SaveCurrentScene();
+                glfwSetWindowShouldClose(window_, GLFW_TRUE);
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Discard & Exit", ImVec2(btnW, 0))) {
+                if (sceneEditor_) sceneEditor_->MarkSceneClean();
+                glfwSetWindowShouldClose(window_, GLFW_TRUE);
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", ImVec2(btnW, 0)) ||
+                (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
         }
 
         debugUi_->EndFrame();

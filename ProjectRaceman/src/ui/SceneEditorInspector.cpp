@@ -674,30 +674,6 @@ void SceneEditor::RenderInspectorPanel() {
                 }
             };
 
-            if (ImGui::Button("Add Component")) {
-                ImGui::OpenPopup("Add Object Component");
-            }
-            if (componentClipboard_.hasValue) {
-                ImGui::SameLine();
-                if (ImGui::Button("Paste Component")) {
-                    PasteInspectorComponentFromClipboard({selectedIndex_}, componentClipboard_.type);
-                }
-            }
-            if (ImGui::BeginPopup("Add Object Component")) {
-                if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-                    ImGui::CloseCurrentPopup();
-                }
-
-                renderAddComponentMenu();
-                ImGui::EndPopup();
-            }
-            if (ImGui::BeginPopupContextWindow("InspectorAddComponentContext", ImGuiPopupFlags_MouseButtonRight)) {
-                ImGui::TextDisabled("Add Component");
-                ImGui::Separator();
-                renderAddComponentMenu();
-                ImGui::EndPopup();
-            }
-
             SyncInspectorComponentOrder(obj);
             SceneInspectorComponentType reorderDraggedType = SceneInspectorComponentType::Transform;
             SceneInspectorComponentType reorderTargetType = SceneInspectorComponentType::Transform;
@@ -1594,7 +1570,7 @@ void SceneEditor::RenderInspectorPanel() {
             if (obj.hasCharacterController) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::CharacterController;
                 const std::string characterControllerComponentKey = prepareComponentOpenState(SceneInspectorComponentType::CharacterController);
-                characterControllerOpen = RenderRemovableComponentHeader("Character Controller", "CharacterControllerHeader", GetComponentIconTexture("component-capsule-collider.png"), &obj.characterController.enabled, characterControllerEnabledChanged, removeCharacterController, &componentType, &reorderDraggedType, &reorderTargetType, &characterControllerHeaderActive, &characterControllerHeaderToggledOpen);
+                characterControllerOpen = RenderRemovableComponentHeader("Character Controller", "CharacterControllerHeader", GetComponentIconTexture("component-character-controller.png"), &obj.characterController.enabled, characterControllerEnabledChanged, removeCharacterController, &componentType, &reorderDraggedType, &reorderTargetType, &characterControllerHeaderActive, &characterControllerHeaderToggledOpen);
                 finishComponentHeaderState(characterControllerComponentKey, SceneInspectorComponentType::CharacterController, characterControllerHeaderActive, characterControllerHeaderToggledOpen, characterControllerOpen);
             }
             if (removeCharacterController) {
@@ -1994,7 +1970,7 @@ void SceneEditor::RenderInspectorPanel() {
             if (obj.hasCinemachine) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Cinemachine;
                 const std::string cinemachineComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Cinemachine);
-                cinemachineOpen = RenderRemovableComponentHeader("Cinemachine Camera", "CinemachineHeader", GetComponentIconTexture("component-camera.png"), &obj.cinemachine.enabled, cinemachineEnabledChanged, removeCinemachine, &componentType, &reorderDraggedType, &reorderTargetType, &cinemachineHeaderActive, &cinemachineHeaderToggledOpen);
+                cinemachineOpen = RenderRemovableComponentHeader("Cinemachine Camera", "CinemachineHeader", GetComponentIconTexture("component-cinemachine.png"), &obj.cinemachine.enabled, cinemachineEnabledChanged, removeCinemachine, &componentType, &reorderDraggedType, &reorderTargetType, &cinemachineHeaderActive, &cinemachineHeaderToggledOpen);
                 finishComponentHeaderState(cinemachineComponentKey, SceneInspectorComponentType::Cinemachine, cinemachineHeaderActive, cinemachineHeaderToggledOpen, cinemachineOpen);
             }
             if (removeCinemachine) {
@@ -2263,6 +2239,23 @@ void SceneEditor::RenderInspectorPanel() {
             }
             if (ImGui::Button("Delete")) {
                 DeleteSelectedObject();
+            }
+            ImGui::Spacing();
+            if (ImGui::Button("Add Component", ImVec2(-1.0f, 0.0f))) {
+                ImGui::OpenPopup("Add Object Component");
+            }
+            if (ImGui::BeginPopup("Add Object Component")) {
+                if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+                    ImGui::CloseCurrentPopup();
+                }
+                renderAddComponentMenu();
+                ImGui::EndPopup();
+            }
+            if (ImGui::BeginPopupContextWindow("InspectorAddComponentContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+                ImGui::TextDisabled("Add Component");
+                ImGui::Separator();
+                renderAddComponentMenu();
+                ImGui::EndPopup();
             }
         } else {
             ImGui::TextDisabled("No object selected.");
@@ -2542,16 +2535,6 @@ void SceneEditor::RenderMultiSelectionInspector() {
             ImGui::TextDisabled("All selected objects already have every optional component.");
         }
     };
-
-    if (ImGui::Button("Add Component##multi")) {
-        ImGui::OpenPopup("MultiAddComponentPopup");
-    }
-    if (ImGui::BeginPopup("MultiAddComponentPopup")) {
-        ImGui::TextDisabled("Add Component");
-        ImGui::Separator();
-        renderMultiAddComponentMenu();
-        ImGui::EndPopup();
-    }
 
     if (renderSharedHeader("Transform", "component-transform.png")) {
         glm::vec3 position = active.transform.position;
@@ -3078,6 +3061,22 @@ void SceneEditor::RenderMultiSelectionInspector() {
     ImGui::Separator();
     if (ImGui::Button("Delete Selected")) {
         DeleteSelectedObject();
+    }
+    ImGui::Spacing();
+    if (ImGui::Button("Add Component##multi", ImVec2(-1.0f, 0.0f))) {
+        ImGui::OpenPopup("MultiAddComponentPopup");
+    }
+    if (ImGui::BeginPopup("MultiAddComponentPopup")) {
+        ImGui::TextDisabled("Add Component");
+        ImGui::Separator();
+        renderMultiAddComponentMenu();
+        ImGui::EndPopup();
+    }
+    if (ImGui::BeginPopupContextWindow("MultiInspectorAddComponentContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+        ImGui::TextDisabled("Add Component");
+        ImGui::Separator();
+        renderMultiAddComponentMenu();
+        ImGui::EndPopup();
     }
 }
 
