@@ -39,7 +39,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Camera", "MeshRenderer", "Cinemachine"],
+      "componentOrder": ["Transform", "Camera", "MeshRenderer", "Cinemachine", "AudioListener"],
       "components": [
         {
           "type": "Transform",
@@ -73,6 +73,10 @@
           "yawOffset": 0,
           "positionDamping": 9.6,
           "rotationDamping": 5
+        },
+        {
+          "type": "AudioListener",
+          "enabled": true
         }
       ]
     },
@@ -161,7 +165,7 @@
       "type": "GameObject",
       "physicsLayer": 2,
       "enabled": true,
-      "componentOrder": ["Transform", "Vehicle", "MeshRenderer"],
+      "componentOrder": ["Transform", "Vehicle", "MeshRenderer", "VehicleSound"],
       "components": [
         {
           "type": "Transform",
@@ -203,6 +207,11 @@
               "visualRotationEuler": [0, 0, 0]
             }
           ]
+        },
+        {
+          "type": "VehicleSound",
+          "enabled": true,
+          "profilePath": "assets/car/VehicleSoundProfile1.vehiclesound.json"
         }
       ]
     },

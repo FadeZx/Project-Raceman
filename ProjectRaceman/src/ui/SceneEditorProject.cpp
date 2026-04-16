@@ -13,6 +13,7 @@ const char* ProjectCreateAssetTypeTitle(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::Scene) return "Create Scene";
     if (type == ProjectCreateAssetType::Material) return "Create Material";
     if (type == ProjectCreateAssetType::VehicleProfile) return "Create Vehicle Profile";
+    if (type == ProjectCreateAssetType::VehicleSoundProfile) return "Create Vehicle Sound Profile";
     if (type == ProjectCreateAssetType::Script) return "Create C++ Script";
     return "Create Asset";
 }
@@ -22,6 +23,7 @@ const char* ProjectCreateAssetTypeDefaultName(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::Scene) return "NewScene";
     if (type == ProjectCreateAssetType::Material) return "NewMaterial";
     if (type == ProjectCreateAssetType::VehicleProfile) return "NewVehicleProfile";
+    if (type == ProjectCreateAssetType::VehicleSoundProfile) return "NewVehicleSoundProfile";
     if (type == ProjectCreateAssetType::Script) return "NewScript";
     return "NewAsset";
 }
@@ -67,11 +69,13 @@ bool IsDirectChildProjectPath(const std::string& path, const std::string& parent
 std::string AssetIconForProjectFile(const std::string& path) {
     const std::string lower = ToLowerCopy(NormalizeSlashes(path));
     const std::string extension = ToLowerCopy(fs::path(path).extension().string());
-    if (IsSceneAssetPath(path)) return "asset-scene.png";
-    if (IsMaterialAssetPath(path)) return "asset-material.png";
-    if (IsVehicleConfigAssetPath(path)) return "asset-vehicle.png";
-    if (IsMeshAssetPath(path)) return "asset-mesh.png";
-    if (IsPrefabAssetPath(path)) return "asset-prefab.png";
+    if (IsSceneAssetPath(path))        return "asset-scene.png";
+    if (IsMaterialAssetPath(path))     return "asset-material.png";
+    if (IsVehicleConfigAssetPath(path))return "asset-vehicle.png";
+    if (IsVehicleSoundAssetPath(path)) return "asset-vehicle-sound.png";
+    if (IsMeshAssetPath(path))         return "asset-mesh.png";
+    if (IsPrefabAssetPath(path))       return "asset-prefab.png";
+    if (IsAudioAssetPath(path))        return "asset-audio.png";
     if (extension == ".h" || extension == ".cpp") return "asset-script.png";
     if (extension == ".png" || extension == ".jpg" || extension == ".jpeg" || extension == ".webp" || extension == ".hdr") return "asset-image.png";
     if (lower.find("/skybox/") != std::string::npos) return "asset-skybox.png";
@@ -392,6 +396,13 @@ void SceneEditor::RenderProjectPanel() {
                                 std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
                                 showCreateProjectAssetPopup_ = true;
                             }
+                            if (ImGui::MenuItem("Add Vehicle Sound Profile")) {
+                                selectedProjectDirectory_ = directory;
+                                selectedProjectFile_.clear();
+                                createProjectAssetType_ = ProjectCreateAssetType::VehicleSoundProfile;
+                                std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
+                                showCreateProjectAssetPopup_ = true;
+                            }
                             ImGui::EndMenu();
                         }
                         if (ImGui::MenuItem("Rename", "F2")) {
@@ -618,6 +629,11 @@ void SceneEditor::RenderProjectPanel() {
                             std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
                             showCreateProjectAssetPopup_ = true;
                         }
+                        if (ImGui::MenuItem("Add Vehicle Sound Profile")) {
+                            createProjectAssetType_ = ProjectCreateAssetType::VehicleSoundProfile;
+                            std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
+                            showCreateProjectAssetPopup_ = true;
+                        }
                         ImGui::EndMenu();
                     }
                     if (ImGui::MenuItem("Refresh")) {
@@ -731,6 +747,12 @@ void SceneEditor::RenderProjectPanel() {
                             created = CreateVehicleConfigAsset(createProjectAssetNameBuffer_, &createdVehicleConfigPath);
                             if (created) {
                                 selectedProjectFile_ = createdVehicleConfigPath;
+                            }
+                        } else if (createProjectAssetType_ == ProjectCreateAssetType::VehicleSoundProfile) {
+                            std::string createdSoundProfilePath;
+                            created = CreateVehicleSoundAsset(createProjectAssetNameBuffer_, &createdSoundProfilePath);
+                            if (created) {
+                                selectedProjectFile_ = createdSoundProfilePath;
                             }
                         } else if (createProjectAssetType_ == ProjectCreateAssetType::Script) {
                             created = CreateScriptAsset(createProjectAssetNameBuffer_, false);

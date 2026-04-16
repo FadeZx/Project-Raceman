@@ -4,6 +4,8 @@ D:\Project-Raceman\ProjectRaceman\src\Main.cpp;D:\Project-Raceman\ProjectRaceman
 D:\Project-Raceman\ProjectRaceman\src\input\InputManager.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\InputManager.obj
 D:\Project-Raceman\ProjectRaceman\src\physics\PhysicsLayer.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\PhysicsLayer.obj
 D:\Project-Raceman\ProjectRaceman\src\physics\PhysicsWorld.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\PhysicsWorld.obj
+D:\Project-Raceman\ProjectRaceman\src\audio\AudioManager.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\AudioManager.obj
+D:\Project-Raceman\ProjectRaceman\src\audio\VehicleSoundProfile.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\VehicleSoundProfile.obj
 D:\Project-Raceman\ProjectRaceman\src\physics\VehicleConfig.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\VehicleConfig.obj
 D:\Project-Raceman\ProjectRaceman\src\physics\VehiclePhysics.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\VehiclePhysics.obj
 D:\Project-Raceman\ProjectRaceman\src\rendering\Material.cpp;D:\Project-Raceman\ProjectRaceman\bin-int\Debug\Material.obj

@@ -1,15 +1,4 @@
-﻿  Application.cpp
-  PhysicsWorld.cpp
-  ObjectScript.cpp
-  DebugUI.cpp
-  SceneEditor.cpp
-  SceneEditorGizmo.cpp
-  SceneEditorHierarchy.cpp
-  SceneEditorInspector.cpp
-  SceneEditorPersistence.cpp
-  SceneEditorProject.cpp
-  SceneEditorRuntime.cpp
-  Generating Code...
+﻿  SceneEditorGizmo.cpp
   Project Raceman.vcxproj -> D:\Project-Raceman\ProjectRaceman\bin\Debug\ProjectRaceman.exe
           1 file(s) copied.
           1 file(s) copied.

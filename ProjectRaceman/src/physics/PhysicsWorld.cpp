@@ -405,9 +405,12 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
     const std::filesystem::path resolvedPath = FindProjectAssetAbsolutePath(collider.meshAssetPath);
     std::error_code ec;
     const std::filesystem::file_time_type mtime = std::filesystem::last_write_time(resolvedPath, ec);
+    const std::string meshFilenameStr = std::filesystem::path(collider.meshAssetPath).filename().string();
     if (!ec) {
         const std::filesystem::path diskCachePath = BuildDiskCachePath(cacheKey, mtime);
+        if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Cache check: " + meshFilenameStr);
         if (JPH::ShapeRefC loaded = TryLoadShapeFromDisk(diskCachePath)) {
+            if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Loaded: " + meshFilenameStr);
             shapeCache.shape = std::move(loaded);
             shapeCache.triangleCount = triangleCount;
             shapeCache.valid = true;
@@ -417,6 +420,7 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
             return shapeCache.shape;
         }
     }
+    if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Cooking: " + meshFilenameStr);
 
     const glm::vec3 pivotOffset = collider.meshPivotOffset;
     const bool hasPivot = (pivotOffset.x != 0.0f || pivotOffset.y != 0.0f || pivotOffset.z != 0.0f);
@@ -633,10 +637,21 @@ public:
     };
 
     void Build(const std::vector<PhysicsBodyDesc>& inputBodies) {
-        Build(inputBodies, {});
+        Build(inputBodies, {}, nullptr);
     }
 
     void Build(const std::vector<PhysicsBodyDesc>& inputBodies, const std::vector<PhysicsCharacterDesc>& inputCharacters) {
+        Build(inputBodies, inputCharacters, nullptr);
+    }
+
+    void Build(const std::vector<PhysicsBodyDesc>& inputBodies, const std::vector<PhysicsCharacterDesc>& inputCharacters,
+               PhysicsBuildProgress* progress) {
+        s_activeBuildProgress = progress;
+        if (progress) {
+            progress->stepsDone.store(0);
+            progress->stepsTotal.store(static_cast<int>(inputBodies.size()));
+            progress->SetTask("Initializing...");
+        }
         const auto buildStart = std::chrono::steady_clock::now();
         Clear();
         EnsureJoltInitialized();
@@ -673,7 +688,19 @@ public:
         collisionGroupFilter_ = new ProjectLayerGroupFilter(collisionMatrix_);
 
         JPH::BodyInterface& bodyInterface = physicsSystem_->GetBodyInterface();
+        int bodyProgressIndex = 0;
             for (const PhysicsBodyDesc& body : bodies_) {
+            if (progress) {
+                if (progress->cancelRequested.load()) {
+                    progress->wasCancelled.store(true);
+                    progress->isDone.store(true);
+                    s_activeBuildProgress = nullptr;
+                    return;
+                }
+                progress->stepsDone.store(bodyProgressIndex);
+                progress->SetTask("Building: " + body.objectId);
+            }
+            ++bodyProgressIndex;
             const bool hasStaticOnlyCollider = std::any_of(body.colliders.begin(), body.colliders.end(), [](const PhysicsColliderDesc& collider) {
                 if (collider.type == PhysicsColliderType::Plane) {
                     return true;
@@ -787,6 +814,12 @@ public:
         RefreshMeshContributorStats();
         stats_.lastBuildTimeMs =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - buildStart).count();
+
+        if (progress) {
+            progress->stepsDone.store(static_cast<int>(inputBodies.size()));
+            progress->isDone.store(true);
+        }
+        s_activeBuildProgress = nullptr;
     }
 
     void Clear() {
@@ -1285,6 +1318,11 @@ void PhysicsWorld::Build(const std::vector<PhysicsBodyDesc>& bodies) {
 
 void PhysicsWorld::Build(const std::vector<PhysicsBodyDesc>& bodies, const std::vector<PhysicsCharacterDesc>& characters) {
     impl_->Build(bodies, characters);
+}
+
+void PhysicsWorld::Build(const std::vector<PhysicsBodyDesc>& bodies, const std::vector<PhysicsCharacterDesc>& characters,
+                         PhysicsBuildProgress* progress) {
+    impl_->Build(bodies, characters, progress);
 }
 
 void PhysicsWorld::Clear() {

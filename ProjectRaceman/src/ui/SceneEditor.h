@@ -6,6 +6,8 @@
 #include <functional>
 #include <cstdint>
 #include <unordered_map>
+#include <thread>
+#include <chrono>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -17,8 +19,11 @@
 #include "../rendering/Material.h"
 #include "../rendering/PrimitiveMeshes.h"
 #include "../scripting/ObjectScript.h"
+#include "../audio/VehicleSoundProfile.h"
 
 class Model;
+
+namespace irrklang { class ISound; }
 
 namespace raceman {
 
@@ -30,6 +35,8 @@ class Renderer;
 class Console;
 class InputManager;
 class PhysicsWorld;
+class AudioManager;
+struct PhysicsBuildProgress;
 
 enum class GizmoMode {
     Move,
@@ -51,6 +58,7 @@ enum class ProjectCreateAssetType {
     Scene,
     Material,
     VehicleProfile,
+    VehicleSoundProfile,
     Script
 };
 
@@ -67,7 +75,10 @@ enum class SceneComponentType {
     CapsuleCollider,
     PlaneCollider,
     Camera,
-    Light
+    Light,
+    AudioListener,
+    AudioSource,
+    VehicleSound
 };
 
 enum class SceneInspectorComponentType {
@@ -81,7 +92,10 @@ enum class SceneInspectorComponentType {
     Collider,
     Camera,
     Cinemachine,
-    Light
+    Light,
+    AudioListener,
+    AudioSource,
+    VehicleSound
 };
 
 enum class RigidbodyBodyType {
@@ -268,6 +282,27 @@ struct LightComponent {
     float spotAngleDegrees{30.0f};
 };
 
+struct AudioListenerComponent {
+    bool enabled{true};
+};
+
+struct AudioSourceComponent {
+    bool enabled{true};
+    std::string clipPath;       // e.g. "assets/audio/sound.ogg"
+    float volume{1.0f};
+    float pitch{1.0f};          // playback speed multiplier
+    bool loop{false};
+    bool playOnAwake{true};
+    float spatialBlend{1.0f};   // 0 = 2D, 1 = fully 3D
+    float minDistance{1.0f};
+    float maxDistance{50.0f};
+};
+
+struct VehicleSoundComponent {
+    bool enabled{true};
+    std::string profilePath;    // e.g. "assets/sounds/f1_engine.vehiclesound.json"
+};
+
 struct SceneObject {
     std::string id;    // simple unique id
     std::string parentId;
@@ -291,6 +326,9 @@ struct SceneObject {
     bool hasCamera{false};
     bool hasCinemachine{false};
     bool hasLight{false};
+    bool hasAudioListener{false};
+    bool hasAudioSource{false};
+    bool hasVehicleSound{false};
     MeshFilterComponent meshFilter;
     MeshRendererComponent meshRenderer;
     ScriptComponent scriptComponent;
@@ -305,6 +343,9 @@ struct SceneObject {
     CameraComponent camera;
     CinemachineCameraComponent cinemachine;
     LightComponent light;
+    AudioListenerComponent audioListener;
+    AudioSourceComponent audioSource;
+    VehicleSoundComponent vehicleSound;
 };
 
 struct SceneMeshContributorStats {
@@ -348,6 +389,7 @@ public:
     void SubmitDraws(Renderer& renderer, bool editorInteraction = true);
     void SetConsole(Console* console);
     void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
+    void SetAudioManager(AudioManager* audio) { audioManager_ = audio; }
     bool IsRunMode() const { return scriptsRunning_; }
     bool IsGameViewActive() const { return true; }
     bool TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float aspect, glm::vec4* outClearColor = nullptr) const;
@@ -424,6 +466,7 @@ private:
     void RenderDockspaceHost();
     void RenderMaterialInspector();
     void RenderVehicleConfigEditorWindow();
+    void RenderVehicleSoundEditorWindow();
     void RenderMaterialProperties(const std::string& materialId, bool showBackButton);
     void RenderProjectAssetPickerPopup();
     unsigned int GetComponentIconTexture(const std::string& filename);
@@ -439,7 +482,12 @@ private:
     void SetScriptsPaused(bool paused);
     void RebuildScriptRuntime();
     void RebuildVehicleRuntime();
+    void RebuildAudioRuntime();
     void ClearScriptRuntime();
+    void ClearAudioRuntime();
+    void UpdateAudio(float deltaTime);
+    void TickPlayModeLoading();
+    void RenderPlayModeLoadingPopup();
     void HandleConsoleCommand(const std::string& command);
     void UpdateGizmo(Renderer& renderer);
     void SubmitGizmo(Renderer& renderer);
@@ -449,8 +497,11 @@ private:
     void Undo();
     void Redo();
     void PushVehicleConfigUndoState();
+    void PushVehicleSoundUndoState();
     void UndoVehicleConfig();
     void RedoVehicleConfig();
+    void UndoVehicleSound();
+    void RedoVehicleSound();
     void RequestFocusSelectedObject();
 
     // Actions
@@ -470,6 +521,7 @@ private:
     bool SyncAttachmentScriptFields(ObjectScriptAttachment& attachment);
     bool CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId = nullptr);
     bool CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath = nullptr);
+    bool CreateVehicleSoundAsset(const std::string& requestedName, std::string* outProfilePath = nullptr);
     bool CreateSceneAsset(const std::string& requestedName, std::string* outScenePath = nullptr);
     bool CreateProjectFolder(const std::string& requestedName);
     bool SaveObjectAsPrefab(int objectIndex, const std::string& path);
@@ -477,6 +529,7 @@ private:
     void SyncScriptProjectFiles();
     void OpenMaterialEditor(const std::string& materialId);
     void OpenVehicleConfigEditor(const std::string& configPath);
+    void OpenVehicleSoundEditor(const std::string& profilePath);
     void BeginObjectRename(int index);
     void BeginProjectFileRename(const std::string& path);
     void CommitProjectFileRename();
@@ -533,6 +586,7 @@ private:
     std::unordered_map<std::string, PrimitiveMesh> builtInPrimitiveMeshes_;
     Console* console_{nullptr};
     InputManager* inputManager_{nullptr};
+    AudioManager* audioManager_{nullptr};
 
     // Materials
     MaterialManager materialManager_;
@@ -563,6 +617,14 @@ private:
     bool vehicleConfigEditorHovered_{false};
     bool vehicleConfigEditorFocused_{false};
     bool vehicleConfigEditActive_{false};
+    bool showVehicleSoundEditor_{false};
+    std::string inspectedVehicleSoundPath_;
+    VehicleSoundProfile inspectedVehicleSound_{};
+    bool inspectedVehicleSoundLoaded_{false};
+    std::string inspectedVehicleSoundError_;
+    bool vehicleSoundEditorHovered_{false};
+    bool vehicleSoundEditorFocused_{false};
+    bool vehicleSoundEditActive_{false};
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
     bool scriptsRunning_{false};
     bool scriptsPaused_{false};
@@ -604,6 +666,31 @@ private:
         bool initialized{false};
     };
     std::unordered_map<std::string, RuntimeCinemachineState> runtimeCinemachineStates_;
+
+    // Audio source runtime (one per AudioSource component)
+    struct RuntimeAudioSourceInstance {
+        std::string objectId;
+        irrklang::ISound* sound{nullptr};
+    };
+    std::vector<RuntimeAudioSourceInstance> runtimeAudioSources_;
+
+    // Vehicle sound runtime (one per VehicleSound component)
+    struct RuntimeVehicleSoundLayerState {
+        irrklang::ISound* sound{nullptr};
+        float smoothVolume{0.0f};
+        float smoothPitch{1.0f};
+    };
+    struct RuntimeVehicleSoundInstance {
+        std::string objectId;           // vehicle object id
+        std::string vehicleObjectId;    // same object that has VehicleComponent
+        VehicleSoundProfile profile;
+        std::vector<RuntimeVehicleSoundLayerState> layers;
+        // Trigger detection state
+        int  lastGear{0};
+        bool lastThrottleHigh{false};   // throttle was >0.8 last frame
+        float lastLateralSpeed{0.0f};
+    };
+    std::vector<RuntimeVehicleSoundInstance> runtimeVehicleSounds_;
 
     int renamingObjectIndex_{-1};
     bool focusObjectRename_{false};
@@ -695,9 +782,24 @@ private:
     };
     std::vector<VehicleConfigHistoryState> vehicleConfigUndoStack_;
     std::vector<VehicleConfigHistoryState> vehicleConfigRedoStack_;
+    struct VehicleSoundHistoryState {
+        VehicleSoundProfile profile;
+    };
+    std::vector<VehicleSoundHistoryState> vehicleSoundUndoStack_;
+    std::vector<VehicleSoundHistoryState> vehicleSoundRedoStack_;
     HistoryState playModeSnapshot_{};
     bool hasPlayModeSnapshot_{false};
     std::unique_ptr<PhysicsWorld> physicsWorld_;
+
+    struct PlayModeLoadState {
+        enum class Phase { Idle, Building };
+        Phase phase{Phase::Idle};
+        std::shared_ptr<PhysicsBuildProgress> progress;
+        std::unique_ptr<std::thread> buildThread;
+        std::unique_ptr<PhysicsWorld> pendingWorld;
+        std::chrono::time_point<std::chrono::high_resolution_clock> buildStart{};
+    };
+    PlayModeLoadState playModeLoad_;
     SceneProfilerStats profilerStats_{};
 
     bool sceneDirty_{false};

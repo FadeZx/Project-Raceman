@@ -1,13 +1,19 @@
 #include "SceneEditorInternal.h"
+#include "../audio/AudioManager.h"
+#include "../audio/VehicleSoundProfile.h"
 #include "../input/InputManager.h"
 #include "../physics/PhysicsWorld.h"
 #include "../physics/VehiclePhysics.h"
 #include "../scripting/ScriptRegistry.h"
 
+#include <irrKlang/irrKlang.h>
+#include <imgui/imgui.h>
 #include <GLFW/glfw3.h>
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <thread>
 #include <unordered_set>
 
 namespace fs = std::filesystem;
@@ -457,18 +463,21 @@ void SceneEditor::SetScriptsRunning(bool running) {
     if (scriptsRunning_ == running) {
         return;
     }
+    // Don't start a new build while one is already in progress.
+    if (running && playModeLoad_.phase != PlayModeLoadState::Phase::Idle) {
+        return;
+    }
 
     if (running) {
         std::fprintf(stdout, "[Play] Building scene...\n");
         std::fflush(stdout);
-        const auto buildStart = std::chrono::high_resolution_clock::now();
 
         SaveCurrentScene();
         profilerStats_ = CollectProfilerStats();
         playModeSnapshot_ = {objects_, selectedIndex_, selectedIndices_};
         hasPlayModeSnapshot_ = true;
         activeViewport_ = SceneEditorActiveViewport::Game;
-        scriptsRunning_ = true;
+        // scriptsRunning_ is set to true by TickPlayModeLoading once the background build completes.
         scriptsPaused_ = false;
         std::vector<PhysicsBodyDesc> physicsBodies;
         std::vector<PhysicsCharacterDesc> physicsCharacters;
@@ -666,22 +675,39 @@ void SceneEditor::SetScriptsRunning(bool running) {
                 physicsBodies.push_back(std::move(body));
             }
         }
-        physicsWorld_ = std::make_unique<PhysicsWorld>(physicsLayerCollisionMatrix_);
-        physicsWorld_->Build(physicsBodies, physicsCharacters);
-        RebuildVehicleRuntime();
-        RebuildScriptRuntime();
-        {
-            const auto buildEnd = std::chrono::high_resolution_clock::now();
-            const double ms = std::chrono::duration<double, std::milli>(buildEnd - buildStart).count();
-            std::fprintf(stdout, "[Play] Build complete in %.1f ms\n", ms);
-            std::fflush(stdout);
-        }
-        if (console_) {
-            console_->AddLog("Play mode started.");
-        }
+        // Launch async build on background thread.
+        playModeLoad_.pendingWorld = std::make_unique<PhysicsWorld>(physicsLayerCollisionMatrix_);
+        playModeLoad_.progress = std::make_shared<PhysicsBuildProgress>();
+        playModeLoad_.progress->stepsTotal.store(static_cast<int>(physicsBodies.size()));
+        playModeLoad_.buildStart = std::chrono::high_resolution_clock::now();
+
+        PhysicsWorld* worldPtr = playModeLoad_.pendingWorld.get();
+        PhysicsBuildProgress* progressPtr = playModeLoad_.progress.get();
+        playModeLoad_.buildThread = std::make_unique<std::thread>(
+            [worldPtr, progressPtr,
+             bodies  = std::move(physicsBodies),
+             chars   = std::move(physicsCharacters)]() mutable {
+                worldPtr->Build(bodies, chars, progressPtr);
+            });
+        playModeLoad_.phase = PlayModeLoadState::Phase::Building;
+        // TickPlayModeLoading() will finalize once the thread completes.
     } else {
         scriptsRunning_ = false;
         scriptsPaused_ = false;
+        // Play EngineStop triggers before clearing audio runtime.
+        if (audioManager_ && audioManager_->IsInitialized()) {
+            for (auto& inst : runtimeVehicleSounds_) {
+                for (const auto& trig : inst.profile.triggerSounds) {
+                    if (trig.trigger == VehicleSoundTrigger::EngineStop && !trig.clipPath.empty()) {
+                        const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
+                        irrklang::ISound* s = audioManager_->Play2D(p, false, false);
+                        if (s) { s->setVolume(trig.volume); s->drop(); }
+                        break;
+                    }
+                }
+            }
+        }
+        ClearAudioRuntime();
         ClearScriptRuntime();
         runtimeVehicles_.clear();
         runtimeCinemachineStates_.clear();
@@ -725,6 +751,109 @@ void SceneEditor::SetScriptsPaused(bool paused) {
 
 void SceneEditor::ClearScriptRuntime() {
     runtimeScripts_.clear();
+}
+
+void SceneEditor::TickPlayModeLoading() {
+    if (playModeLoad_.phase == PlayModeLoadState::Phase::Idle) {
+        return;
+    }
+
+    auto* prog = playModeLoad_.progress.get();
+    if (!prog || !prog->isDone.load()) {
+        return; // still building
+    }
+
+    // Build thread has signalled completion — join it.
+    if (playModeLoad_.buildThread && playModeLoad_.buildThread->joinable()) {
+        playModeLoad_.buildThread->join();
+    }
+
+    const bool cancelled = prog->wasCancelled.load();
+
+    if (cancelled) {
+        // Discard the partially-built world and restore editor state.
+        playModeLoad_ = {};
+        if (hasPlayModeSnapshot_) {
+            objects_ = playModeSnapshot_.objects;
+            selectedIndex_ = playModeSnapshot_.selectedIndex;
+            selectedIndices_ = playModeSnapshot_.selectedIndices;
+            NormalizeSelection();
+            playModeSnapshot_ = {};
+            hasPlayModeSnapshot_ = false;
+        }
+        activeViewport_ = SceneEditorActiveViewport::Scene;
+        std::fprintf(stdout, "[Play] Build cancelled.\n");
+        std::fflush(stdout);
+        return;
+    }
+
+    // Build succeeded — transfer ownership to the main physics world.
+    physicsWorld_ = std::move(playModeLoad_.pendingWorld);
+
+    const double ms = std::chrono::duration<double, std::milli>(
+        std::chrono::high_resolution_clock::now() - playModeLoad_.buildStart).count();
+    std::fprintf(stdout, "[Play] Build complete in %.1f ms\n", ms);
+    std::fflush(stdout);
+
+    playModeLoad_ = {}; // reset (clears phase to Idle, closes popup next frame)
+
+    RebuildVehicleRuntime();
+    RebuildAudioRuntime();
+    RebuildScriptRuntime();
+    scriptsRunning_ = true;
+
+    if (console_) {
+        console_->AddLog("Play mode started.");
+    }
+}
+
+void SceneEditor::RenderPlayModeLoadingPopup() {
+    if (playModeLoad_.phase == PlayModeLoadState::Phase::Idle) {
+        return;
+    }
+
+    auto* prog = playModeLoad_.progress.get();
+    if (!prog) {
+        return;
+    }
+
+    // Keep the modal open as long as building is in progress.
+    const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(460.0f, 140.0f), ImGuiCond_Always);
+    ImGui::OpenPopup("###PlayModeLoading");
+
+    if (ImGui::BeginPopupModal("Building Scene...###PlayModeLoading", nullptr,
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
+
+        const int done  = prog->stepsDone.load();
+        const int total = prog->stepsTotal.load();
+        const float fraction = (total > 0) ? static_cast<float>(done) / static_cast<float>(total) : 0.0f;
+
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Baking collision geometry...");
+        ImGui::Spacing();
+
+        char label[32];
+        std::snprintf(label, sizeof(label), "%d / %d", done, (std::max)(total, 1));
+        ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), label);
+
+        const std::string task = prog->GetTask();
+        if (!task.empty()) {
+            ImGui::Spacing();
+            ImGui::TextDisabled("%s", task.c_str());
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (ImGui::Button("Cancel", ImVec2(100.0f, 0.0f))) {
+            prog->cancelRequested.store(true);
+        }
+
+        ImGui::EndPopup();
+    }
 }
 
 void SceneEditor::RebuildVehicleRuntime() {
@@ -844,6 +973,245 @@ void SceneEditor::RebuildScriptRuntime() {
             runtimeScript.instance = std::move(instance);
             runtimeScripts_.push_back(std::move(runtimeScript));
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Audio runtime
+// ---------------------------------------------------------------------------
+
+static float lerp(float a, float b, float t) { return a + (b - a) * t; }
+static float clamp01(float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
+
+void SceneEditor::ClearAudioRuntime() {
+    // Stop and drop all audio source sounds.
+    for (auto& inst : runtimeAudioSources_) {
+        if (inst.sound) {
+            inst.sound->stop();
+            inst.sound->drop();
+            inst.sound = nullptr;
+        }
+    }
+    runtimeAudioSources_.clear();
+
+    // Stop and drop all vehicle sound layers.
+    for (auto& inst : runtimeVehicleSounds_) {
+        for (auto& layer : inst.layers) {
+            if (layer.sound) {
+                layer.sound->stop();
+                layer.sound->drop();
+                layer.sound = nullptr;
+            }
+        }
+    }
+    runtimeVehicleSounds_.clear();
+}
+
+void SceneEditor::RebuildAudioRuntime() {
+    ClearAudioRuntime();
+    if (!audioManager_ || !audioManager_->IsInitialized()) return;
+
+    // -- Audio sources with PlayOnAwake --
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& obj = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !obj.hasAudioSource || !obj.audioSource.enabled) continue;
+        if (obj.audioSource.clipPath.empty() || !obj.audioSource.playOnAwake) continue;
+
+        const std::string absPath = ProjectAssetPathToAbsolute(obj.audioSource.clipPath).string();
+        const glm::vec3 pos = GetObjectWorldPosition(i);
+        const bool is3D = obj.audioSource.spatialBlend > 0.5f;
+        irrklang::ISound* snd = is3D
+            ? audioManager_->Play3D(absPath, pos, obj.audioSource.loop, /*paused=*/false)
+            : audioManager_->Play2D(absPath, obj.audioSource.loop, /*paused=*/false);
+        if (snd) {
+            snd->setVolume(obj.audioSource.volume);
+            snd->setPlaybackSpeed(obj.audioSource.pitch);
+            if (is3D) {
+                snd->setMinDistance(obj.audioSource.minDistance);
+            }
+            RuntimeAudioSourceInstance inst;
+            inst.objectId = obj.id;
+            inst.sound    = snd;
+            runtimeAudioSources_.push_back(std::move(inst));
+        }
+    }
+
+    // -- Vehicle sound profiles --
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& obj = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !obj.hasVehicleSound || !obj.vehicleSound.enabled) continue;
+        if (obj.vehicleSound.profilePath.empty()) continue;
+        // Must also have a Vehicle component to get telemetry.
+        if (!obj.hasVehicle || !obj.vehicle.enabled) continue;
+
+        const std::string absPath = ProjectAssetPathToAbsolute(obj.vehicleSound.profilePath).string();
+        VehicleSoundProfile profile = VehicleSoundProfileLoader::loadFromFile(absPath);
+
+        RuntimeVehicleSoundInstance inst;
+        inst.objectId        = obj.id;
+        inst.vehicleObjectId = obj.id;
+        inst.profile         = profile;
+        inst.lastGear        = 0;
+        inst.lastThrottleHigh = false;
+        inst.lastLateralSpeed = 0.0f;
+
+        // Start all engine layers looping but paused/silent.
+        const glm::vec3 pos = GetObjectWorldPosition(i);
+        for (const auto& layer : profile.engineLayers) {
+            RuntimeVehicleSoundLayerState ls;
+            ls.smoothVolume = 0.0f;
+            ls.smoothPitch  = layer.pitchAtRpmMin;
+            if (!layer.clipPath.empty()) {
+                const std::string lPath = ProjectAssetPathToAbsolute(layer.clipPath).string();
+                ls.sound = (profile.spatialBlend > 0.5f)
+                    ? audioManager_->Play3D(lPath, pos, /*loop=*/true, /*paused=*/false)
+                    : audioManager_->Play2D(lPath, /*loop=*/true, /*paused=*/false);
+                if (ls.sound) {
+                    ls.sound->setVolume(0.0f);
+                    ls.sound->setPlaybackSpeed(ls.smoothPitch);
+                    if (profile.spatialBlend > 0.5f) {
+                        ls.sound->setMinDistance(profile.minDistance);
+                    }
+                }
+            }
+            inst.layers.push_back(std::move(ls));
+        }
+        runtimeVehicleSounds_.push_back(std::move(inst));
+    }
+
+    // Play EngineStart triggers
+    for (auto& inst : runtimeVehicleSounds_) {
+        for (const auto& trig : inst.profile.triggerSounds) {
+            if (trig.trigger == VehicleSoundTrigger::EngineStart && !trig.clipPath.empty()) {
+                const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
+                irrklang::ISound* s = audioManager_->Play2D(p, false, false);
+                if (s) { s->setVolume(trig.volume); s->drop(); }
+            }
+        }
+    }
+}
+
+void SceneEditor::UpdateAudio(float deltaTime) {
+    if (!audioManager_ || !audioManager_->IsInitialized()) return;
+    if (!scriptsRunning_ || scriptsPaused_) return;
+
+    // -- Update AudioListener position (first enabled one wins) --
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& obj = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !obj.hasAudioListener || !obj.audioListener.enabled) continue;
+        const glm::mat4 worldMat = GetObjectWorldMatrix(i);
+        const glm::vec3 pos     = glm::vec3(worldMat[3]);
+        const glm::vec3 forward = glm::normalize(glm::vec3(-worldMat[2]));
+        const glm::vec3 up      = glm::normalize(glm::vec3(worldMat[1]));
+        audioManager_->SetListenerTransform(pos, forward, up);
+        break;
+    }
+
+    // -- Update 3D audio source positions --
+    for (auto& inst : runtimeAudioSources_) {
+        if (!inst.sound || inst.sound->isFinished()) continue;
+        const int idx = FindObjectIndexById(inst.objectId);
+        if (idx < 0) continue;
+        if (objects_[idx].audioSource.spatialBlend > 0.5f) {
+            const glm::vec3 pos = GetObjectWorldPosition(idx);
+            inst.sound->setPosition(irrklang::vec3df(pos.x, pos.y, pos.z));
+        }
+    }
+
+    // -- Update vehicle sound layers --
+    const float smoothRate = 8.0f * deltaTime; // slew rate
+
+    for (auto& inst : runtimeVehicleSounds_) {
+        // Find the RuntimeVehicleInstance for this vehicle.
+        const RuntimeVehicleInstance* rv = nullptr;
+        for (const auto& v : runtimeVehicles_) {
+            if (v.objectId == inst.vehicleObjectId) { rv = &v; break; }
+        }
+        if (!rv || !rv->instance) continue;
+
+        const raceman::physics::VehicleTelemetry& tel = rv->instance->getTelemetry();
+        const float rpm      = tel.engineRPM;
+        const float throttle = tel.throttle;
+        const float latSpd   = std::abs(tel.lateralSpeed);
+
+        // 3D position — follow the vehicle
+        const int vIdx = FindObjectIndexById(inst.vehicleObjectId);
+        if (vIdx >= 0 && inst.profile.spatialBlend > 0.5f) {
+            const glm::vec3 pos = GetObjectWorldPosition(vIdx);
+            const irrklang::vec3df ipos(pos.x, pos.y, pos.z);
+            for (auto& ls : inst.layers) {
+                if (ls.sound) ls.sound->setPosition(ipos);
+            }
+        }
+
+        // Update each engine layer
+        for (std::size_t li = 0; li < inst.layers.size() && li < inst.profile.engineLayers.size(); ++li) {
+            const VehicleSoundEngineLayer& def = inst.profile.engineLayers[li];
+            RuntimeVehicleSoundLayerState& ls  = inst.layers[li];
+            if (!ls.sound) continue;
+
+            const float range = def.rpmMax - def.rpmMin;
+            const float t     = (range > 0.0f) ? clamp01((rpm - def.rpmMin) / range) : 0.0f;
+
+            const float targetPitch  = lerp(def.pitchAtRpmMin, def.pitchAtRpmMax, t);
+            float       targetVolume = lerp(def.volumeAtRpmMin, def.volumeAtRpmMax, t);
+            targetVolume += throttle * def.volumeThrottleScale;
+            targetVolume  = clamp01(targetVolume) * inst.profile.masterVolume;
+
+            ls.smoothPitch  = lerp(ls.smoothPitch,  targetPitch,  smoothRate);
+            ls.smoothVolume = lerp(ls.smoothVolume, targetVolume, smoothRate);
+
+            ls.sound->setPlaybackSpeed(ls.smoothPitch);
+            ls.sound->setVolume(ls.smoothVolume);
+        }
+
+        // Trigger detection
+        const int curGear = tel.currentGear;
+        if (curGear != inst.lastGear && inst.lastGear != 0) {
+            const bool up = curGear > inst.lastGear;
+            const VehicleSoundTrigger want = up ? VehicleSoundTrigger::GearUp : VehicleSoundTrigger::GearDown;
+            for (const auto& trig : inst.profile.triggerSounds) {
+                if (trig.trigger == want && !trig.clipPath.empty()) {
+                    const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
+                    irrklang::ISound* s = audioManager_->Play2D(p, false, false);
+                    if (s) { s->setVolume(trig.volume); s->drop(); }
+                    break;
+                }
+            }
+        }
+
+        const bool throttleHigh = throttle > 0.7f;
+        if (inst.lastThrottleHigh && !throttleHigh && rpm > 0.0f) {
+            for (const auto& trig : inst.profile.triggerSounds) {
+                if (trig.trigger == VehicleSoundTrigger::Backfire &&
+                    rpm >= trig.minRpmForBackfire && !trig.clipPath.empty()) {
+                    const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
+                    irrklang::ISound* s = audioManager_->Play2D(p, false, false);
+                    if (s) { s->setVolume(trig.volume); s->drop(); }
+                    break;
+                }
+            }
+        }
+
+        if (latSpd > 0.0f) {
+            const bool squealNow  = latSpd > 2.0f;
+            const bool squealPrev = inst.lastLateralSpeed > 2.0f;
+            if (squealNow && !squealPrev) {
+                for (const auto& trig : inst.profile.triggerSounds) {
+                    if (trig.trigger == VehicleSoundTrigger::TireSqueal &&
+                        latSpd >= trig.minLateralSpeedForSqueal && !trig.clipPath.empty()) {
+                        const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
+                        irrklang::ISound* s = audioManager_->Play2D(p, false, false);
+                        if (s) { s->setVolume(trig.volume); s->drop(); }
+                        break;
+                    }
+                }
+            }
+        }
+
+        inst.lastGear         = curGear;
+        inst.lastThrottleHigh = throttleHigh;
+        inst.lastLateralSpeed = latSpd;
     }
 }
 

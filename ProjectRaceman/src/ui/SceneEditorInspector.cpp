@@ -669,6 +669,33 @@ void SceneEditor::RenderInspectorPanel() {
                         ImGui::EndMenu();
                     }
                 }
+                if (!obj.hasAudioListener) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Audio Listener")) {
+                        PushUndoState();
+                        obj.hasAudioListener = true;
+                        obj.audioListener = AudioListenerComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
+                if (!obj.hasAudioSource) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Audio Source")) {
+                        PushUndoState();
+                        obj.hasAudioSource = true;
+                        obj.audioSource = AudioSourceComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
+                if (!obj.hasVehicleSound) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Vehicle Sound")) {
+                        PushUndoState();
+                        obj.hasVehicleSound = true;
+                        obj.vehicleSound = VehicleSoundComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
                 if (!anyAvailable) {
                     ImGui::TextDisabled("All supported components are already added.");
                 }
@@ -691,6 +718,9 @@ void SceneEditor::RenderInspectorPanel() {
                 case SceneInspectorComponentType::Camera: typeName = "Camera"; break;
                 case SceneInspectorComponentType::Cinemachine: typeName = "Cinemachine"; break;
                 case SceneInspectorComponentType::Light: typeName = "Light"; break;
+                case SceneInspectorComponentType::AudioListener: typeName = "AudioListener"; break;
+                case SceneInspectorComponentType::AudioSource: typeName = "AudioSource"; break;
+                case SceneInspectorComponentType::VehicleSound: typeName = "VehicleSound"; break;
                 }
                 return obj.id + "|" + typeName;
             };
@@ -2213,7 +2243,186 @@ void SceneEditor::RenderInspectorPanel() {
                 }
             }
             }
+            // ---- Audio Listener ----
+            if (currentComponentToRender == SceneInspectorComponentType::AudioListener) {
+            bool removeAudioListener = false;
+            bool audioListenerOpen = false;
+            bool audioListenerEnabledChanged = false;
+            bool audioListenerHeaderActive = false;
+            bool audioListenerHeaderToggledOpen = false;
+            const bool audioListenerEnabledBefore = obj.audioListener.enabled;
+            if (obj.hasAudioListener) {
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::AudioListener;
+                const std::string audioListenerComponentKey = prepareComponentOpenState(SceneInspectorComponentType::AudioListener);
+                audioListenerOpen = RenderRemovableComponentHeader("Audio Listener", "AudioListenerHeader", GetComponentIconTexture("component-audio-listener.png"), &obj.audioListener.enabled, audioListenerEnabledChanged, removeAudioListener, &componentType, &reorderDraggedType, &reorderTargetType, &audioListenerHeaderActive, &audioListenerHeaderToggledOpen);
+                finishComponentHeaderState(audioListenerComponentKey, SceneInspectorComponentType::AudioListener, audioListenerHeaderActive, audioListenerHeaderToggledOpen, audioListenerOpen);
             }
+            if (removeAudioListener) {
+                PushUndoState();
+                obj.hasAudioListener = false;
+                obj.audioListener = AudioListenerComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasAudioListener && audioListenerEnabledChanged) {
+                const bool after = obj.audioListener.enabled;
+                obj.audioListener.enabled = audioListenerEnabledBefore;
+                PushUndoState();
+                obj.audioListener.enabled = after;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasAudioListener && audioListenerOpen) {
+                ImGui::TextDisabled("Receives spatial audio from the scene.");
+            }
+            }
+            // ---- Audio Source ----
+            if (currentComponentToRender == SceneInspectorComponentType::AudioSource) {
+            bool removeAudioSource = false;
+            bool audioSourceOpen = false;
+            bool audioSourceEnabledChanged = false;
+            bool audioSourceHeaderActive = false;
+            bool audioSourceHeaderToggledOpen = false;
+            const bool audioSourceEnabledBefore = obj.audioSource.enabled;
+            if (obj.hasAudioSource) {
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::AudioSource;
+                const std::string audioSourceComponentKey = prepareComponentOpenState(SceneInspectorComponentType::AudioSource);
+                audioSourceOpen = RenderRemovableComponentHeader("Audio Source", "AudioSourceHeader", GetComponentIconTexture("component-audio-source.png"), &obj.audioSource.enabled, audioSourceEnabledChanged, removeAudioSource, &componentType, &reorderDraggedType, &reorderTargetType, &audioSourceHeaderActive, &audioSourceHeaderToggledOpen);
+                finishComponentHeaderState(audioSourceComponentKey, SceneInspectorComponentType::AudioSource, audioSourceHeaderActive, audioSourceHeaderToggledOpen, audioSourceOpen);
+            }
+            if (removeAudioSource) {
+                PushUndoState();
+                obj.hasAudioSource = false;
+                obj.audioSource = AudioSourceComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasAudioSource && audioSourceEnabledChanged) {
+                const bool after = obj.audioSource.enabled;
+                obj.audioSource.enabled = audioSourceEnabledBefore;
+                PushUndoState();
+                obj.audioSource.enabled = after;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasAudioSource && audioSourceOpen) {
+                // Clip path picker
+                char clipBuf[512]{};
+                std::snprintf(clipBuf, sizeof(clipBuf), "%s", obj.audioSource.clipPath.c_str());
+                ImGui::InputText("Clip##AudioSource", clipBuf, sizeof(clipBuf), ImGuiInputTextFlags_ReadOnly);
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                        const char* dragPath = static_cast<const char*>(payload->Data);
+                        if (dragPath && IsAudioAssetPath(dragPath)) {
+                            PushUndoState();
+                            obj.audioSource.clipPath = dragPath;
+                            if (onDirty_) onDirty_();
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+
+                float volume = obj.audioSource.volume;
+                if (ImGui::DragFloat("Volume##AudioSource", &volume, 0.01f, 0.0f, 4.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.audioSource.volume = (std::max)(0.0f, volume);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float pitch = obj.audioSource.pitch;
+                if (ImGui::DragFloat("Pitch##AudioSource", &pitch, 0.01f, 0.01f, 4.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.audioSource.pitch = (std::max)(0.01f, pitch);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                bool loop = obj.audioSource.loop;
+                if (ImGui::Checkbox("Loop##AudioSource", &loop)) {
+                    PushUndoState();
+                    obj.audioSource.loop = loop;
+                    if (onDirty_) onDirty_();
+                }
+                bool playOnAwake = obj.audioSource.playOnAwake;
+                if (ImGui::Checkbox("Play On Awake##AudioSource", &playOnAwake)) {
+                    PushUndoState();
+                    obj.audioSource.playOnAwake = playOnAwake;
+                    if (onDirty_) onDirty_();
+                }
+
+                float spatialBlend = obj.audioSource.spatialBlend;
+                if (ImGui::SliderFloat("Spatial Blend##AudioSource", &spatialBlend, 0.0f, 1.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.audioSource.spatialBlend = spatialBlend;
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float minDist = obj.audioSource.minDistance;
+                if (ImGui::DragFloat("Min Distance##AudioSource", &minDist, 0.1f, 0.01f, 10000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.audioSource.minDistance = (std::max)(0.01f, minDist);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float maxDist = obj.audioSource.maxDistance;
+                if (ImGui::DragFloat("Max Distance##AudioSource", &maxDist, 0.5f, 0.01f, 10000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.audioSource.maxDistance = (std::max)(obj.audioSource.minDistance + 0.01f, maxDist);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+            }
+            }
+            // ---- Vehicle Sound ----
+            if (currentComponentToRender == SceneInspectorComponentType::VehicleSound) {
+            bool removeVehicleSound = false;
+            bool vehicleSoundOpen = false;
+            bool vehicleSoundEnabledChanged = false;
+            bool vehicleSoundHeaderActive = false;
+            bool vehicleSoundHeaderToggledOpen = false;
+            const bool vehicleSoundEnabledBefore = obj.vehicleSound.enabled;
+            if (obj.hasVehicleSound) {
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::VehicleSound;
+                const std::string vehicleSoundComponentKey = prepareComponentOpenState(SceneInspectorComponentType::VehicleSound);
+                vehicleSoundOpen = RenderRemovableComponentHeader("Vehicle Sound", "VehicleSoundHeader", GetComponentIconTexture("component-vehicle-sound.png"), &obj.vehicleSound.enabled, vehicleSoundEnabledChanged, removeVehicleSound, &componentType, &reorderDraggedType, &reorderTargetType, &vehicleSoundHeaderActive, &vehicleSoundHeaderToggledOpen);
+                finishComponentHeaderState(vehicleSoundComponentKey, SceneInspectorComponentType::VehicleSound, vehicleSoundHeaderActive, vehicleSoundHeaderToggledOpen, vehicleSoundOpen);
+            }
+            if (removeVehicleSound) {
+                PushUndoState();
+                obj.hasVehicleSound = false;
+                obj.vehicleSound = VehicleSoundComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasVehicleSound && vehicleSoundEnabledChanged) {
+                const bool after = obj.vehicleSound.enabled;
+                obj.vehicleSound.enabled = vehicleSoundEnabledBefore;
+                PushUndoState();
+                obj.vehicleSound.enabled = after;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasVehicleSound && vehicleSoundOpen) {
+                const float editBtnWidth = 50.0f;
+                char profileBuf[512]{};
+                std::snprintf(profileBuf, sizeof(profileBuf), "%s", obj.vehicleSound.profilePath.c_str());
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - editBtnWidth - ImGui::GetStyle().ItemSpacing.x);
+                ImGui::InputText("##VehicleSoundProfile", profileBuf, sizeof(profileBuf), ImGuiInputTextFlags_ReadOnly);
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                        const char* dragPath = static_cast<const char*>(payload->Data);
+                        if (dragPath && IsVehicleSoundAssetPath(dragPath)) {
+                            PushUndoState();
+                            obj.vehicleSound.profilePath = dragPath;
+                            if (onDirty_) onDirty_();
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(obj.vehicleSound.profilePath.empty());
+                if (ImGui::Button("Edit##VS", ImVec2(editBtnWidth, 0.0f))) {
+                    OpenVehicleSoundEditor(obj.vehicleSound.profilePath);
+                }
+                ImGui::EndDisabled();
+                ImGui::TextDisabled("Profile");
+            }
+            }
+            } // end for (currentComponentToRender)
             if (reorderDraggedType != reorderTargetType) {
                 SceneObject orderProbe = obj;
                 if (MoveInspectorComponentBefore(orderProbe, reorderDraggedType, reorderTargetType)) {
@@ -3614,6 +3823,278 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
     }
 }
 
+void SceneEditor::RenderVehicleSoundEditorWindow() {
+    if (!showVehicleSoundEditor_) {
+        return;
+    }
+    if (inspectedVehicleSoundPath_.empty()) {
+        showVehicleSoundEditor_ = false;
+        return;
+    }
+
+    if (!inspectedVehicleSoundLoaded_) {
+        inspectedVehicleSoundError_.clear();
+        try {
+            inspectedVehicleSound_ = VehicleSoundProfileLoader::loadFromFile(
+                ProjectAssetPathToAbsolute(inspectedVehicleSoundPath_).string());
+            inspectedVehicleSoundLoaded_ = true;
+        } catch (const std::exception& ex) {
+            inspectedVehicleSoundLoaded_ = false;
+            inspectedVehicleSoundError_ = ex.what();
+        }
+    }
+
+    ImGui::SetNextWindowSize(ImVec2(680.0f, 600.0f), ImGuiCond_FirstUseEver);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
+    if (ImGui::Begin("Vehicle Sound Editor", &showVehicleSoundEditor_, ImGuiWindowFlags_NoCollapse)) {
+        vehicleSoundEditorHovered_ = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+        vehicleSoundEditorFocused_ = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
+        auto beginEdit = [&]() {
+            if (!vehicleSoundEditActive_) {
+                PushVehicleSoundUndoState();
+                vehicleSoundEditActive_ = true;
+            }
+        };
+        auto endEdit = [&]() {
+            if (ImGui::IsItemDeactivated()) vehicleSoundEditActive_ = false;
+        };
+
+        if (!inspectedVehicleSoundError_.empty()) {
+            ImGui::TextColored(ImVec4(1, 0.3f, 0.3f, 1), "Error: %s", inspectedVehicleSoundError_.c_str());
+            ImGui::End();
+            ImGui::PopStyleVar(3);
+            return;
+        }
+        if (!inspectedVehicleSoundLoaded_) {
+            ImGui::TextDisabled("Loading...");
+            ImGui::End();
+            ImGui::PopStyleVar(3);
+            return;
+        }
+
+        VehicleSoundProfile& p = inspectedVehicleSound_;
+
+        // Header row: name + save button
+        {
+            char nameBuf[256]{};
+            std::snprintf(nameBuf, sizeof(nameBuf), "%s", p.name.c_str());
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 100.0f);
+            if (ImGui::InputText("##SoundName", nameBuf, sizeof(nameBuf))) {
+                beginEdit();
+                p.name = nameBuf;
+            }
+            endEdit();
+            ImGui::SameLine();
+            if (ImGui::Button("Save", ImVec2(90.0f, 0.0f))) {
+                std::string err;
+                if (VehicleSoundProfileLoader::saveToFile(
+                        ProjectAssetPathToAbsolute(inspectedVehicleSoundPath_).string(), p, &err)) {
+                    inspectedVehicleSoundLoaded_ = false;
+                    if (console_) console_->AddLog("Saved vehicle sound profile: " + inspectedVehicleSoundPath_);
+                } else if (console_) {
+                    console_->AddError(err.empty() ? ("Failed to save: " + inspectedVehicleSoundPath_) : err);
+                }
+            }
+        }
+        ImGui::Separator();
+
+        // Master settings
+        if (ImGui::CollapsingHeader("Master Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+            float mv = p.masterVolume;
+            ImGui::SetNextItemWidth(200.0f);
+            if (ImGui::DragFloat("Master Volume##VS", &mv, 0.01f, 0.0f, 4.0f)) { beginEdit(); p.masterVolume = (std::max)(0.0f, mv); }
+            endEdit();
+
+            float sb = p.spatialBlend;
+            ImGui::SetNextItemWidth(200.0f);
+            if (ImGui::SliderFloat("Spatial Blend##VS", &sb, 0.0f, 1.0f)) { beginEdit(); p.spatialBlend = sb; }
+            endEdit();
+            ImGui::SameLine(); ImGui::TextDisabled("(0=2D  1=3D)");
+
+            float minD = p.minDistance;
+            ImGui::SetNextItemWidth(200.0f);
+            if (ImGui::DragFloat("Min Distance##VS", &minD, 0.1f, 0.01f, 1000.0f)) { beginEdit(); p.minDistance = (std::max)(0.01f, minD); }
+            endEdit();
+
+            float maxD = p.maxDistance;
+            ImGui::SetNextItemWidth(200.0f);
+            if (ImGui::DragFloat("Max Distance##VS", &maxD, 0.5f, p.minDistance + 0.01f, 10000.0f)) { beginEdit(); p.maxDistance = (std::max)(p.minDistance + 0.01f, maxD); }
+            endEdit();
+        }
+
+        // Engine layers
+        if (ImGui::CollapsingHeader("Engine Layers", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::TextDisabled("Looping clips whose pitch/volume track RPM.");
+            ImGui::Spacing();
+            for (int i = 0; i < (int)p.engineLayers.size(); ++i) {
+                VehicleSoundEngineLayer& L = p.engineLayers[i];
+                ImGui::PushID(i);
+                const bool layerOpen = ImGui::TreeNodeEx("##layer", ImGuiTreeNodeFlags_DefaultOpen,
+                    "Layer %d  (%s)", i, L.clipPath.empty() ? "no clip" : fs::path(L.clipPath).filename().string().c_str());
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - 20.0f);
+                if (ImGui::SmallButton("X")) {
+                    PushVehicleSoundUndoState();
+                    p.engineLayers.erase(p.engineLayers.begin() + i);
+                    ImGui::PopID();
+                    if (layerOpen) ImGui::TreePop();
+                    break;
+                }
+                if (layerOpen) {
+                    // Clip path
+                    char clipBuf[512]{};
+                    std::snprintf(clipBuf, sizeof(clipBuf), "%s", L.clipPath.c_str());
+                    ImGui::SetNextItemWidth(-1.0f);
+                    ImGui::InputText("Clip##L", clipBuf, sizeof(clipBuf), ImGuiInputTextFlags_ReadOnly);
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (const ImGuiPayload* pl = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                            const char* dp = static_cast<const char*>(pl->Data);
+                            if (dp && IsAudioAssetPath(dp)) { PushVehicleSoundUndoState(); L.clipPath = dp; }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+                    ImGui::TextDisabled("Drag an audio file onto the field above.");
+
+                    float rpmMin = L.rpmMin, rpmMax = L.rpmMax;
+                    ImGui::SetNextItemWidth(120.0f);
+                    if (ImGui::DragFloat("RPM Min##L", &rpmMin, 10.0f, 0.0f, 20000.0f)) { beginEdit(); L.rpmMin = (std::max)(0.0f, rpmMin); }
+                    endEdit();
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(120.0f);
+                    if (ImGui::DragFloat("RPM Max##L", &rpmMax, 10.0f, L.rpmMin + 1.0f, 20000.0f)) { beginEdit(); L.rpmMax = (std::max)(L.rpmMin + 1.0f, rpmMax); }
+                    endEdit();
+
+                    float pMin = L.pitchAtRpmMin, pMax = L.pitchAtRpmMax;
+                    ImGui::SetNextItemWidth(120.0f);
+                    if (ImGui::DragFloat("Pitch@Min##L", &pMin, 0.01f, 0.01f, 8.0f)) { beginEdit(); L.pitchAtRpmMin = (std::max)(0.01f, pMin); }
+                    endEdit();
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(120.0f);
+                    if (ImGui::DragFloat("Pitch@Max##L", &pMax, 0.01f, 0.01f, 8.0f)) { beginEdit(); L.pitchAtRpmMax = (std::max)(0.01f, pMax); }
+                    endEdit();
+
+                    float vMin = L.volumeAtRpmMin, vMax = L.volumeAtRpmMax;
+                    ImGui::SetNextItemWidth(120.0f);
+                    if (ImGui::DragFloat("Vol@Min##L", &vMin, 0.01f, 0.0f, 4.0f)) { beginEdit(); L.volumeAtRpmMin = (std::max)(0.0f, vMin); }
+                    endEdit();
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(120.0f);
+                    if (ImGui::DragFloat("Vol@Max##L", &vMax, 0.01f, 0.0f, 4.0f)) { beginEdit(); L.volumeAtRpmMax = (std::max)(0.0f, vMax); }
+                    endEdit();
+
+                    float vts = L.volumeThrottleScale;
+                    ImGui::SetNextItemWidth(200.0f);
+                    if (ImGui::DragFloat("Throttle Vol Scale##L", &vts, 0.01f, 0.0f, 2.0f)) { beginEdit(); L.volumeThrottleScale = (std::max)(0.0f, vts); }
+                    endEdit();
+
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            }
+            ImGui::Spacing();
+            if (ImGui::Button("+ Add Engine Layer")) {
+                PushVehicleSoundUndoState();
+                p.engineLayers.push_back(VehicleSoundEngineLayer{});
+            }
+        }
+
+        // Trigger sounds
+        if (ImGui::CollapsingHeader("Trigger Sounds", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::TextDisabled("One-shot clips fired on discrete events.");
+            ImGui::Spacing();
+            const char* triggerNames[] = { "Gear Up", "Gear Down", "Backfire", "Engine Start", "Engine Stop", "Tire Squeal" };
+            const VehicleSoundTrigger triggerValues[] = {
+                VehicleSoundTrigger::GearUp, VehicleSoundTrigger::GearDown,
+                VehicleSoundTrigger::Backfire, VehicleSoundTrigger::EngineStart,
+                VehicleSoundTrigger::EngineStop, VehicleSoundTrigger::TireSqueal
+            };
+            for (int i = 0; i < (int)p.triggerSounds.size(); ++i) {
+                VehicleSoundTriggerEntry& T = p.triggerSounds[i];
+                ImGui::PushID(i + 1000);
+                const bool tOpen = ImGui::TreeNodeEx("##trigger", ImGuiTreeNodeFlags_DefaultOpen,
+                    "Trigger %d  (%s)", i, triggerNames[(int)T.trigger]);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - 20.0f);
+                if (ImGui::SmallButton("X")) {
+                    PushVehicleSoundUndoState();
+                    p.triggerSounds.erase(p.triggerSounds.begin() + i);
+                    ImGui::PopID();
+                    if (tOpen) ImGui::TreePop();
+                    break;
+                }
+                if (tOpen) {
+                    // Clip path
+                    char clipBuf[512]{};
+                    std::snprintf(clipBuf, sizeof(clipBuf), "%s", T.clipPath.c_str());
+                    ImGui::SetNextItemWidth(-1.0f);
+                    ImGui::InputText("Clip##T", clipBuf, sizeof(clipBuf), ImGuiInputTextFlags_ReadOnly);
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (const ImGuiPayload* pl = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                            const char* dp = static_cast<const char*>(pl->Data);
+                            if (dp && IsAudioAssetPath(dp)) { PushVehicleSoundUndoState(); T.clipPath = dp; }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+                    ImGui::TextDisabled("Drag an audio file onto the field above.");
+
+                    // Trigger type combo
+                    int trigIdx = (int)T.trigger;
+                    ImGui::SetNextItemWidth(160.0f);
+                    if (ImGui::Combo("Event##T", &trigIdx, triggerNames, 6)) {
+                        PushVehicleSoundUndoState();
+                        T.trigger = triggerValues[trigIdx];
+                    }
+
+                    float vol = T.volume;
+                    ImGui::SetNextItemWidth(160.0f);
+                    if (ImGui::DragFloat("Volume##T", &vol, 0.01f, 0.0f, 4.0f)) { beginEdit(); T.volume = (std::max)(0.0f, vol); }
+                    endEdit();
+
+                    if (T.trigger == VehicleSoundTrigger::Backfire) {
+                        float minRpm = T.minRpmForBackfire;
+                        ImGui::SetNextItemWidth(160.0f);
+                        if (ImGui::DragFloat("Min RPM##T", &minRpm, 10.0f, 0.0f, 20000.0f)) { beginEdit(); T.minRpmForBackfire = (std::max)(0.0f, minRpm); }
+                        endEdit();
+                    }
+                    if (T.trigger == VehicleSoundTrigger::TireSqueal) {
+                        float minSpd = T.minLateralSpeedForSqueal;
+                        ImGui::SetNextItemWidth(160.0f);
+                        if (ImGui::DragFloat("Min Lateral Speed##T", &minSpd, 0.1f, 0.0f, 100.0f)) { beginEdit(); T.minLateralSpeedForSqueal = (std::max)(0.0f, minSpd); }
+                        endEdit();
+                    }
+
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            }
+            ImGui::Spacing();
+            if (ImGui::Button("+ Add Trigger Sound")) {
+                PushVehicleSoundUndoState();
+                p.triggerSounds.push_back(VehicleSoundTriggerEntry{});
+            }
+        }
+
+        // Undo/redo hint
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::BeginDisabled(vehicleSoundUndoStack_.empty());
+        if (ImGui::Button("Undo")) UndoVehicleSound();
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(vehicleSoundRedoStack_.empty());
+        if (ImGui::Button("Redo")) RedoVehicleSound();
+        ImGui::EndDisabled();
+    }
+    ImGui::End();
+    ImGui::PopStyleVar(3);
+    if (!showVehicleSoundEditor_) {
+        vehicleSoundEditorHovered_ = false;
+        vehicleSoundEditorFocused_ = false;
+        vehicleSoundEditActive_ = false;
+    }
+}
+
 void SceneEditor::RenderMaterialInspector() {
     if (inspectedMaterialId_.empty()) {
         inspectMaterial_ = false;
@@ -3976,6 +4457,26 @@ void SceneEditor::OpenVehicleConfigEditor(const std::string& configPath) {
         vehicleConfigEditActive_ = false;
     }
     showVehicleConfigEditor_ = true;
+}
+
+void SceneEditor::OpenVehicleSoundEditor(const std::string& profilePath) {
+    if (profilePath.empty()) {
+        return;
+    }
+
+    const std::string normalizedPath = NormalizeSlashes(profilePath);
+    const bool pathChanged = inspectedVehicleSoundPath_ != normalizedPath;
+    inspectedVehicleSoundPath_ = normalizedPath;
+    selectedProjectFile_ = inspectedVehicleSoundPath_;
+    selectedProjectDirectory_ = ParentProjectDirectory(inspectedVehicleSoundPath_);
+    if (pathChanged) {
+        inspectedVehicleSoundLoaded_ = false;
+        inspectedVehicleSoundError_.clear();
+        vehicleSoundUndoStack_.clear();
+        vehicleSoundRedoStack_.clear();
+        vehicleSoundEditActive_ = false;
+    }
+    showVehicleSoundEditor_ = true;
 }
 
 void SceneEditor::OpenMaterialEditor(const std::string& materialId) {

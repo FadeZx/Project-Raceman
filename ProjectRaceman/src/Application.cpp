@@ -1,5 +1,6 @@
 #include "Application.h"
 
+#include "audio/AudioManager.h"
 #include "input/InputManager.h"
 #include "physics/PhysicsWorld.h"
 #include "rendering/Renderer.h"
@@ -58,6 +59,9 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         inputManager_ = std::make_unique<InputManager>();
         inputManager_->AttachToWindow(window_);
     }
+    audioManager_ = std::make_unique<AudioManager>();
+    audioManager_->Initialize();
+
     debugUi_ = std::make_unique<DebugUI>(config.enableImGui);
     menuController_ = std::make_unique<MenuController>();
     console_ = std::make_unique<Console>();
@@ -69,6 +73,7 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         sceneEditor_ = std::make_unique<SceneEditor>();
         sceneEditor_->SetConsole(console_.get());
         sceneEditor_->SetInputManager(inputManager_.get());
+        sceneEditor_->SetAudioManager(audioManager_.get());
         sceneEditor_->SetOnFocusObject([this](const glm::vec3& target, float radius) {
             FocusEditorCameraOn(target, radius);
         });
@@ -83,9 +88,11 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
 }
 
 Application::~Application() {
+    sceneEditor_.reset(); // stop audio sources before audio engine shuts down
     if (config_.enableImGui) {
         ShutdownImGui();
     }
+    audioManager_.reset(); // shuts down irrKlang
     renderer_.reset();
     debugUi_.reset();
     inputManager_.reset();

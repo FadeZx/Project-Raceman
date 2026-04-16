@@ -170,7 +170,10 @@ inline std::vector<SceneInspectorComponentType> DefaultInspectorComponentOrder()
         SceneInspectorComponentType::Collider,
         SceneInspectorComponentType::Camera,
         SceneInspectorComponentType::Cinemachine,
-        SceneInspectorComponentType::Light
+        SceneInspectorComponentType::Light,
+        SceneInspectorComponentType::AudioListener,
+        SceneInspectorComponentType::AudioSource,
+        SceneInspectorComponentType::VehicleSound
     };
 }
 
@@ -198,6 +201,12 @@ inline bool HasInspectorComponent(const SceneObject& object, SceneInspectorCompo
         return object.hasCinemachine;
     case SceneInspectorComponentType::Light:
         return object.hasLight;
+    case SceneInspectorComponentType::AudioListener:
+        return object.hasAudioListener;
+    case SceneInspectorComponentType::AudioSource:
+        return object.hasAudioSource;
+    case SceneInspectorComponentType::VehicleSound:
+        return object.hasVehicleSound;
     }
     return false;
 }
@@ -348,6 +357,15 @@ inline bool IsPrefabAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".prefab.json");
 }
 
+inline bool IsVehicleSoundAssetPath(const std::string& path) {
+    return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".vehiclesound.json");
+}
+
+inline bool IsAudioAssetPath(const std::string& path) {
+    const std::string ext = ToLowerCopy(fs::path(path).extension().string());
+    return ext == ".wav" || ext == ".ogg" || ext == ".mp3" || ext == ".flac";
+}
+
 inline std::string MaterialIdFromAssetPath(const std::string& path) {
     std::string filename = fs::path(path).filename().string();
     const std::string suffix = ".mat.json";
@@ -385,6 +403,15 @@ inline std::string ProjectAssetDisplayFilename(const std::string& path) {
         if (EndsWith(ToLowerCopy(filename), suffix)) {
             filename.resize(filename.size() - suffix.size());
             filename += ".prefab";
+        }
+        return filename;
+    }
+    if (IsVehicleSoundAssetPath(path)) {
+        std::string filename = fs::path(path).filename().string();
+        const std::string suffix = ".vehiclesound.json";
+        if (EndsWith(ToLowerCopy(filename), suffix)) {
+            filename.resize(filename.size() - suffix.size());
+            filename += ".vehiclesound";
         }
         return filename;
     }
@@ -1179,6 +1206,9 @@ inline const char* InspectorComponentTypeToString(SceneInspectorComponentType ty
     case SceneInspectorComponentType::Camera: return "Camera";
     case SceneInspectorComponentType::Cinemachine: return "Cinemachine";
     case SceneInspectorComponentType::Light: return "Light";
+    case SceneInspectorComponentType::AudioListener: return "AudioListener";
+    case SceneInspectorComponentType::AudioSource: return "AudioSource";
+    case SceneInspectorComponentType::VehicleSound: return "VehicleSound";
     }
     return "Transform";
 }
@@ -1195,6 +1225,9 @@ inline bool InspectorComponentTypeFromString(const std::string& value, SceneInsp
     if (value == "Camera") { outType = SceneInspectorComponentType::Camera; return true; }
     if (value == "Cinemachine") { outType = SceneInspectorComponentType::Cinemachine; return true; }
     if (value == "Light") { outType = SceneInspectorComponentType::Light; return true; }
+    if (value == "AudioListener") { outType = SceneInspectorComponentType::AudioListener; return true; }
+    if (value == "AudioSource") { outType = SceneInspectorComponentType::AudioSource; return true; }
+    if (value == "VehicleSound") { outType = SceneInspectorComponentType::VehicleSound; return true; }
     return false;
 }
 

@@ -541,18 +541,44 @@ void SceneEditor::SelectProjectFile(const std::string& path) {
     }
     inspectMaterial_ = false;
     inspectedMaterialId_.clear();
-    inspectedVehicleConfigLoaded_ = false;
-    inspectedVehicleConfigError_.clear();
-    vehicleConfigUndoStack_.clear();
-    vehicleConfigRedoStack_.clear();
-    vehicleConfigEditActive_ = false;
+
     if (IsVehicleConfigAssetPath(selectedProjectFile_)) {
+        // Opening a vehicle config — reset its state and close the sound editor
+        inspectedVehicleConfigLoaded_ = false;
+        inspectedVehicleConfigError_.clear();
+        vehicleConfigUndoStack_.clear();
+        vehicleConfigRedoStack_.clear();
+        vehicleConfigEditActive_ = false;
         inspectedVehicleConfigPath_ = selectedProjectFile_;
         showVehicleConfigEditor_ = true;
-    } else {
+        inspectedVehicleSoundPath_.clear();
+        showVehicleSoundEditor_ = false;
+        inspectedVehicleSoundLoaded_ = false;
+        inspectedVehicleSoundError_.clear();
+        vehicleSoundUndoStack_.clear();
+        vehicleSoundRedoStack_.clear();
+        vehicleSoundEditActive_ = false;
+    } else if (IsVehicleSoundAssetPath(selectedProjectFile_)) {
+        // Opening a vehicle sound profile — reset its state and close the config editor
+        inspectedVehicleSoundLoaded_ = false;
+        inspectedVehicleSoundError_.clear();
+        vehicleSoundUndoStack_.clear();
+        vehicleSoundRedoStack_.clear();
+        vehicleSoundEditActive_ = false;
+        inspectedVehicleSoundPath_ = selectedProjectFile_;
+        showVehicleSoundEditor_ = true;
         inspectedVehicleConfigPath_.clear();
         showVehicleConfigEditor_ = false;
+        inspectedVehicleConfigLoaded_ = false;
+        inspectedVehicleConfigError_.clear();
+        vehicleConfigUndoStack_.clear();
+        vehicleConfigRedoStack_.clear();
+        vehicleConfigEditActive_ = false;
     }
+    // For neutral file types (audio clips, images, meshes, scripts, etc.)
+    // do NOT change editor state — the user may be selecting a file to
+    // drag into an open editor window (e.g. dragging a .wav into the
+    // Vehicle Sound Profile editor's clip field).
 }
 
 void SubmitWireMesh(Renderer& renderer,

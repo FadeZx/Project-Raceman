@@ -567,6 +567,15 @@ SceneEditor::SceneEditor() {
 }
 
 SceneEditor::~SceneEditor() {
+    // If a background physics build is running, cancel it and wait for the thread to finish
+    // before any member destruction occurs (the thread holds a raw pointer into pendingWorld).
+    if (playModeLoad_.buildThread && playModeLoad_.buildThread->joinable()) {
+        if (playModeLoad_.progress) {
+            playModeLoad_.progress->cancelRequested.store(true);
+        }
+        playModeLoad_.buildThread->join();
+    }
+
     // If the app is closed while in play mode, restore the pre-play snapshot so
     // the saved scene on disk reflects the authored state, not runtime transforms.
     if (scriptsRunning_ && hasPlayModeSnapshot_) {
@@ -661,12 +670,15 @@ void SceneEditor::AddEmptyObject() {
 
 void SceneEditor::RenderUI(float deltaTime) {
     HandleEditorShortcuts();
+    TickPlayModeLoading();          // check if async physics build is done; finalize on main thread
+    RenderPlayModeLoadingPopup();   // show modal progress UI while building (before dockspace so ID stack is clean)
 
     UpdateScripts(deltaTime);
     UpdateVehiclePhysics(deltaTime);
     UpdatePhysics(deltaTime);
     UpdateVehicles(deltaTime);
     UpdateCinemachine(deltaTime);
+    UpdateAudio(deltaTime);
     PreviewCinemachineInEditor();
 
     RenderDockspaceHost();
@@ -675,6 +687,7 @@ void SceneEditor::RenderUI(float deltaTime) {
     RenderProjectPanel();
     RenderViewportPanel();
     RenderVehicleConfigEditorWindow();
+    RenderVehicleSoundEditorWindow();
 }
 
 float SceneEditor::GetViewportAspect() const {
@@ -970,9 +983,13 @@ void SceneEditor::HandleEditorShortcuts() {
     }
     const bool vehicleConfigShortcutTarget = showVehicleConfigEditor_ &&
         (vehicleConfigEditorFocused_ || vehicleConfigEditorHovered_);
+    const bool vehicleSoundShortcutTarget = showVehicleSoundEditor_ &&
+        (vehicleSoundEditorFocused_ || vehicleSoundEditorHovered_);
     if (IsCtrlZPressed()) {
         if (vehicleConfigShortcutTarget) {
             UndoVehicleConfig();
+        } else if (vehicleSoundShortcutTarget) {
+            UndoVehicleSound();
         } else {
             Undo();
         }
@@ -981,6 +998,8 @@ void SceneEditor::HandleEditorShortcuts() {
     if (IsCtrlYPressed()) {
         if (vehicleConfigShortcutTarget) {
             RedoVehicleConfig();
+        } else if (vehicleSoundShortcutTarget) {
+            RedoVehicleSound();
         } else {
             Redo();
         }
@@ -1132,6 +1151,18 @@ bool SceneEditor::PasteInspectorComponentFromClipboard(const std::vector<int>& t
         case SceneInspectorComponentType::Light:
             target.hasLight = true;
             target.light = componentClipboard_.sourceObject.light;
+            break;
+        case SceneInspectorComponentType::AudioListener:
+            target.hasAudioListener = true;
+            target.audioListener = componentClipboard_.sourceObject.audioListener;
+            break;
+        case SceneInspectorComponentType::AudioSource:
+            target.hasAudioSource = true;
+            target.audioSource = componentClipboard_.sourceObject.audioSource;
+            break;
+        case SceneInspectorComponentType::VehicleSound:
+            target.hasVehicleSound = true;
+            target.vehicleSound = componentClipboard_.sourceObject.vehicleSound;
             break;
         }
         SyncInspectorComponentOrder(target);
@@ -1904,6 +1935,19 @@ void SceneEditor::PushVehicleConfigUndoState() {
     constexpr std::size_t maxHistory = 128;
     if (vehicleConfigUndoStack_.size() > maxHistory) {
         vehicleConfigUndoStack_.erase(vehicleConfigUndoStack_.begin());
+    }
+}
+
+void SceneEditor::PushVehicleSoundUndoState() {
+    if (!showVehicleSoundEditor_ || inspectedVehicleSoundPath_.empty() || !inspectedVehicleSoundLoaded_) {
+        return;
+    }
+
+    vehicleSoundUndoStack_.push_back({inspectedVehicleSound_});
+    vehicleSoundRedoStack_.clear();
+    constexpr std::size_t maxHistory = 128;
+    if (vehicleSoundUndoStack_.size() > maxHistory) {
+        vehicleSoundUndoStack_.erase(vehicleSoundUndoStack_.begin());
     }
 }
 
@@ -2880,6 +2924,28 @@ void SceneEditor::RedoVehicleConfig() {
     vehicleConfigEditActive_ = false;
 }
 
+void SceneEditor::UndoVehicleSound() {
+    if (vehicleSoundUndoStack_.empty() || !showVehicleSoundEditor_) {
+        return;
+    }
+
+    vehicleSoundRedoStack_.push_back({inspectedVehicleSound_});
+    inspectedVehicleSound_ = vehicleSoundUndoStack_.back().profile;
+    vehicleSoundUndoStack_.pop_back();
+    vehicleSoundEditActive_ = false;
+}
+
+void SceneEditor::RedoVehicleSound() {
+    if (vehicleSoundRedoStack_.empty() || !showVehicleSoundEditor_) {
+        return;
+    }
+
+    vehicleSoundUndoStack_.push_back({inspectedVehicleSound_});
+    inspectedVehicleSound_ = vehicleSoundRedoStack_.back().profile;
+    vehicleSoundRedoStack_.pop_back();
+    vehicleSoundEditActive_ = false;
+}
+
 #if 0
 void SceneEditor::NewScene() {
     NewScene("Untitled");
@@ -3017,6 +3083,20 @@ void SceneEditor::SaveActiveAsset() {
             }
         } else if (console_) {
             console_->AddError(error.empty() ? ("Failed to save vehicle config: " + inspectedVehicleConfigPath_) : error);
+        }
+        return;
+    }
+
+    if (showVehicleSoundEditor_ && !inspectedVehicleSoundPath_.empty()) {
+        std::string error;
+        const fs::path soundPath = ProjectAssetPathToAbsolute(inspectedVehicleSoundPath_);
+        if (VehicleSoundProfileLoader::saveToFile(soundPath.string(), inspectedVehicleSound_, &error)) {
+            inspectedVehicleSoundLoaded_ = false;
+            if (console_) {
+                console_->AddLog("Saved vehicle sound profile: " + inspectedVehicleSoundPath_);
+            }
+        } else if (console_) {
+            console_->AddError(error.empty() ? ("Failed to save vehicle sound profile: " + inspectedVehicleSoundPath_) : error);
         }
         return;
     }
@@ -3185,6 +3265,75 @@ bool SceneEditor::CreateVehicleConfigAsset(const std::string& requestedName, std
     RefreshProjectFiles();
     if (console_) {
         console_->AddLog("Created vehicle profile: " + createdProjectPath);
+    }
+    return true;
+}
+
+bool SceneEditor::CreateVehicleSoundAsset(const std::string& requestedName, std::string* outProfilePath) {
+    std::string baseName = TrimCopyLocal(requestedName);
+    if (baseName.empty()) {
+        if (console_) {
+            console_->AddError("Vehicle sound profile name cannot be empty.");
+        }
+        return false;
+    }
+
+    const std::string suffix = ".vehiclesound.json";
+    const std::string lowerBaseName = ToLowerCopy(baseName);
+    if (EndsWith(lowerBaseName, suffix)) {
+        baseName.resize(baseName.size() - suffix.size());
+    }
+
+    std::string sanitized;
+    sanitized.reserve(baseName.size());
+    for (char& ch : baseName) {
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (std::isalnum(uch) || ch == '_' || ch == '-' || ch == ' ') {
+            sanitized.push_back(ch == ' ' ? '_' : ch);
+        }
+    }
+    sanitized = TrimCopyLocal(sanitized);
+    if (sanitized.empty()) {
+        if (console_) {
+            console_->AddError("Vehicle sound profile name must contain letters or numbers.");
+        }
+        return false;
+    }
+
+    const fs::path assetsRoot = FindAssetsRoot();
+    fs::path targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + sanitized + suffix);
+    if (!IsUnderPath(targetPath, assetsRoot)) {
+        if (console_) {
+            console_->AddError("Vehicle sound profile creation blocked outside assets: " + sanitized);
+        }
+        return false;
+    }
+
+    int duplicateIndex = 1;
+    while (fs::exists(targetPath)) {
+        targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + sanitized + "_" + std::to_string(duplicateIndex) + suffix);
+        ++duplicateIndex;
+    }
+
+    raceman::VehicleSoundProfile profile = raceman::VehicleSoundProfileLoader::makeDefault();
+    profile.name = sanitized;
+
+    std::string error;
+    fs::create_directories(targetPath.parent_path());
+    if (!raceman::VehicleSoundProfileLoader::saveToFile(targetPath.string(), profile, &error)) {
+        if (console_) {
+            console_->AddError(error.empty() ? ("Failed to create vehicle sound profile: " + sanitized) : error);
+        }
+        return false;
+    }
+
+    const std::string createdProjectPath = ToProjectAssetPath(targetPath, assetsRoot);
+    if (outProfilePath) {
+        *outProfilePath = createdProjectPath;
+    }
+    RefreshProjectFiles();
+    if (console_) {
+        console_->AddLog("Created vehicle sound profile: " + createdProjectPath);
     }
     return true;
 }

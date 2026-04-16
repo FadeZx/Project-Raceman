@@ -39,6 +39,12 @@
     <ClInclude Include="src\physics\SimpleJson.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\audio\AudioManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\audio\VehicleSoundProfile.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\physics\VehicleConfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -135,6 +141,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\glad.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\audio\AudioManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\audio\VehicleSoundProfile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\VehicleConfig.cpp">

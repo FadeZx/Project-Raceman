@@ -153,6 +153,20 @@ void SceneEditor::SaveActiveAsset() {
         return;
     }
 
+    if (showVehicleSoundEditor_ && !inspectedVehicleSoundPath_.empty()) {
+        std::string error;
+        const fs::path soundPath = ProjectAssetPathToAbsolute(inspectedVehicleSoundPath_);
+        if (VehicleSoundProfileLoader::saveToFile(soundPath.string(), inspectedVehicleSound_, &error)) {
+            inspectedVehicleSoundLoaded_ = false;
+            if (console_) {
+                console_->AddLog("Saved vehicle sound profile: " + inspectedVehicleSoundPath_);
+            }
+        } else if (console_) {
+            console_->AddError(error.empty() ? ("Failed to save vehicle sound profile: " + inspectedVehicleSoundPath_) : error);
+        }
+        return;
+    }
+
     SaveCurrentScene();
 }
 
@@ -416,6 +430,36 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"spotAngleDegrees\": " << o.light.spotAngleDegrees << "\n";
             out << "        }";
         }
+        if (o.hasAudioListener) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"AudioListener\",\n";
+            out << "          \"enabled\": " << (o.audioListener.enabled ? "true" : "false") << "\n";
+            out << "        }";
+        }
+        if (o.hasAudioSource) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"AudioSource\",\n";
+            out << "          \"enabled\": " << (o.audioSource.enabled ? "true" : "false") << ",\n";
+            out << "          \"clipPath\": \"" << JsonEscape(o.audioSource.clipPath) << "\",\n";
+            out << "          \"volume\": " << o.audioSource.volume << ",\n";
+            out << "          \"pitch\": " << o.audioSource.pitch << ",\n";
+            out << "          \"loop\": " << (o.audioSource.loop ? "true" : "false") << ",\n";
+            out << "          \"playOnAwake\": " << (o.audioSource.playOnAwake ? "true" : "false") << ",\n";
+            out << "          \"spatialBlend\": " << o.audioSource.spatialBlend << ",\n";
+            out << "          \"minDistance\": " << o.audioSource.minDistance << ",\n";
+            out << "          \"maxDistance\": " << o.audioSource.maxDistance << "\n";
+            out << "        }";
+        }
+        if (o.hasVehicleSound) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"VehicleSound\",\n";
+            out << "          \"enabled\": " << (o.vehicleSound.enabled ? "true" : "false") << ",\n";
+            out << "          \"profilePath\": \"" << JsonEscape(o.vehicleSound.profilePath) << "\"\n";
+            out << "        }";
+        }
         out << "\n";
         out << "      ]\n";
         out << "    }" << (i + 1 < objects_.size() ? ",\n" : "\n");
@@ -676,6 +720,36 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
             out << "          \"intensity\": " << o.light.intensity << ",\n";
             out << "          \"range\": " << o.light.range << ",\n";
             out << "          \"spotAngleDegrees\": " << o.light.spotAngleDegrees << "\n";
+            out << "        }";
+        }
+        if (o.hasAudioListener) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"AudioListener\",\n";
+            out << "          \"enabled\": " << (o.audioListener.enabled ? "true" : "false") << "\n";
+            out << "        }";
+        }
+        if (o.hasAudioSource) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"AudioSource\",\n";
+            out << "          \"enabled\": " << (o.audioSource.enabled ? "true" : "false") << ",\n";
+            out << "          \"clipPath\": \"" << JsonEscape(o.audioSource.clipPath) << "\",\n";
+            out << "          \"volume\": " << o.audioSource.volume << ",\n";
+            out << "          \"pitch\": " << o.audioSource.pitch << ",\n";
+            out << "          \"loop\": " << (o.audioSource.loop ? "true" : "false") << ",\n";
+            out << "          \"playOnAwake\": " << (o.audioSource.playOnAwake ? "true" : "false") << ",\n";
+            out << "          \"spatialBlend\": " << o.audioSource.spatialBlend << ",\n";
+            out << "          \"minDistance\": " << o.audioSource.minDistance << ",\n";
+            out << "          \"maxDistance\": " << o.audioSource.maxDistance << "\n";
+            out << "        }";
+        }
+        if (o.hasVehicleSound) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"VehicleSound\",\n";
+            out << "          \"enabled\": " << (o.vehicleSound.enabled ? "true" : "false") << ",\n";
+            out << "          \"profilePath\": \"" << JsonEscape(o.vehicleSound.profilePath) << "\"\n";
             out << "        }";
         }
         out << "\n      ]\n    }";
@@ -1311,6 +1385,39 @@ void SceneEditor::Load(const std::string& path) {
                         if (spotAngleIt != component.end() && spotAngleIt->second.is_number()) {
                             so.light.spotAngleDegrees = (std::max)(1.0f, (std::min)(179.0f, static_cast<float>(spotAngleIt->second.as_number())));
                         }
+                    } else if (componentType == "AudioListener") {
+                        so.hasAudioListener = true;
+                        ReadBool(component, "enabled", so.audioListener.enabled);
+                    } else if (componentType == "AudioSource") {
+                        so.hasAudioSource = true;
+                        ReadBool(component, "enabled", so.audioSource.enabled);
+                        ReadString(component, "clipPath", so.audioSource.clipPath);
+                        auto volumeIt = component.find("volume");
+                        if (volumeIt != component.end() && volumeIt->second.is_number()) {
+                            so.audioSource.volume = (std::max)(0.0f, static_cast<float>(volumeIt->second.as_number()));
+                        }
+                        auto pitchIt2 = component.find("pitch");
+                        if (pitchIt2 != component.end() && pitchIt2->second.is_number()) {
+                            so.audioSource.pitch = (std::max)(0.01f, static_cast<float>(pitchIt2->second.as_number()));
+                        }
+                        ReadBool(component, "loop", so.audioSource.loop);
+                        ReadBool(component, "playOnAwake", so.audioSource.playOnAwake);
+                        auto spatialBlendIt = component.find("spatialBlend");
+                        if (spatialBlendIt != component.end() && spatialBlendIt->second.is_number()) {
+                            so.audioSource.spatialBlend = static_cast<float>(spatialBlendIt->second.as_number());
+                        }
+                        auto minDistIt = component.find("minDistance");
+                        if (minDistIt != component.end() && minDistIt->second.is_number()) {
+                            so.audioSource.minDistance = (std::max)(0.01f, static_cast<float>(minDistIt->second.as_number()));
+                        }
+                        auto maxDistIt = component.find("maxDistance");
+                        if (maxDistIt != component.end() && maxDistIt->second.is_number()) {
+                            so.audioSource.maxDistance = (std::max)(so.audioSource.minDistance + 0.01f, static_cast<float>(maxDistIt->second.as_number()));
+                        }
+                    } else if (componentType == "VehicleSound") {
+                        so.hasVehicleSound = true;
+                        ReadBool(component, "enabled", so.vehicleSound.enabled);
+                        ReadString(component, "profilePath", so.vehicleSound.profilePath);
                     }
                 }
             }
@@ -1784,6 +1891,24 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                         if (auto i = component.find("intensity"); i != component.end() && i->second.is_number()) so.light.intensity = (std::max)(0.0f, static_cast<float>(i->second.as_number()));
                         if (auto r = component.find("range"); r != component.end() && r->second.is_number()) so.light.range = (std::max)(0.001f, static_cast<float>(r->second.as_number()));
                         if (auto sa = component.find("spotAngleDegrees"); sa != component.end() && sa->second.is_number()) so.light.spotAngleDegrees = (std::max)(1.0f, (std::min)(179.0f, static_cast<float>(sa->second.as_number())));
+                    } else if (componentType == "AudioListener") {
+                        so.hasAudioListener = true;
+                        ReadBool(component, "enabled", so.audioListener.enabled);
+                    } else if (componentType == "AudioSource") {
+                        so.hasAudioSource = true;
+                        ReadBool(component, "enabled", so.audioSource.enabled);
+                        ReadString(component, "clipPath", so.audioSource.clipPath);
+                        if (auto v = component.find("volume"); v != component.end() && v->second.is_number()) so.audioSource.volume = (std::max)(0.0f, static_cast<float>(v->second.as_number()));
+                        if (auto p = component.find("pitch"); p != component.end() && p->second.is_number()) so.audioSource.pitch = (std::max)(0.01f, static_cast<float>(p->second.as_number()));
+                        ReadBool(component, "loop", so.audioSource.loop);
+                        ReadBool(component, "playOnAwake", so.audioSource.playOnAwake);
+                        if (auto sb = component.find("spatialBlend"); sb != component.end() && sb->second.is_number()) so.audioSource.spatialBlend = static_cast<float>(sb->second.as_number());
+                        if (auto mn = component.find("minDistance"); mn != component.end() && mn->second.is_number()) so.audioSource.minDistance = (std::max)(0.01f, static_cast<float>(mn->second.as_number()));
+                        if (auto mx = component.find("maxDistance"); mx != component.end() && mx->second.is_number()) so.audioSource.maxDistance = (std::max)(so.audioSource.minDistance + 0.01f, static_cast<float>(mx->second.as_number()));
+                    } else if (componentType == "VehicleSound") {
+                        so.hasVehicleSound = true;
+                        ReadBool(component, "enabled", so.vehicleSound.enabled);
+                        ReadString(component, "profilePath", so.vehicleSound.profilePath);
                     }
                 }
             }

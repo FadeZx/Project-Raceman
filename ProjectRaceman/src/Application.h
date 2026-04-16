@@ -18,6 +18,7 @@ class MenuController;
 class Console;
 class SceneEditor;
 class SkyboxController;
+class AudioManager;
 
 struct ApplicationConfig {
     std::string windowTitle{"Project Raceman"};
@@ -61,6 +62,7 @@ private:
     std::unique_ptr<Console> console_;
     std::unique_ptr<SceneEditor> sceneEditor_;
     std::unique_ptr<SkyboxController> skyboxController_;
+    std::unique_ptr<AudioManager> audioManager_;
 
     bool running_{true};
     bool pendingExit_{false};  // set when user clicks X with unsaved changes
