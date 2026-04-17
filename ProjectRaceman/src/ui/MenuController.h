@@ -20,6 +20,7 @@ struct EditorProjectMenu {
     std::function<void()> onSaveScene;
     std::function<void(const std::string&)> onOpenScene;
     std::function<void()> onSaveProject;
+    std::function<void()> renderInputSettings;
     std::function<void()> renderProjectSettings;
 };
 

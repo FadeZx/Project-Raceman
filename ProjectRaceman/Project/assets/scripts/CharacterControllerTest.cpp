@@ -1,12 +1,11 @@
 #include "CharacterControllerTest.h"
 
-#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
 namespace raceman::scripts {
 
 void CharacterControllerTest::OnStart(raceman::ObjectScriptContext& context) {
-    context.Log("CharacterControllerTest started. Controls: WASD move, Space jump.");
+    context.Log("CharacterControllerTest started. Controls use the mapped character input profile.");
 }
 
 void CharacterControllerTest::OnUpdate(raceman::ObjectScriptContext& context, float deltaTime) {
@@ -21,19 +20,7 @@ void CharacterControllerTest::OnUpdate(raceman::ObjectScriptContext& context, fl
     const float moveSpeed = context.GetFloatField("moveSpeed", 6.0f);
     const float jumpImpulse = context.GetFloatField("jumpImpulse", 1.5f);
 
-    glm::vec3 moveDirection{0.0f};
-    if (context.IsKeyDown(GLFW_KEY_W)) {
-        moveDirection.z -= 1.0f;
-    }
-    if (context.IsKeyDown(GLFW_KEY_S)) {
-        moveDirection.z += 1.0f;
-    }
-    if (context.IsKeyDown(GLFW_KEY_A)) {
-        moveDirection.x -= 1.0f;
-    }
-    if (context.IsKeyDown(GLFW_KEY_D)) {
-        moveDirection.x += 1.0f;
-    }
+    glm::vec3 moveDirection{context.GetAxis("moveX"), 0.0f, -context.GetAxis("moveY")};
 
     if (glm::dot(moveDirection, moveDirection) > 0.0001f) {
         moveDirection = glm::normalize(moveDirection) * moveSpeed;
@@ -41,7 +28,7 @@ void CharacterControllerTest::OnUpdate(raceman::ObjectScriptContext& context, fl
 
     context.SetCharacterMoveInput(moveDirection);
 
-    const bool jumpDown = context.IsKeyDown(GLFW_KEY_SPACE);
+    const bool jumpDown = context.IsActionDown("jump");
     if (jumpDown && !jumpHeld_ && context.IsCharacterGrounded()) {
         context.Jump(jumpImpulse);
     }

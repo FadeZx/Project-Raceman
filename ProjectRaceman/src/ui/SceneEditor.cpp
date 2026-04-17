@@ -57,6 +57,64 @@ glm::vec3 CameraUpFromEuler(const glm::vec3& rotationEuler) {
     return glm::length(up) > 0.0001f ? glm::normalize(up) : glm::vec3{0.0f, 1.0f, 0.0f};
 }
 
+const char* InputDeviceTypeToStorage(InputDeviceType type) {
+    switch (type) {
+    case InputDeviceType::Keyboard: return "Keyboard";
+    case InputDeviceType::Gamepad: return "Gamepad";
+    case InputDeviceType::Wheel: return "Wheel";
+    case InputDeviceType::Unknown:
+    default: return "Unknown";
+    }
+}
+
+InputDeviceType InputDeviceTypeFromStorage(const std::string& value) {
+    const std::string lower = ToLowerCopy(value);
+    if (lower == "keyboard") return InputDeviceType::Keyboard;
+    if (lower == "gamepad") return InputDeviceType::Gamepad;
+    if (lower == "wheel") return InputDeviceType::Wheel;
+    return InputDeviceType::Unknown;
+}
+
+const char* InputBindingSourceToStorage(InputBindingSource source) {
+    switch (source) {
+    case InputBindingSource::Key: return "Key";
+    case InputBindingSource::KeyPair: return "KeyPair";
+    case InputBindingSource::Axis: return "Axis";
+    case InputBindingSource::Button: return "Button";
+    case InputBindingSource::None:
+    default: return "None";
+    }
+}
+
+InputBindingSource InputBindingSourceFromStorage(const std::string& value) {
+    const std::string lower = ToLowerCopy(value);
+    if (lower == "key") return InputBindingSource::Key;
+    if (lower == "keypair") return InputBindingSource::KeyPair;
+    if (lower == "axis") return InputBindingSource::Axis;
+    if (lower == "button") return InputBindingSource::Button;
+    return InputBindingSource::None;
+}
+
+const char* InputDevicePreferenceToStorage(InputDevicePreference value) {
+    switch (value) {
+    case InputDevicePreference::Keyboard: return "Keyboard";
+    case InputDevicePreference::Gamepad: return "Gamepad";
+    case InputDevicePreference::Wheel: return "Wheel";
+    case InputDevicePreference::Specific: return "Specific";
+    case InputDevicePreference::Any:
+    default: return "Any";
+    }
+}
+
+InputDevicePreference InputDevicePreferenceFromStorage(const std::string& value) {
+    const std::string lower = ToLowerCopy(value);
+    if (lower == "keyboard") return InputDevicePreference::Keyboard;
+    if (lower == "gamepad") return InputDevicePreference::Gamepad;
+    if (lower == "wheel") return InputDevicePreference::Wheel;
+    if (lower == "specific") return InputDevicePreference::Specific;
+    return InputDevicePreference::Any;
+}
+
 ColliderWorldAabb MakeAabbFromLocalBox(const glm::mat4& transform, const glm::vec3& center, const glm::vec3& size) {
     const glm::vec3 halfSize = glm::abs(size) * 0.5f;
     const glm::vec3 corners[8] = {
@@ -557,6 +615,9 @@ std::string BuildScriptRegistrySource(const std::vector<ScriptSourceInfo>& scrip
 SceneEditor::SceneEditor() {
     // Default dirty callback just marks the scene dirty; SetOnDirty() chains on top.
     onDirty_ = [this]() { sceneDirty_ = true; };
+    InputManager defaultInputManager;
+    defaultInputManager.EnsureDefaultProfiles();
+    inputProfiles_ = defaultInputManager.GetInputProfiles();
     ResetPhysicsLayerSettings();
     // Load materials at startup
     materialManager_.LoadAll();
@@ -2356,8 +2417,17 @@ void SceneEditor::Load(const std::string& path) {
                     } else if (componentType == "Vehicle") {
                         so.hasVehicle = true;
                         ReadBool(component, "enabled", so.vehicle.enabled);
+                        so.vehicle.canTilt = true;
+                        ReadBool(component, "canTilt", so.vehicle.canTilt);
                         ReadString(component, "configPath", so.vehicle.configPath);
                         so.vehicle.configPath = NormalizeSlashes(so.vehicle.configPath);
+                        so.vehicle.inputProfileId = "default_vehicle";
+                        ReadString(component, "inputProfileId", so.vehicle.inputProfileId);
+                        std::string preferredInputDevice;
+                        if (ReadString(component, "preferredInputDevice", preferredInputDevice)) {
+                            so.vehicle.preferredInputDevice = InputDevicePreferenceFromStorage(preferredInputDevice);
+                        }
+                        ReadString(component, "preferredInputDeviceId", so.vehicle.preferredInputDeviceId);
                         so.vehicle.chassisObjectIds.clear();
                         if (auto chassisObjectIdsIt = component.find("chassisObjectIds"); chassisObjectIdsIt != component.end() && chassisObjectIdsIt->second.is_array()) {
                             for (const auto& chassisValue : chassisObjectIdsIt->second.as_array()) {
@@ -2809,6 +2879,70 @@ void SceneEditor::LoadProject() {
                         }
                     }
                 }
+
+                inputProfiles_.clear();
+                auto inputIt = object.find("input");
+                if (inputIt != object.end() && inputIt->second.is_object()) {
+                    const auto& inputSettings = inputIt->second.as_object();
+                    auto profilesIt = inputSettings.find("profiles");
+                    if (profilesIt != inputSettings.end() && profilesIt->second.is_array()) {
+                        for (const auto& profileValue : profilesIt->second.as_array()) {
+                            if (!profileValue.is_object()) {
+                                continue;
+                            }
+                            const auto& profileObject = profileValue.as_object();
+                            InputProfile profile;
+                            ReadString(profileObject, "id", profile.id);
+                            ReadString(profileObject, "displayName", profile.displayName);
+                            auto bindingsIt = profileObject.find("bindings");
+                            if (bindingsIt != profileObject.end() && bindingsIt->second.is_array()) {
+                                for (const auto& bindingValue : bindingsIt->second.as_array()) {
+                                    if (!bindingValue.is_object()) {
+                                        continue;
+                                    }
+                                    const auto& bindingObject = bindingValue.as_object();
+                                    InputBinding binding;
+                                    ReadString(bindingObject, "action", binding.action);
+                                    std::string deviceType;
+                                    if (ReadString(bindingObject, "deviceType", deviceType)) {
+                                        binding.deviceType = InputDeviceTypeFromStorage(deviceType);
+                                    }
+                                    std::string sourceType;
+                                    if (ReadString(bindingObject, "source", sourceType)) {
+                                        binding.source = InputBindingSourceFromStorage(sourceType);
+                                    }
+                                    auto keyIt = bindingObject.find("key");
+                                    if (keyIt != bindingObject.end() && keyIt->second.is_number()) binding.key = static_cast<int>(keyIt->second.as_number());
+                                    auto negativeKeyIt = bindingObject.find("negativeKey");
+                                    if (negativeKeyIt != bindingObject.end() && negativeKeyIt->second.is_number()) binding.negativeKey = static_cast<int>(negativeKeyIt->second.as_number());
+                                    auto positiveKeyIt = bindingObject.find("positiveKey");
+                                    if (positiveKeyIt != bindingObject.end() && positiveKeyIt->second.is_number()) binding.positiveKey = static_cast<int>(positiveKeyIt->second.as_number());
+                                    auto axisIt = bindingObject.find("axis");
+                                    if (axisIt != bindingObject.end() && axisIt->second.is_number()) binding.axis = static_cast<int>(axisIt->second.as_number());
+                                    auto buttonIt = bindingObject.find("button");
+                                    if (buttonIt != bindingObject.end() && buttonIt->second.is_number()) binding.button = static_cast<int>(buttonIt->second.as_number());
+                                    ReadBool(bindingObject, "invert", binding.invert);
+                                    auto deadzoneIt = bindingObject.find("deadzone");
+                                    if (deadzoneIt != bindingObject.end() && deadzoneIt->second.is_number()) binding.deadzone = static_cast<float>(deadzoneIt->second.as_number());
+                                    auto minIt = bindingObject.find("calibrationMin");
+                                    if (minIt != bindingObject.end() && minIt->second.is_number()) binding.calibrationMin = static_cast<float>(minIt->second.as_number());
+                                    auto centerIt = bindingObject.find("calibrationCenter");
+                                    if (centerIt != bindingObject.end() && centerIt->second.is_number()) binding.calibrationCenter = static_cast<float>(centerIt->second.as_number());
+                                    auto maxIt = bindingObject.find("calibrationMax");
+                                    if (maxIt != bindingObject.end() && maxIt->second.is_number()) binding.calibrationMax = static_cast<float>(maxIt->second.as_number());
+                                    auto responseIt = bindingObject.find("responseExponent");
+                                    if (responseIt != bindingObject.end() && responseIt->second.is_number()) binding.responseExponent = static_cast<float>(responseIt->second.as_number());
+                                    if (!binding.action.empty()) {
+                                        profile.bindings.push_back(std::move(binding));
+                                    }
+                                }
+                            }
+                            if (!profile.id.empty()) {
+                                inputProfiles_.push_back(std::move(profile));
+                            }
+                        }
+                    }
+                }
             }
         } catch (...) {
             shouldSaveProject = true;
@@ -2855,6 +2989,10 @@ void SceneEditor::LoadProject() {
 
     lastScenePath_ = savePath_;
     RefreshProjectFiles();
+    if (inputManager_ != nullptr) {
+        inputManager_->SetInputProfiles(inputProfiles_);
+        inputProfiles_ = inputManager_->GetInputProfiles();
+    }
     if (shouldSaveProject) {
         SaveProject();
     }
@@ -2894,6 +3032,38 @@ void SceneEditor::SaveProject() {
             }
             out << "]\n";
             out << "      }" << (row + 1 < kPhysicsLayerCount ? ",\n" : "\n");
+        }
+        out << "    ]\n";
+        out << "  },\n";
+        out << "  \"input\": {\n";
+        out << "    \"profiles\": [\n";
+        for (std::size_t profileIndex = 0; profileIndex < inputProfiles_.size(); ++profileIndex) {
+            const InputProfile& profile = inputProfiles_[profileIndex];
+            out << "      {\n";
+            out << "        \"id\": \"" << JsonEscape(profile.id) << "\",\n";
+            out << "        \"displayName\": \"" << JsonEscape(profile.displayName) << "\",\n";
+            out << "        \"bindings\": [\n";
+            for (std::size_t bindingIndex = 0; bindingIndex < profile.bindings.size(); ++bindingIndex) {
+                const InputBinding& binding = profile.bindings[bindingIndex];
+                out << "          {\n";
+                out << "            \"action\": \"" << JsonEscape(binding.action) << "\",\n";
+                out << "            \"deviceType\": \"" << InputDeviceTypeToStorage(binding.deviceType) << "\",\n";
+                out << "            \"source\": \"" << InputBindingSourceToStorage(binding.source) << "\",\n";
+                out << "            \"key\": " << binding.key << ",\n";
+                out << "            \"negativeKey\": " << binding.negativeKey << ",\n";
+                out << "            \"positiveKey\": " << binding.positiveKey << ",\n";
+                out << "            \"axis\": " << binding.axis << ",\n";
+                out << "            \"button\": " << binding.button << ",\n";
+                out << "            \"invert\": " << (binding.invert ? "true" : "false") << ",\n";
+                out << "            \"deadzone\": " << binding.deadzone << ",\n";
+                out << "            \"calibrationMin\": " << binding.calibrationMin << ",\n";
+                out << "            \"calibrationCenter\": " << binding.calibrationCenter << ",\n";
+                out << "            \"calibrationMax\": " << binding.calibrationMax << ",\n";
+                out << "            \"responseExponent\": " << binding.responseExponent << "\n";
+                out << "          }" << (bindingIndex + 1 < profile.bindings.size() ? ",\n" : "\n");
+            }
+            out << "        ]\n";
+            out << "      }" << (profileIndex + 1 < inputProfiles_.size() ? ",\n" : "\n");
         }
         out << "    ]\n";
         out << "  },\n";

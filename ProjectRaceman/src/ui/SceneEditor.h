@@ -11,6 +11,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include "../input/InputManager.h"
 #include "../physics/MeshColliderBuildQuality.h"
 #include "../physics/MeshColliderMode.h"
 #include "../physics/PhysicsLayers.h"
@@ -33,7 +34,6 @@ class VehiclePhysics;
 
 class Renderer;
 class Console;
-class InputManager;
 class PhysicsWorld;
 class AudioManager;
 struct PhysicsBuildProgress;
@@ -204,6 +204,9 @@ struct VehicleComponent {
     bool enabled{true};
     bool canTilt{true};
     std::string configPath;
+    std::string inputProfileId{"default_vehicle"};
+    InputDevicePreference preferredInputDevice{InputDevicePreference::Any};
+    std::string preferredInputDeviceId;
     std::vector<std::string> chassisObjectIds;
     std::vector<VehicleWheelBinding> wheelBindings;
 };
@@ -388,7 +391,13 @@ public:
     // Submit renderables for drawing via Renderer (PBR pipeline)
     void SubmitDraws(Renderer& renderer, bool editorInteraction = true);
     void SetConsole(Console* console);
-    void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
+    void SetInputManager(InputManager* inputManager) {
+        inputManager_ = inputManager;
+        if (inputManager_ != nullptr) {
+            inputManager_->SetInputProfiles(inputProfiles_);
+            inputProfiles_ = inputManager_->GetInputProfiles();
+        }
+    }
     void SetAudioManager(AudioManager* audio) { audioManager_ = audio; }
     bool IsRunMode() const { return scriptsRunning_; }
     bool IsGameViewActive() const { return true; }
@@ -438,6 +447,7 @@ public:
     void SaveCurrentSceneAs();
     bool OpenSceneAsset(const std::string& path);
     void SaveProject();
+    void RenderProjectInputSettings();
     void RenderProjectPhysicsSettings();
     SceneProfilerStats CollectProfilerStats() const;
     std::vector<std::string> GetSceneAssetPaths() const;
@@ -581,6 +591,9 @@ private:
     std::string savePath_{"assets/scenes/EditorScene.scene.json"};
     PhysicsLayerNames physicsLayerNames_{};
     PhysicsLayerCollisionMatrix physicsLayerCollisionMatrix_{};
+    std::vector<InputProfile> inputProfiles_{};
+    int selectedInputProfileIndex_{0};
+    int selectedInputDevicePage_{0};
 
     // shared primitives
     std::unordered_map<std::string, PrimitiveMesh> builtInPrimitiveMeshes_;

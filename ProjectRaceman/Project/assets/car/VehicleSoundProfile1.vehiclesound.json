@@ -40,14 +40,14 @@
     {
       "clipPath": "assets/audio/ShiftDownSound.wav",
       "trigger": "gearUp",
-      "volume": 1.64,
+      "volume": 0.34,
       "minRpmForBackfire": 4000,
       "minLateralSpeedForSqueal": 4
     },
     {
       "clipPath": "assets/audio/ShiftUpSound.wav",
       "trigger": "gearDown",
-      "volume": 1.38,
+      "volume": 0.36,
       "minRpmForBackfire": 4000,
       "minLateralSpeedForSqueal": 4
     }

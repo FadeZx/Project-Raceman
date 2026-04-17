@@ -188,31 +188,6 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         return;
     }
 
-    const bool wantsForward = ShouldRouteInputToGame() && inputManager_ != nullptr &&
-        (inputManager_->IsKeyDown(GLFW_KEY_W) || inputManager_->IsKeyDown(GLFW_KEY_UP));
-    const bool wantsReverseOrBrake = ShouldRouteInputToGame() && inputManager_ != nullptr &&
-        (inputManager_->IsKeyDown(GLFW_KEY_S) || inputManager_->IsKeyDown(GLFW_KEY_DOWN));
-    const bool manualShiftUpPressed = ShouldRouteInputToGame() && inputManager_ != nullptr &&
-        (inputManager_->WasKeyPressed(GLFW_KEY_E) || inputManager_->WasKeyPressed(GLFW_KEY_PAGE_UP));
-    const bool manualShiftDownPressed = ShouldRouteInputToGame() && inputManager_ != nullptr &&
-        (inputManager_->WasKeyPressed(GLFW_KEY_Q) || inputManager_->WasKeyPressed(GLFW_KEY_PAGE_DOWN));
-    const bool manualNeutralPressed = ShouldRouteInputToGame() && inputManager_ != nullptr &&
-        inputManager_->WasKeyPressed(GLFW_KEY_N);
-    const bool manualReversePressed = ShouldRouteInputToGame() && inputManager_ != nullptr &&
-        inputManager_->WasKeyPressed(GLFW_KEY_R);
-    raceman::physics::VehicleControlInput baseInput{};
-    if (ShouldRouteInputToGame() && inputManager_ != nullptr) {
-        if (inputManager_->IsKeyDown(GLFW_KEY_A) || inputManager_->IsKeyDown(GLFW_KEY_LEFT)) {
-            baseInput.steering -= 1.0f;
-        }
-        if (inputManager_->IsKeyDown(GLFW_KEY_D) || inputManager_->IsKeyDown(GLFW_KEY_RIGHT)) {
-            baseInput.steering += 1.0f;
-        }
-        if (inputManager_->IsKeyDown(GLFW_KEY_SPACE)) {
-            baseInput.handbrake = 1.0f;
-        }
-    }
-
     bool anyEnabledCollider = false;
     bool anyEnabledPlaneCollider = false;
     for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
@@ -285,6 +260,51 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             }
         }
 
+        const SceneObject& vehicleObject = objects_[runtimeVehicle.objectIndex];
+        const std::string profileId = vehicleObject.vehicle.inputProfileId.empty()
+            ? std::string("default_vehicle")
+            : vehicleObject.vehicle.inputProfileId;
+        const bool routeInput = ShouldRouteInputToGame() && inputManager_ != nullptr;
+        const bool wantsForward = routeInput &&
+            inputManager_->GetAxisForProfile(profileId, "throttle",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId) > 0.01f;
+        const bool wantsReverseOrBrake = routeInput &&
+            inputManager_->GetAxisForProfile(profileId, "brake",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId) > 0.01f;
+        const bool manualShiftUpPressed = routeInput &&
+            inputManager_->WasActionPressedForProfile(profileId, "shiftUp",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+        const bool manualShiftDownPressed = routeInput &&
+            inputManager_->WasActionPressedForProfile(profileId, "shiftDown",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+        const bool manualNeutralPressed = routeInput &&
+            inputManager_->WasActionPressedForProfile(profileId, "neutral",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+        const bool manualReversePressed = routeInput &&
+            inputManager_->WasActionPressedForProfile(profileId, "reverse",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+        raceman::physics::VehicleControlInput baseInput{};
+        if (routeInput) {
+            baseInput.steering = inputManager_->GetAxisForProfile(profileId, "steer",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+            baseInput.handbrake = inputManager_->GetAxisForProfile(profileId, "handbrake",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+            baseInput.throttle = inputManager_->GetAxisForProfile(profileId, "throttle",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+            baseInput.brake = inputManager_->GetAxisForProfile(profileId, "brake",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+        }
+
         const raceman::physics::VehicleTelemetry& telemetry = runtimeVehicle.instance->getTelemetry();
         const float longitudinalSpeed = VehicleLongitudinalSpeed(currentRigidBodyState);
         constexpr float kReverseEngageSpeed = 0.75f;
@@ -319,11 +339,11 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             runtimeVehicle.instance->setReverse(reverseActive);
 
             if (wantsForward && !wantsReverseOrBrake) {
-                input.throttle = 1.0f;
+                input.throttle = (std::max)(input.throttle, 1.0f);
             } else if (wantsReverseOrBrake && !wantsForward) {
-                input.brake = 1.0f;
+                input.brake = (std::max)(input.brake, 1.0f);
             } else if (wantsForward && wantsReverseOrBrake) {
-                input.brake = 1.0f;
+                input.brake = (std::max)(input.brake, 1.0f);
             }
         } else {
             if (wantsForward && !wantsReverseOrBrake && reverseActive && std::fabs(longitudinalSpeed) <= kReverseSwitchSpeed) {
@@ -339,15 +359,15 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             runtimeVehicle.instance->setReverse(reverseActive);
 
             if (wantsForward && !wantsReverseOrBrake) {
-                input.throttle = 1.0f;
+                input.throttle = (std::max)(input.throttle, 1.0f);
             } else if (wantsReverseOrBrake && !wantsForward) {
                 if (reverseActive) {
-                    input.throttle = 1.0f;
+                    input.throttle = (std::max)(input.throttle, 1.0f);
                 } else {
-                    input.brake = 1.0f;
+                    input.brake = (std::max)(input.brake, 1.0f);
                 }
             } else if (wantsForward && wantsReverseOrBrake) {
-                input.brake = 1.0f;
+                input.brake = (std::max)(input.brake, 1.0f);
             }
         }
 

@@ -162,6 +162,12 @@ public:
     glm::vec3 GetUpVector() const;
 
     bool IsKeyDown(int key) const;
+    bool IsMouseButtonDown(int button) const;
+    bool WasMouseButtonPressed(int button) const;
+    glm::vec2 GetMouseDelta() const;
+    float GetAxis(const std::string& action) const;
+    bool IsActionDown(const std::string& action) const;
+    bool WasActionPressed(const std::string& action) const;
 
     bool GetBoolField(const std::string& name, bool fallback = false) const;
     int GetIntField(const std::string& name, int fallback = 0) const;

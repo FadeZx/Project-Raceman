@@ -1,5 +1,6 @@
 #include "SceneEditorInternal.h"
 #include "../physics/SimpleJson.h"
+#include <GLFW/glfw3.h>
 
 namespace fs = std::filesystem;
 
@@ -26,6 +27,130 @@ const char* ProjectCreateAssetTypeDefaultName(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::VehicleSoundProfile) return "NewVehicleSoundProfile";
     if (type == ProjectCreateAssetType::Script) return "NewScript";
     return "NewAsset";
+}
+
+const char* InputDeviceTypeLabel(InputDeviceType type) {
+    switch (type) {
+    case InputDeviceType::Keyboard: return "Keyboard";
+    case InputDeviceType::Gamepad: return "Gamepad";
+    case InputDeviceType::Wheel: return "Wheel";
+    case InputDeviceType::Unknown:
+    default: return "Unknown";
+    }
+}
+
+const char* InputBindingSourceLabel(InputBindingSource source) {
+    switch (source) {
+    case InputBindingSource::Key: return "Key";
+    case InputBindingSource::KeyPair: return "Key Pair";
+    case InputBindingSource::Axis: return "Axis";
+    case InputBindingSource::Button: return "Button";
+    case InputBindingSource::None:
+    default: return "None";
+    }
+}
+
+const char* GamepadButtonName(int button) {
+    static const char* names[] = {
+        "A / Cross",
+        "B / Circle",
+        "X / Square",
+        "Y / Triangle",
+        "Left Bumper",
+        "Right Bumper",
+        "Back / Share",
+        "Start / Options",
+        "Guide / PS",
+        "Left Stick Click",
+        "Right Stick Click",
+        "D-Pad Up",
+        "D-Pad Right",
+        "D-Pad Down",
+        "D-Pad Left"
+    };
+    return button >= 0 && button < static_cast<int>(std::size(names)) ? names[button] : "Unknown Button";
+}
+
+const char* GamepadAxisName(int axis) {
+    static const char* names[] = {
+        "Left Stick X",
+        "Left Stick Y",
+        "Right Stick X",
+        "Right Stick Y",
+        "Left Trigger",
+        "Right Trigger"
+    };
+    return axis >= 0 && axis < static_cast<int>(std::size(names)) ? names[axis] : "Unknown Axis";
+}
+
+const char* InputDevicePreferenceLabel(InputDevicePreference value) {
+    switch (value) {
+    case InputDevicePreference::Any: return "Any";
+    case InputDevicePreference::Keyboard: return "Keyboard";
+    case InputDevicePreference::Gamepad: return "Gamepad";
+    case InputDevicePreference::Wheel: return "Wheel";
+    case InputDevicePreference::Specific: return "Specific Device";
+    }
+    return "Any";
+}
+
+const InputDeviceInfo* FindFirstDeviceOfType(const InputManager* inputManager, InputDeviceType type) {
+    if (inputManager == nullptr) {
+        return nullptr;
+    }
+    const auto& devices = inputManager->GetConnectedDevices();
+    auto it = std::find_if(devices.begin(), devices.end(), [&](const InputDeviceInfo& device) {
+        return device.type == type;
+    });
+    return it != devices.end() ? &(*it) : nullptr;
+}
+
+void SyncInputProfiles(InputManager* inputManager, std::vector<InputProfile>& profiles) {
+    if (inputManager != nullptr) {
+        inputManager->SetInputProfiles(profiles);
+        profiles = inputManager->GetInputProfiles();
+    }
+}
+
+InputBinding* FindBindingForAction(InputProfile& profile, InputDeviceType deviceType, const std::string& action) {
+    auto it = std::find_if(profile.bindings.begin(), profile.bindings.end(), [&](InputBinding& binding) {
+        return binding.deviceType == deviceType && binding.action == action;
+    });
+    return it != profile.bindings.end() ? &(*it) : nullptr;
+}
+
+const char* InputDevicePageName(InputDeviceType type) {
+    switch (type) {
+    case InputDeviceType::Keyboard: return "Keyboard";
+    case InputDeviceType::Gamepad: return "Gamepad";
+    case InputDeviceType::Wheel: return "Wheel";
+    case InputDeviceType::Unknown:
+    default: return "Unknown";
+    }
+}
+
+std::vector<std::string> GatherProfileActions(const InputProfile& profile) {
+    std::vector<std::string> actions;
+    for (const InputBinding& binding : profile.bindings) {
+        if (!binding.action.empty() &&
+            std::find(actions.begin(), actions.end(), binding.action) == actions.end()) {
+            actions.push_back(binding.action);
+        }
+    }
+    return actions;
+}
+
+void EnsureCommonActions(std::vector<std::string>& actions) {
+    static const char* defaults[] = {
+        "moveX", "moveY", "jump",
+        "steer", "throttle", "brake", "handbrake",
+        "shiftUp", "shiftDown", "neutral", "reverse"
+    };
+    for (const char* action : defaults) {
+        if (std::find(actions.begin(), actions.end(), action) == actions.end()) {
+            actions.push_back(action);
+        }
+    }
 }
 
 std::string SanitizeFolderName(std::string value) {
@@ -844,6 +969,354 @@ void SceneEditor::RenderProjectPhysicsSettings() {
 
     ImGui::Spacing();
     ImGui::TextDisabled("Assign each object's physics layer in the Inspector. This matrix controls which layers collide.");
+}
+
+void SceneEditor::RenderProjectInputSettings() {
+    if (inputManager_ != nullptr && inputProfiles_.empty()) {
+        inputManager_->EnsureDefaultProfiles();
+        inputProfiles_ = inputManager_->GetInputProfiles();
+    }
+
+    bool projectSettingsChanged = false;
+
+    if (ImGui::CollapsingHeader("Connected Devices", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (inputManager_ == nullptr) {
+            ImGui::TextDisabled("Input manager is not connected.");
+        } else {
+            const auto& devices = inputManager_->GetConnectedDevices();
+            for (const InputDeviceInfo& device : devices) {
+                ImGui::PushID(device.runtimeId.c_str());
+                ImGui::SeparatorText(device.displayName.c_str());
+                ImGui::TextDisabled("Type: %s", InputDeviceTypeLabel(device.type));
+                ImGui::TextDisabled("Runtime Id: %s", device.runtimeId.c_str());
+                ImGui::TextDisabled("Axes: %d  Buttons: %d", device.axisCount, device.buttonCount);
+                if (!device.axes.empty()) {
+                    for (int axisIndex = 0; axisIndex < static_cast<int>(device.axes.size()); ++axisIndex) {
+                        const float value = device.axes[static_cast<std::size_t>(axisIndex)];
+                        ImGui::TextDisabled("Axis %d: %.3f", axisIndex, value);
+                    }
+                }
+                if (!device.buttons.empty()) {
+                    for (int buttonIndex = 0; buttonIndex < static_cast<int>(device.buttons.size()); ++buttonIndex) {
+                        ImGui::TextDisabled("Button %d: %s", buttonIndex,
+                            device.buttons[static_cast<std::size_t>(buttonIndex)] == GLFW_PRESS ? "Pressed" : "Released");
+                    }
+                }
+                ImGui::PopID();
+            }
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Profiles", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (inputProfiles_.empty()) {
+            inputProfiles_.push_back(InputProfile{"default_vehicle", "Default Vehicle", {}});
+            projectSettingsChanged = true;
+        }
+
+        selectedInputProfileIndex_ = (std::max)(0, (std::min)(selectedInputProfileIndex_, static_cast<int>(inputProfiles_.size()) - 1));
+        const char* preview = inputProfiles_[static_cast<std::size_t>(selectedInputProfileIndex_)].displayName.c_str();
+        if (ImGui::BeginCombo("Profile", preview)) {
+            for (int i = 0; i < static_cast<int>(inputProfiles_.size()); ++i) {
+                const bool isSelected = i == selectedInputProfileIndex_;
+                if (ImGui::Selectable(inputProfiles_[static_cast<std::size_t>(i)].displayName.c_str(), isSelected)) {
+                    selectedInputProfileIndex_ = i;
+                }
+                if (isSelected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        if (ImGui::Button("Add Profile")) {
+            InputProfile profile;
+            profile.id = "profile_" + std::to_string(inputProfiles_.size() + 1);
+            profile.displayName = "New Profile";
+            inputProfiles_.push_back(std::move(profile));
+            selectedInputProfileIndex_ = static_cast<int>(inputProfiles_.size()) - 1;
+            projectSettingsChanged = true;
+        }
+        ImGui::SameLine();
+        const bool canDeleteProfile = !inputProfiles_.empty() &&
+            inputProfiles_[static_cast<std::size_t>(selectedInputProfileIndex_)].id != "default_vehicle" &&
+            inputProfiles_[static_cast<std::size_t>(selectedInputProfileIndex_)].id != "default_character";
+        if (!canDeleteProfile) {
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button("Delete Profile") && canDeleteProfile) {
+            inputProfiles_.erase(inputProfiles_.begin() + selectedInputProfileIndex_);
+            selectedInputProfileIndex_ = (std::max)(0, selectedInputProfileIndex_ - 1);
+            projectSettingsChanged = true;
+        }
+        if (!canDeleteProfile) {
+            ImGui::EndDisabled();
+        }
+
+        if (!inputProfiles_.empty()) {
+            InputProfile& profile = inputProfiles_[static_cast<std::size_t>(selectedInputProfileIndex_)];
+            char idBuffer[128]{};
+            char nameBuffer[128]{};
+            std::snprintf(idBuffer, sizeof(idBuffer), "%s", profile.id.c_str());
+            std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", profile.displayName.c_str());
+            if (ImGui::InputText("Profile Id", idBuffer, sizeof(idBuffer))) {
+                profile.id = SanitizeAssetBaseName(idBuffer);
+                projectSettingsChanged = true;
+            }
+            if (ImGui::InputText("Display Name", nameBuffer, sizeof(nameBuffer))) {
+                profile.displayName = TrimCopyLocal(nameBuffer);
+                projectSettingsChanged = true;
+            }
+
+            std::vector<std::string> actions = GatherProfileActions(profile);
+            EnsureCommonActions(actions);
+
+            if (ImGui::Button("Add Action")) {
+                std::string baseAction = "action" + std::to_string(actions.size() + 1);
+                std::string uniqueAction = baseAction;
+                int suffix = 2;
+                while (std::find(actions.begin(), actions.end(), uniqueAction) != actions.end()) {
+                    uniqueAction = baseAction + std::to_string(suffix++);
+                }
+                profile.bindings.push_back(InputBinding{uniqueAction, InputDeviceType::Keyboard, InputBindingSource::Key});
+                projectSettingsChanged = true;
+            }
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(180.0f);
+            const char* devicePages[] = {"Keyboard", "Gamepad", "Wheel"};
+            selectedInputDevicePage_ = (std::max)(0, (std::min)(selectedInputDevicePage_, 2));
+            if (ImGui::Combo("Device Page", &selectedInputDevicePage_, devicePages, IM_ARRAYSIZE(devicePages))) {
+            }
+
+            const InputDeviceType activeDeviceType =
+                selectedInputDevicePage_ == 0 ? InputDeviceType::Keyboard :
+                selectedInputDevicePage_ == 1 ? InputDeviceType::Gamepad :
+                InputDeviceType::Wheel;
+
+            ImGui::SeparatorText(InputDevicePageName(activeDeviceType));
+
+            for (std::size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex) {
+                std::string& actionName = actions[actionIndex];
+                InputBinding* binding = FindBindingForAction(profile, activeDeviceType, actionName);
+                if (binding == nullptr) {
+                    profile.bindings.push_back(InputBinding{actionName, activeDeviceType, activeDeviceType == InputDeviceType::Keyboard ? InputBindingSource::Key : InputBindingSource::Axis});
+                    binding = &profile.bindings.back();
+                    projectSettingsChanged = true;
+                }
+
+                ImGui::PushID((actionName + "_" + std::to_string(selectedInputDevicePage_)).c_str());
+                if (ImGui::CollapsingHeader(actionName.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                    char actionBuffer[128]{};
+                    std::snprintf(actionBuffer, sizeof(actionBuffer), "%s", actionName.c_str());
+                    if (ImGui::InputText("Action", actionBuffer, sizeof(actionBuffer))) {
+                        const std::string previousAction = actionName;
+                        actionName = TrimCopyLocal(actionBuffer);
+                        for (InputBinding& candidate : profile.bindings) {
+                            if (candidate.action == previousAction) {
+                                candidate.action = actionName;
+                            }
+                        }
+                        projectSettingsChanged = true;
+                    }
+
+                    int sourceIndex = static_cast<int>(binding->source);
+                    if (activeDeviceType == InputDeviceType::Keyboard) {
+                        const char* sourceLabels[] = {"None", "Key", "Key Pair"};
+                        const int sourceMap[] = {
+                            static_cast<int>(InputBindingSource::None),
+                            static_cast<int>(InputBindingSource::Key),
+                            static_cast<int>(InputBindingSource::KeyPair)
+                        };
+                        int keyboardSourceIndex = 0;
+                        for (int i = 0; i < IM_ARRAYSIZE(sourceMap); ++i) {
+                            if (sourceMap[i] == sourceIndex) {
+                                keyboardSourceIndex = i;
+                                break;
+                            }
+                        }
+                        if (ImGui::Combo("Source", &keyboardSourceIndex, sourceLabels, IM_ARRAYSIZE(sourceLabels))) {
+                            binding->source = static_cast<InputBindingSource>(sourceMap[keyboardSourceIndex]);
+                            projectSettingsChanged = true;
+                        }
+                    } else {
+                        const char* sourceLabels[] = {"None", "Axis", "Button"};
+                        const int sourceMap[] = {
+                            static_cast<int>(InputBindingSource::None),
+                            static_cast<int>(InputBindingSource::Axis),
+                            static_cast<int>(InputBindingSource::Button)
+                        };
+                        int analogSourceIndex = 0;
+                        for (int i = 0; i < IM_ARRAYSIZE(sourceMap); ++i) {
+                            if (sourceMap[i] == sourceIndex) {
+                                analogSourceIndex = i;
+                                break;
+                            }
+                        }
+                        if (ImGui::Combo("Source", &analogSourceIndex, sourceLabels, IM_ARRAYSIZE(sourceLabels))) {
+                            binding->source = static_cast<InputBindingSource>(sourceMap[analogSourceIndex]);
+                            projectSettingsChanged = true;
+                        }
+                    }
+
+                    if (binding->source == InputBindingSource::Key) {
+                        if (ImGui::InputInt("Key", &binding->key)) {
+                            projectSettingsChanged = true;
+                        }
+                    } else if (binding->source == InputBindingSource::KeyPair) {
+                        if (ImGui::InputInt("Negative Key", &binding->negativeKey)) {
+                            projectSettingsChanged = true;
+                        }
+                        if (ImGui::InputInt("Positive Key", &binding->positiveKey)) {
+                            projectSettingsChanged = true;
+                        }
+                    } else if (binding->source == InputBindingSource::Axis) {
+                        if (activeDeviceType == InputDeviceType::Gamepad) {
+                            int axisIndex = (std::max)(0, (std::min)(binding->axis, 5));
+                            const char* axisNames[] = {
+                                "Left Stick X",
+                                "Left Stick Y",
+                                "Right Stick X",
+                                "Right Stick Y",
+                                "Left Trigger",
+                                "Right Trigger"
+                            };
+                            if (ImGui::Combo("Axis", &axisIndex, axisNames, IM_ARRAYSIZE(axisNames))) {
+                                binding->axis = axisIndex;
+                                projectSettingsChanged = true;
+                            }
+                        } else if (ImGui::InputInt("Axis", &binding->axis)) {
+                            projectSettingsChanged = true;
+                        }
+                    } else if (binding->source == InputBindingSource::Button) {
+                        if (activeDeviceType == InputDeviceType::Gamepad) {
+                            int buttonIndex = (std::max)(0, (std::min)(binding->button, 14));
+                            const char* buttonNames[] = {
+                                "A / Cross",
+                                "B / Circle",
+                                "X / Square",
+                                "Y / Triangle",
+                                "Left Bumper",
+                                "Right Bumper",
+                                "Back / Share",
+                                "Start / Options",
+                                "Guide / PS",
+                                "Left Stick Click",
+                                "Right Stick Click",
+                                "D-Pad Up",
+                                "D-Pad Right",
+                                "D-Pad Down",
+                                "D-Pad Left"
+                            };
+                            if (ImGui::Combo("Button", &buttonIndex, buttonNames, IM_ARRAYSIZE(buttonNames))) {
+                                binding->button = buttonIndex;
+                                projectSettingsChanged = true;
+                            }
+                        } else if (ImGui::InputInt("Button", &binding->button)) {
+                            projectSettingsChanged = true;
+                        }
+                    }
+
+                    if (binding->source == InputBindingSource::Axis) {
+                        if (ImGui::Checkbox("Invert", &binding->invert)) {
+                            projectSettingsChanged = true;
+                        }
+                        if (ImGui::DragFloat("Deadzone", &binding->deadzone, 0.005f, 0.0f, 0.95f, "%.3f")) {
+                            projectSettingsChanged = true;
+                        }
+                        if (ImGui::DragFloat("Response", &binding->responseExponent, 0.05f, 0.1f, 4.0f, "%.2f")) {
+                            projectSettingsChanged = true;
+                        }
+
+                        const InputDeviceInfo* liveDevice = FindFirstDeviceOfType(inputManager_, activeDeviceType);
+                        const bool hasLiveAxis = liveDevice != nullptr &&
+                            binding->axis >= 0 &&
+                            binding->axis < static_cast<int>(liveDevice->axes.size());
+                        if (hasLiveAxis) {
+                            const float rawAxis = liveDevice->axes[static_cast<std::size_t>(binding->axis)];
+                            ImGui::TextDisabled("Raw Axis Value: %.3f", rawAxis);
+                            if (ImGui::Button("Capture Min")) {
+                                binding->calibrationMin = rawAxis;
+                                projectSettingsChanged = true;
+                            }
+                            ImGui::SameLine();
+                            if (ImGui::Button("Capture Center")) {
+                                binding->calibrationCenter = rawAxis;
+                                projectSettingsChanged = true;
+                            }
+                            ImGui::SameLine();
+                            if (ImGui::Button("Capture Max")) {
+                                binding->calibrationMax = rawAxis;
+                                projectSettingsChanged = true;
+                            }
+                        } else {
+                            ImGui::TextDisabled("Connect a matching device to calibrate this axis live.");
+                        }
+                    }
+
+                    if (inputManager_ != nullptr) {
+                        const bool canListenForBinding =
+                            binding->source == InputBindingSource::Key ||
+                            binding->source == InputBindingSource::Axis ||
+                            binding->source == InputBindingSource::Button;
+
+                        if (!canListenForBinding) {
+                            ImGui::TextDisabled("Listen is available for single key, axis, and button bindings.");
+                        } else if (!inputManager_->IsListeningForBinding()) {
+                            if (ImGui::Button("Listen For Input")) {
+                                inputManager_->StartListeningForBinding(activeDeviceType, binding->source);
+                            }
+                        } else {
+                            ImGui::TextDisabled("Listening for next input...");
+                            ImGui::SameLine();
+                            if (ImGui::Button("Cancel Listen")) {
+                                inputManager_->CancelListeningForBinding();
+                            }
+                        }
+
+                        InputBinding capturedBinding;
+                        if (canListenForBinding && inputManager_->ConsumeCapturedBinding(capturedBinding)) {
+                            if (capturedBinding.deviceType == activeDeviceType &&
+                                capturedBinding.source == binding->source) {
+                                capturedBinding.action = binding->action;
+                                capturedBinding.deadzone = binding->deadzone;
+                                capturedBinding.calibrationMin = binding->calibrationMin;
+                                capturedBinding.calibrationCenter = binding->calibrationCenter;
+                                capturedBinding.calibrationMax = binding->calibrationMax;
+                                capturedBinding.responseExponent = binding->responseExponent;
+                                *binding = capturedBinding;
+                                projectSettingsChanged = true;
+                            }
+                        }
+                    }
+
+                    if (activeDeviceType == InputDeviceType::Gamepad) {
+                        if (binding->source == InputBindingSource::Button && binding->button >= 0) {
+                            ImGui::TextDisabled("Selected: %s", GamepadButtonName(binding->button));
+                        } else if (binding->source == InputBindingSource::Axis && binding->axis >= 0) {
+                            ImGui::TextDisabled("Selected: %s", GamepadAxisName(binding->axis));
+                        }
+                    }
+
+                    if (ImGui::Button("Remove Action")) {
+                        const std::string removedAction = binding->action;
+                        profile.bindings.erase(
+                            std::remove_if(profile.bindings.begin(), profile.bindings.end(), [&](const InputBinding& candidate) {
+                                return candidate.action == removedAction;
+                            }),
+                            profile.bindings.end());
+                        projectSettingsChanged = true;
+                        ImGui::PopID();
+                        break;
+                    }
+                }
+                ImGui::PopID();
+            }
+        }
+    }
+
+    if (projectSettingsChanged) {
+        SyncInputProfiles(inputManager_, inputProfiles_);
+        SaveProject();
+    }
 }
 
 

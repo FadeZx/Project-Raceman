@@ -102,6 +102,9 @@ Application::~Application() {
 void Application::Run() {
     while (running_) {
         PollEvents();
+        if (inputManager_) {
+            inputManager_->BeginFrame();
+        }
 
         // Intercept the OS close request here — safe because all members are alive.
         if (glfwWindowShouldClose(window_)) {
@@ -135,7 +138,7 @@ void Application::Run() {
         Update(deltaTime);
         Render();
         if (inputManager_) {
-            inputManager_->Update();
+            inputManager_->EndFrame();
         }
     }
 }
@@ -362,6 +365,9 @@ void Application::Update(float deltaTime) {
                 },
                 [this]() {
                     if (sceneEditor_) sceneEditor_->SaveProject();
+                },
+                [this]() {
+                    if (sceneEditor_) sceneEditor_->RenderProjectInputSettings();
                 },
                 [this]() {
                     if (sceneEditor_) sceneEditor_->RenderProjectPhysicsSettings();

@@ -360,6 +360,30 @@ bool ObjectScriptContext::IsKeyDown(int key) const {
     return inputManager_ != nullptr && inputManager_->IsKeyDown(key);
 }
 
+bool ObjectScriptContext::IsMouseButtonDown(int button) const {
+    return inputManager_ != nullptr && inputManager_->IsMouseButtonDown(button);
+}
+
+bool ObjectScriptContext::WasMouseButtonPressed(int button) const {
+    return inputManager_ != nullptr && inputManager_->WasMouseButtonPressed(button);
+}
+
+glm::vec2 ObjectScriptContext::GetMouseDelta() const {
+    return inputManager_ != nullptr ? inputManager_->GetMouseDelta() : glm::vec2(0.0f);
+}
+
+float ObjectScriptContext::GetAxis(const std::string& action) const {
+    return inputManager_ != nullptr ? inputManager_->GetAxis(action) : 0.0f;
+}
+
+bool ObjectScriptContext::IsActionDown(const std::string& action) const {
+    return inputManager_ != nullptr && inputManager_->IsActionDown(action);
+}
+
+bool ObjectScriptContext::WasActionPressed(const std::string& action) const {
+    return inputManager_ != nullptr && inputManager_->WasActionPressed(action);
+}
+
 bool ObjectScriptContext::GetBoolField(const std::string& name, bool fallback) const {
     return GetTypedFieldValue<bool>(attachment_, name, fallback);
 }

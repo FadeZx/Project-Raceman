@@ -136,6 +136,15 @@ void MenuController::Render(Renderer& renderer,
                     ImGui::EndTabItem();
                 }
 
+                if (ImGui::BeginTabItem("Input")) {
+                    if (projectMenu.renderInputSettings) {
+                        projectMenu.renderInputSettings();
+                    } else {
+                        ImGui::TextDisabled("Input settings are unavailable.");
+                    }
+                    ImGui::EndTabItem();
+                }
+
                 ImGui::EndTabBar();
             }
         }

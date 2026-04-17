@@ -24,6 +24,17 @@ namespace {
 
 constexpr const char* kInspectorComponentReorderPayload = "RM_COMP_REORDER";
 
+const char* InputDevicePreferenceLabel(InputDevicePreference value) {
+    switch (value) {
+    case InputDevicePreference::Keyboard: return "Keyboard";
+    case InputDevicePreference::Gamepad: return "Gamepad";
+    case InputDevicePreference::Wheel: return "Wheel";
+    case InputDevicePreference::Specific: return "Specific Device";
+    case InputDevicePreference::Any:
+    default: return "Any";
+    }
+}
+
 bool IsNarrowInspectorLayout() {
     return ImGui::GetContentRegionAvail().x < 260.0f;
 }
@@ -1347,6 +1358,73 @@ void SceneEditor::RenderInspectorPanel() {
                 }
                 ImGui::TextDisabled("When disabled, vehicle cannot roll or pitch.");
                 } // Settings header
+
+                if (ImGui::CollapsingHeader("Input", ImGuiTreeNodeFlags_DefaultOpen)) {
+                const std::string activeProfileId = obj.vehicle.inputProfileId.empty() ? std::string("default_vehicle") : obj.vehicle.inputProfileId;
+                std::string profilePreview = activeProfileId;
+                const auto profileIt = std::find_if(inputProfiles_.begin(), inputProfiles_.end(), [&](const InputProfile& profile) {
+                    return profile.id == activeProfileId;
+                });
+                if (profileIt != inputProfiles_.end() && !profileIt->displayName.empty()) {
+                    profilePreview = profileIt->displayName;
+                }
+                if (ImGui::BeginCombo("Profile", profilePreview.c_str())) {
+                    for (const InputProfile& profile : inputProfiles_) {
+                        const bool selected = profile.id == activeProfileId;
+                        const std::string label = (profile.displayName.empty() ? profile.id : profile.displayName) + "##vehicleInputProfile_" + profile.id;
+                        if (ImGui::Selectable(label.c_str(), selected)) {
+                            PushUndoState();
+                            obj.vehicle.inputProfileId = profile.id;
+                            if (onDirty_) onDirty_();
+                        }
+                        if (selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                int preferenceIndex = static_cast<int>(obj.vehicle.preferredInputDevice);
+                const char* preferenceLabels[] = {"Any", "Keyboard", "Gamepad", "Wheel", "Specific Device"};
+                if (ImGui::Combo("Preferred Device", &preferenceIndex, preferenceLabels, IM_ARRAYSIZE(preferenceLabels))) {
+                    PushUndoState();
+                    obj.vehicle.preferredInputDevice = static_cast<InputDevicePreference>(preferenceIndex);
+                    if (obj.vehicle.preferredInputDevice != InputDevicePreference::Specific) {
+                        obj.vehicle.preferredInputDeviceId.clear();
+                    }
+                    if (onDirty_) onDirty_();
+                }
+
+                if (obj.vehicle.preferredInputDevice == InputDevicePreference::Specific) {
+                    std::string devicePreview = obj.vehicle.preferredInputDeviceId.empty() ? std::string("(none)") : obj.vehicle.preferredInputDeviceId;
+                    if (inputManager_ != nullptr) {
+                        const auto& devices = inputManager_->GetConnectedDevices();
+                        if (ImGui::BeginCombo("Specific Device", devicePreview.c_str())) {
+                            if (ImGui::Selectable("(none)", obj.vehicle.preferredInputDeviceId.empty())) {
+                                PushUndoState();
+                                obj.vehicle.preferredInputDeviceId.clear();
+                                if (onDirty_) onDirty_();
+                            }
+                            for (const InputDeviceInfo& device : devices) {
+                                const bool selected = device.runtimeId == obj.vehicle.preferredInputDeviceId;
+                                const std::string label = device.displayName + "##vehicleSpecificDevice_" + device.runtimeId;
+                                if (ImGui::Selectable(label.c_str(), selected)) {
+                                    PushUndoState();
+                                    obj.vehicle.preferredInputDeviceId = device.runtimeId;
+                                    if (onDirty_) onDirty_();
+                                }
+                                if (selected) {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+                    } else {
+                        ImGui::TextDisabled("Input manager is not connected.");
+                    }
+                }
+                ImGui::TextDisabled("Runtime uses the selected profile with the preferred device fallback rules.");
+                } // Input header
 
                 if (ImGui::CollapsingHeader("Chassis", ImGuiTreeNodeFlags_DefaultOpen)) {
                 if (ImGui::Button("Add Chassis Part")) {
