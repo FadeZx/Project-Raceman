@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -73,10 +74,56 @@ struct InputDeviceInfo {
     std::vector<unsigned char> buttons;
 };
 
+struct WheelSettingsProfile {
+    std::string id{"default_wheel"};
+    std::string displayName{"Default Wheel"};
+    std::string deviceNamePattern;
+    float steeringRangeDegrees{900.0f};
+    float steeringSensitivity{1.0f};
+    float steeringSaturation{1.0f};
+    bool steeringInvert{false};
+    float steeringDeadzone{0.05f};
+    float steeringCalibrationMin{-1.0f};
+    float steeringCalibrationCenter{0.0f};
+    float steeringCalibrationMax{1.0f};
+    float steeringResponseExponent{1.0f};
+    bool combinedPedals{false};
+    bool throttleInvert{true};
+    float throttleDeadzone{0.02f};
+    float throttleCalibrationMin{-1.0f};
+    float throttleCalibrationCenter{-1.0f};
+    float throttleCalibrationMax{1.0f};
+    float throttleResponseExponent{1.0f};
+    bool brakeInvert{true};
+    float brakeDeadzone{0.02f};
+    float brakeCalibrationMin{-1.0f};
+    float brakeCalibrationCenter{-1.0f};
+    float brakeCalibrationMax{1.0f};
+    float brakeResponseExponent{1.0f};
+    bool clutchInvert{true};
+    float clutchDeadzone{0.02f};
+    float clutchCalibrationMin{-1.0f};
+    float clutchCalibrationCenter{-1.0f};
+    float clutchCalibrationMax{1.0f};
+    float clutchResponseExponent{1.0f};
+    bool forceFeedbackEnabled{false};
+    float forceFeedbackOverallStrength{0.75f};
+    float forceFeedbackSelfAligningTorque{1.0f};
+    float forceFeedbackRoadEffects{0.2f};
+    float forceFeedbackSlipEffects{0.15f};
+    float forceFeedbackCollisionEffects{0.35f};
+    float forceFeedbackDamper{0.1f};
+    float forceFeedbackFriction{0.05f};
+    float forceFeedbackSpring{0.0f};
+    float forceFeedbackMinimumForce{0.0f};
+};
+
+class WheelForceFeedbackController;
+
 class InputManager {
 public:
-    InputManager() = default;
-    ~InputManager() = default;
+    InputManager();
+    ~InputManager();
 
     void AttachToWindow(GLFWwindow* window);
     void BeginFrame();
@@ -107,10 +154,18 @@ public:
     void SetInputProfiles(std::vector<InputProfile> profiles);
     std::vector<InputProfile>& GetInputProfiles() { return inputProfiles_; }
     const std::vector<InputProfile>& GetInputProfiles() const { return inputProfiles_; }
+    void SetWheelSettingsProfiles(std::vector<WheelSettingsProfile> profiles);
+    std::vector<WheelSettingsProfile>& GetWheelSettingsProfiles() { return wheelSettingsProfiles_; }
+    const std::vector<WheelSettingsProfile>& GetWheelSettingsProfiles() const { return wheelSettingsProfiles_; }
     const InputProfile* FindProfile(std::string_view profileId) const;
     InputProfile* FindProfile(std::string_view profileId);
     void EnsureDefaultProfiles();
+    void EnsureDefaultWheelSettingsProfiles();
     const std::vector<InputDeviceInfo>& GetConnectedDevices() const { return devices_; }
+    void SetWheelForceFeedbackActive(bool active);
+    bool IsWheelForceFeedbackActive() const { return wheelForceFeedbackActive_; }
+    void SetWheelForceFeedbackState(float steeringTorque, float damper, float vibration);
+    void SetLogCallback(std::function<void(const std::string&)> callback);
     bool IsListeningForBinding() const { return listeningForBinding_; }
     void StartListeningForBinding(InputDeviceType deviceType, InputBindingSource source);
     void CancelListeningForBinding();
@@ -154,6 +209,7 @@ private:
     std::unordered_map<int, PolledButtonState> joystickButtons_;
     std::vector<InputDeviceInfo> devices_;
     std::vector<InputProfile> inputProfiles_;
+    std::vector<WheelSettingsProfile> wheelSettingsProfiles_;
     glm::vec2 mousePosition_{0.0f, 0.0f};
     glm::vec2 previousMousePosition_{0.0f, 0.0f};
     glm::vec2 mouseDelta_{0.0f, 0.0f};
@@ -163,6 +219,12 @@ private:
     InputBinding capturedBinding_{};
     InputDeviceType listeningDeviceType_{InputDeviceType::Unknown};
     InputBindingSource listeningSource_{InputBindingSource::None};
+    bool wheelForceFeedbackActive_{false};
+    float wheelForceFeedbackTorque_{0.0f};
+    float wheelForceFeedbackDamper_{0.0f};
+    float wheelForceFeedbackVibration_{0.0f};
+    std::function<void(const std::string&)> logCallback_;
+    std::unique_ptr<WheelForceFeedbackController> wheelForceFeedbackController_;
 };
 
 } // namespace raceman

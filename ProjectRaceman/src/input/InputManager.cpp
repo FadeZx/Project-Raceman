@@ -1,4 +1,5 @@
 #include "InputManager.h"
+#include "WheelForceFeedback.h"
 
 #include <GLFW/glfw3.h>
 
@@ -82,11 +83,28 @@ bool LooksLikeGamepadName(const char* name) {
 }
 } // namespace
 
+InputManager::InputManager()
+    : wheelForceFeedbackController_(std::make_unique<WheelForceFeedbackController>()) {
+    if (wheelForceFeedbackController_) {
+        wheelForceFeedbackController_->SetLogCallback([](const std::string& message) {
+            std::fprintf(stdout, "[WheelFFB] %s\n", message.c_str());
+            std::fflush(stdout);
+        });
+    }
+}
+
+InputManager::~InputManager() = default;
+
 void InputManager::AttachToWindow(GLFWwindow* window) {
     window_ = window;
     glfwSetWindowUserPointer(window_, this);
     glfwSetKeyCallback(window_, &InputManager::KeyCallback);
     EnsureDefaultProfiles();
+    EnsureDefaultWheelSettingsProfiles();
+    if (wheelForceFeedbackController_) {
+        wheelForceFeedbackController_->AttachToWindow(window_);
+        wheelForceFeedbackController_->SetProfiles(wheelSettingsProfiles_);
+    }
 }
 
 void InputManager::BeginFrame() {
@@ -124,6 +142,14 @@ void InputManager::BeginFrame() {
     }
     capturedBindingReady_ = false;
     PollDevices();
+    const bool wheelWindowFocused = window_ == nullptr || glfwGetWindowAttrib(window_, GLFW_FOCUSED) == GLFW_TRUE;
+    if (wheelForceFeedbackController_) {
+        wheelForceFeedbackController_->SetEffectState(
+            wheelForceFeedbackTorque_,
+            wheelForceFeedbackDamper_,
+            wheelForceFeedbackVibration_);
+        wheelForceFeedbackController_->SyncDevices(devices_, wheelForceFeedbackActive_ && wheelWindowFocused);
+    }
 }
 
 void InputManager::EndFrame() {
@@ -266,6 +292,14 @@ void InputManager::SetInputProfiles(std::vector<InputProfile> profiles) {
     EnsureDefaultProfiles();
 }
 
+void InputManager::SetWheelSettingsProfiles(std::vector<WheelSettingsProfile> profiles) {
+    wheelSettingsProfiles_ = std::move(profiles);
+    EnsureDefaultWheelSettingsProfiles();
+    if (wheelForceFeedbackController_) {
+        wheelForceFeedbackController_->SetProfiles(wheelSettingsProfiles_);
+    }
+}
+
 const InputProfile* InputManager::FindProfile(std::string_view profileId) const {
     return FindProfileById(inputProfiles_, profileId);
 }
@@ -323,6 +357,65 @@ void InputManager::EnsureDefaultProfiles() {
             {"shiftDown", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 5}
         };
         inputProfiles_.push_back(std::move(profile));
+    }
+}
+
+void InputManager::EnsureDefaultWheelSettingsProfiles() {
+    if (wheelSettingsProfiles_.empty()) {
+        WheelSettingsProfile profile;
+        profile.id = "default_wheel";
+        profile.displayName = "Default Wheel";
+        profile.forceFeedbackEnabled = true;
+        profile.forceFeedbackOverallStrength = 1.0f;
+        profile.forceFeedbackSelfAligningTorque = 1.25f;
+        profile.forceFeedbackDamper = 0.15f;
+        profile.forceFeedbackRoadEffects = 0.35f;
+        profile.forceFeedbackSlipEffects = 0.2f;
+        profile.forceFeedbackCollisionEffects = 0.45f;
+        profile.forceFeedbackMinimumForce = 0.08f;
+        wheelSettingsProfiles_.push_back(std::move(profile));
+    }
+}
+
+void InputManager::SetWheelForceFeedbackActive(bool active) {
+    wheelForceFeedbackActive_ = active;
+    if (wheelForceFeedbackController_) {
+        const bool wheelWindowFocused = window_ == nullptr || glfwGetWindowAttrib(window_, GLFW_FOCUSED) == GLFW_TRUE;
+        wheelForceFeedbackController_->SetEffectState(
+            wheelForceFeedbackTorque_,
+            wheelForceFeedbackDamper_,
+            wheelForceFeedbackVibration_);
+        wheelForceFeedbackController_->SyncDevices(devices_, wheelForceFeedbackActive_ && wheelWindowFocused);
+    }
+}
+
+void InputManager::SetWheelForceFeedbackState(float steeringTorque, float damper, float vibration) {
+    wheelForceFeedbackTorque_ = steeringTorque;
+    wheelForceFeedbackDamper_ = damper;
+    wheelForceFeedbackVibration_ = vibration;
+    if (wheelForceFeedbackController_) {
+        wheelForceFeedbackController_->SetEffectState(
+            wheelForceFeedbackTorque_,
+            wheelForceFeedbackDamper_,
+            wheelForceFeedbackVibration_);
+    }
+}
+
+void InputManager::SetLogCallback(std::function<void(const std::string&)> callback) {
+    logCallback_ = std::move(callback);
+    if (wheelForceFeedbackController_) {
+        if (logCallback_) {
+            wheelForceFeedbackController_->SetLogCallback([this](const std::string& message) {
+                if (logCallback_) {
+                    logCallback_("[WheelFFB] " + message);
+                }
+            });
+        } else {
+            wheelForceFeedbackController_->SetLogCallback([](const std::string& message) {
+                std::fprintf(stdout, "[WheelFFB] %s\n", message.c_str());
+                std::fflush(stdout);
+            });
+        }
     }
 }
 

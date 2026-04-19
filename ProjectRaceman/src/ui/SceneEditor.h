@@ -391,13 +391,7 @@ public:
     // Submit renderables for drawing via Renderer (PBR pipeline)
     void SubmitDraws(Renderer& renderer, bool editorInteraction = true);
     void SetConsole(Console* console);
-    void SetInputManager(InputManager* inputManager) {
-        inputManager_ = inputManager;
-        if (inputManager_ != nullptr) {
-            inputManager_->SetInputProfiles(inputProfiles_);
-            inputProfiles_ = inputManager_->GetInputProfiles();
-        }
-    }
+    void SetInputManager(InputManager* inputManager);
     void SetAudioManager(AudioManager* audio) { audioManager_ = audio; }
     bool IsRunMode() const { return scriptsRunning_; }
     bool IsGameViewActive() const { return true; }
@@ -592,8 +586,10 @@ private:
     PhysicsLayerNames physicsLayerNames_{};
     PhysicsLayerCollisionMatrix physicsLayerCollisionMatrix_{};
     std::vector<InputProfile> inputProfiles_{};
+    std::vector<WheelSettingsProfile> wheelSettingsProfiles_{};
     int selectedInputProfileIndex_{0};
     int selectedInputDevicePage_{0};
+    int selectedWheelSettingsProfileIndex_{0};
 
     // shared primitives
     std::unordered_map<std::string, PrimitiveMesh> builtInPrimitiveMeshes_;

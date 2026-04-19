@@ -39,7 +39,7 @@
     ]
   },
   "transmission": {
-    "mode": "automatic",
+    "mode": "manual",
     "gearRatios": [2.800, 1.900, 1.400, 1.100, 0.950, 0.850],
     "finalDriveRatio": 3.420,
     "reverseRatio": -2.900,
@@ -53,7 +53,7 @@
       "width": 0.240,
       "mass": 15.000,
       "inertia": 1.000,
-      "maxSteerAngle": 0.550,
+      "maxSteerAngle": 0.750,
       "camber": 0.000,
       "toe": 0.000,
       "gripFactor": 1.000,

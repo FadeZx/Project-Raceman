@@ -112,6 +112,13 @@ void SyncInputProfiles(InputManager* inputManager, std::vector<InputProfile>& pr
     }
 }
 
+void SyncWheelSettingsProfiles(InputManager* inputManager, std::vector<WheelSettingsProfile>& profiles) {
+    if (inputManager != nullptr) {
+        inputManager->SetWheelSettingsProfiles(profiles);
+        profiles = inputManager->GetWheelSettingsProfiles();
+    }
+}
+
 InputBinding* FindBindingForAction(InputProfile& profile, InputDeviceType deviceType, const std::string& action) {
     auto it = std::find_if(profile.bindings.begin(), profile.bindings.end(), [&](InputBinding& binding) {
         return binding.deviceType == deviceType && binding.action == action;
@@ -151,6 +158,105 @@ void EnsureCommonActions(std::vector<std::string>& actions) {
             actions.push_back(action);
         }
     }
+}
+
+void EnsureDefaultWheelSettingsProfiles(std::vector<WheelSettingsProfile>& profiles) {
+    if (!profiles.empty()) {
+        return;
+    }
+
+    WheelSettingsProfile profile;
+    profile.id = "default_wheel";
+    profile.displayName = "Default Wheel";
+    profile.forceFeedbackEnabled = true;
+    profile.forceFeedbackOverallStrength = 1.0f;
+    profile.forceFeedbackSelfAligningTorque = 1.25f;
+    profile.forceFeedbackDamper = 0.15f;
+    profile.forceFeedbackRoadEffects = 0.35f;
+    profile.forceFeedbackSlipEffects = 0.2f;
+    profile.forceFeedbackCollisionEffects = 0.45f;
+    profile.forceFeedbackMinimumForce = 0.08f;
+    profiles.push_back(std::move(profile));
+}
+
+InputBinding* FindOrCreateWheelBinding(InputProfile& profile, const std::string& action, InputBindingSource source) {
+    if (InputBinding* existing = FindBindingForAction(profile, InputDeviceType::Wheel, action)) {
+        if (existing->source == InputBindingSource::None) {
+            existing->source = source;
+        }
+        return existing;
+    }
+
+    profile.bindings.push_back(InputBinding{action, InputDeviceType::Wheel, source});
+    return &profile.bindings.back();
+}
+
+void ApplyWheelSettingsToBinding(InputBinding& binding,
+                                 bool invert,
+                                 float deadzone,
+                                 float calibrationMin,
+                                 float calibrationCenter,
+                                 float calibrationMax,
+                                 float responseExponent) {
+    binding.invert = invert;
+    binding.deadzone = deadzone;
+    binding.calibrationMin = calibrationMin;
+    binding.calibrationCenter = calibrationCenter;
+    binding.calibrationMax = calibrationMax;
+    binding.responseExponent = responseExponent;
+}
+
+void ApplyWheelSettingsProfileToInputProfile(const WheelSettingsProfile& settings, InputProfile& profile) {
+    InputBinding* steer = FindOrCreateWheelBinding(profile, "steer", InputBindingSource::Axis);
+    steer->axis = steer->axis < 0 ? 0 : steer->axis;
+    ApplyWheelSettingsToBinding(*steer,
+                                settings.steeringInvert,
+                                settings.steeringDeadzone,
+                                settings.steeringCalibrationMin,
+                                settings.steeringCalibrationCenter,
+                                settings.steeringCalibrationMax,
+                                settings.steeringResponseExponent);
+
+    InputBinding* throttle = FindOrCreateWheelBinding(profile, "throttle", InputBindingSource::Axis);
+    throttle->axis = throttle->axis < 0 ? 1 : throttle->axis;
+    ApplyWheelSettingsToBinding(*throttle,
+                                settings.throttleInvert,
+                                settings.throttleDeadzone,
+                                settings.throttleCalibrationMin,
+                                settings.throttleCalibrationCenter,
+                                settings.throttleCalibrationMax,
+                                settings.throttleResponseExponent);
+
+    InputBinding* brake = FindOrCreateWheelBinding(profile, "brake", InputBindingSource::Axis);
+    brake->axis = brake->axis < 0 ? 2 : brake->axis;
+    ApplyWheelSettingsToBinding(*brake,
+                                settings.brakeInvert,
+                                settings.brakeDeadzone,
+                                settings.brakeCalibrationMin,
+                                settings.brakeCalibrationCenter,
+                                settings.brakeCalibrationMax,
+                                settings.brakeResponseExponent);
+
+    if (InputBinding* clutch = FindBindingForAction(profile, InputDeviceType::Wheel, "clutch")) {
+        ApplyWheelSettingsToBinding(*clutch,
+                                    settings.clutchInvert,
+                                    settings.clutchDeadzone,
+                                    settings.clutchCalibrationMin,
+                                    settings.clutchCalibrationCenter,
+                                    settings.clutchCalibrationMax,
+                                    settings.clutchResponseExponent);
+    }
+}
+
+const WheelSettingsProfile* FindWheelSettingsForDevice(const std::vector<WheelSettingsProfile>& profiles,
+                                                       const InputDeviceInfo& device) {
+    for (const WheelSettingsProfile& profile : profiles) {
+        if (!profile.deviceNamePattern.empty() &&
+            ToLowerCopy(device.displayName).find(ToLowerCopy(profile.deviceNamePattern)) != std::string::npos) {
+            return &profile;
+        }
+    }
+    return nullptr;
 }
 
 std::string SanitizeFolderName(std::string value) {
@@ -990,6 +1096,13 @@ void SceneEditor::RenderProjectInputSettings() {
                 ImGui::TextDisabled("Type: %s", InputDeviceTypeLabel(device.type));
                 ImGui::TextDisabled("Runtime Id: %s", device.runtimeId.c_str());
                 ImGui::TextDisabled("Axes: %d  Buttons: %d", device.axisCount, device.buttonCount);
+                if (device.type == InputDeviceType::Wheel) {
+                    if (const WheelSettingsProfile* matchedSettings = FindWheelSettingsForDevice(wheelSettingsProfiles_, device)) {
+                        ImGui::TextDisabled("Matched Wheel Preset: %s", matchedSettings->displayName.c_str());
+                    } else {
+                        ImGui::TextDisabled("Matched Wheel Preset: none");
+                    }
+                }
                 if (!device.axes.empty()) {
                     for (int axisIndex = 0; axisIndex < static_cast<int>(device.axes.size()); ++axisIndex) {
                         const float value = device.axes[static_cast<std::size_t>(axisIndex)];
@@ -1004,6 +1117,210 @@ void SceneEditor::RenderProjectInputSettings() {
                 }
                 ImGui::PopID();
             }
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Wheel Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        EnsureDefaultWheelSettingsProfiles(wheelSettingsProfiles_);
+        selectedWheelSettingsProfileIndex_ = (std::max)(0, (std::min)(selectedWheelSettingsProfileIndex_, static_cast<int>(wheelSettingsProfiles_.size()) - 1));
+
+        const char* wheelPreview = wheelSettingsProfiles_[static_cast<std::size_t>(selectedWheelSettingsProfileIndex_)].displayName.c_str();
+        if (ImGui::BeginCombo("Wheel Preset", wheelPreview)) {
+            for (int i = 0; i < static_cast<int>(wheelSettingsProfiles_.size()); ++i) {
+                const bool isSelected = i == selectedWheelSettingsProfileIndex_;
+                if (ImGui::Selectable(wheelSettingsProfiles_[static_cast<std::size_t>(i)].displayName.c_str(), isSelected)) {
+                    selectedWheelSettingsProfileIndex_ = i;
+                }
+                if (isSelected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        if (ImGui::Button("Add Wheel Preset")) {
+            WheelSettingsProfile profile;
+            profile.id = "wheel_preset_" + std::to_string(wheelSettingsProfiles_.size() + 1);
+            profile.displayName = "New Wheel Preset";
+            wheelSettingsProfiles_.push_back(std::move(profile));
+            selectedWheelSettingsProfileIndex_ = static_cast<int>(wheelSettingsProfiles_.size()) - 1;
+            projectSettingsChanged = true;
+        }
+        ImGui::SameLine();
+        const bool canDeleteWheelPreset = !wheelSettingsProfiles_.empty() &&
+            wheelSettingsProfiles_[static_cast<std::size_t>(selectedWheelSettingsProfileIndex_)].id != "default_wheel";
+        if (!canDeleteWheelPreset) {
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button("Delete Wheel Preset") && canDeleteWheelPreset) {
+            wheelSettingsProfiles_.erase(wheelSettingsProfiles_.begin() + selectedWheelSettingsProfileIndex_);
+            selectedWheelSettingsProfileIndex_ = (std::max)(0, selectedWheelSettingsProfileIndex_ - 1);
+            projectSettingsChanged = true;
+        }
+        if (!canDeleteWheelPreset) {
+            ImGui::EndDisabled();
+        }
+
+        WheelSettingsProfile& wheelSettings = wheelSettingsProfiles_[static_cast<std::size_t>(selectedWheelSettingsProfileIndex_)];
+        char wheelIdBuffer[128]{};
+        char wheelNameBuffer[128]{};
+        char wheelPatternBuffer[128]{};
+        std::snprintf(wheelIdBuffer, sizeof(wheelIdBuffer), "%s", wheelSettings.id.c_str());
+        std::snprintf(wheelNameBuffer, sizeof(wheelNameBuffer), "%s", wheelSettings.displayName.c_str());
+        std::snprintf(wheelPatternBuffer, sizeof(wheelPatternBuffer), "%s", wheelSettings.deviceNamePattern.c_str());
+        if (ImGui::InputText("Preset Id", wheelIdBuffer, sizeof(wheelIdBuffer))) {
+            wheelSettings.id = SanitizeAssetBaseName(wheelIdBuffer);
+            projectSettingsChanged = true;
+        }
+        if (ImGui::InputText("Preset Name", wheelNameBuffer, sizeof(wheelNameBuffer))) {
+            wheelSettings.displayName = TrimCopyLocal(wheelNameBuffer);
+            projectSettingsChanged = true;
+        }
+        if (ImGui::InputText("Device Match", wheelPatternBuffer, sizeof(wheelPatternBuffer))) {
+            wheelSettings.deviceNamePattern = TrimCopyLocal(wheelPatternBuffer);
+            projectSettingsChanged = true;
+        }
+        ImGui::TextDisabled("Device Match uses a case-insensitive substring of the detected wheel name.");
+
+        if (!inputProfiles_.empty()) {
+            if (ImGui::Button("Apply To Selected Input Profile")) {
+                ApplyWheelSettingsProfileToInputProfile(
+                    wheelSettings,
+                    inputProfiles_[static_cast<std::size_t>(selectedInputProfileIndex_)]);
+                projectSettingsChanged = true;
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("Target: %s", inputProfiles_[static_cast<std::size_t>(selectedInputProfileIndex_)].displayName.c_str());
+        }
+
+        if (ImGui::CollapsingHeader("Steering", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (ImGui::DragFloat("Range Degrees", &wheelSettings.steeringRangeDegrees, 5.0f, 90.0f, 1440.0f, "%.0f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Sensitivity", &wheelSettings.steeringSensitivity, 0.01f, 0.1f, 4.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Saturation", &wheelSettings.steeringSaturation, 0.01f, 0.1f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::Checkbox("Invert Steering", &wheelSettings.steeringInvert)) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Steering Deadzone", &wheelSettings.steeringDeadzone, 0.005f, 0.0f, 0.95f, "%.3f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Steering Response", &wheelSettings.steeringResponseExponent, 0.05f, 0.1f, 4.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Steering Min", &wheelSettings.steeringCalibrationMin, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Steering Center", &wheelSettings.steeringCalibrationCenter, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Steering Max", &wheelSettings.steeringCalibrationMax, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+        }
+
+        if (ImGui::CollapsingHeader("Pedals", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (ImGui::Checkbox("Combined Pedals", &wheelSettings.combinedPedals)) {
+                projectSettingsChanged = true;
+            }
+
+            ImGui::SeparatorText("Throttle");
+            if (ImGui::Checkbox("Invert Throttle", &wheelSettings.throttleInvert)) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Throttle Deadzone", &wheelSettings.throttleDeadzone, 0.005f, 0.0f, 0.95f, "%.3f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Throttle Response", &wheelSettings.throttleResponseExponent, 0.05f, 0.1f, 4.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Throttle Min", &wheelSettings.throttleCalibrationMin, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Throttle Center", &wheelSettings.throttleCalibrationCenter, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Throttle Max", &wheelSettings.throttleCalibrationMax, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+
+            ImGui::SeparatorText("Brake");
+            if (ImGui::Checkbox("Invert Brake", &wheelSettings.brakeInvert)) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Brake Deadzone", &wheelSettings.brakeDeadzone, 0.005f, 0.0f, 0.95f, "%.3f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Brake Response", &wheelSettings.brakeResponseExponent, 0.05f, 0.1f, 4.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Brake Min", &wheelSettings.brakeCalibrationMin, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Brake Center", &wheelSettings.brakeCalibrationCenter, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Brake Max", &wheelSettings.brakeCalibrationMax, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+
+            ImGui::SeparatorText("Clutch");
+            if (ImGui::Checkbox("Invert Clutch", &wheelSettings.clutchInvert)) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Clutch Deadzone", &wheelSettings.clutchDeadzone, 0.005f, 0.0f, 0.95f, "%.3f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Clutch Response", &wheelSettings.clutchResponseExponent, 0.05f, 0.1f, 4.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Clutch Min", &wheelSettings.clutchCalibrationMin, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Clutch Center", &wheelSettings.clutchCalibrationCenter, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Clutch Max", &wheelSettings.clutchCalibrationMax, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+        }
+
+        if (ImGui::CollapsingHeader("Force Feedback", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (ImGui::Checkbox("Enable Force Feedback", &wheelSettings.forceFeedbackEnabled)) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Overall Strength", &wheelSettings.forceFeedbackOverallStrength, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Self Aligning Torque", &wheelSettings.forceFeedbackSelfAligningTorque, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Road Effects", &wheelSettings.forceFeedbackRoadEffects, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Slip Effects", &wheelSettings.forceFeedbackSlipEffects, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Collision Effects", &wheelSettings.forceFeedbackCollisionEffects, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Damper", &wheelSettings.forceFeedbackDamper, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Friction", &wheelSettings.forceFeedbackFriction, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Spring", &wheelSettings.forceFeedbackSpring, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Minimum Force", &wheelSettings.forceFeedbackMinimumForce, 0.01f, 0.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            ImGui::TextDisabled("Windows play mode now claims wheel FFB ownership and disables driver auto-centering. Vehicle-driven FFB forces are still minimal.");
         }
     }
 
@@ -1080,241 +1397,251 @@ void SceneEditor::RenderProjectInputSettings() {
                 profile.bindings.push_back(InputBinding{uniqueAction, InputDeviceType::Keyboard, InputBindingSource::Key});
                 projectSettingsChanged = true;
             }
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(180.0f);
-            const char* devicePages[] = {"Keyboard", "Gamepad", "Wheel"};
+            ImGui::Spacing();
             selectedInputDevicePage_ = (std::max)(0, (std::min)(selectedInputDevicePage_, 2));
-            if (ImGui::Combo("Device Page", &selectedInputDevicePage_, devicePages, IM_ARRAYSIZE(devicePages))) {
-            }
+            if (ImGui::BeginTabBar("InputDevicePages")) {
+                const InputDeviceType deviceTypes[] = {
+                    InputDeviceType::Keyboard,
+                    InputDeviceType::Gamepad,
+                    InputDeviceType::Wheel
+                };
+                for (int devicePage = 0; devicePage < 3; ++devicePage) {
+                    if (ImGui::BeginTabItem(InputDevicePageName(deviceTypes[devicePage]))) {
+                        selectedInputDevicePage_ = devicePage;
+                        const InputDeviceType activeDeviceType = deviceTypes[devicePage];
+                        ImGui::SeparatorText(InputDevicePageName(activeDeviceType));
 
-            const InputDeviceType activeDeviceType =
-                selectedInputDevicePage_ == 0 ? InputDeviceType::Keyboard :
-                selectedInputDevicePage_ == 1 ? InputDeviceType::Gamepad :
-                InputDeviceType::Wheel;
+                        for (std::size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex) {
+                            std::string& actionName = actions[actionIndex];
+                            InputBinding* binding = FindBindingForAction(profile, activeDeviceType, actionName);
+                            if (binding == nullptr) {
+                                profile.bindings.push_back(InputBinding{actionName, activeDeviceType, activeDeviceType == InputDeviceType::Keyboard ? InputBindingSource::Key : InputBindingSource::Axis});
+                                binding = &profile.bindings.back();
+                                projectSettingsChanged = true;
+                            }
 
-            ImGui::SeparatorText(InputDevicePageName(activeDeviceType));
+                            ImGui::PushID((actionName + "_" + std::to_string(devicePage)).c_str());
+                            if (ImGui::CollapsingHeader(actionName.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                                char actionBuffer[128]{};
+                                std::snprintf(actionBuffer, sizeof(actionBuffer), "%s", actionName.c_str());
+                                if (ImGui::InputText("Action", actionBuffer, sizeof(actionBuffer))) {
+                                    const std::string previousAction = actionName;
+                                    actionName = TrimCopyLocal(actionBuffer);
+                                    for (InputBinding& candidate : profile.bindings) {
+                                        if (candidate.action == previousAction) {
+                                            candidate.action = actionName;
+                                        }
+                                    }
+                                    projectSettingsChanged = true;
+                                }
 
-            for (std::size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex) {
-                std::string& actionName = actions[actionIndex];
-                InputBinding* binding = FindBindingForAction(profile, activeDeviceType, actionName);
-                if (binding == nullptr) {
-                    profile.bindings.push_back(InputBinding{actionName, activeDeviceType, activeDeviceType == InputDeviceType::Keyboard ? InputBindingSource::Key : InputBindingSource::Axis});
-                    binding = &profile.bindings.back();
-                    projectSettingsChanged = true;
+                                if (ImGui::CollapsingHeader("Binding", ImGuiTreeNodeFlags_DefaultOpen)) {
+                                    int sourceIndex = static_cast<int>(binding->source);
+                                    if (activeDeviceType == InputDeviceType::Keyboard) {
+                                        const char* sourceLabels[] = {"None", "Key", "Key Pair"};
+                                        const int sourceMap[] = {
+                                            static_cast<int>(InputBindingSource::None),
+                                            static_cast<int>(InputBindingSource::Key),
+                                            static_cast<int>(InputBindingSource::KeyPair)
+                                        };
+                                        int keyboardSourceIndex = 0;
+                                        for (int i = 0; i < IM_ARRAYSIZE(sourceMap); ++i) {
+                                            if (sourceMap[i] == sourceIndex) {
+                                                keyboardSourceIndex = i;
+                                                break;
+                                            }
+                                        }
+                                        if (ImGui::Combo("Source", &keyboardSourceIndex, sourceLabels, IM_ARRAYSIZE(sourceLabels))) {
+                                            binding->source = static_cast<InputBindingSource>(sourceMap[keyboardSourceIndex]);
+                                            projectSettingsChanged = true;
+                                        }
+                                    } else {
+                                        const char* sourceLabels[] = {"None", "Axis", "Button"};
+                                        const int sourceMap[] = {
+                                            static_cast<int>(InputBindingSource::None),
+                                            static_cast<int>(InputBindingSource::Axis),
+                                            static_cast<int>(InputBindingSource::Button)
+                                        };
+                                        int analogSourceIndex = 0;
+                                        for (int i = 0; i < IM_ARRAYSIZE(sourceMap); ++i) {
+                                            if (sourceMap[i] == sourceIndex) {
+                                                analogSourceIndex = i;
+                                                break;
+                                            }
+                                        }
+                                        if (ImGui::Combo("Source", &analogSourceIndex, sourceLabels, IM_ARRAYSIZE(sourceLabels))) {
+                                            binding->source = static_cast<InputBindingSource>(sourceMap[analogSourceIndex]);
+                                            projectSettingsChanged = true;
+                                        }
+                                    }
+
+                                    if (binding->source == InputBindingSource::Key) {
+                                        if (ImGui::InputInt("Key", &binding->key)) {
+                                            projectSettingsChanged = true;
+                                        }
+                                    } else if (binding->source == InputBindingSource::KeyPair) {
+                                        if (ImGui::InputInt("Negative Key", &binding->negativeKey)) {
+                                            projectSettingsChanged = true;
+                                        }
+                                        if (ImGui::InputInt("Positive Key", &binding->positiveKey)) {
+                                            projectSettingsChanged = true;
+                                        }
+                                    } else if (binding->source == InputBindingSource::Axis) {
+                                        if (activeDeviceType == InputDeviceType::Gamepad) {
+                                            int axisIndex = (std::max)(0, (std::min)(binding->axis, 5));
+                                            const char* axisNames[] = {
+                                                "Left Stick X",
+                                                "Left Stick Y",
+                                                "Right Stick X",
+                                                "Right Stick Y",
+                                                "Left Trigger",
+                                                "Right Trigger"
+                                            };
+                                            if (ImGui::Combo("Axis", &axisIndex, axisNames, IM_ARRAYSIZE(axisNames))) {
+                                                binding->axis = axisIndex;
+                                                projectSettingsChanged = true;
+                                            }
+                                        } else if (ImGui::InputInt("Axis", &binding->axis)) {
+                                            projectSettingsChanged = true;
+                                        }
+                                    } else if (binding->source == InputBindingSource::Button) {
+                                        if (activeDeviceType == InputDeviceType::Gamepad) {
+                                            int buttonIndex = (std::max)(0, (std::min)(binding->button, 14));
+                                            const char* buttonNames[] = {
+                                                "A / Cross",
+                                                "B / Circle",
+                                                "X / Square",
+                                                "Y / Triangle",
+                                                "Left Bumper",
+                                                "Right Bumper",
+                                                "Back / Share",
+                                                "Start / Options",
+                                                "Guide / PS",
+                                                "Left Stick Click",
+                                                "Right Stick Click",
+                                                "D-Pad Up",
+                                                "D-Pad Right",
+                                                "D-Pad Down",
+                                                "D-Pad Left"
+                                            };
+                                            if (ImGui::Combo("Button", &buttonIndex, buttonNames, IM_ARRAYSIZE(buttonNames))) {
+                                                binding->button = buttonIndex;
+                                                projectSettingsChanged = true;
+                                            }
+                                        } else if (ImGui::InputInt("Button", &binding->button)) {
+                                            projectSettingsChanged = true;
+                                        }
+                                    }
+
+                                    if (inputManager_ != nullptr) {
+                                        const bool canListenForBinding =
+                                            binding->source == InputBindingSource::Key ||
+                                            binding->source == InputBindingSource::Axis ||
+                                            binding->source == InputBindingSource::Button;
+
+                                        if (!canListenForBinding) {
+                                            ImGui::TextDisabled("Listen is available for single key, axis, and button bindings.");
+                                        } else if (!inputManager_->IsListeningForBinding()) {
+                                            if (ImGui::Button("Listen For Input")) {
+                                                inputManager_->StartListeningForBinding(activeDeviceType, binding->source);
+                                            }
+                                        } else {
+                                            ImGui::TextDisabled("Listening for next input...");
+                                            ImGui::SameLine();
+                                            if (ImGui::Button("Cancel Listen")) {
+                                                inputManager_->CancelListeningForBinding();
+                                            }
+                                        }
+
+                                        InputBinding capturedBinding;
+                                        if (canListenForBinding && inputManager_->ConsumeCapturedBinding(capturedBinding)) {
+                                            if (capturedBinding.deviceType == activeDeviceType &&
+                                                capturedBinding.source == binding->source) {
+                                                capturedBinding.action = binding->action;
+                                                capturedBinding.deadzone = binding->deadzone;
+                                                capturedBinding.calibrationMin = binding->calibrationMin;
+                                                capturedBinding.calibrationCenter = binding->calibrationCenter;
+                                                capturedBinding.calibrationMax = binding->calibrationMax;
+                                                capturedBinding.responseExponent = binding->responseExponent;
+                                                *binding = capturedBinding;
+                                                projectSettingsChanged = true;
+                                            }
+                                        }
+                                    }
+
+                                    if (activeDeviceType == InputDeviceType::Gamepad) {
+                                        if (binding->source == InputBindingSource::Button && binding->button >= 0) {
+                                            ImGui::TextDisabled("Selected: %s", GamepadButtonName(binding->button));
+                                        } else if (binding->source == InputBindingSource::Axis && binding->axis >= 0) {
+                                            ImGui::TextDisabled("Selected: %s", GamepadAxisName(binding->axis));
+                                        }
+                                    }
+                                }
+
+                                const bool showSettings = binding->source == InputBindingSource::Axis;
+                                if (showSettings && ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+                                    if (ImGui::Checkbox("Invert", &binding->invert)) {
+                                        projectSettingsChanged = true;
+                                    }
+                                    if (ImGui::DragFloat("Deadzone", &binding->deadzone, 0.005f, 0.0f, 0.95f, "%.3f")) {
+                                        projectSettingsChanged = true;
+                                    }
+                                    if (ImGui::DragFloat("Response", &binding->responseExponent, 0.05f, 0.1f, 4.0f, "%.2f")) {
+                                        projectSettingsChanged = true;
+                                    }
+
+                                    const InputDeviceInfo* liveDevice = FindFirstDeviceOfType(inputManager_, activeDeviceType);
+                                    const bool hasLiveAxis = liveDevice != nullptr &&
+                                        binding->axis >= 0 &&
+                                        binding->axis < static_cast<int>(liveDevice->axes.size());
+                                    if (hasLiveAxis) {
+                                        const float rawAxis = liveDevice->axes[static_cast<std::size_t>(binding->axis)];
+                                        ImGui::TextDisabled("Raw Axis Value: %.3f", rawAxis);
+                                        if (ImGui::Button("Capture Min")) {
+                                            binding->calibrationMin = rawAxis;
+                                            projectSettingsChanged = true;
+                                        }
+                                        ImGui::SameLine();
+                                        if (ImGui::Button("Capture Center")) {
+                                            binding->calibrationCenter = rawAxis;
+                                            projectSettingsChanged = true;
+                                        }
+                                        ImGui::SameLine();
+                                        if (ImGui::Button("Capture Max")) {
+                                            binding->calibrationMax = rawAxis;
+                                            projectSettingsChanged = true;
+                                        }
+                                    } else {
+                                        ImGui::TextDisabled("Connect a matching device to calibrate this axis live.");
+                                    }
+                                }
+
+                                if (ImGui::Button("Remove Action")) {
+                                    const std::string removedAction = binding->action;
+                                    profile.bindings.erase(
+                                        std::remove_if(profile.bindings.begin(), profile.bindings.end(), [&](const InputBinding& candidate) {
+                                            return candidate.action == removedAction;
+                                        }),
+                                        profile.bindings.end());
+                                    projectSettingsChanged = true;
+                                    ImGui::PopID();
+                                    break;
+                                }
+                            }
+                            ImGui::PopID();
+                        }
+
+                        ImGui::EndTabItem();
+                    }
                 }
-
-                ImGui::PushID((actionName + "_" + std::to_string(selectedInputDevicePage_)).c_str());
-                if (ImGui::CollapsingHeader(actionName.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                    char actionBuffer[128]{};
-                    std::snprintf(actionBuffer, sizeof(actionBuffer), "%s", actionName.c_str());
-                    if (ImGui::InputText("Action", actionBuffer, sizeof(actionBuffer))) {
-                        const std::string previousAction = actionName;
-                        actionName = TrimCopyLocal(actionBuffer);
-                        for (InputBinding& candidate : profile.bindings) {
-                            if (candidate.action == previousAction) {
-                                candidate.action = actionName;
-                            }
-                        }
-                        projectSettingsChanged = true;
-                    }
-
-                    int sourceIndex = static_cast<int>(binding->source);
-                    if (activeDeviceType == InputDeviceType::Keyboard) {
-                        const char* sourceLabels[] = {"None", "Key", "Key Pair"};
-                        const int sourceMap[] = {
-                            static_cast<int>(InputBindingSource::None),
-                            static_cast<int>(InputBindingSource::Key),
-                            static_cast<int>(InputBindingSource::KeyPair)
-                        };
-                        int keyboardSourceIndex = 0;
-                        for (int i = 0; i < IM_ARRAYSIZE(sourceMap); ++i) {
-                            if (sourceMap[i] == sourceIndex) {
-                                keyboardSourceIndex = i;
-                                break;
-                            }
-                        }
-                        if (ImGui::Combo("Source", &keyboardSourceIndex, sourceLabels, IM_ARRAYSIZE(sourceLabels))) {
-                            binding->source = static_cast<InputBindingSource>(sourceMap[keyboardSourceIndex]);
-                            projectSettingsChanged = true;
-                        }
-                    } else {
-                        const char* sourceLabels[] = {"None", "Axis", "Button"};
-                        const int sourceMap[] = {
-                            static_cast<int>(InputBindingSource::None),
-                            static_cast<int>(InputBindingSource::Axis),
-                            static_cast<int>(InputBindingSource::Button)
-                        };
-                        int analogSourceIndex = 0;
-                        for (int i = 0; i < IM_ARRAYSIZE(sourceMap); ++i) {
-                            if (sourceMap[i] == sourceIndex) {
-                                analogSourceIndex = i;
-                                break;
-                            }
-                        }
-                        if (ImGui::Combo("Source", &analogSourceIndex, sourceLabels, IM_ARRAYSIZE(sourceLabels))) {
-                            binding->source = static_cast<InputBindingSource>(sourceMap[analogSourceIndex]);
-                            projectSettingsChanged = true;
-                        }
-                    }
-
-                    if (binding->source == InputBindingSource::Key) {
-                        if (ImGui::InputInt("Key", &binding->key)) {
-                            projectSettingsChanged = true;
-                        }
-                    } else if (binding->source == InputBindingSource::KeyPair) {
-                        if (ImGui::InputInt("Negative Key", &binding->negativeKey)) {
-                            projectSettingsChanged = true;
-                        }
-                        if (ImGui::InputInt("Positive Key", &binding->positiveKey)) {
-                            projectSettingsChanged = true;
-                        }
-                    } else if (binding->source == InputBindingSource::Axis) {
-                        if (activeDeviceType == InputDeviceType::Gamepad) {
-                            int axisIndex = (std::max)(0, (std::min)(binding->axis, 5));
-                            const char* axisNames[] = {
-                                "Left Stick X",
-                                "Left Stick Y",
-                                "Right Stick X",
-                                "Right Stick Y",
-                                "Left Trigger",
-                                "Right Trigger"
-                            };
-                            if (ImGui::Combo("Axis", &axisIndex, axisNames, IM_ARRAYSIZE(axisNames))) {
-                                binding->axis = axisIndex;
-                                projectSettingsChanged = true;
-                            }
-                        } else if (ImGui::InputInt("Axis", &binding->axis)) {
-                            projectSettingsChanged = true;
-                        }
-                    } else if (binding->source == InputBindingSource::Button) {
-                        if (activeDeviceType == InputDeviceType::Gamepad) {
-                            int buttonIndex = (std::max)(0, (std::min)(binding->button, 14));
-                            const char* buttonNames[] = {
-                                "A / Cross",
-                                "B / Circle",
-                                "X / Square",
-                                "Y / Triangle",
-                                "Left Bumper",
-                                "Right Bumper",
-                                "Back / Share",
-                                "Start / Options",
-                                "Guide / PS",
-                                "Left Stick Click",
-                                "Right Stick Click",
-                                "D-Pad Up",
-                                "D-Pad Right",
-                                "D-Pad Down",
-                                "D-Pad Left"
-                            };
-                            if (ImGui::Combo("Button", &buttonIndex, buttonNames, IM_ARRAYSIZE(buttonNames))) {
-                                binding->button = buttonIndex;
-                                projectSettingsChanged = true;
-                            }
-                        } else if (ImGui::InputInt("Button", &binding->button)) {
-                            projectSettingsChanged = true;
-                        }
-                    }
-
-                    if (binding->source == InputBindingSource::Axis) {
-                        if (ImGui::Checkbox("Invert", &binding->invert)) {
-                            projectSettingsChanged = true;
-                        }
-                        if (ImGui::DragFloat("Deadzone", &binding->deadzone, 0.005f, 0.0f, 0.95f, "%.3f")) {
-                            projectSettingsChanged = true;
-                        }
-                        if (ImGui::DragFloat("Response", &binding->responseExponent, 0.05f, 0.1f, 4.0f, "%.2f")) {
-                            projectSettingsChanged = true;
-                        }
-
-                        const InputDeviceInfo* liveDevice = FindFirstDeviceOfType(inputManager_, activeDeviceType);
-                        const bool hasLiveAxis = liveDevice != nullptr &&
-                            binding->axis >= 0 &&
-                            binding->axis < static_cast<int>(liveDevice->axes.size());
-                        if (hasLiveAxis) {
-                            const float rawAxis = liveDevice->axes[static_cast<std::size_t>(binding->axis)];
-                            ImGui::TextDisabled("Raw Axis Value: %.3f", rawAxis);
-                            if (ImGui::Button("Capture Min")) {
-                                binding->calibrationMin = rawAxis;
-                                projectSettingsChanged = true;
-                            }
-                            ImGui::SameLine();
-                            if (ImGui::Button("Capture Center")) {
-                                binding->calibrationCenter = rawAxis;
-                                projectSettingsChanged = true;
-                            }
-                            ImGui::SameLine();
-                            if (ImGui::Button("Capture Max")) {
-                                binding->calibrationMax = rawAxis;
-                                projectSettingsChanged = true;
-                            }
-                        } else {
-                            ImGui::TextDisabled("Connect a matching device to calibrate this axis live.");
-                        }
-                    }
-
-                    if (inputManager_ != nullptr) {
-                        const bool canListenForBinding =
-                            binding->source == InputBindingSource::Key ||
-                            binding->source == InputBindingSource::Axis ||
-                            binding->source == InputBindingSource::Button;
-
-                        if (!canListenForBinding) {
-                            ImGui::TextDisabled("Listen is available for single key, axis, and button bindings.");
-                        } else if (!inputManager_->IsListeningForBinding()) {
-                            if (ImGui::Button("Listen For Input")) {
-                                inputManager_->StartListeningForBinding(activeDeviceType, binding->source);
-                            }
-                        } else {
-                            ImGui::TextDisabled("Listening for next input...");
-                            ImGui::SameLine();
-                            if (ImGui::Button("Cancel Listen")) {
-                                inputManager_->CancelListeningForBinding();
-                            }
-                        }
-
-                        InputBinding capturedBinding;
-                        if (canListenForBinding && inputManager_->ConsumeCapturedBinding(capturedBinding)) {
-                            if (capturedBinding.deviceType == activeDeviceType &&
-                                capturedBinding.source == binding->source) {
-                                capturedBinding.action = binding->action;
-                                capturedBinding.deadzone = binding->deadzone;
-                                capturedBinding.calibrationMin = binding->calibrationMin;
-                                capturedBinding.calibrationCenter = binding->calibrationCenter;
-                                capturedBinding.calibrationMax = binding->calibrationMax;
-                                capturedBinding.responseExponent = binding->responseExponent;
-                                *binding = capturedBinding;
-                                projectSettingsChanged = true;
-                            }
-                        }
-                    }
-
-                    if (activeDeviceType == InputDeviceType::Gamepad) {
-                        if (binding->source == InputBindingSource::Button && binding->button >= 0) {
-                            ImGui::TextDisabled("Selected: %s", GamepadButtonName(binding->button));
-                        } else if (binding->source == InputBindingSource::Axis && binding->axis >= 0) {
-                            ImGui::TextDisabled("Selected: %s", GamepadAxisName(binding->axis));
-                        }
-                    }
-
-                    if (ImGui::Button("Remove Action")) {
-                        const std::string removedAction = binding->action;
-                        profile.bindings.erase(
-                            std::remove_if(profile.bindings.begin(), profile.bindings.end(), [&](const InputBinding& candidate) {
-                                return candidate.action == removedAction;
-                            }),
-                            profile.bindings.end());
-                        projectSettingsChanged = true;
-                        ImGui::PopID();
-                        break;
-                    }
-                }
-                ImGui::PopID();
+                ImGui::EndTabBar();
             }
         }
     }
 
     if (projectSettingsChanged) {
         SyncInputProfiles(inputManager_, inputProfiles_);
+        SyncWheelSettingsProfiles(inputManager_, wheelSettingsProfiles_);
         SaveProject();
     }
 }

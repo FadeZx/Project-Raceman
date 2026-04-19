@@ -617,7 +617,9 @@ SceneEditor::SceneEditor() {
     onDirty_ = [this]() { sceneDirty_ = true; };
     InputManager defaultInputManager;
     defaultInputManager.EnsureDefaultProfiles();
+    defaultInputManager.EnsureDefaultWheelSettingsProfiles();
     inputProfiles_ = defaultInputManager.GetInputProfiles();
+    wheelSettingsProfiles_ = defaultInputManager.GetWheelSettingsProfiles();
     ResetPhysicsLayerSettings();
     // Load materials at startup
     materialManager_.LoadAll();
@@ -662,6 +664,33 @@ void SceneEditor::SetConsole(Console* console) {
         console_->SetCommandHandler([this](const std::string& command) {
             HandleConsoleCommand(command);
             return true;
+        });
+        if (inputManager_ != nullptr) {
+            inputManager_->SetLogCallback([console = console_](const std::string& message) {
+                if (console != nullptr) {
+                    console->AddLog(message);
+                }
+            });
+        }
+    }
+}
+
+void SceneEditor::SetInputManager(InputManager* inputManager) {
+    inputManager_ = inputManager;
+    if (inputManager_ == nullptr) {
+        return;
+    }
+
+    inputManager_->SetInputProfiles(inputProfiles_);
+    inputProfiles_ = inputManager_->GetInputProfiles();
+    inputManager_->SetWheelSettingsProfiles(wheelSettingsProfiles_);
+    wheelSettingsProfiles_ = inputManager_->GetWheelSettingsProfiles();
+
+    if (console_ != nullptr) {
+        inputManager_->SetLogCallback([console = console_](const std::string& message) {
+            if (console != nullptr) {
+                console->AddLog(message);
+            }
         });
     }
 }
@@ -2881,6 +2910,7 @@ void SceneEditor::LoadProject() {
                 }
 
                 inputProfiles_.clear();
+                wheelSettingsProfiles_.clear();
                 auto inputIt = object.find("input");
                 if (inputIt != object.end() && inputIt->second.is_object()) {
                     const auto& inputSettings = inputIt->second.as_object();
@@ -2942,6 +2972,60 @@ void SceneEditor::LoadProject() {
                             }
                         }
                     }
+                    auto wheelSettingsIt = inputSettings.find("wheelSettings");
+                    if (wheelSettingsIt != inputSettings.end() && wheelSettingsIt->second.is_array()) {
+                        for (const auto& wheelValue : wheelSettingsIt->second.as_array()) {
+                            if (!wheelValue.is_object()) {
+                                continue;
+                            }
+                            const auto& wheelObject = wheelValue.as_object();
+                            WheelSettingsProfile profile;
+                            ReadString(wheelObject, "id", profile.id);
+                            ReadString(wheelObject, "displayName", profile.displayName);
+                            ReadString(wheelObject, "deviceNamePattern", profile.deviceNamePattern);
+                            if (auto it = wheelObject.find("steeringRangeDegrees"); it != wheelObject.end() && it->second.is_number()) profile.steeringRangeDegrees = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("steeringSensitivity"); it != wheelObject.end() && it->second.is_number()) profile.steeringSensitivity = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("steeringSaturation"); it != wheelObject.end() && it->second.is_number()) profile.steeringSaturation = static_cast<float>(it->second.as_number());
+                            ReadBool(wheelObject, "steeringInvert", profile.steeringInvert);
+                            if (auto it = wheelObject.find("steeringDeadzone"); it != wheelObject.end() && it->second.is_number()) profile.steeringDeadzone = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("steeringCalibrationMin"); it != wheelObject.end() && it->second.is_number()) profile.steeringCalibrationMin = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("steeringCalibrationCenter"); it != wheelObject.end() && it->second.is_number()) profile.steeringCalibrationCenter = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("steeringCalibrationMax"); it != wheelObject.end() && it->second.is_number()) profile.steeringCalibrationMax = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("steeringResponseExponent"); it != wheelObject.end() && it->second.is_number()) profile.steeringResponseExponent = static_cast<float>(it->second.as_number());
+                            ReadBool(wheelObject, "combinedPedals", profile.combinedPedals);
+                            ReadBool(wheelObject, "throttleInvert", profile.throttleInvert);
+                            if (auto it = wheelObject.find("throttleDeadzone"); it != wheelObject.end() && it->second.is_number()) profile.throttleDeadzone = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("throttleCalibrationMin"); it != wheelObject.end() && it->second.is_number()) profile.throttleCalibrationMin = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("throttleCalibrationCenter"); it != wheelObject.end() && it->second.is_number()) profile.throttleCalibrationCenter = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("throttleCalibrationMax"); it != wheelObject.end() && it->second.is_number()) profile.throttleCalibrationMax = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("throttleResponseExponent"); it != wheelObject.end() && it->second.is_number()) profile.throttleResponseExponent = static_cast<float>(it->second.as_number());
+                            ReadBool(wheelObject, "brakeInvert", profile.brakeInvert);
+                            if (auto it = wheelObject.find("brakeDeadzone"); it != wheelObject.end() && it->second.is_number()) profile.brakeDeadzone = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("brakeCalibrationMin"); it != wheelObject.end() && it->second.is_number()) profile.brakeCalibrationMin = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("brakeCalibrationCenter"); it != wheelObject.end() && it->second.is_number()) profile.brakeCalibrationCenter = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("brakeCalibrationMax"); it != wheelObject.end() && it->second.is_number()) profile.brakeCalibrationMax = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("brakeResponseExponent"); it != wheelObject.end() && it->second.is_number()) profile.brakeResponseExponent = static_cast<float>(it->second.as_number());
+                            ReadBool(wheelObject, "clutchInvert", profile.clutchInvert);
+                            if (auto it = wheelObject.find("clutchDeadzone"); it != wheelObject.end() && it->second.is_number()) profile.clutchDeadzone = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("clutchCalibrationMin"); it != wheelObject.end() && it->second.is_number()) profile.clutchCalibrationMin = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("clutchCalibrationCenter"); it != wheelObject.end() && it->second.is_number()) profile.clutchCalibrationCenter = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("clutchCalibrationMax"); it != wheelObject.end() && it->second.is_number()) profile.clutchCalibrationMax = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("clutchResponseExponent"); it != wheelObject.end() && it->second.is_number()) profile.clutchResponseExponent = static_cast<float>(it->second.as_number());
+                            ReadBool(wheelObject, "forceFeedbackEnabled", profile.forceFeedbackEnabled);
+                            if (auto it = wheelObject.find("forceFeedbackOverallStrength"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackOverallStrength = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackSelfAligningTorque"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackSelfAligningTorque = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackRoadEffects"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackRoadEffects = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackSlipEffects"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackSlipEffects = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackCollisionEffects"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackCollisionEffects = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackDamper"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackDamper = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackFriction"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackFriction = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackSpring"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackSpring = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackMinimumForce"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackMinimumForce = static_cast<float>(it->second.as_number());
+                            if (!profile.id.empty()) {
+                                wheelSettingsProfiles_.push_back(std::move(profile));
+                            }
+                        }
+                    }
                 }
             }
         } catch (...) {
@@ -2992,6 +3076,8 @@ void SceneEditor::LoadProject() {
     if (inputManager_ != nullptr) {
         inputManager_->SetInputProfiles(inputProfiles_);
         inputProfiles_ = inputManager_->GetInputProfiles();
+        inputManager_->SetWheelSettingsProfiles(wheelSettingsProfiles_);
+        wheelSettingsProfiles_ = inputManager_->GetWheelSettingsProfiles();
     }
     if (shouldSaveProject) {
         SaveProject();
@@ -3064,6 +3150,54 @@ void SceneEditor::SaveProject() {
             }
             out << "        ]\n";
             out << "      }" << (profileIndex + 1 < inputProfiles_.size() ? ",\n" : "\n");
+        }
+        out << "    ],\n";
+        out << "    \"wheelSettings\": [\n";
+        for (std::size_t wheelIndex = 0; wheelIndex < wheelSettingsProfiles_.size(); ++wheelIndex) {
+            const WheelSettingsProfile& wheel = wheelSettingsProfiles_[wheelIndex];
+            out << "      {\n";
+            out << "        \"id\": \"" << JsonEscape(wheel.id) << "\",\n";
+            out << "        \"displayName\": \"" << JsonEscape(wheel.displayName) << "\",\n";
+            out << "        \"deviceNamePattern\": \"" << JsonEscape(wheel.deviceNamePattern) << "\",\n";
+            out << "        \"steeringRangeDegrees\": " << wheel.steeringRangeDegrees << ",\n";
+            out << "        \"steeringSensitivity\": " << wheel.steeringSensitivity << ",\n";
+            out << "        \"steeringSaturation\": " << wheel.steeringSaturation << ",\n";
+            out << "        \"steeringInvert\": " << (wheel.steeringInvert ? "true" : "false") << ",\n";
+            out << "        \"steeringDeadzone\": " << wheel.steeringDeadzone << ",\n";
+            out << "        \"steeringCalibrationMin\": " << wheel.steeringCalibrationMin << ",\n";
+            out << "        \"steeringCalibrationCenter\": " << wheel.steeringCalibrationCenter << ",\n";
+            out << "        \"steeringCalibrationMax\": " << wheel.steeringCalibrationMax << ",\n";
+            out << "        \"steeringResponseExponent\": " << wheel.steeringResponseExponent << ",\n";
+            out << "        \"combinedPedals\": " << (wheel.combinedPedals ? "true" : "false") << ",\n";
+            out << "        \"throttleInvert\": " << (wheel.throttleInvert ? "true" : "false") << ",\n";
+            out << "        \"throttleDeadzone\": " << wheel.throttleDeadzone << ",\n";
+            out << "        \"throttleCalibrationMin\": " << wheel.throttleCalibrationMin << ",\n";
+            out << "        \"throttleCalibrationCenter\": " << wheel.throttleCalibrationCenter << ",\n";
+            out << "        \"throttleCalibrationMax\": " << wheel.throttleCalibrationMax << ",\n";
+            out << "        \"throttleResponseExponent\": " << wheel.throttleResponseExponent << ",\n";
+            out << "        \"brakeInvert\": " << (wheel.brakeInvert ? "true" : "false") << ",\n";
+            out << "        \"brakeDeadzone\": " << wheel.brakeDeadzone << ",\n";
+            out << "        \"brakeCalibrationMin\": " << wheel.brakeCalibrationMin << ",\n";
+            out << "        \"brakeCalibrationCenter\": " << wheel.brakeCalibrationCenter << ",\n";
+            out << "        \"brakeCalibrationMax\": " << wheel.brakeCalibrationMax << ",\n";
+            out << "        \"brakeResponseExponent\": " << wheel.brakeResponseExponent << ",\n";
+            out << "        \"clutchInvert\": " << (wheel.clutchInvert ? "true" : "false") << ",\n";
+            out << "        \"clutchDeadzone\": " << wheel.clutchDeadzone << ",\n";
+            out << "        \"clutchCalibrationMin\": " << wheel.clutchCalibrationMin << ",\n";
+            out << "        \"clutchCalibrationCenter\": " << wheel.clutchCalibrationCenter << ",\n";
+            out << "        \"clutchCalibrationMax\": " << wheel.clutchCalibrationMax << ",\n";
+            out << "        \"clutchResponseExponent\": " << wheel.clutchResponseExponent << ",\n";
+            out << "        \"forceFeedbackEnabled\": " << (wheel.forceFeedbackEnabled ? "true" : "false") << ",\n";
+            out << "        \"forceFeedbackOverallStrength\": " << wheel.forceFeedbackOverallStrength << ",\n";
+            out << "        \"forceFeedbackSelfAligningTorque\": " << wheel.forceFeedbackSelfAligningTorque << ",\n";
+            out << "        \"forceFeedbackRoadEffects\": " << wheel.forceFeedbackRoadEffects << ",\n";
+            out << "        \"forceFeedbackSlipEffects\": " << wheel.forceFeedbackSlipEffects << ",\n";
+            out << "        \"forceFeedbackCollisionEffects\": " << wheel.forceFeedbackCollisionEffects << ",\n";
+            out << "        \"forceFeedbackDamper\": " << wheel.forceFeedbackDamper << ",\n";
+            out << "        \"forceFeedbackFriction\": " << wheel.forceFeedbackFriction << ",\n";
+            out << "        \"forceFeedbackSpring\": " << wheel.forceFeedbackSpring << ",\n";
+            out << "        \"forceFeedbackMinimumForce\": " << wheel.forceFeedbackMinimumForce << "\n";
+            out << "      }" << (wheelIndex + 1 < wheelSettingsProfiles_.size() ? ",\n" : "\n");
         }
         out << "    ]\n";
         out << "  },\n";

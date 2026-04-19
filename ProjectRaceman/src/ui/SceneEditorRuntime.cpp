@@ -21,6 +21,46 @@ namespace fs = std::filesystem;
 namespace raceman {
 using namespace scene_editor_internal;
 
+namespace {
+
+struct WheelForceFeedbackSample {
+    float torque{0.0f};
+    float damper{0.0f};
+    float vibration{0.0f};
+};
+
+WheelForceFeedbackSample BuildWheelForceFeedbackSample(const raceman::physics::VehiclePhysics& vehicle) {
+    WheelForceFeedbackSample sample;
+    const raceman::physics::VehicleTelemetry& telemetry = vehicle.getTelemetry();
+    const raceman::physics::VehicleConfig& config = vehicle.getConfig();
+    if (config.wheels.empty()) {
+        return sample;
+    }
+
+    float frontNormalForce = 0.0f;
+    int frontWheelCount = 0;
+    for (std::size_t i = 0; i < telemetry.wheels.size() && i < config.wheels.size(); ++i) {
+        if (config.wheels[i].mountPosition.y >= 0.0f) {
+            frontNormalForce += telemetry.wheels[i].normalForce;
+            ++frontWheelCount;
+        }
+    }
+
+    const float averageFrontNormal = frontWheelCount > 0 ? (frontNormalForce / static_cast<float>(frontWheelCount)) : 0.0f;
+    const float speedAbs = std::fabs(telemetry.longitudinalSpeed);
+    const float speedFactor = (std::clamp)(speedAbs / 25.0f, 0.0f, 1.0f);
+    const float loadFactor = (std::clamp)(averageFrontNormal / 4000.0f, 0.0f, 1.0f);
+
+    // Keep the first-pass model intentionally simple: center the wheel against the current steer input,
+    // then add a small speed-based damper. This avoids the previous odd slip-pull behavior.
+    sample.torque = (std::clamp)(-telemetry.steering * (0.08f + speedFactor * 0.42f + loadFactor * 0.28f), -1.0f, 1.0f);
+    sample.damper = (std::clamp)(0.03f + speedFactor * 0.08f, 0.0f, 1.0f);
+    sample.vibration = 0.0f;
+    return sample;
+}
+
+} // namespace
+
 void SceneEditor::UpdateScripts(float deltaTime) {
     if (!scriptsRunning_ || scriptsPaused_ || deltaTime <= 0.0f) {
         return;
@@ -181,11 +221,24 @@ void SceneEditor::UpdatePhysics(float deltaTime) {
 
 void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
     if (!scriptsRunning_ || scriptsPaused_ || deltaTime <= 0.0f) {
+        if (inputManager_ != nullptr) {
+            inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+            inputManager_->SetWheelForceFeedbackActive(false);
+        }
         return;
     }
 
     if (runtimeVehicles_.empty()) {
+        if (inputManager_ != nullptr) {
+            inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+            inputManager_->SetWheelForceFeedbackActive(false);
+        }
         return;
+    }
+
+    const bool wheelFfbAllowed = inputManager_ != nullptr && ShouldRouteInputToGame();
+    if (inputManager_ != nullptr) {
+        inputManager_->SetWheelForceFeedbackActive(wheelFfbAllowed);
     }
 
     bool anyEnabledCollider = false;
@@ -202,6 +255,10 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             break;
         }
     }
+
+    float strongestTorque = 0.0f;
+    float strongestDamper = 0.0f;
+    float strongestVibration = 0.0f;
 
     for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
         if (!runtimeVehicle.instance || runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
@@ -375,6 +432,13 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
 
         runtimeVehicle.instance->update(deltaTime);
 
+        const WheelForceFeedbackSample ffbSample = BuildWheelForceFeedbackSample(*runtimeVehicle.instance);
+        if (std::fabs(ffbSample.torque) >= std::fabs(strongestTorque)) {
+            strongestTorque = ffbSample.torque;
+            strongestDamper = ffbSample.damper;
+            strongestVibration = ffbSample.vibration;
+        }
+
         if (hasPhysicsChassis) {
             physicsWorld_->AddBodyForce(
                 runtimeVehicle.chassisBodyObjectId,
@@ -383,6 +447,12 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
                 runtimeVehicle.chassisBodyObjectId,
                 VehiclePseudoVectorToScene(runtimeVehicle.instance->getPendingChassisTorque()));
         }
+    }
+
+    if (inputManager_ != nullptr && wheelFfbAllowed) {
+        inputManager_->SetWheelForceFeedbackState(strongestTorque, strongestDamper, strongestVibration);
+    } else if (inputManager_ != nullptr) {
+        inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
     }
 }
 
@@ -489,6 +559,10 @@ void SceneEditor::SetScriptsRunning(bool running) {
     }
 
     if (running) {
+        if (inputManager_ != nullptr) {
+            inputManager_->SetWheelForceFeedbackActive(false);
+            inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+        }
         std::fprintf(stdout, "[Play] Building scene...\n");
         std::fflush(stdout);
 
@@ -712,6 +786,10 @@ void SceneEditor::SetScriptsRunning(bool running) {
         playModeLoad_.phase = PlayModeLoadState::Phase::Building;
         // TickPlayModeLoading() will finalize once the thread completes.
     } else {
+        if (inputManager_ != nullptr) {
+            inputManager_->SetWheelForceFeedbackActive(false);
+            inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+        }
         scriptsRunning_ = false;
         scriptsPaused_ = false;
         // Play EngineStop triggers before clearing audio runtime.
@@ -804,6 +882,10 @@ void SceneEditor::TickPlayModeLoading() {
         activeViewport_ = SceneEditorActiveViewport::Scene;
         std::fprintf(stdout, "[Play] Build cancelled.\n");
         std::fflush(stdout);
+        if (inputManager_ != nullptr) {
+            inputManager_->SetWheelForceFeedbackActive(false);
+            inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+        }
         return;
     }
 
@@ -821,6 +903,10 @@ void SceneEditor::TickPlayModeLoading() {
     RebuildAudioRuntime();
     RebuildScriptRuntime();
     scriptsRunning_ = true;
+    if (inputManager_ != nullptr) {
+        inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+        inputManager_->SetWheelForceFeedbackActive(true);
+    }
 
     if (console_) {
         console_->AddLog("Play mode started.");
