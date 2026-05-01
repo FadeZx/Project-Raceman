@@ -559,20 +559,44 @@ void SceneEditor::SetScriptsRunning(bool running) {
     }
 
     if (running) {
-        if (inputManager_ != nullptr) {
-            inputManager_->SetWheelForceFeedbackActive(false);
-            inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+        if (!playModeScriptAssemblyReady_) {
+            if (inputManager_ != nullptr) {
+                inputManager_->SetWheelForceFeedbackActive(false);
+                inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+            }
+            ClearScriptRuntime();
+            UnloadScriptAssembly();
+            SaveCurrentScene();
+            profilerStats_ = CollectProfilerStats();
+            playModeSnapshot_ = {objects_, selectedIndex_, selectedIndices_};
+            hasPlayModeSnapshot_ = true;
+            activeViewport_ = SceneEditorActiveViewport::Game;
+            scriptsPaused_ = false;
+            SyncScriptProjectFiles(false);
+
+            playModeLoad_ = {};
+            playModeLoad_.scriptBuild = std::make_shared<PlayModeLoadState::ScriptBuildStatus>();
+            playModeLoad_.buildStart = std::chrono::high_resolution_clock::now();
+            auto status = playModeLoad_.scriptBuild;
+            playModeLoad_.scriptBuildThread = std::make_unique<std::thread>([status]() {
+                std::string error;
+                const bool ok = BuildScriptAssembly(&error);
+                {
+                    std::lock_guard<std::mutex> lock(status->mutex);
+                    status->error = std::move(error);
+                }
+                status->success.store(ok);
+                status->isDone.store(true);
+            });
+            playModeLoad_.phase = PlayModeLoadState::Phase::BuildingScripts;
+            return;
         }
+
+        playModeScriptAssemblyReady_ = false;
         std::fprintf(stdout, "[Play] Building scene...\n");
         std::fflush(stdout);
 
-        SaveCurrentScene();
-        profilerStats_ = CollectProfilerStats();
-        playModeSnapshot_ = {objects_, selectedIndex_, selectedIndices_};
-        hasPlayModeSnapshot_ = true;
-        activeViewport_ = SceneEditorActiveViewport::Game;
         // scriptsRunning_ is set to true by TickPlayModeLoading once the background build completes.
-        scriptsPaused_ = false;
         std::vector<PhysicsBodyDesc> physicsBodies;
         std::vector<PhysicsCharacterDesc> physicsCharacters;
         std::unordered_map<std::string, PhysicsBodyDesc> vehicleChassisBodies;
@@ -783,7 +807,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
              chars   = std::move(physicsCharacters)]() mutable {
                 worldPtr->Build(bodies, chars, progressPtr);
             });
-        playModeLoad_.phase = PlayModeLoadState::Phase::Building;
+        playModeLoad_.phase = PlayModeLoadState::Phase::BuildingPhysics;
         // TickPlayModeLoading() will finalize once the thread completes.
     } else {
         if (inputManager_ != nullptr) {
@@ -792,6 +816,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
         }
         scriptsRunning_ = false;
         scriptsPaused_ = false;
+        playModeScriptAssemblyReady_ = false;
         // Play EngineStop triggers before clearing audio runtime.
         if (audioManager_ && audioManager_->IsInitialized()) {
             for (auto& inst : runtimeVehicleSounds_) {
@@ -807,6 +832,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
         }
         ClearAudioRuntime();
         ClearScriptRuntime();
+        UnloadScriptAssembly();
         runtimeVehicles_.clear();
         runtimeCinemachineStates_.clear();
         if (physicsWorld_) {
@@ -851,8 +877,76 @@ void SceneEditor::ClearScriptRuntime() {
     runtimeScripts_.clear();
 }
 
+void SceneEditor::RestoreFromPlayModeSnapshot() {
+    if (hasPlayModeSnapshot_) {
+        objects_ = playModeSnapshot_.objects;
+        selectedIndex_ = playModeSnapshot_.selectedIndex;
+        selectedIndices_ = playModeSnapshot_.selectedIndices;
+        NormalizeSelection();
+        playModeSnapshot_ = {};
+        hasPlayModeSnapshot_ = false;
+    }
+    activeViewport_ = SceneEditorActiveViewport::Scene;
+    playModeScriptAssemblyReady_ = false;
+    if (inputManager_ != nullptr) {
+        inputManager_->SetWheelForceFeedbackActive(false);
+        inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+    }
+}
+
 void SceneEditor::TickPlayModeLoading() {
     if (playModeLoad_.phase == PlayModeLoadState::Phase::Idle) {
+        return;
+    }
+
+    if (playModeLoad_.phase == PlayModeLoadState::Phase::BuildingScripts) {
+        auto status = playModeLoad_.scriptBuild;
+        if (!status || !status->isDone.load()) {
+            return;
+        }
+
+        if (playModeLoad_.scriptBuildThread && playModeLoad_.scriptBuildThread->joinable()) {
+            playModeLoad_.scriptBuildThread->join();
+        }
+
+        std::string error;
+        {
+            std::lock_guard<std::mutex> lock(status->mutex);
+            error = status->error;
+        }
+
+        if (!status->success.load()) {
+            playModeLoad_ = {};
+            RestoreFromPlayModeSnapshot();
+            const std::string message = error.empty() ? "Script DLL build failed. Check the build output for compiler errors." : error;
+            if (console_) {
+                console_->AddError(message);
+            }
+            std::fprintf(stdout, "[Play] Script build failed: %s\n", message.c_str());
+            std::fflush(stdout);
+            return;
+        }
+
+        std::string loadError;
+        if (!LoadScriptAssembly(&loadError)) {
+            playModeLoad_ = {};
+            RestoreFromPlayModeSnapshot();
+            const std::string message = loadError.empty() ? "Script DLL load failed." : loadError;
+            if (console_) {
+                console_->AddError(message);
+            }
+            std::fprintf(stdout, "[Play] Script load failed: %s\n", message.c_str());
+            std::fflush(stdout);
+            return;
+        }
+
+        if (console_) {
+            console_->AddLog("Loaded script DLL with " + std::to_string(GetRegisteredScripts().size()) + " script(s).");
+        }
+
+        playModeLoad_ = {};
+        playModeScriptAssemblyReady_ = true;
+        SetScriptsRunning(true);
         return;
     }
 
@@ -871,21 +965,9 @@ void SceneEditor::TickPlayModeLoading() {
     if (cancelled) {
         // Discard the partially-built world and restore editor state.
         playModeLoad_ = {};
-        if (hasPlayModeSnapshot_) {
-            objects_ = playModeSnapshot_.objects;
-            selectedIndex_ = playModeSnapshot_.selectedIndex;
-            selectedIndices_ = playModeSnapshot_.selectedIndices;
-            NormalizeSelection();
-            playModeSnapshot_ = {};
-            hasPlayModeSnapshot_ = false;
-        }
-        activeViewport_ = SceneEditorActiveViewport::Scene;
+        RestoreFromPlayModeSnapshot();
         std::fprintf(stdout, "[Play] Build cancelled.\n");
         std::fflush(stdout);
-        if (inputManager_ != nullptr) {
-            inputManager_->SetWheelForceFeedbackActive(false);
-            inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
-        }
         return;
     }
 
@@ -918,11 +1000,6 @@ void SceneEditor::RenderPlayModeLoadingPopup() {
         return;
     }
 
-    auto* prog = playModeLoad_.progress.get();
-    if (!prog) {
-        return;
-    }
-
     // Keep the modal open as long as building is in progress.
     const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -932,30 +1009,51 @@ void SceneEditor::RenderPlayModeLoadingPopup() {
     if (ImGui::BeginPopupModal("Building Scene...###PlayModeLoading", nullptr,
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
 
-        const int done  = prog->stepsDone.load();
-        const int total = prog->stepsTotal.load();
-        const float fraction = (total > 0) ? static_cast<float>(done) / static_cast<float>(total) : 0.0f;
-
         ImGui::Spacing();
-        ImGui::TextUnformatted("Baking collision geometry...");
-        ImGui::Spacing();
+        if (playModeLoad_.phase == PlayModeLoadState::Phase::BuildingScripts) {
+            const double elapsed = std::chrono::duration<double>(
+                std::chrono::high_resolution_clock::now() - playModeLoad_.buildStart).count();
+            const float pulse = static_cast<float>(std::fmod(elapsed * 0.45, 1.0));
 
-        char label[32];
-        std::snprintf(label, sizeof(label), "%d / %d", done, (std::max)(total, 1));
-        ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), label);
-
-        const std::string task = prog->GetTask();
-        if (!task.empty()) {
+            ImGui::TextUnformatted("Building script DLL...");
             ImGui::Spacing();
-            ImGui::TextDisabled("%s", task.c_str());
-        }
+            ImGui::ProgressBar(pulse, ImVec2(-1.0f, 0.0f), "ProjectScripts.dll");
+            ImGui::Spacing();
+            ImGui::TextDisabled("Compiling C++ scripts with MSBuild.");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::BeginDisabled();
+            ImGui::Button("Cancel", ImVec2(100.0f, 0.0f));
+            ImGui::EndDisabled();
+        } else {
+            auto* prog = playModeLoad_.progress.get();
+            if (prog) {
+                const int done  = prog->stepsDone.load();
+                const int total = prog->stepsTotal.load();
+                const float fraction = (total > 0) ? static_cast<float>(done) / static_cast<float>(total) : 0.0f;
 
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
+                ImGui::TextUnformatted("Baking collision geometry...");
+                ImGui::Spacing();
 
-        if (ImGui::Button("Cancel", ImVec2(100.0f, 0.0f))) {
-            prog->cancelRequested.store(true);
+                char label[32];
+                std::snprintf(label, sizeof(label), "%d / %d", done, (std::max)(total, 1));
+                ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), label);
+
+                const std::string task = prog->GetTask();
+                if (!task.empty()) {
+                    ImGui::Spacing();
+                    ImGui::TextDisabled("%s", task.c_str());
+                }
+
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+
+                if (ImGui::Button("Cancel", ImVec2(100.0f, 0.0f))) {
+                    prog->cancelRequested.store(true);
+                }
+            }
         }
 
         ImGui::EndPopup();
@@ -1355,7 +1453,7 @@ void SceneEditor::HandleConsoleCommand(const std::string& command) {
         }
         const auto& scripts = GetRegisteredScripts();
         if (scripts.empty()) {
-            console_->AddLog("No registered scripts. Create a script, rebuild, then attach it.");
+            console_->AddLog("No registered scripts. Press Play to build/load scripts, or create a script first.");
             return;
         }
         for (const ScriptDescriptor& script : scripts) {

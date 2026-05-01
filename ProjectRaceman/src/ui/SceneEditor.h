@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <thread>
 #include <chrono>
+#include <atomic>
+#include <mutex>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -490,6 +492,7 @@ private:
     void ClearScriptRuntime();
     void ClearAudioRuntime();
     void UpdateAudio(float deltaTime);
+    void RestoreFromPlayModeSnapshot();
     void TickPlayModeLoading();
     void RenderPlayModeLoadingPopup();
     void HandleConsoleCommand(const std::string& command);
@@ -530,7 +533,7 @@ private:
     bool CreateProjectFolder(const std::string& requestedName);
     bool SaveObjectAsPrefab(int objectIndex, const std::string& path);
     bool InstantiatePrefab(const std::string& path);
-    void SyncScriptProjectFiles();
+    void SyncScriptProjectFiles(bool logResult = true);
     void OpenMaterialEditor(const std::string& materialId);
     void OpenVehicleConfigEditor(const std::string& configPath);
     void OpenVehicleSoundEditor(const std::string& profilePath);
@@ -637,6 +640,7 @@ private:
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
     bool scriptsRunning_{false};
     bool scriptsPaused_{false};
+    bool playModeScriptAssemblyReady_{false};
     bool showCreateScriptPopup_{false};
     char createScriptNameBuffer_[128]{};
     char createMaterialNameBuffer_[128]{};
@@ -801,8 +805,16 @@ private:
     std::unique_ptr<PhysicsWorld> physicsWorld_;
 
     struct PlayModeLoadState {
-        enum class Phase { Idle, Building };
+        enum class Phase { Idle, BuildingScripts, BuildingPhysics };
+        struct ScriptBuildStatus {
+            std::atomic<bool> isDone{false};
+            std::atomic<bool> success{false};
+            std::string error;
+            mutable std::mutex mutex;
+        };
         Phase phase{Phase::Idle};
+        std::shared_ptr<ScriptBuildStatus> scriptBuild;
+        std::unique_ptr<std::thread> scriptBuildThread;
         std::shared_ptr<PhysicsBuildProgress> progress;
         std::unique_ptr<std::thread> buildThread;
         std::unique_ptr<PhysicsWorld> pendingWorld;

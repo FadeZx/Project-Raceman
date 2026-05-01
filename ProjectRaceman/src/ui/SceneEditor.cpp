@@ -583,31 +583,95 @@ std::string BuildScriptRegistrySource(const std::vector<ScriptSourceInfo>& scrip
         registry += "}\n\n";
     }
     registry += "} // namespace\n\n";
-    registry += "const std::vector<ScriptDescriptor>& GetRegisteredScripts() {\n";
-    registry += "    static const std::vector<ScriptDescriptor> scripts = {\n";
+    registry += "extern \"C\" __declspec(dllexport) void RacemanRegisterScripts(std::vector<raceman::ScriptDescriptor>& scripts) {\n";
+    registry += "    scripts.clear();\n";
     for (const ScriptSourceInfo& script : scripts) {
-        registry += "        {\"" + script.name + "\", \"" + script.projectSourcePath + "\", &Create" + script.name + "},\n";
+        registry += "    scripts.push_back({\"" + script.name + "\", \"" + script.projectSourcePath + "\", &Create" + script.name + "});\n";
     }
-    registry += "    };\n";
-    registry += "    return scripts;\n";
-    registry += "}\n\n";
-    registry += "const ScriptDescriptor* FindRegisteredScript(const std::string& name) {\n";
-    registry += "    for (const ScriptDescriptor& script : GetRegisteredScripts()) {\n";
-    registry += "        if (script.name == name) {\n";
-    registry += "            return &script;\n";
-    registry += "        }\n";
-    registry += "    }\n";
-    registry += "    return nullptr;\n";
-    registry += "}\n\n";
-    registry += "std::unique_ptr<IObjectScript> CreateRegisteredScript(const std::string& name) {\n";
-    registry += "    const ScriptDescriptor* script = FindRegisteredScript(name);\n";
-    registry += "    if (script == nullptr || script->create == nullptr) {\n";
-    registry += "        return {};\n";
-    registry += "    }\n";
-    registry += "    return script->create();\n";
     registry += "}\n\n";
     registry += "} // namespace raceman\n";
     return registry;
+}
+
+std::string BuildScriptProjectSource(const std::vector<ScriptSourceInfo>& scripts) {
+    std::string project;
+    project += "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+    project += "<Project DefaultTargets=\"Build\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n";
+    project += "  <ItemGroup Label=\"ProjectConfigurations\">\n";
+    project += "    <ProjectConfiguration Include=\"Debug|x64\"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>\n";
+    project += "    <ProjectConfiguration Include=\"Release|x64\"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>\n";
+    project += "  </ItemGroup>\n";
+    project += "  <PropertyGroup Label=\"Globals\">\n";
+    project += "    <VCProjectVersion>16.0</VCProjectVersion>\n";
+    project += "    <Keyword>Win32Proj</Keyword>\n";
+    project += "    <ProjectGuid>{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}</ProjectGuid>\n";
+    project += "    <RootNamespace>ProjectScripts</RootNamespace>\n";
+    project += "    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>\n";
+    project += "  </PropertyGroup>\n";
+    project += "  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.Default.props\" />\n";
+    project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Debug|x64'\" Label=\"Configuration\"><ConfigurationType>DynamicLibrary</ConfigurationType><UseDebugLibraries>true</UseDebugLibraries><PlatformToolset>v143</PlatformToolset><CharacterSet>MultiByte</CharacterSet></PropertyGroup>\n";
+    project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\" Label=\"Configuration\"><ConfigurationType>DynamicLibrary</ConfigurationType><UseDebugLibraries>false</UseDebugLibraries><PlatformToolset>v143</PlatformToolset><WholeProgramOptimization>true</WholeProgramOptimization><CharacterSet>MultiByte</CharacterSet></PropertyGroup>\n";
+    project += "  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.props\" />\n";
+    project += "  <PropertyGroup><VcpkgEnableManifest>true</VcpkgEnableManifest></PropertyGroup>\n";
+    project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Debug|x64'\"><OutDir>$(SolutionDir)bin\\$(Configuration)\\</OutDir><IntDir>$(SolutionDir)bin-int\\ProjectScripts\\$(Configuration)\\</IntDir><TargetName>ProjectScripts</TargetName><LanguageStandard>stdcpp17</LanguageStandard></PropertyGroup>\n";
+    project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\"><OutDir>$(SolutionDir)bin\\$(Configuration)\\</OutDir><IntDir>$(SolutionDir)bin-int\\ProjectScripts\\$(Configuration)\\</IntDir><TargetName>ProjectScripts</TargetName><LanguageStandard>stdcpp17</LanguageStandard></PropertyGroup>\n";
+    project += "  <ItemDefinitionGroup Condition=\"'$(Configuration)|$(Platform)'=='Debug|x64'\">\n";
+    project += "    <ClCompile><WarningLevel>Level3</WarningLevel><SDLCheck>true</SDLCheck><PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;RACEMAN_SCRIPT_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions><ConformanceMode>true</ConformanceMode><AdditionalIncludeDirectories>$(ProjectDir)..\\includes;$(ProjectDir)editor-assets/third_party;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories><LanguageStandard>stdcpp17</LanguageStandard><AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions><ProgramDataBaseFileName>$(IntDir)%(Filename).compile.pdb</ProgramDataBaseFileName><RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary></ClCompile>\n";
+    project += "    <Link><SubSystem>Console</SubSystem><GenerateDebugInformation>false</GenerateDebugInformation><AdditionalDependencies>ProjectRaceman.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>$(ProjectDir)bin\\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories></Link>\n";
+    project += "  </ItemDefinitionGroup>\n";
+    project += "  <ItemDefinitionGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\">\n";
+    project += "    <ClCompile><WarningLevel>Level3</WarningLevel><FunctionLevelLinking>true</FunctionLevelLinking><IntrinsicFunctions>true</IntrinsicFunctions><PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;RACEMAN_SCRIPT_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions><ConformanceMode>true</ConformanceMode><AdditionalIncludeDirectories>$(ProjectDir)..\\includes;$(ProjectDir)editor-assets/third_party;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories><LanguageStandard>stdcpp17</LanguageStandard><AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions><ProgramDataBaseFileName>$(IntDir)%(Filename).compile.pdb</ProgramDataBaseFileName></ClCompile>\n";
+    project += "    <Link><SubSystem>Console</SubSystem><GenerateDebugInformation>false</GenerateDebugInformation><EnableCOMDATFolding>true</EnableCOMDATFolding><OptimizeReferences>true</OptimizeReferences><AdditionalDependencies>ProjectRaceman.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>$(ProjectDir)bin\\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories></Link>\n";
+    project += "  </ItemDefinitionGroup>\n";
+    project += "  <ItemGroup>\n";
+    project += "    <ClInclude Include=\"src\\scripting\\ObjectScript.h\" />\n";
+    project += "    <ClInclude Include=\"src\\scripting\\ScriptRegistry.h\" />\n";
+    for (const ScriptSourceInfo& script : scripts) {
+        std::string headerProjectPath = "Project\\" + script.projectHeaderPath;
+        std::replace(headerProjectPath.begin(), headerProjectPath.end(), '/', '\\');
+        project += "    <ClInclude Include=\"" + headerProjectPath + "\" />\n";
+    }
+    project += "  </ItemGroup>\n";
+    project += "  <ItemGroup>\n";
+    project += "    <ClCompile Include=\"src\\scripting\\ScriptDllRegistry.cpp\" />\n";
+    for (const ScriptSourceInfo& script : scripts) {
+        std::string sourceProjectPath = "Project\\" + script.projectSourcePath;
+        std::replace(sourceProjectPath.begin(), sourceProjectPath.end(), '/', '\\');
+        project += "    <ClCompile Include=\"" + sourceProjectPath + "\" />\n";
+    }
+    project += "  </ItemGroup>\n";
+    project += "  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />\n";
+    project += "</Project>\n";
+    return project;
+}
+
+std::string BuildScriptProjectFiltersSource(const std::vector<ScriptSourceInfo>& scripts) {
+    std::string filters;
+    filters += "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+    filters += "<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n";
+    filters += "  <ItemGroup>\n";
+    filters += "    <Filter Include=\"Source Files\"><UniqueIdentifier>{2F35C900-AF28-44AF-B467-4A14C061D985}</UniqueIdentifier><Extensions>cpp;c;cc;cxx</Extensions></Filter>\n";
+    filters += "    <Filter Include=\"Header Files\"><UniqueIdentifier>{F31E8774-B24C-445D-B71C-F655107179AB}</UniqueIdentifier><Extensions>h;hpp</Extensions></Filter>\n";
+    filters += "  </ItemGroup>\n";
+    filters += "  <ItemGroup>\n";
+    filters += "    <ClInclude Include=\"src\\scripting\\ObjectScript.h\"><Filter>Header Files</Filter></ClInclude>\n";
+    filters += "    <ClInclude Include=\"src\\scripting\\ScriptRegistry.h\"><Filter>Header Files</Filter></ClInclude>\n";
+    for (const ScriptSourceInfo& script : scripts) {
+        std::string headerProjectPath = "Project\\" + script.projectHeaderPath;
+        std::replace(headerProjectPath.begin(), headerProjectPath.end(), '/', '\\');
+        filters += "    <ClInclude Include=\"" + headerProjectPath + "\"><Filter>Header Files</Filter></ClInclude>\n";
+    }
+    filters += "  </ItemGroup>\n";
+    filters += "  <ItemGroup>\n";
+    filters += "    <ClCompile Include=\"src\\scripting\\ScriptDllRegistry.cpp\"><Filter>Source Files</Filter></ClCompile>\n";
+    for (const ScriptSourceInfo& script : scripts) {
+        std::string sourceProjectPath = "Project\\" + script.projectSourcePath;
+        std::replace(sourceProjectPath.begin(), sourceProjectPath.end(), '/', '\\');
+        filters += "    <ClCompile Include=\"" + sourceProjectPath + "\"><Filter>Source Files</Filter></ClCompile>\n";
+    }
+    filters += "  </ItemGroup>\n";
+    filters += "</Project>\n";
+    return filters;
 }
 
 } // namespace
@@ -627,6 +691,8 @@ SceneEditor::SceneEditor() {
     LoadProject();
     materialManager_.LoadAll();
     RefreshProjectFiles();
+    std::string scriptLoadError;
+    LoadScriptAssembly(&scriptLoadError);
 }
 
 SceneEditor::~SceneEditor() {
@@ -637,6 +703,9 @@ SceneEditor::~SceneEditor() {
             playModeLoad_.progress->cancelRequested.store(true);
         }
         playModeLoad_.buildThread->join();
+    }
+    if (playModeLoad_.scriptBuildThread && playModeLoad_.scriptBuildThread->joinable()) {
+        playModeLoad_.scriptBuildThread->join();
     }
 
     // If the app is closed while in play mode, restore the pre-play snapshot so
@@ -650,6 +719,8 @@ SceneEditor::~SceneEditor() {
         scriptsRunning_ = false;
         SaveCurrentScene();
     }
+    ClearScriptRuntime();
+    UnloadScriptAssembly();
     for (const auto& [filename, textureId] : componentIconTextures_) {
         (void)filename;
         if (textureId != 0) {
@@ -1514,30 +1585,49 @@ bool SceneEditor::AttachScriptToSelected(const std::string& scriptName, const st
     return true;
 }
 
-void SceneEditor::SyncScriptProjectFiles() {
+void SceneEditor::SyncScriptProjectFiles(bool logResult) {
     const fs::path assetsRoot = FindAssetsRoot();
     const fs::path engineRoot = EngineRootPath();
     const fs::path projectPath = engineRoot / "Project Raceman.vcxproj";
     const fs::path filtersPath = engineRoot / "Project Raceman.vcxproj.filters";
+    const fs::path scriptProjectPath = engineRoot / "ProjectScripts.vcxproj";
+    const fs::path scriptFiltersPath = engineRoot / "ProjectScripts.vcxproj.filters";
+    const fs::path solutionPath = engineRoot / "Project Raceman.sln";
 
     const std::vector<ScriptSourceInfo> scripts = FindCompleteScripts(assetsRoot);
 
     RemoveProjectEntriesUnderScripts(projectPath);
     RemoveProjectEntriesUnderScripts(filtersPath);
-    for (const ScriptSourceInfo& script : scripts) {
-        std::string headerProjectPath = "Project\\" + script.projectHeaderPath;
-        std::string sourceProjectPath = "Project\\" + script.projectSourcePath;
-        std::replace(headerProjectPath.begin(), headerProjectPath.end(), '/', '\\');
-        std::replace(sourceProjectPath.begin(), sourceProjectPath.end(), '/', '\\');
-        AddProjectIncludeEntry(projectPath, headerProjectPath);
-        AddProjectCompileEntry(projectPath, sourceProjectPath);
-        AddFilterIncludeEntry(filtersPath, headerProjectPath);
-        AddFilterCompileEntry(filtersPath, sourceProjectPath);
+
+    WriteTextFile(engineRoot / "src" / "scripting" / "ScriptDllRegistry.cpp", BuildScriptRegistrySource(scripts));
+    WriteTextFile(scriptProjectPath, BuildScriptProjectSource(scripts));
+    WriteTextFile(scriptFiltersPath, BuildScriptProjectFiltersSource(scripts));
+
+    std::string solutionText;
+    if (ReadTextFile(solutionPath, solutionText) && !ContainsText(solutionText, "ProjectScripts.vcxproj")) {
+        const std::string projectEntry =
+            "Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = \"ProjectScripts\", \"ProjectScripts.vcxproj\", \"{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}\"\n"
+            "EndProject\n";
+        const std::size_t globalPos = solutionText.find("Global\n");
+        if (globalPos != std::string::npos) {
+            solutionText.insert(globalPos, projectEntry);
+        }
+        const std::string configMarker = "\tGlobalSection(ProjectConfigurationPlatforms) = postSolution\n";
+        const std::size_t configPos = solutionText.find(configMarker);
+        if (configPos != std::string::npos) {
+            const std::size_t insertPos = configPos + configMarker.size();
+            const std::string configs =
+                "\t\t{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}.Debug|x64.ActiveCfg = Debug|x64\n"
+                "\t\t{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}.Debug|x64.Build.0 = Debug|x64\n"
+                "\t\t{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}.Release|x64.ActiveCfg = Release|x64\n"
+                "\t\t{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}.Release|x64.Build.0 = Release|x64\n";
+            solutionText.insert(insertPos, configs);
+        }
+        WriteTextFile(solutionPath, solutionText);
     }
 
-    WriteTextFile(engineRoot / "src" / "scripting" / "ScriptRegistry.cpp", BuildScriptRegistrySource(scripts));
-    if (console_) {
-        console_->AddLog("Synced script project files with " + std::to_string(scripts.size()) + " script(s).");
+    if (logResult && console_) {
+        console_->AddLog("Synced script DLL project with " + std::to_string(scripts.size()) + " script(s).");
     }
 }
 
@@ -1634,9 +1724,9 @@ bool SceneEditor::CreateScriptAsset(const std::string& requestedName, bool attac
         if (console_) {
             console_->AddLog("Created C++ script " + className + ": " + scriptPath);
             if (attachToSelected && selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())) {
-                console_->AddLog("Attached pending script " + className + " to " + objects_[selectedIndex_].name + " and saved the scene. Rebuild/restart before running it.");
+                console_->AddLog("Attached pending script " + className + " to " + objects_[selectedIndex_].name + " and saved the scene. It will build when Play starts.");
             } else {
-                console_->AddLog("Rebuild the app before attaching/running " + className + ".");
+                console_->AddLog("Press Play to build/load " + className + " before running it.");
             }
         }
         RefreshProjectFiles();

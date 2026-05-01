@@ -165,7 +165,7 @@
       "type": "GameObject",
       "physicsLayer": 2,
       "enabled": true,
-      "componentOrder": ["Transform", "Vehicle", "MeshRenderer", "VehicleSound"],
+      "componentOrder": ["Transform", "MeshRenderer", "VehicleSound", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -180,34 +180,25 @@
           "color": [1, 1, 1, 1]
         },
         {
-          "type": "Vehicle",
+          "type": "Script",
           "enabled": true,
-          "canTilt": true,
-          "configPath": "assets/car/Test1.vehicle.json",
-          "inputProfileId": "default_vehicle",
-          "preferredInputDevice": "Any",
-          "preferredInputDeviceId": "",
-          "chassisObjectIds": ["mesh_6"],
-          "wheelBindings": [
+          "attachments": [
             {
-              "wheelName": "Front Left",
-              "objectId": "mesh_3",
-              "visualRotationEuler": [0, 0, 0]
-            },
-            {
-              "wheelName": "Front Right",
-              "objectId": "mesh_1",
-              "visualRotationEuler": [0, 0, 0]
-            },
-            {
-              "wheelName": "Rear Left",
-              "objectId": "mesh_4",
-              "visualRotationEuler": [0, 0, 0]
-            },
-            {
-              "wheelName": "Rear Right",
-              "objectId": "mesh_5",
-              "visualRotationEuler": [0, 0, 0]
+              "enabled": true,
+              "scriptName": "CharacterControllerTest",
+              "scriptPath": "assets/scripts/CharacterControllerTest.cpp",
+              "fields": [
+                {
+                  "name": "moveSpeed",
+                  "type": "Float",
+                "value": 6
+                },
+                {
+                  "name": "jumpImpulse",
+                  "type": "Float",
+                "value": 1.5
+                }
+              ]
             }
           ]
         },
@@ -7079,5 +7070,5 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_8"]
+  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_1635", "gameobject_7", "gameobject_8"]
 }

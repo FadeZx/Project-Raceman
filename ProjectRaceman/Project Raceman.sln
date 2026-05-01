@@ -4,6 +4,8 @@ VisualStudioVersion = 17.3.32912.275
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Project Raceman", "Project Raceman.vcxproj", "{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProjectScripts", "ProjectScripts.vcxproj", "{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -14,6 +16,10 @@ Global
 		{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}.Debug|x64.Build.0 = Debug|x64
 		{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}.Release|x64.ActiveCfg = Release|x64
 		{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}.Release|x64.Build.0 = Release|x64
+		{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}.Debug|x64.ActiveCfg = Debug|x64
+		{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}.Debug|x64.Build.0 = Debug|x64
+		{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}.Release|x64.ActiveCfg = Release|x64
+		{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

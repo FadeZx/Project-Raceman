@@ -6,6 +6,16 @@
 
 #include <glm/glm.hpp>
 
+#if defined(_WIN32)
+#if defined(RACEMAN_SCRIPT_DLL)
+#define RACEMAN_SCRIPT_API __declspec(dllimport)
+#else
+#define RACEMAN_SCRIPT_API __declspec(dllexport)
+#endif
+#else
+#define RACEMAN_SCRIPT_API
+#endif
+
 namespace raceman {
 
 class Console;
@@ -85,7 +95,7 @@ inline ScriptFieldDefinition MakeVec4ScriptField(std::string name, std::string l
         return kFields; \
     }
 
-class ObjectScriptContext {
+class RACEMAN_SCRIPT_API ObjectScriptContext {
 public:
     class CameraHandle {
     public:
@@ -197,7 +207,7 @@ private:
     PhysicsWorld* physicsWorld_{nullptr};
 };
 
-class IObjectScript {
+class RACEMAN_SCRIPT_API IObjectScript {
 public:
     virtual ~IObjectScript() = default;
     virtual const std::vector<ScriptFieldDefinition>& GetFieldDefinitions() const;

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files"><UniqueIdentifier>{2F35C900-AF28-44AF-B467-4A14C061D985}</UniqueIdentifier><Extensions>cpp;c;cc;cxx</Extensions></Filter>
+    <Filter Include="Header Files"><UniqueIdentifier>{F31E8774-B24C-445D-B71C-F655107179AB}</UniqueIdentifier><Extensions>h;hpp</Extensions></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\scripting\ObjectScript.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\scripting\ScriptRegistry.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Project\assets\scripts\CameraOrbit.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Project\assets\scripts\CharacterControllerTest.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Project\assets\scripts\Test1.h"><Filter>Header Files</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\scripting\ScriptDllRegistry.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Project\assets\scripts\CameraOrbit.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Project\assets\scripts\CharacterControllerTest.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Project\assets\scripts\Test1.cpp"><Filter>Source Files</Filter></ClCompile>
+  </ItemGroup>
+</Project>

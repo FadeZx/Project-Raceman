@@ -1032,7 +1032,7 @@ void SceneEditor::RenderInspectorPanel() {
                         const auto& registeredScripts = GetRegisteredScripts();
                         if (registeredScripts.empty()) {
                             ImGui::TextDisabled("No registered C++ scripts.");
-                            ImGui::TextDisabled("Create a script, rebuild, then attach it.");
+                            ImGui::TextDisabled("Create a script or press Play to build/load scripts.");
                         }
                         for (const ScriptDescriptor& script : registeredScripts) {
                             const std::string label = script.name + "##attachRegisteredScript";
@@ -1059,7 +1059,7 @@ void SceneEditor::RenderInspectorPanel() {
 
                 if (ImGui::BeginPopupModal("Create C++ Script", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                     ImGui::TextUnformatted("Create a compiled C++ object script.");
-                    ImGui::TextDisabled("Run tools/watch-scripts.ps1 -AttachDebugger for rebuild/restart/debug attach.");
+                    ImGui::TextDisabled("Scripts are built into ProjectScripts.dll when Play starts.");
                     ImGui::InputText("Class Name", createScriptNameBuffer_, sizeof(createScriptNameBuffer_));
                     if (ImGui::Button("Create")) {
                         if (CreateScriptAsset(createScriptNameBuffer_)) {
@@ -1123,7 +1123,7 @@ void SceneEditor::RenderInspectorPanel() {
                         }
                         const bool scriptRegistered = FindRegisteredScript(script.scriptName) != nullptr;
                         if (!scriptRegistered) {
-                            ImGui::TextDisabled("Not registered in this build. Rebuild after creating or editing scripts.");
+                            ImGui::TextDisabled("Not loaded yet. Press Play to build/load scripts.");
                         } else {
                             const std::vector<ScriptFieldDefinition> fieldDefinitions = GetRegisteredScriptFieldDefinitions(script.scriptName);
                             if (!fieldDefinitions.empty()) {

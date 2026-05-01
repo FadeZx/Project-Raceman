@@ -208,12 +208,6 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <None Include="src\shaders\text.vs" />
     <None Include="src\shaders\UIShader.fs" />
     <None Include="src\shaders\UIShader.vs" />
-    <ClInclude Include="Project\assets\scripts\Test1.h" />
-    <ClInclude Include="Project\assets\scripts\CameraOrbit.h" />
-    <ClInclude Include="Project\assets\scripts\CharacterControllerTest.h" />
-    <ClCompile Include="Project\assets\scripts\Test1.cpp" />
-    <ClCompile Include="Project\assets\scripts\CameraOrbit.cpp" />
-    <ClCompile Include="Project\assets\scripts\CharacterControllerTest.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
