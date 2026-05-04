@@ -64,7 +64,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)../includes;$(ProjectDir)editor-assets/third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)../includes;$(ProjectDir)editor-assets/third_party;$(ProjectDir)editor-assets/third_party/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
       <ProgramDataBaseFileName>$(IntDir)%(Filename).compile.pdb</ProgramDataBaseFileName>
@@ -89,7 +89,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)../includes;$(ProjectDir)editor-assets/third_party;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)../includes;$(ProjectDir)editor-assets/third_party;$(ProjectDir)editor-assets/third_party/imgui;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
       <ProgramDataBaseFileName>$(IntDir)%(Filename).compile.pdb</ProgramDataBaseFileName>
@@ -137,6 +137,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="src\ui\ObjImport.h" />
     <ClInclude Include="src\ui\SceneEditor.h" />
     <ClInclude Include="src\ui\SceneEditorInternal.h" />
+    <ClInclude Include="editor-assets\third_party\ImGuizmo\ImGuizmo.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -165,6 +166,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="editor-assets\third_party\imgui\imgui_draw.cpp" />
     <ClCompile Include="editor-assets\third_party\imgui\imgui_tables.cpp" />
     <ClCompile Include="editor-assets\third_party\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="editor-assets\third_party\ImGuizmo\ImGuizmo.cpp" />
     <ClCompile Include="src\ui\MenuController.cpp" />
     <ClCompile Include="src\ui\ObjImport.cpp" />
     <ClCompile Include="src\ui\SceneEditor.cpp" />

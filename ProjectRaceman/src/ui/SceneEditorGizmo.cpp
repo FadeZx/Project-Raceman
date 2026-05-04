@@ -1,7 +1,9 @@
 #include "SceneEditorInternal.h"
 #include "../physics/SimpleJson.h"
+#include "../../editor-assets/third_party/ImGuizmo/ImGuizmo.h"
 
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <unordered_map>
 #include <vector>
@@ -10,6 +12,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #endif
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/norm.hpp>
 
@@ -45,6 +48,22 @@ glm::mat4 BuildObjectMatrixNoScale(const SceneObject& object) {
     model = glm::translate(model, object.transform.position);
     model *= BuildRotationMatrix(object);
     return model;
+}
+
+ImGuizmo::OPERATION ImGuizmoOperationFromMode(GizmoMode mode) {
+    switch (mode) {
+    case GizmoMode::Rotate:
+        return ImGuizmo::ROTATE;
+    case GizmoMode::Scale:
+        return ImGuizmo::SCALE;
+    case GizmoMode::Move:
+    default:
+        return ImGuizmo::TRANSLATE;
+    }
+}
+
+ImGuizmo::MODE ImGuizmoTransformModeFromMode(GizmoMode mode) {
+    return mode == GizmoMode::Move ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
 }
 
 struct CachedCollisionMesh {
@@ -137,6 +156,19 @@ bool GetObjectLocalBounds(const SceneObject& object, glm::vec3& outMin, glm::vec
     if (meshType == "Plane") {
         outMin = {-0.5f, -0.05f, -0.5f};
         outMax = {0.5f, 0.05f, 0.5f};
+        return true;
+    }
+
+    if (IsBuiltInPrimitiveMeshType(meshType)) {
+        outMin = object.meshFilter.localBoundsMin;
+        outMax = object.meshFilter.localBoundsMax;
+        constexpr float minThickness = 0.05f;
+        for (int i = 0; i < 3; ++i) {
+            if (std::abs(outMax[i] - outMin[i]) < minThickness) {
+                outMin[i] -= minThickness * 0.5f;
+                outMax[i] += minThickness * 0.5f;
+            }
+        }
         return true;
     }
 
@@ -730,8 +762,6 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
 void SceneEditor::UpdateGizmo(Renderer& renderer) {
     NormalizeSelection();
     hoveredGizmoAxis_ = -1;
-    ImGuiIO& io = ImGui::GetIO();
-    const bool mouseInViewport = ContainsSceneViewportPoint(io.MousePos.x, io.MousePos.y);
 
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
         activeGizmoAxis_ = -1;
@@ -742,7 +772,6 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
         return;
     }
 
-    const SceneObject& selectedObject = objects_[selectedIndex_];
     if (!IsObjectEffectivelyEnabled(selectedIndex_)) {
         activeGizmoAxis_ = -1;
         gizmoDragSelectionIndices_.clear();
@@ -751,40 +780,74 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
         TrySelectObjectAtMouse(renderer);
         return;
     }
-    const glm::vec2 mouse{io.MousePos.x, io.MousePos.y};
-    const glm::vec3 origin = GetObjectWorldPosition(selectedIndex_);
-    const glm::mat4 gizmoRotation = BuildRotationMatrix(selectedObject);
-    constexpr float axisLength = 1.0f;
-    constexpr float hitDistancePixels = 10.0f;
 
-    float bestDistance = hitDistancePixels;
-    for (int axis = 0; axis < 3; ++axis) {
-        float distance = bestDistance;
-        if (gizmoMode_ == GizmoMode::Rotate) {
-            distance = DistanceToProjectedRing(mouse, origin, gizmoRotation, axis, axisLength, renderer);
-        } else {
-            glm::vec2 startScreen;
-            glm::vec2 endScreen;
-            const glm::vec3 end = origin + (gizmoMode_ == GizmoMode::Rotate ? TransformDirection(gizmoRotation, GizmoAxisVector(axis)) : GizmoAxisVector(axis)) * axisLength;
-            if (!ProjectWorldToScreen(origin, renderer, startScreen) || !ProjectWorldToScreen(end, renderer, endScreen)) {
-                continue;
-            }
-            distance = DistanceToScreenSegment(mouse, startScreen, endScreen);
-        }
-        if (distance < bestDistance) {
-            bestDistance = distance;
-            hoveredGizmoAxis_ = axis;
+    TrySelectObjectAtMouse(renderer);
+}
+
+void SceneEditor::UpdateImGuizmo() {
+    NormalizeSelection();
+    if (!hasEditorCameraMatrices_ ||
+        activeViewport_ != SceneEditorActiveViewport::Scene ||
+        sceneViewportSize_.x <= 1.0f ||
+        sceneViewportSize_.y <= 1.0f) {
+        return;
+    }
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImGuizmo::BeginFrame();
+    ImGuizmo::SetOrthographic(false);
+    ImGuizmo::SetDrawlist();
+    ImGuizmo::SetRect(
+        sceneViewportPos_.x,
+        sceneViewportPos_.y,
+        sceneViewportSize_.x,
+        sceneViewportSize_.y);
+
+    // View orientation cube in the top-right of the scene viewport (Unity/Blender-style).
+    // Click a face/axis to snap the camera; drag to orbit. Always drawn, regardless of selection.
+    {
+        const float cubeSize = 100.0f;
+        const float pad = 10.0f;
+        const ImVec2 cubePos(
+            sceneViewportPos_.x + sceneViewportSize_.x - cubeSize - pad,
+            sceneViewportPos_.y + pad);
+        glm::mat4 viewBefore = editorCameraView_;
+        ImGuizmo::ViewManipulate(
+            glm::value_ptr(editorCameraView_),
+            8.0f,
+            cubePos,
+            ImVec2(cubeSize, cubeSize),
+            0x10101010);
+        if (onEditorCameraViewChanged_ &&
+            std::memcmp(glm::value_ptr(editorCameraView_),
+                        glm::value_ptr(viewBefore),
+                        sizeof(glm::mat4)) != 0) {
+            onEditorCameraViewChanged_(editorCameraView_);
         }
     }
 
-    if (activeGizmoAxis_ < 0) {
-        if (!io.WantTextInput && mouseInViewport && !io.MouseDown[1] && io.MouseClicked[0] && hoveredGizmoAxis_ >= 0) {
+    // Object transform manipulator — needs a valid, enabled selection.
+    if (selectedIndex_ < 0 ||
+        selectedIndex_ >= static_cast<int>(objects_.size()) ||
+        !IsObjectEffectivelyEnabled(selectedIndex_)) {
+        return;
+    }
+
+    glm::mat4 objectWorldMatrix = GetObjectWorldMatrix(selectedIndex_);
+    glm::mat4 deltaMatrix(1.0f);
+    const bool manipulated = !io.WantTextInput && !io.MouseDown[1] && sceneViewportHovered_ &&
+        ImGuizmo::Manipulate(
+            glm::value_ptr(editorCameraView_),
+            glm::value_ptr(editorCameraProj_),
+            ImGuizmoOperationFromMode(gizmoMode_),
+            ImGuizmoTransformModeFromMode(gizmoMode_),
+            glm::value_ptr(objectWorldMatrix),
+            glm::value_ptr(deltaMatrix));
+
+    if (ImGuizmo::IsUsing()) {
+        if (activeGizmoAxis_ < 0) {
             PushUndoState();
-            activeGizmoAxis_ = hoveredGizmoAxis_;
-            gizmoDragStartMouse_ = mouse;
-            gizmoDragStartPosition_ = origin;
-            gizmoDragStartRotation_ = objects_[selectedIndex_].transform.rotationEuler;
-            gizmoDragStartScale_ = objects_[selectedIndex_].transform.scale;
+            activeGizmoAxis_ = 3;
             gizmoDragSelectionIndices_ = selectedIndices_;
             if (gizmoDragSelectionIndices_.empty()) {
                 gizmoDragSelectionIndices_.push_back(selectedIndex_);
@@ -806,13 +869,43 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
                 gizmoDragStartWorldMatrices_.push_back(GetObjectWorldMatrix(index));
             }
             gizmoDirtyDuringDrag_ = false;
-        } else if (mouseInViewport) {
-            TrySelectObjectAtMouse(renderer);
+        }
+
+        if (manipulated && !gizmoDragStartWorldMatrices_.empty()) {
+            std::size_t selectedStartIndex = 0;
+            for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
+                if (gizmoDragSelectionIndices_[i] == selectedIndex_) {
+                    selectedStartIndex = i;
+                    break;
+                }
+            }
+
+            const glm::mat4 selectedStartWorld = gizmoDragStartWorldMatrices_[selectedStartIndex];
+            const glm::mat4 worldDelta = objectWorldMatrix * glm::inverse(selectedStartWorld);
+            for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
+                const int index = gizmoDragSelectionIndices_[i];
+                if (index < 0 || index >= static_cast<int>(objects_.size())) {
+                    continue;
+                }
+
+                const glm::mat4 targetWorld = worldDelta * gizmoDragStartWorldMatrices_[i];
+                const int parentIndex = FindObjectIndexById(objects_[index].parentId);
+                const glm::mat4 targetLocal = parentIndex >= 0
+                    ? glm::inverse(GetObjectWorldMatrix(parentIndex)) * targetWorld
+                    : targetWorld;
+                objects_[index].transform = TransformFromMatrix(targetLocal);
+                objects_[index].transform.scale = {
+                    (std::max)(objects_[index].transform.scale.x, 0.01f),
+                    (std::max)(objects_[index].transform.scale.y, 0.01f),
+                    (std::max)(objects_[index].transform.scale.z, 0.01f)
+                };
+            }
+            gizmoDirtyDuringDrag_ = true;
         }
         return;
     }
 
-    if (!io.MouseDown[0]) {
+    if (activeGizmoAxis_ >= 0) {
         if (gizmoDirtyDuringDrag_ && onDirty_) {
             onDirty_();
         }
@@ -823,100 +916,6 @@ void SceneEditor::UpdateGizmo(Renderer& renderer) {
         gizmoDragStartWorldMatrices_.clear();
         return;
     }
-
-    glm::vec2 startScreen;
-    glm::vec2 endScreen;
-    const glm::vec3 eulerAxisVector = GizmoAxisVector(activeGizmoAxis_);
-    const glm::vec3 axisVector = (gizmoMode_ == GizmoMode::Rotate) ? TransformDirection(gizmoRotation, eulerAxisVector) : eulerAxisVector;
-
-    if (gizmoMode_ == GizmoMode::Rotate) {
-        glm::vec2 centerScreen;
-        if (!ProjectWorldToScreen(gizmoDragStartPosition_, renderer, centerScreen)) {
-            return;
-        }
-
-        const glm::vec2 startDelta = gizmoDragStartMouse_ - centerScreen;
-        const glm::vec2 currentDelta = mouse - centerScreen;
-        if (glm::length(startDelta) < 0.001f || glm::length(currentDelta) < 0.001f) {
-            return;
-        }
-
-        float angleDelta = std::atan2(currentDelta.y, currentDelta.x) - std::atan2(startDelta.y, startDelta.x);
-        constexpr float pi = 3.14159265359f;
-        if (angleDelta > pi) {
-            angleDelta -= pi * 2.0f;
-        } else if (angleDelta < -pi) {
-            angleDelta += pi * 2.0f;
-        }
-
-        const float direction = (activeGizmoAxis_ == 1 || activeGizmoAxis_ == 2) ? -1.0f : 1.0f;
-        const float worldAngleDegrees = glm::degrees(angleDelta) * direction;
-        const glm::mat4 rotationDelta = glm::rotate(glm::mat4(1.0f), glm::radians(worldAngleDegrees), axisVector);
-        const glm::mat4 pivotToWorld = glm::translate(glm::mat4(1.0f), gizmoDragStartPosition_);
-        const glm::mat4 worldToPivot = glm::translate(glm::mat4(1.0f), -gizmoDragStartPosition_);
-
-        for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
-            const int index = gizmoDragSelectionIndices_[i];
-            if (index < 0 || index >= static_cast<int>(objects_.size())) {
-                continue;
-            }
-
-            const glm::mat4 rotatedWorld = pivotToWorld * rotationDelta * worldToPivot * gizmoDragStartWorldMatrices_[i];
-            const int parentIndex = FindObjectIndexById(objects_[index].parentId);
-            const glm::mat4 localMatrix = parentIndex >= 0
-                ? glm::inverse(GetObjectWorldMatrix(parentIndex)) * rotatedWorld
-                : rotatedWorld;
-            objects_[index].transform = TransformFromMatrix(localMatrix);
-        }
-    } else {
-        if (!ProjectWorldToScreen(gizmoDragStartPosition_, renderer, startScreen) ||
-            !ProjectWorldToScreen(gizmoDragStartPosition_ + axisVector * axisLength, renderer, endScreen)) {
-            return;
-        }
-
-        glm::vec2 axisScreen = endScreen - startScreen;
-        const float axisScreenLength = glm::length(axisScreen);
-        if (axisScreenLength < 0.001f) {
-            return;
-        }
-
-        const glm::vec2 axisScreenDir = axisScreen / axisScreenLength;
-        const float pixelsAlongAxis = glm::dot(mouse - gizmoDragStartMouse_, axisScreenDir);
-        const float worldDelta = pixelsAlongAxis / axisScreenLength * axisLength;
-        if (gizmoMode_ == GizmoMode::Scale) {
-            for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
-                const int index = gizmoDragSelectionIndices_[i];
-                if (index < 0 || index >= static_cast<int>(objects_.size())) {
-                    continue;
-                }
-
-                const glm::vec3 scaled = gizmoDragStartLocalTransforms_[i].scale + axisVector * worldDelta;
-                objects_[index].transform.scale = {
-                    (std::max)(scaled.x, 0.01f),
-                    (std::max)(scaled.y, 0.01f),
-                    (std::max)(scaled.z, 0.01f)
-                };
-            }
-        } else {
-            const glm::vec3 worldOffset = axisVector * worldDelta;
-            for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
-                const int index = gizmoDragSelectionIndices_[i];
-                if (index < 0 || index >= static_cast<int>(objects_.size())) {
-                    continue;
-                }
-
-                const glm::vec3 startWorldPosition = glm::vec3(gizmoDragStartWorldMatrices_[i] * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-                const glm::vec3 targetWorldPosition = startWorldPosition + worldOffset;
-                const int parentIndex = FindObjectIndexById(objects_[index].parentId);
-                if (parentIndex >= 0) {
-                    objects_[index].transform.position = glm::vec3(glm::inverse(GetObjectWorldMatrix(parentIndex)) * glm::vec4(targetWorldPosition, 1.0f));
-                } else {
-                    objects_[index].transform.position = targetWorldPosition;
-                }
-            }
-        }
-    }
-    gizmoDirtyDuringDrag_ = true;
 }
 
 void SceneEditor::SubmitGizmo(Renderer& renderer) {
@@ -927,67 +926,6 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
     const SceneObject& object = objects_[selectedIndex_];
     if (!IsObjectEffectivelyEnabled(selectedIndex_)) {
         return;
-    }
-    const glm::vec3 origin = GetObjectWorldPosition(selectedIndex_);
-    const glm::mat4 gizmoRotation = BuildRotationMatrix(object);
-    constexpr float axisLength = 1.0f;
-    constexpr float arrowHeadLength = 0.35f;
-    constexpr float arrowHeadWidth = 0.14f;
-
-    for (int axis = 0; axis < 3; ++axis) {
-        const bool highlighted = (axis == hoveredGizmoAxis_ || axis == activeGizmoAxis_);
-        const glm::vec3 axisVector = GizmoAxisVector(axis);
-        const glm::vec3 visualAxisVector = (gizmoMode_ == GizmoMode::Rotate) ? TransformDirection(gizmoRotation, axisVector) : axisVector;
-        const glm::vec4 color = GizmoAxisColor(axis, highlighted);
-        const float width = highlighted ? 4.0f : 3.0f;
-        const glm::vec3 end = origin + visualAxisVector * axisLength;
-
-        if (gizmoMode_ == GizmoMode::Rotate) {
-            constexpr int segments = 64;
-            glm::vec3 previous;
-            for (int i = 0; i <= segments; ++i) {
-                const float t = static_cast<float>(i) / static_cast<float>(segments) * 6.28318530718f;
-                glm::vec3 local(0.0f);
-                if (axis == 0) {
-                    local = {0.0f, std::cos(t) * axisLength, std::sin(t) * axisLength};
-                } else if (axis == 1) {
-                    local = {std::cos(t) * axisLength, 0.0f, std::sin(t) * axisLength};
-                } else {
-                    local = {std::cos(t) * axisLength, std::sin(t) * axisLength, 0.0f};
-                }
-                const glm::vec3 current = origin + TransformDirection(gizmoRotation, local);
-                if (i > 0) {
-                    renderer.SubmitLine({previous, current, color, width});
-                }
-                previous = current;
-            }
-            continue;
-        }
-
-        glm::vec3 sideA;
-        glm::vec3 sideB;
-        if (axis == 0) {
-            sideA = {0.0f, arrowHeadWidth, 0.0f};
-            sideB = {0.0f, 0.0f, arrowHeadWidth};
-        } else if (axis == 1) {
-            sideA = {arrowHeadWidth, 0.0f, 0.0f};
-            sideB = {0.0f, 0.0f, arrowHeadWidth};
-        } else {
-            sideA = {arrowHeadWidth, 0.0f, 0.0f};
-            sideB = {0.0f, arrowHeadWidth, 0.0f};
-        }
-
-        const glm::vec3 arrowBase = end - visualAxisVector * arrowHeadLength;
-        renderer.SubmitLine({origin, end, color, width});
-        if (gizmoMode_ == GizmoMode::Scale) {
-            renderer.SubmitLine({end - sideA, end + sideA, color, width});
-            renderer.SubmitLine({end - sideB, end + sideB, color, width});
-        } else {
-            renderer.SubmitLine({end, arrowBase + sideA, color, width});
-            renderer.SubmitLine({end, arrowBase - sideA, color, width});
-            renderer.SubmitLine({end, arrowBase + sideB, color, width});
-            renderer.SubmitLine({end, arrowBase - sideB, color, width});
-        }
     }
 
     const glm::vec4 colliderColor{0.1f, 0.9f, 0.35f, 1.0f};

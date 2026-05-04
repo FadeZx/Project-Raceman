@@ -238,6 +238,65 @@ inline PrimitiveMesh CreateCylinderPrimitiveMesh(int slices = 24) {
     return PrimitiveMesh(vertices, indices);
 }
 
+inline PrimitiveMesh CreateCapsulePrimitiveMesh(int slices = 24, int hemisphereStacks = 8) {
+    using V = PrimitiveMesh::Vertex;
+    slices = (std::max)(slices, 3);
+    hemisphereStacks = (std::max)(hemisphereStacks, 2);
+
+    std::vector<V> vertices;
+    std::vector<unsigned int> indices;
+    constexpr float pi = 3.14159265358979323846f;
+    const float radius = 0.25f;
+    const float halfCylinderHeight = 0.25f;
+
+    auto addRing = [&](float centerY, float phi, float v) {
+        const float ringRadius = std::sin(phi) * radius;
+        const float normalY = std::cos(phi);
+        const float y = centerY + normalY * radius;
+        for (int i = 0; i <= slices; ++i) {
+            const float u = static_cast<float>(i) / static_cast<float>(slices);
+            const float angle = u * (2.0f * pi);
+            const float normalX = std::cos(angle) * std::sin(phi);
+            const float normalZ = std::sin(angle) * std::sin(phi);
+            vertices.push_back({
+                std::cos(angle) * ringRadius,
+                y,
+                std::sin(angle) * ringRadius,
+                normalX,
+                normalY,
+                normalZ,
+                u,
+                v
+            });
+        }
+    };
+
+    for (int stack = 0; stack <= hemisphereStacks; ++stack) {
+        const float t = static_cast<float>(stack) / static_cast<float>(hemisphereStacks);
+        addRing(halfCylinderHeight, t * (pi * 0.5f), t * 0.5f);
+    }
+    for (int stack = 0; stack <= hemisphereStacks; ++stack) {
+        const float t = static_cast<float>(stack) / static_cast<float>(hemisphereStacks);
+        addRing(-halfCylinderHeight, (pi * 0.5f) + t * (pi * 0.5f), 0.5f + t * 0.5f);
+    }
+
+    const int rings = (hemisphereStacks + 1) * 2;
+    for (int ring = 0; ring < rings - 1; ++ring) {
+        for (int slice = 0; slice < slices; ++slice) {
+            const unsigned int first = static_cast<unsigned int>(ring * (slices + 1) + slice);
+            const unsigned int second = first + static_cast<unsigned int>(slices + 1);
+            indices.push_back(first);
+            indices.push_back(second);
+            indices.push_back(first + 1);
+            indices.push_back(first + 1);
+            indices.push_back(second);
+            indices.push_back(second + 1);
+        }
+    }
+
+    return PrimitiveMesh(vertices, indices);
+}
+
 inline PrimitiveMesh CreateConePrimitiveMesh(int slices = 24) {
     using V = PrimitiveMesh::Vertex;
     slices = (std::max)(slices, 3);

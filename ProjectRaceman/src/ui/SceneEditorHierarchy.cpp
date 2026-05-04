@@ -166,8 +166,8 @@ void SceneEditor::RenderScenePanel() {
                     if (ImGui::MenuItem("Cone")) {
                         AddBuiltInPrimitiveObject("Cone");
                     }
-                    if (ImGui::MenuItem("Cylinder")) {
-                        AddBuiltInPrimitiveObject("Cylinder");
+                    if (ImGui::MenuItem("Capsule")) {
+                        AddBuiltInPrimitiveObject("Capsule");
                     }
                     ImGui::EndMenu();
                 }
@@ -771,4 +771,3 @@ void SceneEditor::BeginObjectRename(int index) {
 }
 
 } // namespace raceman
-

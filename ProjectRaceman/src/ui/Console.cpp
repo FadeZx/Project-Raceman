@@ -6,6 +6,49 @@
 
 namespace raceman {
 
+namespace {
+
+ImVec4 ConsoleTabColor(MessageType type, bool active) {
+    if (type == MessageType::Warning) {
+        return active ? ImVec4(0.95f, 0.63f, 0.16f, 1.0f) : ImVec4(0.45f, 0.31f, 0.10f, 1.0f);
+    }
+    if (type == MessageType::Error) {
+        return active ? ImVec4(0.82f, 0.16f, 0.16f, 1.0f) : ImVec4(0.42f, 0.08f, 0.08f, 1.0f);
+    }
+    return active ? ImVec4(0.28f, 0.32f, 0.38f, 1.0f) : ImVec4(0.18f, 0.20f, 0.24f, 1.0f);
+}
+
+ImVec4 ConsoleTabHoverColor(MessageType type) {
+    if (type == MessageType::Warning) {
+        return ImVec4(1.0f, 0.72f, 0.22f, 1.0f);
+    }
+    if (type == MessageType::Error) {
+        return ImVec4(0.95f, 0.22f, 0.22f, 1.0f);
+    }
+    return ImVec4(0.34f, 0.39f, 0.46f, 1.0f);
+}
+
+ImVec4 ConsoleTextColor(MessageType type) {
+    if (type == MessageType::Warning) {
+        return ImVec4(1.0f, 0.82f, 0.28f, 1.0f);
+    }
+    if (type == MessageType::Error) {
+        return ImVec4(1.0f, 0.36f, 0.36f, 1.0f);
+    }
+    return ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
+}
+
+bool BeginSeverityTabItem(const char* label, MessageType type) {
+    ImGui::PushStyleColor(ImGuiCol_Tab, ConsoleTabColor(type, false));
+    ImGui::PushStyleColor(ImGuiCol_TabHovered, ConsoleTabHoverColor(type));
+    ImGui::PushStyleColor(ImGuiCol_TabActive, ConsoleTabColor(type, true));
+    const bool open = ImGui::BeginTabItem(label);
+    ImGui::PopStyleColor(3);
+    return open;
+}
+
+} // namespace
+
 void Console::Add(MessageType type, const std::string& msg) {
     std::lock_guard<std::mutex> lock(mtx_);
     entries_.push_back(ConsoleEntry{type, msg});
@@ -96,15 +139,15 @@ bool Console::RenderContents() {
         std::snprintf(logLabel, sizeof(logLabel), "Log (%d)###Log", logCount);
         std::snprintf(warningLabel, sizeof(warningLabel), "Warning (%d)###Warning", warningCount);
         std::snprintf(errorLabel, sizeof(errorLabel), "Error (%d)###Error", errorCount);
-        if (ImGui::BeginTabItem(logLabel)) {
+        if (BeginSeverityTabItem(logLabel, MessageType::Log)) {
             currentTab_ = Tab::Log;
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem(warningLabel)) {
+        if (BeginSeverityTabItem(warningLabel, MessageType::Warning)) {
             currentTab_ = Tab::Warning;
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem(errorLabel)) {
+        if (BeginSeverityTabItem(errorLabel, MessageType::Error)) {
             currentTab_ = Tab::Error;
             ImGui::EndTabItem();
         }
@@ -120,9 +163,7 @@ bool Console::RenderContents() {
         else if (currentTab_ == Tab::Error) show = (e.type == MessageType::Error);
         if (!show) continue;
 
-        ImVec4 col(0.86f, 0.86f, 0.86f, 1.0f);
-        if (e.type == MessageType::Warning) col = ImVec4(1.0f, 0.8f, 0.2f, 1.0f);
-        if (e.type == MessageType::Error)   col = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
+        const ImVec4 col = ConsoleTextColor(e.type);
 
         ImGui::PushID(visibleIndex++);
         ImGui::PushStyleColor(ImGuiCol_Text, col);

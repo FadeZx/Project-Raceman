@@ -446,6 +446,49 @@ bool RenderPhysicsLayerCombo(const char* label,
     return changed;
 }
 
+bool RenderTagCombo(const char* label,
+                    const char* comboId,
+                    const std::string& currentTag,
+                    const std::vector<std::string>& tags,
+                    std::string& outTag) {
+    const std::string safeCurrentTag = currentTag.empty() ? "Untagged" : currentTag;
+    if (!ImGui::BeginCombo(label, safeCurrentTag.c_str())) {
+        return false;
+    }
+
+    bool changed = false;
+    bool currentTagWasListed = false;
+    for (const std::string& tag : tags) {
+        if (tag.empty()) {
+            continue;
+        }
+        const bool selected = tag == safeCurrentTag;
+        currentTagWasListed = currentTagWasListed || selected;
+        const std::string selectableLabel = tag + "##" + comboId + "_" + tag;
+        if (ImGui::Selectable(selectableLabel.c_str(), selected)) {
+            outTag = tag;
+            changed = true;
+        }
+        if (selected) {
+            ImGui::SetItemDefaultFocus();
+        }
+    }
+
+    if (!currentTagWasListed && safeCurrentTag != "Untagged") {
+        ImGui::Separator();
+        const std::string missingLabel = safeCurrentTag + " (missing)##" + comboId + "_missing";
+        if (ImGui::Selectable(missingLabel.c_str(), true)) {
+            outTag = safeCurrentTag;
+            changed = true;
+        }
+    }
+
+    ImGui::Separator();
+    ImGui::TextDisabled("Add tags in Project Settings > Tags & Layers");
+    ImGui::EndCombo();
+    return changed;
+}
+
 } // namespace
 
 unsigned int SceneEditor::GetComponentIconTexture(const std::string& filename) {
@@ -540,11 +583,27 @@ void SceneEditor::RenderInspectorPanel() {
                 ImGui::TextDisabled("| ID: %s", obj.id.c_str());
             }
 
-            int physicsLayer = ClampPhysicsLayerIndex(obj.physicsLayer);
-            if (RenderPhysicsLayerCombo("Physics Layer", "singlePhysicsLayer", obj.physicsLayer, physicsLayerNames_, physicsLayer)) {
-                PushUndoState();
-                obj.physicsLayer = physicsLayer;
-                if (onDirty_) onDirty_();
+            EnsureProjectTags();
+            if (ImGui::BeginTable("ObjectTagLayerRow", 2, ImGuiTableFlags_SizingStretchSame)) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::SetNextItemWidth(-1.0f);
+                std::string selectedTag = obj.tag.empty() ? "Untagged" : obj.tag;
+                if (RenderTagCombo("Tag", "singleTag", selectedTag, projectTags_, selectedTag)) {
+                    PushUndoState();
+                    obj.tag = selectedTag.empty() ? "Untagged" : selectedTag;
+                    if (onDirty_) onDirty_();
+                }
+
+                ImGui::TableSetColumnIndex(1);
+                ImGui::SetNextItemWidth(-1.0f);
+                int physicsLayer = ClampPhysicsLayerIndex(obj.physicsLayer);
+                if (RenderPhysicsLayerCombo("Layer", "singlePhysicsLayer", obj.physicsLayer, physicsLayerNames_, physicsLayer)) {
+                    PushUndoState();
+                    obj.physicsLayer = physicsLayer;
+                    if (onDirty_) onDirty_();
+                }
+                ImGui::EndTable();
             }
 
             auto renderAddComponentMenu = [&]() {
@@ -568,13 +627,46 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                 }
-                if (!obj.hasScriptComponent) {
+                {
+                    auto isAttachedByName = [&](const std::string& name) {
+                        if (!obj.hasScriptComponent) return false;
+                        for (const ObjectScriptAttachment& a : obj.scriptComponent.attachments) {
+                            if (a.scriptName == name) return true;
+                        }
+                        return false;
+                    };
                     anyAvailable = true;
-                    if (ImGui::MenuItem("Scripts")) {
-                        PushUndoState();
-                        obj.hasScriptComponent = true;
-                        obj.scriptComponent = ScriptComponent{};
-                        if (onDirty_) onDirty_();
+                    if (ImGui::BeginMenu("Script")) {
+                        const std::vector<std::pair<std::string, std::string>> projectScripts = ScanProjectScripts();
+                        std::vector<std::pair<std::string, std::string>> available;
+                        available.reserve(projectScripts.size());
+                        for (const auto& entry : projectScripts) {
+                            if (!isAttachedByName(entry.first)) {
+                                available.push_back(entry);
+                            }
+                        }
+                        if (available.empty()) {
+                            if (projectScripts.empty()) {
+                                ImGui::TextDisabled("No scripts in project.");
+                            } else {
+                                ImGui::TextDisabled("All project scripts attached.");
+                            }
+                        }
+                        for (const auto& entry : available) {
+                            const std::string label = entry.first + "##addProjectScript";
+                            if (ImGui::MenuItem(label.c_str())) {
+                                AttachScriptToSelected(entry.first, entry.second);
+                            }
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("%s", entry.second.c_str());
+                            }
+                        }
+                        ImGui::Separator();
+                        if (ImGui::MenuItem("New C++ Script...")) {
+                            createScriptNameBuffer_[0] = '\0';
+                            showCreateScriptPopup_ = true;
+                        }
+                        ImGui::EndMenu();
                     }
                 }
                 if (!obj.hasRigidbody) {
@@ -991,112 +1083,29 @@ void SceneEditor::RenderInspectorPanel() {
             }
 
             if (currentComponentToRender == SceneInspectorComponentType::Script) {
-            bool removeScripts = false;
-            bool scriptsOpen = false;
-            bool scriptsEnabledChanged = false;
-            bool scriptsHeaderActive = false;
-            bool scriptsHeaderToggledOpen = false;
-            const bool scriptsEnabledBefore = obj.scriptComponent.enabled;
+            // Each script attachment is rendered as its own top-level component (Unity-style).
+            // No wrapping "Scripts" header — the data still lives in obj.scriptComponent.attachments,
+            // but the user sees each script as a separate component with its class name as the title.
             if (obj.hasScriptComponent) {
-                SceneInspectorComponentType componentType = SceneInspectorComponentType::Script;
-                const std::string scriptComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Script);
-                scriptsOpen = RenderRemovableComponentHeader("Scripts", "ScriptsHeader", GetComponentIconTexture("component-script.png"), &obj.scriptComponent.enabled, scriptsEnabledChanged, removeScripts, &componentType, &reorderDraggedType, &reorderTargetType, &scriptsHeaderActive, &scriptsHeaderToggledOpen);
-                finishComponentHeaderState(scriptComponentKey, SceneInspectorComponentType::Script, scriptsHeaderActive, scriptsHeaderToggledOpen, scriptsOpen);
-            }
-            if (removeScripts) {
-                PushUndoState();
-                obj.hasScriptComponent = false;
-                obj.scriptComponent = ScriptComponent{};
-                if (scriptsRunning_) {
-                    RebuildScriptRuntime();
-                }
-                if (onDirty_) onDirty_();
-            } else {
-                if (obj.hasScriptComponent && scriptsEnabledChanged) {
-                    const bool scriptsEnabledAfter = obj.scriptComponent.enabled;
-                    obj.scriptComponent.enabled = scriptsEnabledBefore;
-                    PushUndoState();
-                    obj.scriptComponent.enabled = scriptsEnabledAfter;
-                    if (scriptsRunning_) {
-                        RebuildScriptRuntime();
-                    }
-                    if (onDirty_) onDirty_();
-                }
-            }
-            if (obj.hasScriptComponent && scriptsOpen) {
-                if (ImGui::Button("Add Script")) {
-                    ImGui::OpenPopup("Add Script Component");
-                }
-                if (ImGui::BeginPopup("Add Script Component")) {
-                    if (ImGui::BeginMenu("Script from Project")) {
-                        const auto& registeredScripts = GetRegisteredScripts();
-                        if (registeredScripts.empty()) {
-                            ImGui::TextDisabled("No registered C++ scripts.");
-                            ImGui::TextDisabled("Create a script or press Play to build/load scripts.");
-                        }
-                        for (const ScriptDescriptor& script : registeredScripts) {
-                            const std::string label = script.name + "##attachRegisteredScript";
-                            if (ImGui::MenuItem(label.c_str())) {
-                                AttachScriptToSelected(script.name, script.path);
-                            }
-                            if (ImGui::IsItemHovered()) {
-                                ImGui::SetTooltip("%s", script.path.c_str());
-                            }
-                        }
-                        ImGui::EndMenu();
-                    }
-                    if (ImGui::MenuItem("Create C++ Script")) {
-                        createScriptNameBuffer_[0] = '\0';
-                        showCreateScriptPopup_ = true;
-                    }
-                    ImGui::EndPopup();
-                }
-
-                if (showCreateScriptPopup_) {
-                    ImGui::OpenPopup("Create C++ Script");
-                    showCreateScriptPopup_ = false;
-                }
-
-                if (ImGui::BeginPopupModal("Create C++ Script", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::TextUnformatted("Create a compiled C++ object script.");
-                    ImGui::TextDisabled("Scripts are built into ProjectScripts.dll when Play starts.");
-                    ImGui::InputText("Class Name", createScriptNameBuffer_, sizeof(createScriptNameBuffer_));
-                    if (ImGui::Button("Create")) {
-                        if (CreateScriptAsset(createScriptNameBuffer_)) {
-                            ImGui::CloseCurrentPopup();
-                        }
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Cancel")) {
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::EndPopup();
-                }
-
-                if (obj.scriptComponent.attachments.empty()) {
-                    ImGui::TextDisabled("No script components.");
-                }
-
+                int removeScriptAt = -1;
                 for (int scriptIndex = 0; scriptIndex < static_cast<int>(obj.scriptComponent.attachments.size()); ++scriptIndex) {
                     ObjectScriptAttachment& script = obj.scriptComponent.attachments[static_cast<std::size_t>(scriptIndex)];
                     ImGui::PushID(scriptIndex);
 
-                    const std::string header = std::string("Script: ") + (script.scriptName.empty() ? "(missing)" : script.scriptName);
+                    const std::string headerKey = std::string("ScriptInstanceHeader_") + std::to_string(scriptIndex);
+                    const std::string header = script.scriptName.empty() ? std::string("(missing script)") : script.scriptName;
                     bool removeScript = false;
                     bool scriptEnabledChanged = false;
                     const bool scriptEnabledBefore = script.enabled;
-                    const bool scriptTreeOpen = RenderRemovableComponentHeader(header.c_str(), "ScriptAttachmentHeader", GetComponentIconTexture("component-script.png"), &script.enabled, scriptEnabledChanged, removeScript);
+                    ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
+                    const bool scriptTreeOpen = RenderRemovableComponentHeader(
+                        header.c_str(), headerKey.c_str(),
+                        GetComponentIconTexture("component-script.png"),
+                        &script.enabled, scriptEnabledChanged, removeScript);
+
                     if (removeScript) {
-                        PushUndoState();
-                        obj.scriptComponent.attachments.erase(obj.scriptComponent.attachments.begin() + scriptIndex);
-                        if (scriptsRunning_) {
-                            RebuildScriptRuntime();
-                        }
-                        if (onDirty_) onDirty_();
-                        ImGui::PopID();
-                        break;
-                    }
-                    if (scriptEnabledChanged) {
+                        removeScriptAt = scriptIndex;
+                    } else if (scriptEnabledChanged) {
                         const bool scriptEnabledAfter = script.enabled;
                         script.enabled = scriptEnabledBefore;
                         PushUndoState();
@@ -1106,13 +1115,8 @@ void SceneEditor::RenderInspectorPanel() {
                         }
                         if (onDirty_) onDirty_();
                     }
-                    if (scriptTreeOpen) {
-                        if (ImGui::IsItemHovered() && !script.scriptPath.empty()) {
-                            ImGui::SetTooltip("Click to show in Browser: %s", script.scriptPath.c_str());
-                            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                                SelectProjectFile(script.scriptPath);
-                            }
-                        }
+
+                    if (removeScriptAt < 0 && scriptTreeOpen) {
                         ImGui::TextWrapped("Class: %s", script.scriptName.empty() ? "(missing)" : script.scriptName.c_str());
                         ImGui::TextWrapped("Source: %s", script.scriptPath.empty() ? "(none)" : script.scriptPath.c_str());
                         if (ImGui::IsItemHovered() && !script.scriptPath.empty()) {
@@ -1152,6 +1156,19 @@ void SceneEditor::RenderInspectorPanel() {
                         }
                     }
                     ImGui::PopID();
+                }
+
+                if (removeScriptAt >= 0) {
+                    PushUndoState();
+                    obj.scriptComponent.attachments.erase(obj.scriptComponent.attachments.begin() + removeScriptAt);
+                    if (obj.scriptComponent.attachments.empty()) {
+                        obj.hasScriptComponent = false;
+                        obj.scriptComponent = ScriptComponent{};
+                    }
+                    if (scriptsRunning_) {
+                        RebuildScriptRuntime();
+                    }
+                    if (onDirty_) onDirty_();
                 }
             }
             }
@@ -2544,6 +2561,69 @@ void SceneEditor::RenderInspectorPanel() {
                 renderAddComponentMenu();
                 ImGui::EndPopup();
             }
+
+            // Inspector-wide drop zone for scripts (Unity-style: drag a script anywhere on the
+            // inspector to attach it as a new component).
+            {
+                ImVec2 dropSize = ImGui::GetContentRegionAvail();
+                if (dropSize.y < ImGui::GetTextLineHeightWithSpacing() * 2.0f) {
+                    dropSize.y = ImGui::GetTextLineHeightWithSpacing() * 2.0f;
+                }
+                const ImVec2 dropMin = ImGui::GetCursorScreenPos();
+                const ImVec2 dropMax(dropMin.x + dropSize.x, dropMin.y + dropSize.y);
+                ImGui::InvisibleButton("##inspectorScriptDropZone", dropSize);
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                        const char* projectPath = static_cast<const char*>(payload->Data);
+                        if (projectPath != nullptr && IsScriptAssetPath(projectPath)) {
+                            const std::string scriptName = ScriptNameFromAssetPath(projectPath);
+                            bool already = false;
+                            if (obj.hasScriptComponent) {
+                                for (const ObjectScriptAttachment& a : obj.scriptComponent.attachments) {
+                                    if (a.scriptName == scriptName) { already = true; break; }
+                                }
+                            }
+                            if (!already && !scriptName.empty()) {
+                                AttachScriptToSelected(scriptName, ScriptSourcePathFromAssetPath(projectPath));
+                            }
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+                const ImGuiPayload* activePayload = ImGui::GetDragDropPayload();
+                const bool dragActive = activePayload != nullptr;
+                if (dragActive) {
+                    ImGui::GetWindowDrawList()->AddRect(dropMin, dropMax,
+                        ImGui::GetColorU32(ImGuiCol_DragDropTarget), 4.0f, 0, 2.0f);
+                    const char* hint = "Drop script here to add as component";
+                    const ImVec2 textSize = ImGui::CalcTextSize(hint);
+                    const ImVec2 textPos(dropMin.x + (dropSize.x - textSize.x) * 0.5f,
+                                         dropMin.y + (dropSize.y - textSize.y) * 0.5f);
+                    ImGui::GetWindowDrawList()->AddText(textPos,
+                        ImGui::GetColorU32(ImGuiCol_TextDisabled), hint);
+                }
+            }
+
+            // Create-Script modal (triggered from the Add Component > Script > New C++ Script... menu).
+            if (showCreateScriptPopup_) {
+                ImGui::OpenPopup("Create C++ Script");
+                showCreateScriptPopup_ = false;
+            }
+            if (ImGui::BeginPopupModal("Create C++ Script", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextUnformatted("Create a compiled C++ object script.");
+                ImGui::TextDisabled("Scripts are built into ProjectScripts.dll when Play starts.");
+                ImGui::InputText("Class Name", createScriptNameBuffer_, sizeof(createScriptNameBuffer_));
+                if (ImGui::Button("Create")) {
+                    if (CreateScriptAsset(createScriptNameBuffer_)) {
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel")) {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
         } else {
             ImGui::TextDisabled("No object selected.");
         }
@@ -2566,18 +2646,6 @@ void SceneEditor::RenderMultiSelectionInspector() {
     SceneObject& active = objects_[selectedIndex_];
     ImGui::Text("%zu objects selected", selectedIndices_.size());
     ImGui::TextDisabled("Showing components shared by every selected object. Edits apply to all selected objects.");
-    int sharedPhysicsLayer = ClampPhysicsLayerIndex(active.physicsLayer);
-    if (RenderPhysicsLayerCombo("Physics Layer##multi", "multiPhysicsLayer", active.physicsLayer, physicsLayerNames_, sharedPhysicsLayer)) {
-        PushUndoState();
-        for (int index : selectedIndices_) {
-            if (index >= 0 && index < static_cast<int>(objects_.size())) {
-                objects_[index].physicsLayer = sharedPhysicsLayer;
-            }
-        }
-        if (onDirty_) {
-            onDirty_();
-        }
-    }
 
     auto beginInspectorContinuousEdit = [&]() {
         if (!inspectorEditActive_) {
@@ -2614,6 +2682,34 @@ void SceneEditor::RenderMultiSelectionInspector() {
             onDirty_();
         }
     };
+
+    EnsureProjectTags();
+    if (ImGui::BeginTable("MultiObjectTagLayerRow", 2, ImGuiTableFlags_SizingStretchSame)) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::SetNextItemWidth(-1.0f);
+        std::string sharedTag = active.tag.empty() ? "Untagged" : active.tag;
+        if (RenderTagCombo("Tag", "multiTag", sharedTag, projectTags_, sharedTag)) {
+            PushUndoState();
+            forEachSelected([&](SceneObject& object) {
+                object.tag = sharedTag.empty() ? "Untagged" : sharedTag;
+            });
+            markDirty();
+        }
+
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        int sharedPhysicsLayer = ClampPhysicsLayerIndex(active.physicsLayer);
+        if (RenderPhysicsLayerCombo("Layer", "multiPhysicsLayer", active.physicsLayer, physicsLayerNames_, sharedPhysicsLayer)) {
+            PushUndoState();
+            forEachSelected([&](SceneObject& object) {
+                object.physicsLayer = sharedPhysicsLayer;
+            });
+            markDirty();
+        }
+        ImGui::EndTable();
+    }
+
     auto renderSharedEnabledHeader = [&](const char* label, const char* id, const std::string& icon, bool enabled, auto&& setter) {
         ImGui::PushID(id);
         RenderComponentIcon(GetComponentIconTexture(icon));
@@ -2682,17 +2778,65 @@ void SceneEditor::RenderMultiSelectionInspector() {
                 markDirty();
             }
         }
-        if (anySelected([](const SceneObject& object) { return !object.hasScriptComponent; })) {
-            anyAvailable = true;
-            if (ImGui::MenuItem("Scripts")) {
-                PushUndoState();
+        {
+            auto allSelectedHaveScript = [&](const std::string& name) {
+                bool anyMissing = false;
                 forEachSelected([&](SceneObject& object) {
-                    if (!object.hasScriptComponent) {
-                        object.hasScriptComponent = true;
-                        object.scriptComponent = ScriptComponent{};
+                    bool hasIt = false;
+                    if (object.hasScriptComponent) {
+                        for (const ObjectScriptAttachment& a : object.scriptComponent.attachments) {
+                            if (a.scriptName == name) { hasIt = true; break; }
+                        }
                     }
+                    if (!hasIt) anyMissing = true;
                 });
-                markDirty();
+                return !anyMissing;
+            };
+            anyAvailable = true;
+            if (ImGui::BeginMenu("Script")) {
+                const std::vector<std::pair<std::string, std::string>> projectScripts = ScanProjectScripts();
+                std::vector<std::pair<std::string, std::string>> available;
+                available.reserve(projectScripts.size());
+                for (const auto& entry : projectScripts) {
+                    if (!allSelectedHaveScript(entry.first)) {
+                        available.push_back(entry);
+                    }
+                }
+                if (available.empty()) {
+                    if (projectScripts.empty()) {
+                        ImGui::TextDisabled("No scripts in project.");
+                    } else {
+                        ImGui::TextDisabled("All project scripts attached.");
+                    }
+                }
+                for (const auto& entry : available) {
+                    const std::string label = entry.first + "##multiAddProjectScript";
+                    if (ImGui::MenuItem(label.c_str())) {
+                        PushUndoState();
+                        forEachSelected([&](SceneObject& object) {
+                            bool hasIt = false;
+                            if (object.hasScriptComponent) {
+                                for (const ObjectScriptAttachment& a : object.scriptComponent.attachments) {
+                                    if (a.scriptName == entry.first) { hasIt = true; break; }
+                                }
+                            }
+                            if (hasIt) return;
+                            object.hasScriptComponent = true;
+                            ObjectScriptAttachment attachment;
+                            attachment.enabled = true;
+                            attachment.scriptName = entry.first;
+                            attachment.scriptPath = NormalizeSlashes(entry.second);
+                            SyncAttachmentScriptFields(attachment);
+                            object.scriptComponent.attachments.push_back(std::move(attachment));
+                        });
+                        if (scriptsRunning_) RebuildScriptRuntime();
+                        markDirty();
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s", entry.second.c_str());
+                    }
+                }
+                ImGui::EndMenu();
             }
         }
         if (anySelected([](const SceneObject& object) { return !object.hasRigidbody; })) {
@@ -3390,7 +3534,7 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
             ImGui::Separator();
 
             if (pickingMesh) {
-                const char* builtIns[] = {"Plane", "Cube", "Sphere", "Cone", "Cylinder"};
+                const char* builtIns[] = {"Plane", "Cube", "Sphere", "Cone", "Capsule"};
                 for (int i = 0; i < 5; ++i) {
                     if (ImGui::Button(builtIns[i], ImVec2(90.0f, 0.0f))) {
                         ReplaceSelectedMeshWithBuiltIn(builtIns[i]);

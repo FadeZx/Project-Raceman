@@ -97,7 +97,7 @@ inline ScriptFieldDefinition MakeVec4ScriptField(std::string name, std::string l
 
 class RACEMAN_SCRIPT_API ObjectScriptContext {
 public:
-    class CameraHandle {
+    class RACEMAN_SCRIPT_API CameraHandle {
     public:
         CameraHandle(SceneObject* object, Console* console);
 
@@ -126,10 +126,51 @@ public:
         Console* console_{nullptr};
     };
 
-    ObjectScriptContext(SceneObject& object, ObjectScriptAttachment* attachment, Console* console, InputManager* inputManager = nullptr, PhysicsWorld* physicsWorld = nullptr);
+    class RACEMAN_SCRIPT_API ObjectHandle {
+    public:
+        ObjectHandle(SceneObject* object = nullptr);
+
+        bool IsValid() const;
+        const std::string& GetObjectId() const;
+        const std::string& GetObjectName() const;
+        std::string GetTag() const;
+        void SetTag(const std::string& value) const;
+        bool CompareTag(const std::string& value) const;
+
+        glm::vec3 GetPosition() const;
+        void SetPosition(const glm::vec3& value) const;
+        glm::vec3 GetRotationEuler() const;
+        void SetRotationEuler(const glm::vec3& value) const;
+        glm::vec3 GetScale() const;
+        void SetScale(const glm::vec3& value) const;
+
+        std::string GetMaterialId() const;
+        void SetMaterialId(const std::string& value) const;
+        bool IsEnabled() const;
+        void SetEnabled(bool value) const;
+
+    private:
+        SceneObject* object_{nullptr};
+    };
+
+    ObjectScriptContext(SceneObject& object,
+                        ObjectScriptAttachment* attachment,
+                        Console* console,
+                        InputManager* inputManager = nullptr,
+                        PhysicsWorld* physicsWorld = nullptr,
+                        std::vector<SceneObject>* sceneObjects = nullptr);
 
     const std::string& GetObjectId() const;
     const std::string& GetObjectName() const;
+    std::string GetTag() const;
+    void SetTag(const std::string& value);
+    bool CompareTag(const std::string& value) const;
+
+    ObjectHandle Self();
+    ObjectHandle FindObjectById(const std::string& id) const;
+    ObjectHandle FindObjectByName(const std::string& name) const;
+    ObjectHandle FindObjectWithTag(const std::string& tag) const;
+    std::vector<ObjectHandle> FindObjectsWithTag(const std::string& tag) const;
 
     glm::vec3 GetPosition() const;
     void SetPosition(const glm::vec3& value);
@@ -168,6 +209,48 @@ public:
     bool HasCamera() const;
     CameraHandle Camera();
 
+    bool HasCollider() const;
+    bool IsColliderEnabled() const;
+    void SetColliderEnabled(bool value);
+    bool IsColliderTrigger() const;
+    void SetColliderTrigger(bool value);
+    glm::vec3 GetBoxColliderSize() const;
+    void SetBoxColliderSize(const glm::vec3& value);
+    float GetSphereColliderRadius() const;
+    void SetSphereColliderRadius(float value);
+    float GetCapsuleColliderRadius() const;
+    void SetCapsuleColliderRadius(float value);
+    float GetCapsuleColliderHeight() const;
+    void SetCapsuleColliderHeight(float value);
+
+    bool HasLight() const;
+    bool IsLightEnabled() const;
+    void SetLightEnabled(bool value);
+    glm::vec3 GetLightColor() const;
+    void SetLightColor(const glm::vec3& value);
+    float GetLightIntensity() const;
+    void SetLightIntensity(float value);
+    float GetLightRange() const;
+    void SetLightRange(float value);
+    float GetLightSpotAngle() const;
+    void SetLightSpotAngle(float degrees);
+
+    bool HasAudioSource() const;
+    bool IsAudioSourceEnabled() const;
+    void SetAudioSourceEnabled(bool value);
+    std::string GetAudioClipPath() const;
+    void SetAudioClipPath(const std::string& value);
+    float GetAudioVolume() const;
+    void SetAudioVolume(float value);
+    float GetAudioPitch() const;
+    void SetAudioPitch(float value);
+    bool IsAudioLooping() const;
+    void SetAudioLooping(bool value);
+    bool IsAudioPlayOnAwake() const;
+    void SetAudioPlayOnAwake(bool value);
+    float GetAudioSpatialBlend() const;
+    void SetAudioSpatialBlend(float value);
+
     glm::vec3 GetForwardVector() const;
     glm::vec3 GetUpVector() const;
 
@@ -205,6 +288,7 @@ private:
     Console* console_{nullptr};
     InputManager* inputManager_{nullptr};
     PhysicsWorld* physicsWorld_{nullptr};
+    std::vector<SceneObject>* sceneObjects_{nullptr};
 };
 
 class RACEMAN_SCRIPT_API IObjectScript {

@@ -9,12 +9,12 @@
     <ClInclude Include="src\scripting\ScriptRegistry.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="Project\assets\scripts\CameraOrbit.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="Project\assets\scripts\CharacterControllerTest.h"><Filter>Header Files</Filter></ClInclude>
-    <ClInclude Include="Project\assets\scripts\Test1.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Project\assets\scripts\TestPlayerMovement.h"><Filter>Header Files</Filter></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\scripting\ScriptDllRegistry.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="Project\assets\scripts\CameraOrbit.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="Project\assets\scripts\CharacterControllerTest.cpp"><Filter>Source Files</Filter></ClCompile>
-    <ClCompile Include="Project\assets\scripts\Test1.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Project\assets\scripts\TestPlayerMovement.cpp"><Filter>Source Files</Filter></ClCompile>
   </ItemGroup>
 </Project>

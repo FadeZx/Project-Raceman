@@ -87,7 +87,7 @@ void SceneEditor::UpdateScripts(float deltaTime) {
         }
 
         InputManager* scriptInput = ShouldRouteInputToGame() ? inputManager_ : nullptr;
-        ObjectScriptContext context(*objectIt, &attachment, console_, scriptInput, physicsWorld_.get());
+        ObjectScriptContext context(*objectIt, &attachment, console_, scriptInput, physicsWorld_.get(), &objects_);
         if (!runtimeScript.started) {
             runtimeScript.instance->OnStart(context);
             runtimeScript.started = true;
@@ -1316,9 +1316,13 @@ void SceneEditor::UpdateAudio(float deltaTime) {
         if (!inst.sound || inst.sound->isFinished()) continue;
         const int idx = FindObjectIndexById(inst.objectId);
         if (idx < 0) continue;
-        if (objects_[idx].audioSource.spatialBlend > 0.5f) {
+        const AudioSourceComponent& source = objects_[idx].audioSource;
+        inst.sound->setVolume(source.volume);
+        inst.sound->setPlaybackSpeed(source.pitch);
+        if (source.spatialBlend > 0.5f) {
             const glm::vec3 pos = GetObjectWorldPosition(idx);
             inst.sound->setPosition(irrklang::vec3df(pos.x, pos.y, pos.z));
+            inst.sound->setMinDistance(source.minDistance);
         }
     }
 
@@ -1428,6 +1432,18 @@ void SceneEditor::HandleConsoleCommand(const std::string& command) {
     if (trimmed == "help" || trimmed == "script.help") {
         if (console_) {
             console_->AddLog("Commands: script.help, script.list, script.run, script.pause, script.stop");
+            console_->AddLog("Script callbacks: void OnStart(ObjectScriptContext& context), void OnUpdate(ObjectScriptContext& context, float deltaTime)");
+            console_->AddLog("Object: context.GetObjectName(), context.GetTag(), context.SetTag(\"Player\"), context.CompareTag(\"Enemy\")");
+            console_->AddLog("Find: auto enemy = context.FindObjectWithTag(\"Enemy\"); auto camera = context.FindObjectByName(\"Main Camera\");");
+            console_->AddLog("ObjectHandle: IsValid(), GetObjectName(), GetTag(), GetPosition(), SetPosition(vec3), SetEnabled(bool)");
+            console_->AddLog("Transform: context.GetPosition(), context.SetPosition({0, 2, 0}), context.GetForwardVector()");
+            console_->AddLog("Input: context.GetAxis(\"moveX\"), context.GetAxis(\"moveY\"), context.IsActionDown(\"jump\")");
+            console_->AddLog("Rigidbody: context.IsRigidbodyDynamic(), context.SetRigidbodyVelocity({0, 0, -5}), context.AddRigidbodyImpulse({0, 4, 0})");
+            console_->AddLog("Collider: context.HasCollider(), context.SetColliderEnabled(false), context.SetColliderTrigger(true), context.SetBoxColliderSize({1, 2, 1})");
+            console_->AddLog("Camera: context.HasCamera(), context.Camera().SetFieldOfView(60.0f)");
+            console_->AddLog("Light: context.HasLight(), context.SetLightColor({1, 0.8f, 0.4f}), context.SetLightIntensity(3.0f)");
+            console_->AddLog("AudioSource: context.HasAudioSource(), context.SetAudioVolume(0.5f), context.SetAudioPitch(1.2f)");
+            console_->AddLog("Fields: RACEMAN_SCRIPT_FIELD_FLOAT(\"moveSpeed\", \"Move Speed\", 8.0f), then context.GetFloatField(\"moveSpeed\", 8.0f)");
         }
         return;
     }

@@ -4,6 +4,10 @@
   "assetsRoot": "assets",
   "defaultScene": "assets/scenes/EditorScene.scene.json",
   "lastScene": "assets/scenes/Test2.scene.json",
+  "tags": [
+    "Untagged",
+    "Player"
+  ],
   "physics": {
     "layers": [
       "Default",
@@ -1160,6 +1164,6 @@
     ]
   },
   "editorState": {
-    "selectedProjectDirectory": "assets/car"
+    "selectedProjectDirectory": "assets/scripts"
   }
 }

@@ -265,6 +265,7 @@ void SceneEditor::Save(const std::string& path) {
         out << "      \"id\": \"" << JsonEscape(o.id) << "\",\n";
         out << "      \"parentId\": \"" << JsonEscape(o.parentId) << "\",\n";
         out << "      \"name\": \"" << JsonEscape(o.name) << "\",\n";
+        out << "      \"tag\": \"" << JsonEscape(o.tag.empty() ? "Untagged" : o.tag) << "\",\n";
         out << "      \"type\": \"" << JsonEscape(o.type) << "\",\n";
         out << "      \"physicsLayer\": " << ClampPhysicsLayerIndex(o.physicsLayer) << ",\n";
         out << "      \"enabled\": " << (o.enabled ? "true" : "false") << ",\n";
@@ -575,6 +576,7 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
         out << "      \"id\": \"" << JsonEscape(o.id) << "\",\n";
         out << "      \"parentId\": \"" << JsonEscape(o.parentId) << "\",\n";
         out << "      \"name\": \"" << JsonEscape(o.name) << "\",\n";
+        out << "      \"tag\": \"" << JsonEscape(o.tag.empty() ? "Untagged" : o.tag) << "\",\n";
         out << "      \"type\": \"" << JsonEscape(o.type) << "\",\n";
         out << "      \"physicsLayer\": " << ClampPhysicsLayerIndex(o.physicsLayer) << ",\n";
         out << "      \"enabled\": " << (o.enabled ? "true" : "false") << ",\n";
@@ -895,6 +897,10 @@ void SceneEditor::Load(const std::string& path) {
             }
             else {
                 so.name = "Object";
+            }
+            ReadString(o, "tag", so.tag);
+            if (so.tag.empty()) {
+                so.tag = "Untagged";
             }
 
             // type
@@ -1736,6 +1742,10 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
             ReadString(o, "parentId", so.parentId);
             auto nameIt = o.find("name");
             so.name = (nameIt != o.end() && nameIt->second.is_string()) ? nameIt->second.as_string() : "Object";
+            ReadString(o, "tag", so.tag);
+            if (so.tag.empty()) {
+                so.tag = "Untagged";
+            }
             so.type = "GameObject";
             so.physicsLayer = 0;
             ReadBool(o, "enabled", so.enabled);
@@ -2100,6 +2110,7 @@ void SceneEditor::LoadProject() {
     selectedProjectDirectory_ = "assets";
     activeViewport_ = SceneEditorActiveViewport::Scene;
     ResetPhysicsLayerSettings();
+    projectTags_ = {"Untagged"};
 
     bool shouldSaveProject = false;
 
@@ -2128,6 +2139,19 @@ void SceneEditor::LoadProject() {
                 ReadString(object, "assetsRoot", assetsRootSetting_);
                 ReadString(object, "defaultScene", defaultScenePath_);
                 ReadString(object, "lastScene", lastScenePath_);
+
+                auto tagsIt = object.find("tags");
+                if (tagsIt != object.end() && tagsIt->second.is_array()) {
+                    projectTags_.clear();
+                    for (const auto& tagValue : tagsIt->second.as_array()) {
+                        if (tagValue.is_string()) {
+                            projectTags_.push_back(tagValue.as_string());
+                        }
+                    }
+                } else {
+                    shouldSaveProject = true;
+                }
+                EnsureProjectTags();
 
                 auto editorIt = object.find("editorState");
                 if (editorIt != object.end() && editorIt->second.is_object()) {
@@ -2343,6 +2367,7 @@ void SceneEditor::LoadProject() {
 
 void SceneEditor::SaveProject() {
     try {
+        EnsureProjectTags();
         const fs::path projectFile = ProjectRootPath() / projectPath_;
         fs::create_directories(projectFile.parent_path());
         std::ofstream out(projectFile, std::ios::trunc);
@@ -2356,6 +2381,11 @@ void SceneEditor::SaveProject() {
         out << "  \"assetsRoot\": \"" << JsonEscape(assetsRootSetting_) << "\",\n";
         out << "  \"defaultScene\": \"" << JsonEscape(NormalizeSlashes(defaultScenePath_)) << "\",\n";
         out << "  \"lastScene\": \"" << JsonEscape(NormalizeSlashes(lastScenePath_)) << "\",\n";
+        out << "  \"tags\": [\n";
+        for (std::size_t tagIndex = 0; tagIndex < projectTags_.size(); ++tagIndex) {
+            out << "    \"" << JsonEscape(projectTags_[tagIndex]) << "\"" << (tagIndex + 1 < projectTags_.size() ? ",\n" : "\n");
+        }
+        out << "  ],\n";
         out << "  \"physics\": {\n";
         out << "    \"layers\": [\n";
         for (int layerIndex = 0; layerIndex < kPhysicsLayerCount; ++layerIndex) {

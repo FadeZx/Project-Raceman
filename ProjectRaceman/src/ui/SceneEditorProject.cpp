@@ -1077,6 +1077,59 @@ void SceneEditor::RenderProjectPhysicsSettings() {
     ImGui::TextDisabled("Assign each object's physics layer in the Inspector. This matrix controls which layers collide.");
 }
 
+void SceneEditor::RenderProjectTagsAndLayersSettings() {
+    EnsureProjectTags();
+
+    if (ImGui::CollapsingHeader("Tags", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::BeginTable("ProjectTagsTable", 3, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 36.0f);
+            ImGui::TableSetupColumn("Tag");
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 72.0f);
+            ImGui::TableHeadersRow();
+
+            for (int tagIndex = 0; tagIndex < static_cast<int>(projectTags_.size()); ++tagIndex) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%d", tagIndex);
+
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(projectTags_[static_cast<std::size_t>(tagIndex)].c_str());
+
+                ImGui::TableSetColumnIndex(2);
+                if (tagIndex == 0) {
+                    ImGui::TextDisabled("Built-in");
+                } else {
+                    ImGui::PushID(("removeTag_" + std::to_string(tagIndex)).c_str());
+                    if (ImGui::SmallButton("Remove")) {
+                        RemoveProjectTag(tagIndex);
+                        ImGui::PopID();
+                        break;
+                    }
+                    ImGui::PopID();
+                }
+            }
+
+            ImGui::EndTable();
+        }
+
+        ImGui::Spacing();
+        ImGui::SetNextItemWidth(220.0f);
+        ImGui::InputText("New Tag", createTagNameBuffer_, sizeof(createTagNameBuffer_));
+        ImGui::SameLine();
+        if (ImGui::Button("Add")) {
+            if (AddProjectTag(createTagNameBuffer_)) {
+                createTagNameBuffer_[0] = '\0';
+            }
+        }
+        ImGui::TextDisabled("Objects pick tags from the Inspector dropdown.");
+    }
+
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("Layers", ImGuiTreeNodeFlags_DefaultOpen)) {
+        RenderProjectPhysicsSettings();
+    }
+}
+
 void SceneEditor::RenderProjectInputSettings() {
     if (inputManager_ != nullptr && inputProfiles_.empty()) {
         inputManager_->EnsureDefaultProfiles();

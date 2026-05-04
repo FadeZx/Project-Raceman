@@ -366,6 +366,21 @@ inline bool IsAudioAssetPath(const std::string& path) {
     return ext == ".wav" || ext == ".ogg" || ext == ".mp3" || ext == ".flac";
 }
 
+inline bool IsScriptAssetPath(const std::string& path) {
+    const std::string ext = ToLowerCopy(fs::path(path).extension().string());
+    return ext == ".cpp" || ext == ".h";
+}
+
+inline std::string ScriptNameFromAssetPath(const std::string& path) {
+    return fs::path(path).stem().string();
+}
+
+inline std::string ScriptSourcePathFromAssetPath(const std::string& path) {
+    fs::path p(path);
+    p.replace_extension(".cpp");
+    return NormalizeSlashes(p.string());
+}
+
 inline std::string MaterialIdFromAssetPath(const std::string& path) {
     std::string filename = fs::path(path).filename().string();
     const std::string suffix = ".mat.json";
@@ -929,7 +944,7 @@ inline void ApplyMeshInfoToSceneObject(SceneObject& object, const ImportedMeshIn
 }
 
 inline bool IsBuiltInPrimitiveMeshType(const std::string& meshType) {
-    return meshType == "Plane" || meshType == "Cube" || meshType == "Sphere" || meshType == "Cone" || meshType == "Cylinder";
+    return meshType == "Plane" || meshType == "Cube" || meshType == "Sphere" || meshType == "Cone" || meshType == "Capsule" || meshType == "Cylinder";
 }
 
 inline bool ConfigureBuiltInPrimitive(SceneObject& object, const std::string& meshType, std::unordered_map<std::string, PrimitiveMesh>& primitiveCache) {
@@ -948,6 +963,8 @@ inline bool ConfigureBuiltInPrimitive(SceneObject& object, const std::string& me
             primitive = CreateSpherePrimitiveMesh();
         } else if (meshType == "Cone") {
             primitive = CreateConePrimitiveMesh();
+        } else if (meshType == "Capsule") {
+            primitive = CreateCapsulePrimitiveMesh();
         } else if (meshType == "Cylinder") {
             primitive = CreateCylinderPrimitiveMesh();
         }

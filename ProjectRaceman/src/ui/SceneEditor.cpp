@@ -958,6 +958,7 @@ void SceneEditor::RenderViewportPanel() {
                     ImVec2(1.0f, 0.0f));
             } else {
                 drawList->AddRectFilled(contentMin, contentMax, IM_COL32(24, 28, 34, 255));
+                ImGui::Dummy(contentAvail);
             }
             drawList->AddRect(contentMin, contentMax, IM_COL32(70, 90, 120, 180));
 
@@ -971,6 +972,10 @@ void SceneEditor::RenderViewportPanel() {
                     drawList->AddText(ImVec2((contentMin.x + contentMax.x) * 0.5f - noCameraSize.x * 0.5f, (contentMin.y + contentMax.y) * 0.5f - 8.0f), IM_COL32(255, 200, 96, 255), noCameraText);
                 }
                 ImGui::Dummy(contentAvail);
+            }
+
+            if (viewportType == SceneEditorActiveViewport::Scene) {
+                UpdateImGuizmo();
             }
 
             if ((ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)) && outHovered) {
@@ -1561,6 +1566,16 @@ void SceneEditor::AddLightObject(LightType type) {
     }
     if (onDirty_) onDirty_();
 }
+std::vector<std::pair<std::string, std::string>> SceneEditor::ScanProjectScripts() const {
+    std::vector<std::pair<std::string, std::string>> result;
+    const std::vector<ScriptSourceInfo> scripts = FindCompleteScripts(FindAssetsRoot());
+    result.reserve(scripts.size());
+    for (const ScriptSourceInfo& info : scripts) {
+        result.emplace_back(info.name, info.projectSourcePath);
+    }
+    return result;
+}
+
 bool SceneEditor::AttachScriptToSelected(const std::string& scriptName, const std::string& scriptPath) {
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size()) || scriptName.empty()) {
         return false;
@@ -2242,6 +2257,10 @@ void SceneEditor::Load(const std::string& path) {
             }
             else {
                 so.name = "Object";
+            }
+            ReadString(o, "tag", so.tag);
+            if (so.tag.empty()) {
+                so.tag = "Untagged";
             }
 
             // type
@@ -2941,6 +2960,7 @@ void SceneEditor::LoadProject() {
     selectedProjectDirectory_ = "assets";
     activeViewport_ = SceneEditorActiveViewport::Scene;
     ResetPhysicsLayerSettings();
+    projectTags_ = {"Untagged"};
 
     const fs::path assetsRoot = FindAssetsRoot();
     const fs::path scenesRoot = assetsRoot / "scenes";
@@ -2961,6 +2981,19 @@ void SceneEditor::LoadProject() {
                 ReadString(object, "assetsRoot", assetsRootSetting_);
                 ReadString(object, "defaultScene", defaultScenePath_);
                 ReadString(object, "lastScene", lastScenePath_);
+
+                auto tagsIt = object.find("tags");
+                if (tagsIt != object.end() && tagsIt->second.is_array()) {
+                    projectTags_.clear();
+                    for (const auto& tagValue : tagsIt->second.as_array()) {
+                        if (tagValue.is_string()) {
+                            projectTags_.push_back(tagValue.as_string());
+                        }
+                    }
+                } else {
+                    shouldSaveProject = true;
+                }
+                EnsureProjectTags();
 
                 auto editorIt = object.find("editorState");
                 if (editorIt != object.end() && editorIt->second.is_object()) {
@@ -3176,6 +3209,7 @@ void SceneEditor::LoadProject() {
 
 void SceneEditor::SaveProject() {
     try {
+        EnsureProjectTags();
         const fs::path projectFile = ProjectRootPath() / projectPath_;
         fs::create_directories(projectFile.parent_path());
         std::ofstream out(projectFile, std::ios::trunc);
@@ -3189,6 +3223,11 @@ void SceneEditor::SaveProject() {
         out << "  \"assetsRoot\": \"" << JsonEscape(assetsRootSetting_) << "\",\n";
         out << "  \"defaultScene\": \"" << JsonEscape(NormalizeSlashes(defaultScenePath_)) << "\",\n";
         out << "  \"lastScene\": \"" << JsonEscape(NormalizeSlashes(lastScenePath_)) << "\",\n";
+        out << "  \"tags\": [\n";
+        for (std::size_t tagIndex = 0; tagIndex < projectTags_.size(); ++tagIndex) {
+            out << "    \"" << JsonEscape(projectTags_[tagIndex]) << "\"" << (tagIndex + 1 < projectTags_.size() ? ",\n" : "\n");
+        }
+        out << "  ],\n";
         out << "  \"physics\": {\n";
         out << "    \"layers\": [\n";
         for (int layerIndex = 0; layerIndex < kPhysicsLayerCount; ++layerIndex) {
@@ -4071,6 +4110,54 @@ const char* SceneEditor::GetPhysicsLayerName(int layer) const {
 void SceneEditor::ResetPhysicsLayerSettings() {
     physicsLayerNames_ = MakeDefaultPhysicsLayerNames();
     physicsLayerCollisionMatrix_ = MakeDefaultPhysicsLayerCollisionMatrix();
+}
+
+void SceneEditor::EnsureProjectTags() {
+    std::vector<std::string> normalized;
+    normalized.reserve(projectTags_.size() + 1);
+    normalized.push_back("Untagged");
+    for (const std::string& tag : projectTags_) {
+        if (tag.empty() || tag == "Untagged") {
+            continue;
+        }
+        if (std::find(normalized.begin(), normalized.end(), tag) == normalized.end()) {
+            normalized.push_back(tag);
+        }
+    }
+    projectTags_ = std::move(normalized);
+}
+
+bool SceneEditor::AddProjectTag(const std::string& tag) {
+    const std::string normalizedTag = TrimCopyLocal(tag);
+    if (normalizedTag.empty()) {
+        return false;
+    }
+    EnsureProjectTags();
+    if (std::find(projectTags_.begin(), projectTags_.end(), normalizedTag) != projectTags_.end()) {
+        return false;
+    }
+    projectTags_.push_back(normalizedTag);
+    SaveProject();
+    return true;
+}
+
+bool SceneEditor::RemoveProjectTag(int index) {
+    EnsureProjectTags();
+    if (index <= 0 || index >= static_cast<int>(projectTags_.size())) {
+        return false;
+    }
+    const std::string removedTag = projectTags_[static_cast<std::size_t>(index)];
+    projectTags_.erase(projectTags_.begin() + index);
+    for (SceneObject& object : objects_) {
+        if (object.tag == removedTag) {
+            object.tag = "Untagged";
+        }
+    }
+    SaveProject();
+    if (onDirty_) {
+        onDirty_();
+    }
+    return true;
 }
 
 } // namespace raceman

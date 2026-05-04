@@ -312,6 +312,7 @@ struct SceneObject {
     std::string id;    // simple unique id
     std::string parentId;
     std::string name;  // editable name
+    std::string tag{"Untagged"};
     std::string type;  // legacy/display object type, e.g., "Plane", "Mesh"
     int physicsLayer{0};
     std::vector<SceneInspectorComponentType> inspectorComponentOrder;
@@ -410,6 +411,11 @@ public:
     bool IsSceneViewportActiveForEditorControls() const { return activeViewport_ == SceneEditorActiveViewport::Scene; }
     void SetSceneViewportTexture(unsigned int textureId) { sceneViewportTextureId_ = textureId; }
     void SetGameViewportTexture(unsigned int textureId) { gameViewportTextureId_ = textureId; }
+    void SetEditorCameraMatrices(const glm::mat4& view, const glm::mat4& proj) {
+        editorCameraView_ = view;
+        editorCameraProj_ = proj;
+        hasEditorCameraMatrices_ = true;
+    }
 
     // Notify app when editor content changes
     void SetOnDirty(std::function<void()> cb) {
@@ -421,6 +427,9 @@ public:
     bool IsSceneDirty() const { return sceneDirty_; }
     void MarkSceneClean() { sceneDirty_ = false; }
     void SetOnFocusObject(std::function<void(const glm::vec3&, float)> cb) { onFocusObject_ = std::move(cb); }
+    // Fired when the user clicks an axis on the corner orientation cube; lets the camera owner
+    // decompose the new view matrix back into yaw/pitch/position.
+    void SetOnEditorCameraViewChanged(std::function<void(const glm::mat4&)> cb) { onEditorCameraViewChanged_ = std::move(cb); }
 
     // Profiler stats toggle wired from Game View "Stats" button
     void SetProfilerCallbacks(std::function<bool()> getter, std::function<void(bool)> setter) {
@@ -431,6 +440,7 @@ public:
     // Game viewport position/size — used by Application to anchor the profiler overlay
     glm::vec2 GetGameViewportPos()  const { return gameViewportPos_; }
     glm::vec2 GetGameViewportSize() const { return gameViewportSize_; }
+    glm::vec2 GetSceneViewportSize() const { return sceneViewportSize_; }
 
     // Control persistence location and access from Application
     void SetSavePath(const std::string& path);
@@ -445,6 +455,7 @@ public:
     void SaveProject();
     void RenderProjectInputSettings();
     void RenderProjectPhysicsSettings();
+    void RenderProjectTagsAndLayersSettings();
     SceneProfilerStats CollectProfilerStats() const;
     std::vector<std::string> GetSceneAssetPaths() const;
     const std::string& GetCurrentScenePath() const { return savePath_; }
@@ -497,6 +508,7 @@ private:
     void RenderPlayModeLoadingPopup();
     void HandleConsoleCommand(const std::string& command);
     void UpdateGizmo(Renderer& renderer);
+    void UpdateImGuizmo();
     void SubmitGizmo(Renderer& renderer);
     void SubmitCullingDebug(Renderer& renderer);
     void TrySelectObjectAtMouse(Renderer& renderer);
@@ -525,6 +537,8 @@ private:
     bool AssignVehicleConfigToSelected(const std::string& configPath);
     bool AttachScriptToSelected(const std::string& scriptName, const std::string& scriptPath);
     bool CreateScriptAsset(const std::string& requestedName, bool attachToSelected = true);
+    // (name, projectSourcePath) pairs for every .h+.cpp script under assets/.
+    std::vector<std::pair<std::string, std::string>> ScanProjectScripts() const;
     bool SyncAttachmentScriptFields(ObjectScriptAttachment& attachment);
     bool CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId = nullptr);
     bool CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath = nullptr);
@@ -566,6 +580,9 @@ private:
     int ClampPhysicsLayerIndex(int layer) const;
     const char* GetPhysicsLayerName(int layer) const;
     void ResetPhysicsLayerSettings();
+    void EnsureProjectTags();
+    bool AddProjectTag(const std::string& tag);
+    bool RemoveProjectTag(int index);
     void CopySelectedObjectsToClipboard();
     void PasteObjectsFromClipboard();
     bool CopyInspectorComponentToClipboard(int objectIndex, SceneInspectorComponentType type);
@@ -588,6 +605,7 @@ private:
     std::string savePath_{"assets/scenes/EditorScene.scene.json"};
     PhysicsLayerNames physicsLayerNames_{};
     PhysicsLayerCollisionMatrix physicsLayerCollisionMatrix_{};
+    std::vector<std::string> projectTags_{"Untagged"};
     std::vector<InputProfile> inputProfiles_{};
     std::vector<WheelSettingsProfile> wheelSettingsProfiles_{};
     int selectedInputProfileIndex_{0};
@@ -645,6 +663,7 @@ private:
     char createScriptNameBuffer_[128]{};
     char createMaterialNameBuffer_[128]{};
     char createVehicleConfigNameBuffer_[128]{};
+    char createTagNameBuffer_[128]{};
     bool showCreateProjectAssetPopup_{false};
     ProjectCreateAssetType createProjectAssetType_{ProjectCreateAssetType::None};
     char createProjectAssetNameBuffer_[128]{};
@@ -781,6 +800,9 @@ private:
     bool sceneViewportFocused_{false};
     bool gameViewportHovered_{false};
     bool gameViewportFocused_{false};
+    glm::mat4 editorCameraView_{1.0f};
+    glm::mat4 editorCameraProj_{1.0f};
+    bool hasEditorCameraMatrices_{false};
     SceneEditorActiveViewport activeViewport_{SceneEditorActiveViewport::Scene};
 
     struct HistoryState {
@@ -826,6 +848,7 @@ private:
     bool sceneDirty_{false};
     std::function<void()> onDirty_{};
     std::function<void(const glm::vec3&, float)> onFocusObject_{};
+    std::function<void(const glm::mat4&)> onEditorCameraViewChanged_{};
     std::function<bool()> getProfilerVisible_{};
     std::function<void(bool)> setProfilerVisible_{};
 };

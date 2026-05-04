@@ -10,6 +10,8 @@
 #endif
 #include <glm/gtx/euler_angles.hpp>
 
+#include <algorithm>
+
 namespace raceman {
 
 namespace {
@@ -61,8 +63,18 @@ void SetTypedFieldValue(ObjectScriptAttachment* attachment, const std::string& n
 
 } // namespace
 
-ObjectScriptContext::ObjectScriptContext(SceneObject& object, ObjectScriptAttachment* attachment, Console* console, InputManager* inputManager, PhysicsWorld* physicsWorld)
-    : object_(object), attachment_(attachment), console_(console), inputManager_(inputManager), physicsWorld_(physicsWorld) {}
+ObjectScriptContext::ObjectScriptContext(SceneObject& object,
+                                         ObjectScriptAttachment* attachment,
+                                         Console* console,
+                                         InputManager* inputManager,
+                                         PhysicsWorld* physicsWorld,
+                                         std::vector<SceneObject>* sceneObjects)
+    : object_(object),
+      attachment_(attachment),
+      console_(console),
+      inputManager_(inputManager),
+      physicsWorld_(physicsWorld),
+      sceneObjects_(sceneObjects) {}
 
 // CameraHandle ----------------------------------------------------------------
 
@@ -139,12 +151,159 @@ void ObjectScriptContext::CameraHandle::WarnInvalid(const std::string& action) c
     }
 }
 
+// ObjectHandle ----------------------------------------------------------------
+
+ObjectScriptContext::ObjectHandle::ObjectHandle(SceneObject* object)
+    : object_(object) {}
+
+bool ObjectScriptContext::ObjectHandle::IsValid() const {
+    return object_ != nullptr;
+}
+
+const std::string& ObjectScriptContext::ObjectHandle::GetObjectId() const {
+    static const std::string kEmpty;
+    return object_ != nullptr ? object_->id : kEmpty;
+}
+
+const std::string& ObjectScriptContext::ObjectHandle::GetObjectName() const {
+    static const std::string kEmpty;
+    return object_ != nullptr ? object_->name : kEmpty;
+}
+
+std::string ObjectScriptContext::ObjectHandle::GetTag() const {
+    if (object_ == nullptr) {
+        return "Untagged";
+    }
+    return object_->tag.empty() ? "Untagged" : object_->tag;
+}
+
+void ObjectScriptContext::ObjectHandle::SetTag(const std::string& value) const {
+    if (object_ != nullptr) {
+        object_->tag = value.empty() ? "Untagged" : value;
+    }
+}
+
+bool ObjectScriptContext::ObjectHandle::CompareTag(const std::string& value) const {
+    return IsValid() && GetTag() == value;
+}
+
+glm::vec3 ObjectScriptContext::ObjectHandle::GetPosition() const {
+    return object_ != nullptr ? object_->transform.position : glm::vec3(0.0f);
+}
+
+void ObjectScriptContext::ObjectHandle::SetPosition(const glm::vec3& value) const {
+    if (object_ != nullptr) {
+        object_->transform.position = value;
+    }
+}
+
+glm::vec3 ObjectScriptContext::ObjectHandle::GetRotationEuler() const {
+    return object_ != nullptr ? object_->transform.rotationEuler : glm::vec3(0.0f);
+}
+
+void ObjectScriptContext::ObjectHandle::SetRotationEuler(const glm::vec3& value) const {
+    if (object_ != nullptr) {
+        object_->transform.rotationEuler = value;
+    }
+}
+
+glm::vec3 ObjectScriptContext::ObjectHandle::GetScale() const {
+    return object_ != nullptr ? object_->transform.scale : glm::vec3(1.0f);
+}
+
+void ObjectScriptContext::ObjectHandle::SetScale(const glm::vec3& value) const {
+    if (object_ != nullptr) {
+        object_->transform.scale = value;
+    }
+}
+
+std::string ObjectScriptContext::ObjectHandle::GetMaterialId() const {
+    return object_ != nullptr ? object_->meshRenderer.materialId : std::string();
+}
+
+void ObjectScriptContext::ObjectHandle::SetMaterialId(const std::string& value) const {
+    if (object_ != nullptr) {
+        object_->meshRenderer.materialId = value;
+    }
+}
+
+bool ObjectScriptContext::ObjectHandle::IsEnabled() const {
+    return object_ != nullptr && object_->enabled;
+}
+
+void ObjectScriptContext::ObjectHandle::SetEnabled(bool value) const {
+    if (object_ != nullptr) {
+        object_->enabled = value;
+    }
+}
+
 const std::string& ObjectScriptContext::GetObjectId() const {
     return object_.id;
 }
 
 const std::string& ObjectScriptContext::GetObjectName() const {
     return object_.name;
+}
+
+std::string ObjectScriptContext::GetTag() const {
+    return object_.tag.empty() ? "Untagged" : object_.tag;
+}
+
+void ObjectScriptContext::SetTag(const std::string& value) {
+    object_.tag = value.empty() ? "Untagged" : value;
+}
+
+bool ObjectScriptContext::CompareTag(const std::string& value) const {
+    return GetTag() == value;
+}
+
+ObjectScriptContext::ObjectHandle ObjectScriptContext::Self() {
+    return ObjectHandle(&object_);
+}
+
+ObjectScriptContext::ObjectHandle ObjectScriptContext::FindObjectById(const std::string& id) const {
+    if (sceneObjects_ == nullptr || id.empty()) {
+        return {};
+    }
+    auto it = std::find_if(sceneObjects_->begin(), sceneObjects_->end(), [&](const SceneObject& object) {
+        return object.id == id;
+    });
+    return it != sceneObjects_->end() ? ObjectHandle(&(*it)) : ObjectHandle{};
+}
+
+ObjectScriptContext::ObjectHandle ObjectScriptContext::FindObjectByName(const std::string& name) const {
+    if (sceneObjects_ == nullptr || name.empty()) {
+        return {};
+    }
+    auto it = std::find_if(sceneObjects_->begin(), sceneObjects_->end(), [&](const SceneObject& object) {
+        return object.name == name;
+    });
+    return it != sceneObjects_->end() ? ObjectHandle(&(*it)) : ObjectHandle{};
+}
+
+ObjectScriptContext::ObjectHandle ObjectScriptContext::FindObjectWithTag(const std::string& tag) const {
+    if (sceneObjects_ == nullptr || tag.empty()) {
+        return {};
+    }
+    auto it = std::find_if(sceneObjects_->begin(), sceneObjects_->end(), [&](const SceneObject& object) {
+        const std::string objectTag = object.tag.empty() ? "Untagged" : object.tag;
+        return objectTag == tag;
+    });
+    return it != sceneObjects_->end() ? ObjectHandle(&(*it)) : ObjectHandle{};
+}
+
+std::vector<ObjectScriptContext::ObjectHandle> ObjectScriptContext::FindObjectsWithTag(const std::string& tag) const {
+    std::vector<ObjectHandle> matches;
+    if (sceneObjects_ == nullptr || tag.empty()) {
+        return matches;
+    }
+    for (SceneObject& object : *sceneObjects_) {
+        const std::string objectTag = object.tag.empty() ? "Untagged" : object.tag;
+        if (objectTag == tag) {
+            matches.emplace_back(&object);
+        }
+    }
+    return matches;
 }
 
 glm::vec3 ObjectScriptContext::GetPosition() const {
@@ -193,6 +352,220 @@ bool ObjectScriptContext::HasCamera() const {
 
 ObjectScriptContext::CameraHandle ObjectScriptContext::Camera() {
     return CameraHandle(&object_, console_);
+}
+
+bool ObjectScriptContext::HasCollider() const {
+    return (object_.hasBoxCollider && object_.boxCollider.enabled) ||
+           (object_.hasSphereCollider && object_.sphereCollider.enabled) ||
+           (object_.hasCapsuleCollider && object_.capsuleCollider.enabled) ||
+           (object_.hasPlaneCollider && object_.planeCollider.enabled) ||
+           (object_.hasMeshCollider && object_.meshCollider.enabled);
+}
+
+bool ObjectScriptContext::IsColliderEnabled() const {
+    return HasCollider();
+}
+
+void ObjectScriptContext::SetColliderEnabled(bool value) {
+    if (object_.hasBoxCollider) object_.boxCollider.enabled = value;
+    if (object_.hasSphereCollider) object_.sphereCollider.enabled = value;
+    if (object_.hasCapsuleCollider) object_.capsuleCollider.enabled = value;
+    if (object_.hasPlaneCollider) object_.planeCollider.enabled = value;
+    if (object_.hasMeshCollider) object_.meshCollider.enabled = value;
+}
+
+bool ObjectScriptContext::IsColliderTrigger() const {
+    if (object_.hasBoxCollider) return object_.boxCollider.isTrigger;
+    if (object_.hasSphereCollider) return object_.sphereCollider.isTrigger;
+    if (object_.hasCapsuleCollider) return object_.capsuleCollider.isTrigger;
+    if (object_.hasPlaneCollider) return object_.planeCollider.isTrigger;
+    if (object_.hasMeshCollider) return object_.meshCollider.isTrigger;
+    return false;
+}
+
+void ObjectScriptContext::SetColliderTrigger(bool value) {
+    if (object_.hasBoxCollider) object_.boxCollider.isTrigger = value;
+    if (object_.hasSphereCollider) object_.sphereCollider.isTrigger = value;
+    if (object_.hasCapsuleCollider) object_.capsuleCollider.isTrigger = value;
+    if (object_.hasPlaneCollider) object_.planeCollider.isTrigger = value;
+    if (object_.hasMeshCollider) object_.meshCollider.isTrigger = value;
+}
+
+glm::vec3 ObjectScriptContext::GetBoxColliderSize() const {
+    return object_.hasBoxCollider ? object_.boxCollider.size : glm::vec3(0.0f);
+}
+
+void ObjectScriptContext::SetBoxColliderSize(const glm::vec3& value) {
+    if (object_.hasBoxCollider) {
+        object_.boxCollider.size = {
+            (std::max)(0.001f, value.x),
+            (std::max)(0.001f, value.y),
+            (std::max)(0.001f, value.z)
+        };
+    }
+}
+
+float ObjectScriptContext::GetSphereColliderRadius() const {
+    return object_.hasSphereCollider ? object_.sphereCollider.radius : 0.0f;
+}
+
+void ObjectScriptContext::SetSphereColliderRadius(float value) {
+    if (object_.hasSphereCollider) {
+        object_.sphereCollider.radius = (std::max)(0.001f, value);
+    }
+}
+
+float ObjectScriptContext::GetCapsuleColliderRadius() const {
+    return object_.hasCapsuleCollider ? object_.capsuleCollider.radius : 0.0f;
+}
+
+void ObjectScriptContext::SetCapsuleColliderRadius(float value) {
+    if (object_.hasCapsuleCollider) {
+        object_.capsuleCollider.radius = (std::max)(0.001f, value);
+        object_.capsuleCollider.height = (std::max)(object_.capsuleCollider.height, object_.capsuleCollider.radius * 2.0f);
+    }
+}
+
+float ObjectScriptContext::GetCapsuleColliderHeight() const {
+    return object_.hasCapsuleCollider ? object_.capsuleCollider.height : 0.0f;
+}
+
+void ObjectScriptContext::SetCapsuleColliderHeight(float value) {
+    if (object_.hasCapsuleCollider) {
+        object_.capsuleCollider.height = (std::max)(object_.capsuleCollider.radius * 2.0f, value);
+    }
+}
+
+bool ObjectScriptContext::HasLight() const {
+    return object_.hasLight && object_.light.enabled;
+}
+
+bool ObjectScriptContext::IsLightEnabled() const {
+    return HasLight();
+}
+
+void ObjectScriptContext::SetLightEnabled(bool value) {
+    if (object_.hasLight) {
+        object_.light.enabled = value;
+    }
+}
+
+glm::vec3 ObjectScriptContext::GetLightColor() const {
+    return object_.hasLight ? object_.light.color : glm::vec3(0.0f);
+}
+
+void ObjectScriptContext::SetLightColor(const glm::vec3& value) {
+    if (object_.hasLight) {
+        object_.light.color = {
+            (std::max)(0.0f, value.x),
+            (std::max)(0.0f, value.y),
+            (std::max)(0.0f, value.z)
+        };
+    }
+}
+
+float ObjectScriptContext::GetLightIntensity() const {
+    return object_.hasLight ? object_.light.intensity : 0.0f;
+}
+
+void ObjectScriptContext::SetLightIntensity(float value) {
+    if (object_.hasLight) {
+        object_.light.intensity = (std::max)(0.0f, value);
+    }
+}
+
+float ObjectScriptContext::GetLightRange() const {
+    return object_.hasLight ? object_.light.range : 0.0f;
+}
+
+void ObjectScriptContext::SetLightRange(float value) {
+    if (object_.hasLight) {
+        object_.light.range = (std::max)(0.001f, value);
+    }
+}
+
+float ObjectScriptContext::GetLightSpotAngle() const {
+    return object_.hasLight ? object_.light.spotAngleDegrees : 0.0f;
+}
+
+void ObjectScriptContext::SetLightSpotAngle(float degrees) {
+    if (object_.hasLight) {
+        object_.light.spotAngleDegrees = (std::max)(1.0f, (std::min)(179.0f, degrees));
+    }
+}
+
+bool ObjectScriptContext::HasAudioSource() const {
+    return object_.hasAudioSource && object_.audioSource.enabled;
+}
+
+bool ObjectScriptContext::IsAudioSourceEnabled() const {
+    return HasAudioSource();
+}
+
+void ObjectScriptContext::SetAudioSourceEnabled(bool value) {
+    if (object_.hasAudioSource) {
+        object_.audioSource.enabled = value;
+    }
+}
+
+std::string ObjectScriptContext::GetAudioClipPath() const {
+    return object_.hasAudioSource ? object_.audioSource.clipPath : std::string();
+}
+
+void ObjectScriptContext::SetAudioClipPath(const std::string& value) {
+    if (object_.hasAudioSource) {
+        object_.audioSource.clipPath = value;
+    }
+}
+
+float ObjectScriptContext::GetAudioVolume() const {
+    return object_.hasAudioSource ? object_.audioSource.volume : 0.0f;
+}
+
+void ObjectScriptContext::SetAudioVolume(float value) {
+    if (object_.hasAudioSource) {
+        object_.audioSource.volume = (std::max)(0.0f, value);
+    }
+}
+
+float ObjectScriptContext::GetAudioPitch() const {
+    return object_.hasAudioSource ? object_.audioSource.pitch : 0.0f;
+}
+
+void ObjectScriptContext::SetAudioPitch(float value) {
+    if (object_.hasAudioSource) {
+        object_.audioSource.pitch = (std::max)(0.01f, value);
+    }
+}
+
+bool ObjectScriptContext::IsAudioLooping() const {
+    return object_.hasAudioSource && object_.audioSource.loop;
+}
+
+void ObjectScriptContext::SetAudioLooping(bool value) {
+    if (object_.hasAudioSource) {
+        object_.audioSource.loop = value;
+    }
+}
+
+bool ObjectScriptContext::IsAudioPlayOnAwake() const {
+    return object_.hasAudioSource && object_.audioSource.playOnAwake;
+}
+
+void ObjectScriptContext::SetAudioPlayOnAwake(bool value) {
+    if (object_.hasAudioSource) {
+        object_.audioSource.playOnAwake = value;
+    }
+}
+
+float ObjectScriptContext::GetAudioSpatialBlend() const {
+    return object_.hasAudioSource ? object_.audioSource.spatialBlend : 0.0f;
+}
+
+void ObjectScriptContext::SetAudioSpatialBlend(float value) {
+    if (object_.hasAudioSource) {
+        object_.audioSource.spatialBlend = (std::max)(0.0f, (std::min)(1.0f, value));
+    }
 }
 
 glm::vec3 ObjectScriptContext::GetForwardVector() const {

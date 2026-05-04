@@ -77,6 +77,26 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         sceneEditor_->SetOnFocusObject([this](const glm::vec3& target, float radius) {
             FocusEditorCameraOn(target, radius);
         });
+        sceneEditor_->SetOnEditorCameraViewChanged([this](const glm::mat4& view) {
+            // ImGuizmo's corner cube wrote a new view matrix; decompose it back to
+            // yaw/pitch/position so our per-frame lookAt rebuild stays consistent.
+            const glm::mat4 inv = glm::inverse(view);
+            const glm::vec3 pos(inv[3]);
+            glm::vec3 forward = -glm::vec3(inv[2]);
+            const float len = glm::length(forward);
+            if (len < 1e-5f) return;
+            forward /= len;
+            float pitch = glm::degrees(asinf(glm::clamp(forward.y, -1.0f, 1.0f)));
+            float yaw = glm::degrees(atan2f(forward.z, forward.x));
+            if (pitch > 89.0f) pitch = 89.0f;
+            if (pitch < -89.0f) pitch = -89.0f;
+            camPosX_ = pos.x;
+            camPosY_ = pos.y;
+            camPosZ_ = pos.z;
+            camYaw_ = yaw;
+            camPitch_ = pitch;
+            cameraFocusActive_ = false;
+        });
         // Wire the Game View "Stats" button to DebugUI's profiler visibility
         sceneEditor_->SetProfilerCallbacks(
             [this]() { return debugUi_->IsProfilerVisible(); },
@@ -291,9 +311,9 @@ void Application::Update(float deltaTime) {
             wantCaptureMouse = true;
         }
 
-        const bool allowKeyboardMove = allowEditorCamera && (rmbHeld_
-            || !(config_.enableImGui && ImGui::GetCurrentContext() != nullptr
-                && ImGui::GetIO().WantTextInput));
+        const bool allowKeyboardMove = allowEditorCamera && rmbHeld_
+            && !(config_.enableImGui && ImGui::GetCurrentContext() != nullptr
+                && ImGui::GetIO().WantTextInput);
 
         // Keyboard move
         float speed = camBaseSpeed_;
@@ -332,6 +352,24 @@ void Application::Update(float deltaTime) {
         if (sceneEditor_) {
             sceneEditor_->SetSceneViewportTexture(renderer_->GetViewportRenderTargetTexture(ViewportRenderTarget::Scene));
             sceneEditor_->SetGameViewportTexture(renderer_->GetViewportRenderTargetTexture(ViewportRenderTarget::Game));
+            const float sceneAspect = sceneEditor_->GetSceneViewportSize().y > 0.5f
+                ? sceneEditor_->GetSceneViewportSize().x / sceneEditor_->GetSceneViewportSize().y
+                : 1.0f;
+            const float yawRad = glm::radians(camYaw_);
+            const float pitchRad = glm::radians(camPitch_);
+            glm::vec3 front{
+                cosf(yawRad) * cosf(pitchRad),
+                sinf(pitchRad),
+                sinf(yawRad) * cosf(pitchRad)
+            };
+            front = glm::normalize(front);
+            const glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
+            const glm::vec3 right = glm::normalize(glm::cross(front, worldUp));
+            const glm::vec3 up = glm::normalize(glm::cross(right, front));
+            const glm::vec3 camPos(camPosX_, camPosY_, camPosZ_);
+            sceneEditor_->SetEditorCameraMatrices(
+                glm::lookAt(camPos, camPos + front, up),
+                glm::perspective(glm::radians(60.0f), sceneAspect, 0.1f, 500.0f));
             sceneEditor_->RenderUI(deltaTime);
         }
         const SceneProfilerStats sceneStats = sceneEditor_ ? sceneEditor_->CollectProfilerStats() : SceneProfilerStats{};
@@ -371,6 +409,9 @@ void Application::Update(float deltaTime) {
                 },
                 [this]() {
                     if (sceneEditor_) sceneEditor_->RenderProjectPhysicsSettings();
+                },
+                [this]() {
+                    if (sceneEditor_) sceneEditor_->RenderProjectTagsAndLayersSettings();
                 }
             } : EditorProjectMenu{},
             [this](const SkyboxFaces& faces) {

@@ -126,12 +126,17 @@ void MenuController::Render(Renderer& renderer,
                 if (ImGui::BeginTabItem("Physics")) {
                     if (physicsCullingEnabled) {
                         ImGui::Checkbox("Physics Body Culling", physicsCullingEnabled);
-                        ImGui::Separator();
-                    }
-                    if (projectMenu.renderProjectSettings) {
-                        projectMenu.renderProjectSettings();
                     } else {
                         ImGui::TextDisabled("Physics settings are unavailable.");
+                    }
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("Tags & Layers")) {
+                    if (projectMenu.renderTagsAndLayersSettings) {
+                        projectMenu.renderTagsAndLayersSettings();
+                    } else {
+                        ImGui::TextDisabled("Tag and layer settings are unavailable.");
                     }
                     ImGui::EndTabItem();
                 }
