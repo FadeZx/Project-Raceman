@@ -1,12 +1,14 @@
 #include "Application.h"
 
 #include "audio/AudioManager.h"
+#include "build/BuildSystem.h"
 #include "input/InputManager.h"
 #include "physics/PhysicsWorld.h"
 #include "rendering/Renderer.h"
 #include "rendering/SkyboxController.h"
 #include "ui/DebugUI.h"
 #include "ui/MenuController.h"
+#include "ui/ProjectLauncher.h"
 #include "ui/SceneEditor.h"
 #include "ui/Console.h"
 
@@ -26,9 +28,19 @@
 
 #include <chrono>
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <filesystem>
+#include <iostream>
 #include <stdexcept>
+
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <shellapi.h>
+#endif
 
 namespace raceman {
 
@@ -48,66 +60,208 @@ std::string SceneDisplayName(const std::string& scenePath) {
     }
     return filename;
 }
+
+void OpenFolderInExplorer(const std::string& folder) {
+#if defined(_WIN32)
+    ShellExecuteA(nullptr, "open", folder.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+#else
+    (void)folder;
+#endif
+}
+
+void PlayerStartupLog(const ApplicationConfig& config, const char* message) {
+    if (config.playerMode) {
+        std::cout << "[Player] " << message << std::endl;
+    }
+}
 } // namespace
 
 Application::Application(const ApplicationConfig& config) : config_(config) {
+    PlayerStartupLog(config_, "Initializing GLFW...");
     InitializeGlfw();
+    PlayerStartupLog(config_, "Initializing OpenGL...");
     InitializeGlad();
 
+    PlayerStartupLog(config_, "Creating renderer...");
     renderer_ = std::make_shared<Renderer>(RendererConfig{config.width, config.height});
+    PlayerStartupLog(config_, "Creating input...");
     if (!inputManager_) {
         inputManager_ = std::make_unique<InputManager>();
         inputManager_->AttachToWindow(window_);
     }
+    PlayerStartupLog(config_, "Initializing audio...");
     audioManager_ = std::make_unique<AudioManager>();
     audioManager_->Initialize();
+    PlayerStartupLog(config_, "Creating editor/player services...");
 
     debugUi_ = std::make_unique<DebugUI>(config.enableImGui);
     menuController_ = std::make_unique<MenuController>();
     console_ = std::make_unique<Console>();
     skyboxController_ = std::make_unique<SkyboxController>();
+    PlayerStartupLog(config_, "Loading skybox...");
     skyboxController_->Reload();
+    PlayerStartupLog(config_, "Skybox loaded.");
 
     if (config.enableImGui) {
         InitializeImGui();
+    }
+
+    if (config.playerMode && config.enableImGui) {
+        playerDebugMode_ = true;
+    }
+
+    if (config.playerMode) {
+        auto consoleLog = [&](const char* msg) {
+            PlayerStartupLog(config_, msg);
+            if (console_) console_->AddLog(std::string("[Player] ") + msg);
+        };
+        // Player mode: create editor directly with the specified project root.
+        consoleLog("Creating scene editor...");
         sceneEditor_ = std::make_unique<SceneEditor>();
+        consoleLog("Scene editor created.");
         sceneEditor_->SetConsole(console_.get());
         sceneEditor_->SetInputManager(inputManager_.get());
         sceneEditor_->SetAudioManager(audioManager_.get());
-        sceneEditor_->SetOnFocusObject([this](const glm::vec3& target, float radius) {
-            FocusEditorCameraOn(target, radius);
-        });
-        sceneEditor_->SetOnEditorCameraViewChanged([this](const glm::mat4& view) {
-            // ImGuizmo's corner cube wrote a new view matrix; decompose it back to
-            // yaw/pitch/position so our per-frame lookAt rebuild stays consistent.
-            const glm::mat4 inv = glm::inverse(view);
-            const glm::vec3 pos(inv[3]);
-            glm::vec3 forward = -glm::vec3(inv[2]);
-            const float len = glm::length(forward);
-            if (len < 1e-5f) return;
-            forward /= len;
-            float pitch = glm::degrees(asinf(glm::clamp(forward.y, -1.0f, 1.0f)));
-            float yaw = glm::degrees(atan2f(forward.z, forward.x));
-            if (pitch > 89.0f) pitch = 89.0f;
-            if (pitch < -89.0f) pitch = -89.0f;
-            camPosX_ = pos.x;
-            camPosY_ = pos.y;
-            camPosZ_ = pos.z;
-            camYaw_ = yaw;
-            camPitch_ = pitch;
-            cameraFocusActive_ = false;
-        });
-        // Wire the Game View "Stats" button to DebugUI's profiler visibility
-        sceneEditor_->SetProfilerCallbacks(
-            [this]() { return debugUi_->IsProfilerVisible(); },
-            [this](bool v) { debugUi_->SetProfilerVisible(v); });
+        consoleLog("Loading project metadata...");
+        sceneEditor_->SetProjectRoot(config.projectRoot);
+        const std::string loadingTitle = config_.windowTitle + " - Loading...";
+        glfwSetWindowTitle(window_, loadingTitle.c_str());
+        consoleLog("Startup complete; runtime will begin after first frame.");
+    } else if (config.enableImGui) {
+        // Editor mode: open the most recent project, or show the launcher.
+        const auto recent = ProjectLauncher::LoadRegistry();
+        if (!recent.empty() && std::filesystem::exists(recent.front().path)) {
+            InitializeEditor(recent.front().path);
+        } else {
+            launcher_ = std::make_unique<ProjectLauncher>();
+        }
     }
 
     lastFrameTime_ = glfwGetTime();
     baseTitle_ = config_.windowTitle;
 }
 
+void Application::InitializeEditor(const std::string& projectPath) {
+    if (sceneEditor_) {
+        sceneEditor_->StopRuntime();
+        sceneEditor_.reset();
+    }
+    launcher_.reset();
+
+#if defined(_WIN32)
+    _putenv_s("RACEMAN_PROJECT_ROOT", projectPath.c_str());
+#else
+    setenv("RACEMAN_PROJECT_ROOT", projectPath.c_str(), 1);
+#endif
+
+    sceneEditor_ = std::make_unique<SceneEditor>();
+    sceneEditor_->SetConsole(console_.get());
+    sceneEditor_->SetInputManager(inputManager_.get());
+    sceneEditor_->SetAudioManager(audioManager_.get());
+    sceneEditor_->SetOnFocusObject([this](const glm::vec3& target, float radius) {
+        FocusEditorCameraOn(target, radius);
+    });
+    sceneEditor_->SetOnEditorCameraViewChanged([this](const glm::mat4& view) {
+        const glm::mat4 inv = glm::inverse(view);
+        const glm::vec3 pos(inv[3]);
+        glm::vec3 forward = -glm::vec3(inv[2]);
+        const float len = glm::length(forward);
+        if (len < 1e-5f) return;
+        forward /= len;
+        float pitch = glm::degrees(asinf(glm::clamp(forward.y, -1.0f, 1.0f)));
+        float yaw   = glm::degrees(atan2f(forward.z, forward.x));
+        if (pitch >  89.0f) pitch =  89.0f;
+        if (pitch < -89.0f) pitch = -89.0f;
+        camPosX_ = pos.x; camPosY_ = pos.y; camPosZ_ = pos.z;
+        camYaw_  = yaw;   camPitch_ = pitch;
+        cameraFocusActive_ = false;
+    });
+    sceneEditor_->SetProfilerCallbacks(
+        [this]() { return debugUi_->IsProfilerVisible(); },
+        [this](bool v) { debugUi_->SetProfilerVisible(v); });
+
+    ProjectLauncher::AddToRegistry(std::filesystem::path(projectPath).filename().string(), projectPath);
+
+    // Apply the project's saved skybox (if any face is non-empty) to the controller.
+    const SkyboxFaces& savedFaces = sceneEditor_->GetSkyboxFaces();
+    if (!savedFaces[0].empty() && skyboxController_) {
+        skyboxController_->SetFaces(savedFaces);
+        skyboxController_->Reload();
+    }
+}
+
+void Application::RenderPlayerDebugOverlay(float deltaTime) {
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImGuiViewport* vp = ImGui::GetMainViewport();
+
+    if (ImGui::IsKeyPressed(ImGuiKey_F1, false))  playerDebugStatsOpen_   = !playerDebugStatsOpen_;
+    if (ImGui::IsKeyPressed(ImGuiKey_F12, false)) playerDebugConsoleOpen_ = !playerDebugConsoleOpen_;
+
+    // Stats strip — toggled by F1
+    if (playerDebugStatsOpen_) {
+    ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.75f);
+    ImGui::SetNextWindowSize(ImVec2(0.0f, 0.0f));
+    ImGui::Begin("##dbg_stats", nullptr,
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
+        ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings);
+    ImGui::Text("FPS: %.0f  dt: %.2f ms  [F1 stats | F12 console]", io.Framerate, deltaTime * 1000.0f);
+    ImGui::Text("Runtime: %s", playerRuntimeStarted_ ? "Running" : "Loading...");
+    // Snapshot physics build progress once — used in both the stats strip and the console panel.
+    const PhysicsBuildProgress* prog = sceneEditor_ ? sceneEditor_->GetPhysicsBuildProgress() : nullptr;
+    const int progDone  = prog ? prog->stepsDone.load() : 0;
+    const int progTotal = prog ? prog->stepsTotal.load() : 0;
+    const std::string progTask = prog ? prog->GetTask() : std::string{};
+    const float progFraction = (prog && progTotal > 0) ? static_cast<float>(progDone) / static_cast<float>(progTotal) : -1.0f;
+
+    if (sceneEditor_) {
+        if (prog) {
+            if (progTotal > 0) {
+                ImGui::Text("Physics: %d / %d", progDone, progTotal);
+            } else {
+                ImGui::TextUnformatted("Physics: cooking...");
+            }
+            // Thin progress bar in the stats strip (marquee when total unknown).
+            ImGui::ProgressBar(progFraction, ImVec2(-1.0f, 4.0f), "");
+        } else {
+            const bool hasPhysics = sceneEditor_->GetPhysicsWorld() != nullptr;
+            ImGui::Text("Physics: %s", hasPhysics ? "Active" : "None");
+        }
+        const std::string& projName = config_.playerMode ? config_.windowTitle : sceneEditor_->GetProjectName();
+        ImGui::Text("Project: %s", projName.empty() ? "(none)" : projName.c_str());
+    }
+    ImGui::End();
+    } // end playerDebugStatsOpen_
+
+    // Console slides up from the bottom of the screen.
+    const float consoleH = vp->Size.y * 0.40f;
+    const float openY   = vp->Size.y - consoleH - 10.0f;
+    const float closedY = vp->Size.y + 10.0f;
+    const float targetY = playerDebugConsoleOpen_ ? openY : closedY;
+    consoleSlideY_ += (targetY - consoleSlideY_) * (std::min)(1.0f, deltaTime * 14.0f);
+    if (std::abs(consoleSlideY_ - targetY) < 0.5f) consoleSlideY_ = targetY;
+
+    // Console panel — slides up from the bottom.
+    ImGui::SetNextWindowPos(ImVec2(10.0f, consoleSlideY_), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(vp->Size.x - 20.0f, consoleH), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.90f);
+    ImGui::Begin("##dbg_console", nullptr,
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav);
+    if (console_) {
+        console_->RenderFlat();
+    }
+    ImGui::End();
+}
+
 Application::~Application() {
+    if (standaloneBuildThread_ && standaloneBuildThread_->joinable()) {
+        standaloneBuildThread_->join();
+    }
+    if (sceneEditor_) {
+        sceneEditor_->StopRuntime();
+    }
     sceneEditor_.reset(); // stop audio sources before audio engine shuts down
     if (config_.enableImGui) {
         ShutdownImGui();
@@ -137,6 +291,24 @@ void Application::Run() {
             }
         }
 
+        if (config_.playerMode && sceneEditor_ && !playerRuntimeStarted_) {
+            glfwSetWindowTitle(window_, "Project Raceman - Loading project...");
+            if (console_) console_->AddLog("[Player] Starting runtime...");
+            Render();
+            if (inputManager_) {
+                inputManager_->EndFrame();
+            }
+
+            std::cout << "[Player] Calling StartRuntime()..." << std::endl;
+            if (console_) console_->AddLog("[Player] Starting runtime (building physics in background)...");
+            sceneEditor_->StartRuntime();
+            playerRuntimeStarted_ = true;
+            std::cout << "[Player] StartRuntime() returned. Physics cooking in background." << std::endl;
+            lastFrameTime_ = glfwGetTime();
+            glfwSetWindowTitle(window_, config_.windowTitle.c_str());
+            continue;
+        }
+
         double currentTime = glfwGetTime();
         float deltaTime = static_cast<float>(currentTime - lastFrameTime_);
         lastFrameTime_ = currentTime;
@@ -146,8 +318,12 @@ void Application::Run() {
         ++fpsFrames_;
         if (fpsAccum_ >= 1.0) {
             double fps = static_cast<double>(fpsFrames_) / fpsAccum_;
+            std::string projectName = config_.playerMode
+                ? config_.windowTitle
+                : (sceneEditor_ ? sceneEditor_->GetProjectName() : "");
+            if (projectName.empty()) projectName = baseTitle_;
             std::string sceneName = sceneEditor_ ? SceneDisplayName(sceneEditor_->GetCurrentScenePath()) : "";
-            std::string title = std::string("Project Race man") +
+            std::string title = projectName +
                                 (sceneName.empty() ? "" : " - " + sceneName) +
                                 " - FPS:" + std::to_string(static_cast<int>(fps + 0.5));
             glfwSetWindowTitle(window_, title.c_str());
@@ -256,6 +432,30 @@ void Application::FocusEditorCameraOn(const glm::vec3& target, float radius) {
 }
 
 void Application::Update(float deltaTime) {
+    if (standaloneBuildStatus_ && standaloneBuildStatus_->isDone.load()) {
+        if (standaloneBuildThread_ && standaloneBuildThread_->joinable()) {
+            standaloneBuildThread_->join();
+        }
+        bool ok;
+        std::string msg, folder;
+        {
+            std::lock_guard<std::mutex> lock(standaloneBuildStatus_->resultMutex);
+            ok     = standaloneBuildStatus_->success;
+            msg    = standaloneBuildStatus_->message;
+            folder = standaloneBuildStatus_->outputFolder;
+        }
+        if (console_) {
+            if (ok) {
+                console_->AddLog(msg);
+                OpenFolderInExplorer(folder);
+            } else {
+                console_->AddError(msg);
+            }
+        }
+        standaloneBuildThread_.reset();
+        standaloneBuildStatus_.reset();
+    }
+
     // Update input
     // (PollEvents already called; here we process per-frame states)
     // Editor camera controls (Unity-like)
@@ -344,9 +544,57 @@ void Application::Update(float deltaTime) {
         (void)wantCaptureMouse; // reserved for future UI focus logic
     }
 
+    if (config_.playerMode && sceneEditor_) {
+        sceneEditor_->UpdateRuntime(deltaTime);
+    }
+
     if (config_.enableImGui) {
         debugUi_->BeginFrame();
-        // Note: RenderProfilerHud() removed — toggle button is now in the Game View toolbar
+
+        if (playerDebugMode_) {
+            RenderPlayerDebugOverlay(deltaTime);
+            debugUi_->EndFrame();
+            return;
+        }
+
+        // Show project launcher if no project is open yet (or user opened the launcher)
+        if (launcher_) {
+            std::string pendingProject;
+            launcher_->Render([&pendingProject](const std::string& path) {
+                pendingProject = path;
+            });
+            debugUi_->EndFrame();
+            if (!pendingProject.empty()) {
+                InitializeEditor(pendingProject);
+            }
+            return;
+        }
+
+        // Standalone build progress popup — must appear before the dockspace so the
+        // ID stack is clean, matching the pattern used by RenderPlayModeLoadingPopup().
+        if (standaloneBuildStatus_ && !standaloneBuildStatus_->isDone.load()) {
+            const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowSize(ImVec2(460.0f, 140.0f), ImGuiCond_Always);
+            ImGui::OpenPopup("###StandaloneBuild");
+            if (ImGui::BeginPopupModal("Building Standalone...###StandaloneBuild", nullptr,
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
+                ImGui::Spacing();
+                ImGui::TextUnformatted("Compiling and packaging build...");
+                ImGui::Spacing();
+                const float pulse = static_cast<float>(std::fmod(ImGui::GetTime() * 0.45, 1.0));
+                ImGui::ProgressBar(pulse, ImVec2(-1.0f, 0.0f), "build-game.ps1");
+                ImGui::Spacing();
+                ImGui::TextDisabled("Running MSBuild and copying project assets.");
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+                ImGui::BeginDisabled();
+                ImGui::Button("Cancel", ImVec2(100.0f, 0.0f));
+                ImGui::EndDisabled();
+                ImGui::EndPopup();
+            }
+        }
 
         // Unity-like Scene Editor panels (Scene hierarchy + Inspector)
         if (sceneEditor_) {
@@ -404,6 +652,32 @@ void Application::Update(float deltaTime) {
                 [this]() {
                     if (sceneEditor_) sceneEditor_->SaveProject();
                 },
+                [this](const std::string& outputFolder) {
+                    if (standaloneBuildStatus_ && !standaloneBuildStatus_->isDone.load()) {
+                        if (console_) console_->AddWarning("A standalone build is already in progress.");
+                        return;
+                    }
+                    if (console_) console_->AddLog("Building standalone game to: " + outputFolder);
+                    if (sceneEditor_) {
+                        sceneEditor_->SaveCurrentScene();
+                        sceneEditor_->SaveProject();
+                        sceneEditor_->SyncScripts();
+                    }
+                    auto status = std::make_shared<StandaloneBuildStatus>();
+                    status->outputFolder = outputFolder;
+                    standaloneBuildStatus_ = status;
+                    standaloneBuildThread_ = std::make_unique<std::thread>([status]() {
+                        const BuildResult result = BuildStandaloneGame(status->outputFolder);
+                        std::lock_guard<std::mutex> lock(status->resultMutex);
+                        status->success = result.success;
+                        status->message = result.message;
+                        status->isDone.store(true);
+                    });
+                },
+                [this]() {
+                    if (sceneEditor_) sceneEditor_->StopRuntime();
+                    launcher_ = std::make_unique<ProjectLauncher>();
+                },
                 [this]() {
                     if (sceneEditor_) sceneEditor_->RenderProjectInputSettings();
                 },
@@ -418,6 +692,10 @@ void Application::Update(float deltaTime) {
                 if (skyboxController_) {
                     skyboxController_->SetFaces(faces);
                     skyboxController_->Reload();
+                }
+                if (sceneEditor_) {
+                    sceneEditor_->SetSkyboxFaces(faces);
+                    sceneEditor_->SaveProject();
                 }
             },
             &frustumCullingEnabled_,
@@ -486,10 +764,52 @@ void Application::Render() {
     const glm::vec3 previousClearColor = rendererSettings.clearColor;
     renderer_->ResetFrameStats();
 
+    if (launcher_) {
+        glDisable(GL_SCISSOR_TEST);
+        glViewport(0, 0, cfg.width, cfg.height);
+        glClearColor(0.08f, 0.08f, 0.10f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        if (config_.enableImGui) debugUi_->RenderDrawData();
+        glfwSwapBuffers(window_);
+        return;
+    }
+
     glDisable(GL_SCISSOR_TEST);
     glViewport(0, 0, cfg.width, cfg.height);
     glClearColor(0.02f, 0.02f, 0.02f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    if (config_.playerMode && sceneEditor_) {
+        renderer_->ResetFrameStats();
+        RendererViewport viewport{0, 0, cfg.width, cfg.height};
+        renderer_->SetViewport(viewport);
+
+        // Only render the game scene once physics is ready; show a clear screen while loading.
+        if (sceneEditor_->GetPhysicsWorld() != nullptr) {
+            const float aspect = cfg.height > 0 ? static_cast<float>(cfg.width) / static_cast<float>(cfg.height) : 1.0f;
+            glm::mat4 view{1.0f};
+            glm::mat4 proj{1.0f};
+            glm::vec4 gameClearColor{0.02f, 0.02f, 0.02f, 1.0f};
+            if (sceneEditor_->TryGetGameCamera(view, proj, aspect, &gameClearColor)) {
+                RendererSettings& settings = renderer_->GetSettings();
+                settings.clearColor = glm::vec3(gameClearColor.r, gameClearColor.g, gameClearColor.b);
+                renderer_->SetCamera(view, proj);
+                renderer_->BeginFrame();
+                if (skyboxController_) {
+                    skyboxController_->Draw(view, proj);
+                }
+                sceneEditor_->SubmitDraws(*renderer_, false);
+                renderer_->EndFrame();
+                settings.clearColor = previousClearColor;
+            }
+        }
+
+        if (config_.enableImGui) {
+            debugUi_->RenderDrawData();
+        }
+        glfwSwapBuffers(window_);
+        return;
+    }
 
     auto renderScenePass = [&](const RendererViewport& viewport) {
         if (viewport.width <= 1 || viewport.height <= 1) {

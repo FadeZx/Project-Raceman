@@ -10,6 +10,7 @@
 #include <imgui/imgui_internal.h>
 
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <unordered_set>
 #include <array>
@@ -570,10 +571,15 @@ std::vector<ScriptSourceInfo> FindCompleteScripts(const fs::path& assetsRoot) {
 }
 
 std::string BuildScriptRegistrySource(const std::vector<ScriptSourceInfo>& scripts) {
+    // Compute relative path from src/scripting/ to the project root (may be Project1, Project, etc.)
+    const std::string includePrefix = NormalizeSlashes(
+        fs::relative(FindProjectRoot(), FindEngineRoot() / "src" / "scripting").string()) + "/";
+
     std::string registry;
     registry += "#include \"ScriptRegistry.h\"\n\n";
+    registry += "#include <cstring>\n\n";
     for (const ScriptSourceInfo& script : scripts) {
-        registry += "#include \"../../Project/" + script.projectHeaderPath + "\"\n";
+        registry += "#include \"" + includePrefix + script.projectHeaderPath + "\"\n";
     }
     registry += "\nnamespace raceman {\nnamespace {\n\n";
     for (const ScriptSourceInfo& script : scripts) {
@@ -582,7 +588,34 @@ std::string BuildScriptRegistrySource(const std::vector<ScriptSourceInfo>& scrip
         registry += "    return std::make_unique<scripts::" + scriptName + ">();\n";
         registry += "}\n\n";
     }
+    registry += "struct ScriptExportEntry {\n";
+    registry += "    const char* name;\n";
+    registry += "    const char* path;\n";
+    registry += "};\n\n";
+    registry += "const ScriptExportEntry kScripts[] = {\n";
+    for (const ScriptSourceInfo& script : scripts) {
+        registry += "    {\"" + script.name + "\", \"" + script.projectSourcePath + "\"},\n";
+    }
+    registry += "};\n\n";
     registry += "} // namespace\n\n";
+    registry += "extern \"C\" __declspec(dllexport) int RacemanGetScriptCount() {\n";
+    registry += "    return static_cast<int>(sizeof(kScripts) / sizeof(kScripts[0]));\n";
+    registry += "}\n\n";
+    registry += "extern \"C\" __declspec(dllexport) const char* RacemanGetScriptName(int index) {\n";
+    registry += "    const int count = RacemanGetScriptCount();\n";
+    registry += "    return index >= 0 && index < count ? kScripts[index].name : nullptr;\n";
+    registry += "}\n\n";
+    registry += "extern \"C\" __declspec(dllexport) const char* RacemanGetScriptPath(int index) {\n";
+    registry += "    const int count = RacemanGetScriptCount();\n";
+    registry += "    return index >= 0 && index < count ? kScripts[index].path : nullptr;\n";
+    registry += "}\n\n";
+    registry += "extern \"C\" __declspec(dllexport) raceman::IObjectScript* RacemanCreateScriptByName(const char* name) {\n";
+    registry += "    if (name == nullptr) return nullptr;\n";
+    for (const ScriptSourceInfo& script : scripts) {
+        registry += "    if (std::strcmp(name, \"" + script.name + "\") == 0) return new scripts::" + script.name + "();\n";
+    }
+    registry += "    return nullptr;\n";
+    registry += "}\n\n";
     registry += "extern \"C\" __declspec(dllexport) void RacemanRegisterScripts(std::vector<raceman::ScriptDescriptor>& scripts) {\n";
     registry += "    scripts.clear();\n";
     for (const ScriptSourceInfo& script : scripts) {
@@ -610,7 +643,7 @@ std::string BuildScriptProjectSource(const std::vector<ScriptSourceInfo>& script
     project += "  </PropertyGroup>\n";
     project += "  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.Default.props\" />\n";
     project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Debug|x64'\" Label=\"Configuration\"><ConfigurationType>DynamicLibrary</ConfigurationType><UseDebugLibraries>true</UseDebugLibraries><PlatformToolset>v143</PlatformToolset><CharacterSet>MultiByte</CharacterSet></PropertyGroup>\n";
-    project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\" Label=\"Configuration\"><ConfigurationType>DynamicLibrary</ConfigurationType><UseDebugLibraries>false</UseDebugLibraries><PlatformToolset>v143</PlatformToolset><WholeProgramOptimization>true</WholeProgramOptimization><CharacterSet>MultiByte</CharacterSet></PropertyGroup>\n";
+    project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\" Label=\"Configuration\"><ConfigurationType>DynamicLibrary</ConfigurationType><UseDebugLibraries>false</UseDebugLibraries><PlatformToolset>v143</PlatformToolset><WholeProgramOptimization>false</WholeProgramOptimization><CharacterSet>MultiByte</CharacterSet></PropertyGroup>\n";
     project += "  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.props\" />\n";
     project += "  <PropertyGroup><VcpkgEnableManifest>true</VcpkgEnableManifest></PropertyGroup>\n";
     project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Debug|x64'\"><OutDir>$(SolutionDir)bin\\$(Configuration)\\</OutDir><IntDir>$(SolutionDir)bin-int\\ProjectScripts\\$(Configuration)\\</IntDir><TargetName>ProjectScripts</TargetName><LanguageStandard>stdcpp17</LanguageStandard></PropertyGroup>\n";
@@ -620,14 +653,18 @@ std::string BuildScriptProjectSource(const std::vector<ScriptSourceInfo>& script
     project += "    <Link><SubSystem>Console</SubSystem><GenerateDebugInformation>false</GenerateDebugInformation><AdditionalDependencies>ProjectRaceman.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>$(ProjectDir)bin\\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories></Link>\n";
     project += "  </ItemDefinitionGroup>\n";
     project += "  <ItemDefinitionGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\">\n";
-    project += "    <ClCompile><WarningLevel>Level3</WarningLevel><FunctionLevelLinking>true</FunctionLevelLinking><IntrinsicFunctions>true</IntrinsicFunctions><PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;RACEMAN_SCRIPT_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions><ConformanceMode>true</ConformanceMode><AdditionalIncludeDirectories>$(ProjectDir)..\\includes;$(ProjectDir)editor-assets/third_party;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories><LanguageStandard>stdcpp17</LanguageStandard><AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions><ProgramDataBaseFileName>$(IntDir)%(Filename).compile.pdb</ProgramDataBaseFileName></ClCompile>\n";
-    project += "    <Link><SubSystem>Console</SubSystem><GenerateDebugInformation>false</GenerateDebugInformation><EnableCOMDATFolding>true</EnableCOMDATFolding><OptimizeReferences>true</OptimizeReferences><AdditionalDependencies>ProjectRaceman.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>$(ProjectDir)bin\\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories></Link>\n";
+    project += "    <ClCompile><WarningLevel>Level3</WarningLevel><FunctionLevelLinking>true</FunctionLevelLinking><IntrinsicFunctions>true</IntrinsicFunctions><PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;JPH_DEBUG;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;RACEMAN_SCRIPT_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions><ConformanceMode>true</ConformanceMode><AdditionalIncludeDirectories>$(ProjectDir)..\\includes;$(ProjectDir)editor-assets/third_party;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories><LanguageStandard>stdcpp17</LanguageStandard><AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions><ProgramDataBaseFileName>$(IntDir)%(Filename).compile.pdb</ProgramDataBaseFileName><WholeProgramOptimization>false</WholeProgramOptimization><RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary></ClCompile>\n";
+    project += "    <Link><SubSystem>Console</SubSystem><GenerateDebugInformation>false</GenerateDebugInformation><EnableCOMDATFolding>true</EnableCOMDATFolding><OptimizeReferences>true</OptimizeReferences><LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration><AdditionalDependencies>ProjectRaceman.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>$(ProjectDir)bin\\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories></Link>\n";
     project += "  </ItemDefinitionGroup>\n";
     project += "  <ItemGroup>\n";
     project += "    <ClInclude Include=\"src\\scripting\\ObjectScript.h\" />\n";
     project += "    <ClInclude Include=\"src\\scripting\\ScriptRegistry.h\" />\n";
+    // Relative path from engine root (where .vcxproj lives) to the project root.
+    std::string projectFolderPrefix = fs::relative(FindProjectRoot(), FindEngineRoot()).string();
+    std::replace(projectFolderPrefix.begin(), projectFolderPrefix.end(), '/', '\\');
+
     for (const ScriptSourceInfo& script : scripts) {
-        std::string headerProjectPath = "Project\\" + script.projectHeaderPath;
+        std::string headerProjectPath = projectFolderPrefix + "\\" + script.projectHeaderPath;
         std::replace(headerProjectPath.begin(), headerProjectPath.end(), '/', '\\');
         project += "    <ClInclude Include=\"" + headerProjectPath + "\" />\n";
     }
@@ -635,7 +672,7 @@ std::string BuildScriptProjectSource(const std::vector<ScriptSourceInfo>& script
     project += "  <ItemGroup>\n";
     project += "    <ClCompile Include=\"src\\scripting\\ScriptDllRegistry.cpp\" />\n";
     for (const ScriptSourceInfo& script : scripts) {
-        std::string sourceProjectPath = "Project\\" + script.projectSourcePath;
+        std::string sourceProjectPath = projectFolderPrefix + "\\" + script.projectSourcePath;
         std::replace(sourceProjectPath.begin(), sourceProjectPath.end(), '/', '\\');
         project += "    <ClCompile Include=\"" + sourceProjectPath + "\" />\n";
     }
@@ -677,6 +714,7 @@ std::string BuildScriptProjectFiltersSource(const std::vector<ScriptSourceInfo>&
 } // namespace
 
 SceneEditor::SceneEditor() {
+    std::cout << "[Player] SceneEditor: initializing defaults..." << std::endl;
     // Default dirty callback just marks the scene dirty; SetOnDirty() chains on top.
     onDirty_ = [this]() { sceneDirty_ = true; };
     InputManager defaultInputManager;
@@ -686,13 +724,36 @@ SceneEditor::SceneEditor() {
     wheelSettingsProfiles_ = defaultInputManager.GetWheelSettingsProfiles();
     ResetPhysicsLayerSettings();
     // Load materials at startup
+    std::cout << "[Player] SceneEditor: loading materials..." << std::endl;
     materialManager_.LoadAll();
+    std::cout << "[Player] SceneEditor: refreshing project files..." << std::endl;
     RefreshProjectFiles();
+    std::cout << "[Player] SceneEditor: loading project..." << std::endl;
     LoadProject();
+    std::cout << "[Player] SceneEditor: reloading materials..." << std::endl;
     materialManager_.LoadAll();
+    std::cout << "[Player] SceneEditor: refreshing project files again..." << std::endl;
     RefreshProjectFiles();
     std::string scriptLoadError;
-    LoadScriptAssembly(&scriptLoadError);
+    bool playerMode = false;
+#if defined(_WIN32)
+    char* playerModeValue = nullptr;
+    size_t playerModeLength = 0;
+    playerMode = _dupenv_s(&playerModeValue, &playerModeLength, "RACEMAN_PLAYER_MODE") == 0 &&
+                 playerModeValue != nullptr &&
+                 std::string(playerModeValue) == "1";
+    free(playerModeValue);
+#else
+    const char* playerModeValue = std::getenv("RACEMAN_PLAYER_MODE");
+    playerMode = playerModeValue != nullptr && std::string(playerModeValue) == "1";
+#endif
+    if (!playerMode) {
+        std::cout << "[Player] SceneEditor: loading scripts..." << std::endl;
+        LoadScriptAssembly(&scriptLoadError);
+    } else {
+        std::cout << "[Player] SceneEditor: deferred script load for player runtime." << std::endl;
+    }
+    std::cout << "[Player] SceneEditor: ready." << std::endl;
 }
 
 SceneEditor::~SceneEditor() {

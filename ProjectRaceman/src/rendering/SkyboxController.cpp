@@ -40,7 +40,19 @@ std::string EnginePath(const std::string& relativePath) {
 } // namespace
 
 static SkyboxFaces MakeDefaultFaces() {
-    // Default to the sunset set.
+    // Prefer engine-bundled sunset skybox; fall back to project copy if missing.
+    const fs::path engineSunset = EngineRootPath() / "editor-assets" / "skybox" / "sunset";
+    const fs::path probe = engineSunset / "px.jpg";
+    if (fs::exists(probe)) {
+        return SkyboxFaces{
+            (engineSunset / "px.jpg").lexically_normal().string(),
+            (engineSunset / "nx.jpg").lexically_normal().string(),
+            (engineSunset / "py.jpg").lexically_normal().string(),
+            (engineSunset / "ny.jpg").lexically_normal().string(),
+            (engineSunset / "pz.jpg").lexically_normal().string(),
+            (engineSunset / "nz.jpg").lexically_normal().string(),
+        };
+    }
     return SkyboxFaces{
         ProjectPath("assets/skybox/sunset/px.jpg"),
         ProjectPath("assets/skybox/sunset/nx.jpg"),

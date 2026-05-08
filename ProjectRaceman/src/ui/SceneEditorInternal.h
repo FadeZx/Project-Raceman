@@ -15,6 +15,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -449,7 +450,35 @@ inline fs::path FindEngineRoot() {
 }
 
 inline fs::path FindProjectRoot() {
-    return (FindEngineRoot() / "Project").lexically_normal();
+#if defined(_WIN32)
+    char* overrideRoot = nullptr;
+    std::size_t overrideRootLength = 0;
+    if (_dupenv_s(&overrideRoot, &overrideRootLength, "RACEMAN_PROJECT_ROOT") == 0 && overrideRoot != nullptr) {
+        std::string value = overrideRoot;
+        std::free(overrideRoot);
+        if (!value.empty()) {
+            return fs::absolute(value).lexically_normal();
+        }
+    }
+#else
+    if (const char* overrideRoot = std::getenv("RACEMAN_PROJECT_ROOT")) {
+        if (overrideRoot[0] != '\0') {
+            return fs::absolute(overrideRoot).lexically_normal();
+        }
+    }
+#endif
+    // Auto-discover: find any direct sub-directory of the engine root that contains project.raceman.json.
+    const fs::path engineRoot = FindEngineRoot();
+    try {
+        for (const auto& entry : fs::directory_iterator(engineRoot)) {
+            if (entry.is_directory()) {
+                if (fs::exists(entry.path() / "project.raceman.json")) {
+                    return entry.path().lexically_normal();
+                }
+            }
+        }
+    } catch (...) {}
+    return (engineRoot / "Project").lexically_normal();
 }
 
 inline fs::path FindAssetsRoot() {

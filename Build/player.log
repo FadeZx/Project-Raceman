@@ -1,0 +1,419 @@
+Project Raceman player log
+WorkingDirectory=D:\Capt\Project-Raceman\Build
+ProjectRoot=D:\Capt\Project-Raceman\Build\Project
+[Player] Log started.
+[Player] Initializing GLFW...
+[Player] Initializing OpenGL...
+[Player] Creating renderer...
+[Player] Creating input...
+[Player] Initializing audio...
+irrKlang sound library version 1.6.0
+Loaded plugin: ikpmp3.dll
+Using DirectSound8 driver
+[Audio] irrKlang initialized.
+[Player] Creating editor/player services...
+[Player] Loading skybox...
+[Player] Skybox loaded.
+[Player] Creating scene editor...
+[Player] SceneEditor: initializing defaults...
+[Player] SceneEditor: loading materials...
+[Player] SceneEditor: refreshing project files...
+[Player] SceneEditor: loading project...
+[Player] SceneEditor: reloading materials...
+[Player] SceneEditor: refreshing project files again...
+[Player] SceneEditor: deferred script load for player runtime.
+[Player] SceneEditor: ready.
+[Player] Scene editor created.
+[Player] Loading project metadata...
+[Player] Startup complete; runtime will begin after first frame.
+[00000] [imgui-error] (current settings: Assert=1, Log=1, Tooltip=1)
+[00000] [imgui-error] In window 'NULL': Forgot to call ImGui::NewFrame()?
+[Player] Calling StartRuntime()...
+[Player] Loading script DLL: D:\Capt\Project-Raceman\Build\ProjectScripts.dll
+[Play] Building scene...
+[Play] Runtime physics descriptors: 135 bodies, 0 characters.
+[Play] Creating physics world...
+[Play] Starting physics build thread...
+[Player] StartRuntime() returned. Physics cooking in background.
+[Play] Physics build thread started.
+[Physics] Clear previous world...
+[Physics] Initialize Jolt...
+[Physics] Jolt initialized.
+[Physics] Create allocator/system for 135 bodies...
+[Physics] Temp allocator created.
+[Physics] Creating job system with 15 workers...
+[Physics] Job system created.
+[Physics] Physics system allocated.
+[Physics] Init capacity: 1024 bodies, 3184 pairs, 1592 contacts.
+[Physics] Physics system initialized.
+[Physics] Body 1/135: gameobject_1::vehicle_chassis
+[Physics] Body 2/135: gameobject_2
+[Physics] Body 3/135: gameobject_4
+[Physics] Body 4/135: gameobject_6
+[Physics] Body 5/135: gameobject_3
+[Physics] Body 6/135: mesh_8
+[Physics] Body 7/135: gameobject_5
+[Physics] Body 8/135: mesh_9
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9947797502161125847_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9947797502161125847_134208747868086753.joltshape
+[Physics] Body 9/135: mesh_10
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15154614018181265704_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15154614018181265704_134208747868086753.joltshape
+[Physics] Body 10/135: mesh_11
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14292621668068354055_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14292621668068354055_134208747868086753.joltshape
+[Physics] Body 11/135: mesh_12
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13369406737532859909_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13369406737532859909_134208747868086753.joltshape
+[Physics] Body 12/135: mesh_13
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15491975495223216872_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15491975495223216872_134208747868086753.joltshape
+[Physics] Body 13/135: mesh_14
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4572351659449916231_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4572351659449916231_134208747868086753.joltshape
+[Physics] Body 14/135: mesh_15
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_10083874541915773612_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_10083874541915773612_134208747868086753.joltshape
+[Physics] Body 15/135: mesh_16
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_208542512952324130_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_208542512952324130_134208747868086753.joltshape
+[Physics] Body 16/135: mesh_17
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_5895658238516418471_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_5895658238516418471_134208747868086753.joltshape
+[Physics] Body 17/135: mesh_18
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2991971709340135789_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2991971709340135789_134208747868086753.joltshape
+[Physics] Body 18/135: mesh_19
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11235222180541010127_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11235222180541010127_134208747868086753.joltshape
+[Physics] Body 19/135: mesh_20
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9557715308507770481_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9557715308507770481_134208747868086753.joltshape
+[Physics] Body 20/135: mesh_21
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_5227213196529887342_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_5227213196529887342_134208747868086753.joltshape
+[Physics] Body 21/135: mesh_22
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_3132787654356551951_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_3132787654356551951_134208747868086753.joltshape
+[Physics] Body 22/135: mesh_23
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9564870831765462380_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9564870831765462380_134208747868086753.joltshape
+[Physics] Body 23/135: mesh_24
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6310319198378728886_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6310319198378728886_134208747868086753.joltshape
+[Physics] Body 24/135: mesh_25
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2167776478938973572_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2167776478938973572_134208747868086753.joltshape
+[Physics] Body 25/135: mesh_26
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6901655373607716262_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6901655373607716262_134208747868086753.joltshape
+[Physics] Body 26/135: mesh_27
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13931926328118975669_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13931926328118975669_134208747868086753.joltshape
+[Physics] Body 27/135: mesh_28
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1823006157448895944_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1823006157448895944_134208747868086753.joltshape
+[Physics] Body 28/135: mesh_29
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17319049759287764702_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17319049759287764702_134208747868086753.joltshape
+[Physics] Body 29/135: mesh_30
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_828100999268554286_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_828100999268554286_134208747868086753.joltshape
+[Physics] Body 30/135: mesh_31
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16463335419830543352_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16463335419830543352_134208747868086753.joltshape
+[Physics] Body 31/135: mesh_32
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4870759117797905791_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4870759117797905791_134208747868086753.joltshape
+[Physics] Body 32/135: mesh_33
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2268570985919228546_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2268570985919228546_134208747868086753.joltshape
+[Physics] Body 33/135: mesh_34
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11787814804727730454_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11787814804727730454_134208747868086753.joltshape
+[Physics] Body 34/135: mesh_35
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16445402999158605627_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16445402999158605627_134208747868086753.joltshape
+[Physics] Body 35/135: mesh_36
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11067731110221240459_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11067731110221240459_134208747868086753.joltshape
+[Physics] Body 36/135: mesh_37
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11807057810609329466_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11807057810609329466_134208747868086753.joltshape
+[Physics] Body 37/135: mesh_38
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4039416367231935405_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4039416367231935405_134208747868086753.joltshape
+[Physics] Body 38/135: mesh_39
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16033425814345016720_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16033425814345016720_134208747868086753.joltshape
+[Physics] Body 39/135: mesh_40
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13678903227796760084_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13678903227796760084_134208747868086753.joltshape
+[Physics] Body 40/135: mesh_41
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14833518669780883325_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14833518669780883325_134208747868086753.joltshape
+[Physics] Body 41/135: mesh_42
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15700526752839735982_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15700526752839735982_134208747868086753.joltshape
+[Physics] Body 42/135: mesh_43
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17202863069992796139_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17202863069992796139_134208747868086753.joltshape
+[Physics] Body 43/135: mesh_44
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14057446198161951534_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14057446198161951534_134208747868086753.joltshape
+[Physics] Body 44/135: mesh_45
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9227910252947001016_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9227910252947001016_134208747868086753.joltshape
+[Physics] Body 45/135: mesh_46
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14583858747535369647_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14583858747535369647_134208747868086753.joltshape
+[Physics] Body 46/135: mesh_47
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13292410769261258516_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13292410769261258516_134208747868086753.joltshape
+[Physics] Body 47/135: mesh_48
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15485956277193358992_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15485956277193358992_134208747868086753.joltshape
+[Physics] Body 48/135: mesh_49
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15897695352511632954_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15897695352511632954_134208747868086753.joltshape
+[Physics] Body 49/135: mesh_50
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_119629695007970414_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_119629695007970414_134208747868086753.joltshape
+[Physics] Body 50/135: mesh_51
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1815631628419514820_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1815631628419514820_134208747868086753.joltshape
+[Physics] Body 51/135: mesh_52
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15034468347627388709_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15034468347627388709_134208747868086753.joltshape
+[Physics] Body 52/135: mesh_53
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13724719133075537786_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13724719133075537786_134208747868086753.joltshape
+[Physics] Body 53/135: mesh_54
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11438220503033552456_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11438220503033552456_134208747868086753.joltshape
+[Physics] Body 54/135: mesh_55
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1482982049984778624_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1482982049984778624_134208747868086753.joltshape
+[Physics] Body 55/135: mesh_56
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1823957438350807359_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1823957438350807359_134208747868086753.joltshape
+[Physics] Body 56/135: mesh_57
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_7616607145921840274_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_7616607145921840274_134208747868086753.joltshape
+[Physics] Body 57/135: mesh_58
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_5962725727263062303_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_5962725727263062303_134208747868086753.joltshape
+[Physics] Body 58/135: mesh_59
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17021156620258569456_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17021156620258569456_134208747868086753.joltshape
+[Physics] Body 59/135: mesh_60
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14080193482609654848_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14080193482609654848_134208747868086753.joltshape
+[Physics] Body 60/135: mesh_61
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_12995719452902872768_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_12995719452902872768_134208747868086753.joltshape
+[Physics] Body 61/135: mesh_62
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2659828146408153016_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2659828146408153016_134208747868086753.joltshape
+[Physics] Body 62/135: mesh_63
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17411671673776988837_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17411671673776988837_134208747868086753.joltshape
+[Physics] Body 63/135: mesh_64
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13089136441246337532_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13089136441246337532_134208747868086753.joltshape
+[Physics] Body 64/135: mesh_65
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_12325340326799184557_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_12325340326799184557_134208747868086753.joltshape
+[Physics] Body 65/135: mesh_66
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2961119408662994903_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2961119408662994903_134208747868086753.joltshape
+[Physics] Body 66/135: mesh_67
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4741150434289396480_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4741150434289396480_134208747868086753.joltshape
+[Physics] Body 67/135: mesh_68
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9098974897334324895_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9098974897334324895_134208747868086753.joltshape
+[Physics] Body 68/135: mesh_69
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13795088529117373330_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13795088529117373330_134208747868086753.joltshape
+[Physics] Body 69/135: mesh_70
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2691866158410194757_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2691866158410194757_134208747868086753.joltshape
+[Physics] Body 70/135: mesh_71
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11240902221413570196_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11240902221413570196_134208747868086753.joltshape
+[Physics] Body 71/135: mesh_72
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_5263716312579598113_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_5263716312579598113_134208747868086753.joltshape
+[Physics] Body 72/135: mesh_73
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1128745014308094568_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1128745014308094568_134208747868086753.joltshape
+[Physics] Body 73/135: mesh_74
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_3001658877145499174_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_3001658877145499174_134208747868086753.joltshape
+[Physics] Body 74/135: mesh_75
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17259062759009043730_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17259062759009043730_134208747868086753.joltshape
+[Physics] Body 75/135: mesh_76
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6112300020684783974_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6112300020684783974_134208747868086753.joltshape
+[Physics] Body 76/135: mesh_77
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14927138263711025422_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14927138263711025422_134208747868086753.joltshape
+[Physics] Body 77/135: mesh_78
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16261407911747367833_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16261407911747367833_134208747868086753.joltshape
+[Physics] Body 78/135: mesh_79
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1013883352308409463_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1013883352308409463_134208747868086753.joltshape
+[Physics] Body 79/135: mesh_80
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6341142273897108200_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6341142273897108200_134208747868086753.joltshape
+[Physics] Body 80/135: mesh_81
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9007269129391353450_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9007269129391353450_134208747868086753.joltshape
+[Physics] Body 81/135: mesh_82
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1868407968760390977_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1868407968760390977_134208747868086753.joltshape
+[Physics] Body 82/135: mesh_83
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14403775445953530562_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14403775445953530562_134208747868086753.joltshape
+[Physics] Body 83/135: mesh_84
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6311143212793201613_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6311143212793201613_134208747868086753.joltshape
+[Physics] Body 84/135: mesh_85
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9406535613282424597_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9406535613282424597_134208747868086753.joltshape
+[Physics] Body 85/135: mesh_86
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_18048829560541230748_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_18048829560541230748_134208747868086753.joltshape
+[Physics] Body 86/135: mesh_87
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_18413967611638680317_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_18413967611638680317_134208747868086753.joltshape
+[Physics] Body 87/135: mesh_88
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_3508633397731494917_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_3508633397731494917_134208747868086753.joltshape
+[Physics] Body 88/135: mesh_89
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_5608806748162293810_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_5608806748162293810_134208747868086753.joltshape
+[Physics] Body 89/135: mesh_90
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1624073209049399500_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1624073209049399500_134208747868086753.joltshape
+[Physics] Body 90/135: mesh_91
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13141432002256846684_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13141432002256846684_134208747868086753.joltshape
+[Physics] Body 91/135: mesh_92
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1449989491086407749_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_1449989491086407749_134208747868086753.joltshape
+[Physics] Body 92/135: mesh_93
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16503463373824942855_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16503463373824942855_134208747868086753.joltshape
+[Physics] Body 93/135: mesh_94
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13559815031563452333_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13559815031563452333_134208747868086753.joltshape
+[Physics] Body 94/135: mesh_95
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9381394258173629593_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9381394258173629593_134208747868086753.joltshape
+[Physics] Body 95/135: mesh_96
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_12778997578057881129_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_12778997578057881129_134208747868086753.joltshape
+[Physics] Body 96/135: mesh_97
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2224726731827972638_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_2224726731827972638_134208747868086753.joltshape
+[Physics] Body 97/135: mesh_98
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_566933916996238501_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_566933916996238501_134208747868086753.joltshape
+[Physics] Body 98/135: mesh_99
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6652718682336349095_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6652718682336349095_134208747868086753.joltshape
+[Physics] Body 99/135: mesh_100
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11841824636539210223_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_11841824636539210223_134208747868086753.joltshape
+[Physics] Body 100/135: mesh_101
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_18344952614057205375_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_18344952614057205375_134208747868086753.joltshape
+[Physics] Body 101/135: mesh_102
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_10442553111107415345_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_10442553111107415345_134208747868086753.joltshape
+[Physics] Body 102/135: mesh_103
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_10274609136907487833_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_10274609136907487833_134208747868086753.joltshape
+[Physics] Body 103/135: mesh_104
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4485515400715780144_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4485515400715780144_134208747868086753.joltshape
+[Physics] Body 104/135: mesh_105
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13125513330348546012_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13125513330348546012_134208747868086753.joltshape
+[Physics] Body 105/135: mesh_106
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13635733159126307320_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_13635733159126307320_134208747868086753.joltshape
+[Physics] Body 106/135: mesh_107
+[Physics] Body 107/135: mesh_108
+[Physics] Body 108/135: mesh_109
+[Physics] Body 109/135: mesh_110
+[Physics] Body 110/135: mesh_111
+[Physics] Body 111/135: mesh_112
+[Physics] Body 112/135: mesh_113
+[Physics] Body 113/135: mesh_114
+[Physics] Body 114/135: mesh_115
+[Physics] Body 115/135: mesh_116
+[Physics] Body 116/135: mesh_117
+[Physics] Body 117/135: mesh_118
+[Physics] Body 118/135: mesh_119
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17491964513847234278_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_17491964513847234278_134208747868086753.joltshape
+[Physics] Body 119/135: mesh_120
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14337536936652965995_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14337536936652965995_134208747868086753.joltshape
+[Physics] Body 120/135: mesh_121
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14127983370987907197_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14127983370987907197_134208747868086753.joltshape
+[Physics] Body 121/135: mesh_122
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_18062069931013683915_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_18062069931013683915_134208747868086753.joltshape
+[Physics] Body 122/135: mesh_123
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15181575283548498914_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15181575283548498914_134208747868086753.joltshape
+[Physics] Body 123/135: mesh_124
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6359301522997779879_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_6359301522997779879_134208747868086753.joltshape
+[Physics] Body 124/135: mesh_125
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15796602461918071733_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_15796602461918071733_134208747868086753.joltshape
+[Physics] Body 125/135: mesh_126
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16782915769715307270_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_16782915769715307270_134208747868086753.joltshape
+[Physics] Body 126/135: mesh_127
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_10932830957558739707_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_10932830957558739707_134208747868086753.joltshape
+[Physics] Body 127/135: mesh_128
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_12428443501896401973_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_12428443501896401973_134208747868086753.joltshape
+[Physics] Body 128/135: mesh_129
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_8307844100168319806_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_8307844100168319806_134208747868086753.joltshape
+[Physics] Body 129/135: mesh_130
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_277226149450497397_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_277226149450497397_134208747868086753.joltshape
+[Physics] Body 130/135: mesh_131
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_730980935808604874_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_730980935808604874_134208747868086753.joltshape
+[Physics] Body 131/135: mesh_132
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14807817748723461961_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_14807817748723461961_134208747868086753.joltshape
+[Physics] Body 132/135: mesh_133
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_12360137223295049355_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_12360137223295049355_134208747868086753.joltshape
+[Physics] Body 133/135: mesh_134
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9639775347826830568_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_9639775347826830568_134208747868086753.joltshape
+[Physics] Body 134/135: mesh_135
+[CollisionCache] MISS  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4564914431229816069_134208747868086753.joltshape
+[CollisionCache] SAVED  D:\Capt\Project-Raceman\Build\Project\.collision-cache\v2_4564914431229816069_134208747868086753.joltshape
+[Physics] Body 135/135: gameobject_10
+[Play] Build complete in 18363.7 ms
+[Vehicle] Loaded 'Vehicle base' with 4 wheels, chassisBody=gameobject_1::vehicle_chassis
+[Vehicle] Runtime vehicles: 1/1
+Could not open sound file: D:\Capt\Project-Raceman\Build\Project\assets\audio\engine sound.wav
+Could not open sound file: D:\Capt\Project-Raceman\Build\Project\assets\audio\EngineSound.wav
+[Audio] irrKlang shut down.

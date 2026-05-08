@@ -2140,6 +2140,17 @@ void SceneEditor::LoadProject() {
                 ReadString(object, "defaultScene", defaultScenePath_);
                 ReadString(object, "lastScene", lastScenePath_);
 
+                skyboxFaces_ = {};
+                auto skyboxIt = object.find("skybox");
+                if (skyboxIt != object.end() && skyboxIt->second.is_array()) {
+                    const auto& arr = skyboxIt->second.as_array();
+                    for (std::size_t fi = 0; fi < 6 && fi < arr.size(); ++fi) {
+                        if (arr[fi].is_string()) {
+                            skyboxFaces_[fi] = arr[fi].as_string();
+                        }
+                    }
+                }
+
                 auto tagsIt = object.find("tags");
                 if (tagsIt != object.end() && tagsIt->second.is_array()) {
                     projectTags_.clear();
@@ -2381,6 +2392,11 @@ void SceneEditor::SaveProject() {
         out << "  \"assetsRoot\": \"" << JsonEscape(assetsRootSetting_) << "\",\n";
         out << "  \"defaultScene\": \"" << JsonEscape(NormalizeSlashes(defaultScenePath_)) << "\",\n";
         out << "  \"lastScene\": \"" << JsonEscape(NormalizeSlashes(lastScenePath_)) << "\",\n";
+        out << "  \"skybox\": [\n";
+        for (std::size_t fi = 0; fi < skyboxFaces_.size(); ++fi) {
+            out << "    \"" << JsonEscape(NormalizeSlashes(skyboxFaces_[fi])) << "\"" << (fi + 1 < skyboxFaces_.size() ? ",\n" : "\n");
+        }
+        out << "  ],\n";
         out << "  \"tags\": [\n";
         for (std::size_t tagIndex = 0; tagIndex < projectTags_.size(); ++tagIndex) {
             out << "    \"" << JsonEscape(projectTags_[tagIndex]) << "\"" << (tagIndex + 1 < projectTags_.size() ? ",\n" : "\n");

@@ -11,7 +11,8 @@ namespace raceman {
 struct ScriptDescriptor {
     std::string name;
     std::string path;
-    std::unique_ptr<IObjectScript> (*create)();
+    std::unique_ptr<IObjectScript> (*create)(){nullptr};
+    IObjectScript* (*createByName)(const char*){nullptr};
 };
 
 const std::vector<ScriptDescriptor>& GetRegisteredScripts();

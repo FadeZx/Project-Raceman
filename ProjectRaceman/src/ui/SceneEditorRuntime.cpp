@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <thread>
 #include <unordered_set>
@@ -22,6 +23,19 @@ namespace raceman {
 using namespace scene_editor_internal;
 
 namespace {
+
+bool IsEnvironmentFlagEnabled(const char* name) {
+#if defined(_WIN32)
+    char* value = nullptr;
+    size_t length = 0;
+    const bool enabled = _dupenv_s(&value, &length, name) == 0 && value != nullptr && std::string(value) == "1";
+    free(value);
+    return enabled;
+#else
+    const char* value = std::getenv(name);
+    return value != nullptr && std::string(value) == "1";
+#endif
+}
 
 struct WheelForceFeedbackSample {
     float torque{0.0f};
@@ -60,6 +74,60 @@ WheelForceFeedbackSample BuildWheelForceFeedbackSample(const raceman::physics::V
 }
 
 } // namespace
+
+void SceneEditor::SetProjectRoot(std::string path) {
+#if defined(_WIN32)
+    _putenv_s("RACEMAN_PROJECT_ROOT", path.c_str());
+#else
+    setenv("RACEMAN_PROJECT_ROOT", path.c_str(), 1);
+#endif
+    if (!scriptsRunning_) {
+        LoadProject();
+    }
+}
+
+const PhysicsBuildProgress* SceneEditor::GetPhysicsBuildProgress() const {
+    if (playModeLoad_.progress && !playModeLoad_.progress->isDone.load()) {
+        return playModeLoad_.progress.get();
+    }
+    return nullptr;
+}
+
+void SceneEditor::StartRuntime() {
+    if (scriptsRunning_ || playModeLoad_.phase != PlayModeLoadState::Phase::Idle) {
+        return;
+    }
+
+    activeViewport_ = SceneEditorActiveViewport::Game;
+    scriptsPaused_ = false;
+
+    std::string scriptLoadError;
+    if (!LoadScriptAssembly(&scriptLoadError) && console_ != nullptr) {
+        console_->AddWarning(scriptLoadError.empty()
+            ? "Script DLL was not loaded; continuing without scripts."
+            : scriptLoadError);
+    }
+
+    playModeScriptAssemblyReady_ = true;
+    SetScriptsRunning(true);
+}
+
+void SceneEditor::UpdateRuntime(float deltaTime) {
+    TickPlayModeLoading();
+
+    UpdateScripts(deltaTime);
+    UpdateVehiclePhysics(deltaTime);
+    UpdatePhysics(deltaTime);
+    UpdateVehicles(deltaTime);
+    UpdateCinemachine(deltaTime);
+    UpdateAudio(deltaTime);
+}
+
+void SceneEditor::StopRuntime() {
+    if (scriptsRunning_) {
+        SetScriptsRunning(false);
+    }
+}
 
 void SceneEditor::UpdateScripts(float deltaTime) {
     if (!scriptsRunning_ || scriptsPaused_ || deltaTime <= 0.0f) {
@@ -624,7 +692,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
             body.scale = worldTransform.scale;
             body.bodyType = PhysicsBodyType::Dynamic;
             body.mass = object.hasRigidbody ? object.rigidbody.mass : 1200.0f;
-            body.useGravity = false;
+            body.useGravity = true;
             body.friction = object.hasRigidbody ? object.rigidbody.friction : 0.8f;
             body.restitution = object.hasRigidbody ? object.rigidbody.restitution : 0.0f;
             body.linearDamping = object.hasRigidbody ? object.rigidbody.linearDamping : 0.0f;
@@ -794,6 +862,27 @@ void SceneEditor::SetScriptsRunning(bool running) {
             }
         }
         // Launch async build on background thread.
+        std::fprintf(stdout, "[Play] Runtime physics descriptors: %zu bodies, %zu characters.\n",
+                     physicsBodies.size(),
+                     physicsCharacters.size());
+        std::fflush(stdout);
+        if (IsEnvironmentFlagEnabled("RACEMAN_DISABLE_PLAYER_PHYSICS")) {
+            std::fprintf(stdout, "[Play] Player physics disabled by RACEMAN_DISABLE_PLAYER_PHYSICS=1.\n");
+            std::fflush(stdout);
+            physicsWorld_.reset();
+            playModeLoad_ = {};
+            RebuildVehicleRuntime();
+            RebuildAudioRuntime();
+            RebuildScriptRuntime();
+            scriptsRunning_ = true;
+            if (inputManager_ != nullptr) {
+                inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+                inputManager_->SetWheelForceFeedbackActive(false);
+            }
+            return;
+        }
+        std::fprintf(stdout, "[Play] Creating physics world...\n");
+        std::fflush(stdout);
         playModeLoad_.pendingWorld = std::make_unique<PhysicsWorld>(physicsLayerCollisionMatrix_);
         playModeLoad_.progress = std::make_shared<PhysicsBuildProgress>();
         playModeLoad_.progress->stepsTotal.store(static_cast<int>(physicsBodies.size()));
@@ -801,10 +890,14 @@ void SceneEditor::SetScriptsRunning(bool running) {
 
         PhysicsWorld* worldPtr = playModeLoad_.pendingWorld.get();
         PhysicsBuildProgress* progressPtr = playModeLoad_.progress.get();
+        std::fprintf(stdout, "[Play] Starting physics build thread...\n");
+        std::fflush(stdout);
         playModeLoad_.buildThread = std::make_unique<std::thread>(
             [worldPtr, progressPtr,
              bodies  = std::move(physicsBodies),
              chars   = std::move(physicsCharacters)]() mutable {
+                std::fprintf(stdout, "[Play] Physics build thread started.\n");
+                std::fflush(stdout);
                 worldPtr->Build(bodies, chars, progressPtr);
             });
         playModeLoad_.phase = PlayModeLoadState::Phase::BuildingPhysics;
@@ -991,7 +1084,9 @@ void SceneEditor::TickPlayModeLoading() {
     }
 
     if (console_) {
-        console_->AddLog("Play mode started.");
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "Physics ready (%.1f s). Running.", ms / 1000.0);
+        console_->AddLog(buf);
     }
 }
 
@@ -1062,12 +1157,14 @@ void SceneEditor::RenderPlayModeLoadingPopup() {
 
 void SceneEditor::RebuildVehicleRuntime() {
     runtimeVehicles_.clear();
+    int candidateCount = 0;
 
     for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
         const SceneObject& object = objects_[objectIndex];
         if (!object.hasVehicle || !object.vehicle.enabled || object.vehicle.configPath.empty() || !IsObjectEffectivelyEnabled(objectIndex)) {
             continue;
         }
+        ++candidateCount;
 
         try {
             const fs::path configPath = ProjectAssetPathToAbsolute(object.vehicle.configPath);
@@ -1124,12 +1221,23 @@ void SceneEditor::RebuildVehicleRuntime() {
             }
 
             runtimeVehicles_.push_back(std::move(runtimeVehicle));
+            std::fprintf(stdout,
+                         "[Vehicle] Loaded '%s' with %zu wheels, chassisBody=%s\n",
+                         object.name.c_str(),
+                         config.wheels.size(),
+                         runtimeVehicles_.back().chassisBodyObjectId.empty() ? "<none>" : runtimeVehicles_.back().chassisBodyObjectId.c_str());
+            std::fflush(stdout);
         } catch (const std::exception& ex) {
             if (console_) {
                 console_->AddWarning("Vehicle runtime load failed for '" + object.name + "': " + ex.what());
             }
+            std::fprintf(stdout, "[Vehicle] Runtime load failed for '%s': %s\n", object.name.c_str(), ex.what());
+            std::fflush(stdout);
         }
     }
+
+    std::fprintf(stdout, "[Vehicle] Runtime vehicles: %zu/%d\n", runtimeVehicles_.size(), candidateCount);
+    std::fflush(stdout);
 }
 
 bool SceneEditor::SyncAttachmentScriptFields(ObjectScriptAttachment& attachment) {

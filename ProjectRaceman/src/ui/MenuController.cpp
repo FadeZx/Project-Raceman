@@ -10,6 +10,15 @@
 #include <cstdio>
 #include <fstream>
 
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <shlobj.h>
+#include <shobjidl.h>
+#endif
+
 namespace fs = std::filesystem;
 
 namespace raceman {
@@ -25,6 +34,16 @@ fs::path ProjectRootPath() {
     return fs::absolute("Project").lexically_normal();
 }
 
+fs::path EngineRootPath() {
+    if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
+        return fs::absolute("ProjectRaceman").lexically_normal();
+    }
+    if (fs::exists("src") && fs::is_directory("src")) {
+        return fs::absolute(".").lexically_normal();
+    }
+    return fs::absolute(".").lexically_normal();
+}
+
 std::string SceneDisplayName(const std::string& scenePath) {
     std::string filename = fs::path(scenePath).filename().string();
     const std::string suffix = ".scene.json";
@@ -36,10 +55,65 @@ std::string SceneDisplayName(const std::string& scenePath) {
     }
     return filename;
 }
+
+std::string PickBuildOutputFolder() {
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+    const HRESULT coInit = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    const bool shouldUninitialize = SUCCEEDED(coInit);
+
+    IFileDialog* dialog = nullptr;
+    HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog));
+    if (FAILED(hr) || dialog == nullptr) {
+        if (shouldUninitialize) {
+            CoUninitialize();
+        }
+        return {};
+    }
+
+    DWORD options = 0;
+    if (SUCCEEDED(dialog->GetOptions(&options))) {
+        dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
+    }
+    dialog->SetTitle(L"Choose standalone build output folder");
+
+    std::string result;
+    hr = dialog->Show(nullptr);
+    if (SUCCEEDED(hr)) {
+        IShellItem* item = nullptr;
+        hr = dialog->GetResult(&item);
+        if (SUCCEEDED(hr) && item != nullptr) {
+            PWSTR widePath = nullptr;
+            hr = item->GetDisplayName(SIGDN_FILESYSPATH, &widePath);
+            if (SUCCEEDED(hr) && widePath != nullptr) {
+                const int size = WideCharToMultiByte(CP_UTF8, 0, widePath, -1, nullptr, 0, nullptr, nullptr);
+                if (size > 0) {
+                    result.resize(static_cast<size_t>(size - 1));
+                    WideCharToMultiByte(CP_UTF8, 0, widePath, -1, result.data(), size, nullptr, nullptr);
+                }
+                CoTaskMemFree(widePath);
+            }
+            item->Release();
+        }
+    }
+
+    dialog->Release();
+    if (shouldUninitialize) {
+        CoUninitialize();
+    }
+    return result;
+#else
+    return {};
+#endif
+}
 } // namespace
 
 MenuController::MenuController() { LoadState(); }
-MenuController::~MenuController() { SaveState(); }
+MenuController::~MenuController() {
+    if (folderPickerThread_ && folderPickerThread_->joinable()) {
+        folderPickerThread_->join();
+    }
+    SaveState();
+}
 
 void MenuController::Render(Renderer& renderer,
                             bool vsyncEnabled,
@@ -52,6 +126,24 @@ void MenuController::Render(Renderer& renderer,
                             const std::function<void(const SkyboxFaces&)>& onSkyboxChosen,
                             bool* frustumCullingEnabled,
                             bool* physicsCullingEnabled) {
+
+    // Tick async folder picker — fires onBuildProject once user picks a folder
+    if (folderPickerState_ && folderPickerState_->isDone.load()) {
+        if (folderPickerThread_ && folderPickerThread_->joinable()) {
+            folderPickerThread_->join();
+        }
+        std::string folder;
+        {
+            std::lock_guard<std::mutex> lock(folderPickerState_->resultMutex);
+            folder = folderPickerState_->result;
+        }
+        if (!folder.empty() && pendingBuildCallback_) {
+            pendingBuildCallback_(folder);
+        }
+        folderPickerThread_.reset();
+        folderPickerState_.reset();
+        pendingBuildCallback_ = nullptr;
+    }
 
     RenderMainMenu(onAddMeshPlane, projectMenu, profilerVisible, setProfilerVisible);
 
@@ -196,6 +288,21 @@ void MenuController::RenderMainMenu(const std::function<void()>& onAddMeshPlane,
             if (ImGui::MenuItem("Save Project") && projectMenu.onSaveProject) {
                 projectMenu.onSaveProject();
             }
+            if (ImGui::MenuItem("Open Project...") && projectMenu.onOpenProjectLauncher) {
+                projectMenu.onOpenProjectLauncher();
+            }
+            const bool pickerRunning = folderPickerState_ && !folderPickerState_->isDone.load();
+            if (ImGui::MenuItem("Build...", nullptr, false, !pickerRunning) && projectMenu.onBuildProject) {
+                pendingBuildCallback_ = projectMenu.onBuildProject;
+                auto state = std::make_shared<FolderPickerState>();
+                folderPickerState_ = state;
+                folderPickerThread_ = std::make_unique<std::thread>([state]() {
+                    const std::string folder = PickBuildOutputFolder();
+                    std::lock_guard<std::mutex> lock(state->resultMutex);
+                    state->result = folder;
+                    state->isDone.store(true);
+                });
+            }
             ImGui::EndMenu();
         }
 
@@ -296,29 +403,32 @@ SkyboxFaces MenuController::BuildFacesFromFolder(const std::string& folder) {
 
 void MenuController::RefreshSkyboxSets() {
     skyboxFolders_.clear();
-    const fs::path base = ProjectRootPath() / "assets" / "skybox";
-    if (!fs::exists(base)) return;
 
-    // Collect folders that contain a valid set of 6 faces
-    try {
-        for (auto& entry : fs::recursive_directory_iterator(base)) {
-            if (entry.is_directory()) {
-                std::vector<std::string> names;
-                for (auto& sub : fs::directory_iterator(entry.path())) {
-                    if (sub.is_regular_file()) {
-                        auto n = sub.path().filename().string();
-                        std::transform(n.begin(), n.end(), n.begin(), ::tolower);
-                        names.push_back(n);
+    auto scanDir = [&](const fs::path& base) {
+        if (!fs::exists(base)) return;
+        try {
+            for (auto& entry : fs::recursive_directory_iterator(base)) {
+                if (entry.is_directory()) {
+                    std::vector<std::string> names;
+                    for (auto& sub : fs::directory_iterator(entry.path())) {
+                        if (sub.is_regular_file()) {
+                            auto n = sub.path().filename().string();
+                            std::transform(n.begin(), n.end(), n.begin(), ::tolower);
+                            names.push_back(n);
+                        }
+                    }
+                    if (LooksLikeFaceSet(names)) {
+                        skyboxFolders_.push_back(entry.path().string());
                     }
                 }
-                if (LooksLikeFaceSet(names)) {
-                    skyboxFolders_.push_back(entry.path().string());
-                }
             }
-        }
-    } catch (...) {
-        // ignore FS errors
-    }
+        } catch (...) {}
+    };
+
+    // Engine-bundled skyboxes first, then project skyboxes.
+    scanDir(EngineRootPath() / "editor-assets" / "skybox");
+    scanDir(ProjectRootPath() / "assets" / "skybox");
+
     std::sort(skyboxFolders_.begin(), skyboxFolders_.end());
     if (!hasSelectedSkyboxFaces_) {
         for (int i = 0; i < static_cast<int>(skyboxFolders_.size()); ++i) {

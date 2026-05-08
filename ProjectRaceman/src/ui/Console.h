@@ -22,6 +22,8 @@ public:
     // Draws the console panel. Returns true if any UI state changed.
     bool RenderPanel(const char* title = "Console");
     bool RenderContents();
+    // Flat log view: all entries in one scrolling list (no tabs). Used by the player debug overlay.
+    void RenderFlat();
 
     // Optional: external toggle for auto-scroll
     void SetAutoScroll(bool enabled) { autoScroll_ = enabled; }

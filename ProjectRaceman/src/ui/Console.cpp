@@ -186,4 +186,50 @@ bool Console::RenderContents() {
     return changed;
 }
 
+void Console::RenderFlat() {
+    std::vector<ConsoleEntry> entries;
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        entries = entries_;
+    }
+
+    if (ImGui::Button("Clear")) {
+        std::lock_guard<std::mutex> lock(mtx_);
+        entries_.clear();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Copy All")) {
+        std::string text;
+        for (const ConsoleEntry& e : entries) {
+            text += e.text;
+            text += '\n';
+        }
+        ImGui::SetClipboardText(text.c_str());
+    }
+    ImGui::Separator();
+
+    ImGui::BeginChild("flat-scroll", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    for (int i = 0; i < static_cast<int>(entries.size()); ++i) {
+        const ConsoleEntry& e = entries[i];
+        ImGui::PushID(i);
+        ImGui::PushStyleColor(ImGuiCol_Text, ConsoleTextColor(e.type));
+        ImGui::Selectable(e.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick);
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+            ImGui::SetClipboardText(e.text.c_str());
+        }
+        if (ImGui::BeginPopupContextItem("##line_ctx")) {
+            if (ImGui::MenuItem("Copy Line")) {
+                ImGui::SetClipboardText(e.text.c_str());
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::PopID();
+    }
+    if (autoScroll_) {
+        ImGui::SetScrollHereY(1.0f);
+    }
+    ImGui::EndChild();
+}
+
 } // namespace raceman

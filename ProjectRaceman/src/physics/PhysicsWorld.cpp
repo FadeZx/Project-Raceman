@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <limits>
@@ -19,6 +21,7 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include <Jolt/Jolt.h>
+#include <Jolt/Core/IssueReporting.h>
 #include <Jolt/Core/StreamWrapper.h>
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Core/Factory.h>
@@ -51,9 +54,39 @@
 
 #include "../ui/ObjImport.h"
 
+namespace JoltAssertBridge {
+using AssertFailedFunction = bool (*)(const char*, const char*, const char*, JPH::uint);
+}
+
+namespace JPH {
+extern JoltAssertBridge::AssertFailedFunction AssertFailed;
+}
+
 namespace raceman {
 
 namespace {
+
+void JoltTrace(const char* format, ...) {
+    std::fprintf(stdout, "[Jolt] ");
+    va_list args;
+    va_start(args, format);
+    std::vfprintf(stdout, format, args);
+    va_end(args);
+    std::fprintf(stdout, "\n");
+    std::fflush(stdout);
+}
+
+bool JoltAssertFailed(const char* expression, const char* message, const char* file, JPH::uint line) {
+    std::fprintf(stdout,
+                 "[JoltAssert] %s%s%s (%s:%u)\n",
+                 expression != nullptr ? expression : "<no expression>",
+                 message != nullptr ? " - " : "",
+                 message != nullptr ? message : "",
+                 file != nullptr ? file : "<unknown>",
+                 static_cast<unsigned int>(line));
+    std::fflush(stdout);
+    return false;
+}
 
 struct CollisionMeshCacheEntry {
     std::shared_ptr<::Model> model;
@@ -306,6 +339,8 @@ void EnsureJoltInitialized() {
         return;
     }
 
+    JPH::Trace = JoltTrace;
+    JPH::AssertFailed = JoltAssertFailed;
     JPH::RegisterDefaultAllocator();
     JPH::Factory::sInstance = new JPH::Factory();
     JPH::RegisterTypes();
@@ -373,9 +408,27 @@ JPH::MeshShapeSettings::EBuildQuality ToMeshBuildQuality(MeshColliderBuildQualit
 
 std::filesystem::path FindProjectAssetAbsolutePath(const std::string& assetPath) {
     std::filesystem::path normalized(assetPath);
+    std::filesystem::path projectRoot = std::filesystem::current_path() / "Project";
+#if defined(_WIN32)
+    char* overrideRoot = nullptr;
+    std::size_t overrideRootLength = 0;
+    if (_dupenv_s(&overrideRoot, &overrideRootLength, "RACEMAN_PROJECT_ROOT") == 0 && overrideRoot != nullptr) {
+        std::string value = overrideRoot;
+        std::free(overrideRoot);
+        if (!value.empty()) {
+            projectRoot = value;
+        }
+    }
+#else
+    if (const char* overrideRoot = std::getenv("RACEMAN_PROJECT_ROOT")) {
+        if (overrideRoot[0] != '\0') {
+            projectRoot = overrideRoot;
+        }
+    }
+#endif
     if (!normalized.empty() && *normalized.begin() == "assets") {
         normalized = normalized.lexically_relative("assets");
-        return (std::filesystem::current_path() / "Project" / "assets" / normalized).lexically_normal();
+        return (projectRoot / "assets" / normalized).lexically_normal();
     }
     if (assetPath.rfind("editor-assets/", 0) == 0) {
         return (std::filesystem::current_path() / assetPath).lexically_normal();
@@ -653,8 +706,14 @@ public:
             progress->SetTask("Initializing...");
         }
         const auto buildStart = std::chrono::steady_clock::now();
+        std::fprintf(stdout, "[Physics] Clear previous world...\n");
+        std::fflush(stdout);
         Clear();
+        std::fprintf(stdout, "[Physics] Initialize Jolt...\n");
+        std::fflush(stdout);
         EnsureJoltInitialized();
+        std::fprintf(stdout, "[Physics] Jolt initialized.\n");
+        std::fflush(stdout);
         stats_ = {};
 
         bodies_ = inputBodies;
@@ -680,16 +739,42 @@ public:
             }
         }
 
+        std::fprintf(stdout, "[Physics] Create allocator/system for %zu bodies...\n", bodies_.size());
+        std::fflush(stdout);
         tempAllocator_ = std::make_unique<JPH::TempAllocatorImpl>(10 * 1024 * 1024);
+        std::fprintf(stdout, "[Physics] Temp allocator created.\n");
+        std::fflush(stdout);
         const int workerCount = (std::max)(1u, std::thread::hardware_concurrency() > 1 ? std::thread::hardware_concurrency() - 1 : 1u);
+        std::fprintf(stdout, "[Physics] Creating job system with %d workers...\n", workerCount);
+        std::fflush(stdout);
         jobSystem_ = std::make_unique<JPH::JobSystemThreadPool>(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, workerCount);
+        std::fprintf(stdout, "[Physics] Job system created.\n");
+        std::fflush(stdout);
         physicsSystem_ = std::make_unique<JPH::PhysicsSystem>();
-        physicsSystem_->Init(65536, 0, 65536, 10240, broadPhaseLayerInterface_, objectVsBroadPhaseLayerFilter_, objectLayerPairFilter_);
+        std::fprintf(stdout, "[Physics] Physics system allocated.\n");
+        std::fflush(stdout);
+        const JPH::uint maxBodies = static_cast<JPH::uint>((std::max<std::size_t>)(1024, bodies_.size() * 4 + inputCharacters.size() * 2 + 64));
+        const JPH::uint maxBodyPairs = static_cast<JPH::uint>((std::max<std::size_t>)(2048, bodies_.size() * 16 + 1024));
+        const JPH::uint maxContactConstraints = static_cast<JPH::uint>((std::max<std::size_t>)(1024, bodies_.size() * 8 + 512));
+        std::fprintf(stdout,
+                     "[Physics] Init capacity: %u bodies, %u pairs, %u contacts.\n",
+                     maxBodies,
+                     maxBodyPairs,
+                     maxContactConstraints);
+        std::fflush(stdout);
+        physicsSystem_->Init(maxBodies, 0, maxBodyPairs, maxContactConstraints, broadPhaseLayerInterface_, objectVsBroadPhaseLayerFilter_, objectLayerPairFilter_);
+        std::fprintf(stdout, "[Physics] Physics system initialized.\n");
+        std::fflush(stdout);
         collisionGroupFilter_ = new ProjectLayerGroupFilter(collisionMatrix_);
 
         JPH::BodyInterface& bodyInterface = physicsSystem_->GetBodyInterface();
         int bodyProgressIndex = 0;
             for (const PhysicsBodyDesc& body : bodies_) {
+            std::fprintf(stdout, "[Physics] Body %d/%zu: %s\n",
+                         bodyProgressIndex + 1,
+                         bodies_.size(),
+                         body.objectId.c_str());
+            std::fflush(stdout);
             if (progress) {
                 if (progress->cancelRequested.load()) {
                     progress->wasCancelled.store(true);
@@ -716,6 +801,8 @@ public:
             const bool sensorOnly = !hasSolidCollider;
             JPH::ShapeRefC shape = CreateShape(body, sensorOnly);
             if (!shape) {
+                std::fprintf(stdout, "[Physics] Skipped body without valid shape: %s\n", body.objectId.c_str());
+                std::fflush(stdout);
                 continue;
             }
 
@@ -770,6 +857,10 @@ public:
             }
 
             JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(settings, movable ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+            if (bodyId.IsInvalid()) {
+                std::fprintf(stdout, "[Physics] Jolt returned invalid body id for: %s\n", body.objectId.c_str());
+                std::fflush(stdout);
+            }
             bodyIds_[body.objectId] = bodyId;
             bodyIdToObjectId_[bodyId] = body.objectId;
             if (movable) {

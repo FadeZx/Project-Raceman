@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <iostream>
 #include <sstream>
 
 #if defined(_WIN32)
@@ -15,6 +16,10 @@ namespace raceman {
 namespace {
 
 using RegisterScriptsFn = void (*)(std::vector<ScriptDescriptor>&);
+using GetScriptCountFn = int (*)();
+using GetScriptNameFn = const char* (*)(int);
+using GetScriptPathFn = const char* (*)(int);
+using CreateScriptByNameFn = IObjectScript* (*)(const char*);
 
 std::vector<ScriptDescriptor> g_scripts;
 
@@ -59,7 +64,23 @@ std::string CurrentConfiguration() {
 }
 
 std::filesystem::path ScriptDllPath() {
+    const std::filesystem::path packagedDll = std::filesystem::current_path() / "ProjectScripts.dll";
+    if (std::filesystem::exists(packagedDll)) {
+        return packagedDll;
+    }
     return EngineRootPath() / "bin" / CurrentConfiguration() / "ProjectScripts.dll";
+}
+
+bool PlayerLoggingEnabled() {
+#if defined(_WIN32)
+    char* value = nullptr;
+    size_t length = 0;
+    const bool enabled = _dupenv_s(&value, &length, "RACEMAN_PLAYER_MODE") == 0 && value != nullptr;
+    free(value);
+    return enabled;
+#else
+    return std::getenv("RACEMAN_PLAYER_MODE") != nullptr;
+#endif
 }
 
 } // namespace
@@ -79,10 +100,16 @@ const ScriptDescriptor* FindRegisteredScript(const std::string& name) {
 
 std::unique_ptr<IObjectScript> CreateRegisteredScript(const std::string& name) {
     const ScriptDescriptor* script = FindRegisteredScript(name);
-    if (script == nullptr || script->create == nullptr) {
+    if (script == nullptr) {
         return {};
     }
-    return script->create();
+    if (script->create != nullptr) {
+        return script->create();
+    }
+    if (script->createByName != nullptr) {
+        return std::unique_ptr<IObjectScript>(script->createByName(script->name.c_str()));
+    }
+    return {};
 }
 
 std::vector<ScriptFieldDefinition> GetRegisteredScriptFieldDefinitions(const std::string& name) {
@@ -103,6 +130,9 @@ bool LoadScriptAssembly(std::string* outError) {
     UnloadScriptAssembly();
 
     const std::filesystem::path dllPath = ScriptDllPath();
+    if (PlayerLoggingEnabled()) {
+        std::cout << "[Player] Loading script DLL: " << dllPath.string() << std::endl;
+    }
     if (!std::filesystem::exists(dllPath)) {
         if (outError) {
             *outError = "Script DLL not found: " + dllPath.string();
@@ -117,17 +147,51 @@ bool LoadScriptAssembly(std::string* outError) {
         }
         return false;
     }
+    if (PlayerLoggingEnabled()) {
+        std::cout << "[Player] Script DLL loaded." << std::endl;
+    }
+
+    const bool playerMode = PlayerLoggingEnabled();
+
+    auto getScriptCount = reinterpret_cast<GetScriptCountFn>(GetProcAddress(g_scriptModule, "RacemanGetScriptCount"));
+    auto getScriptName = reinterpret_cast<GetScriptNameFn>(GetProcAddress(g_scriptModule, "RacemanGetScriptName"));
+    auto getScriptPath = reinterpret_cast<GetScriptPathFn>(GetProcAddress(g_scriptModule, "RacemanGetScriptPath"));
+    auto createScriptByName = reinterpret_cast<CreateScriptByNameFn>(GetProcAddress(g_scriptModule, "RacemanCreateScriptByName"));
+    if (playerMode && getScriptCount != nullptr && getScriptName != nullptr && getScriptPath != nullptr && createScriptByName != nullptr) {
+        if (PlayerLoggingEnabled()) {
+            std::cout << "[Player] Registering scripts through stable DLL ABI..." << std::endl;
+        }
+        g_scripts.clear();
+        const int count = getScriptCount();
+        for (int i = 0; i < count; ++i) {
+            const char* name = getScriptName(i);
+            const char* path = getScriptPath(i);
+            if (name != nullptr && name[0] != '\0') {
+                g_scripts.push_back({name, path != nullptr ? path : "", nullptr, createScriptByName});
+            }
+        }
+        if (PlayerLoggingEnabled()) {
+            std::cout << "[Player] Registered " << g_scripts.size() << " script(s)." << std::endl;
+        }
+        return true;
+    }
 
     auto registerScripts = reinterpret_cast<RegisterScriptsFn>(GetProcAddress(g_scriptModule, "RacemanRegisterScripts"));
     if (registerScripts == nullptr) {
         if (outError) {
-            *outError = "Script DLL is missing RacemanRegisterScripts export.";
+            *outError = "Script DLL is missing script registration exports.";
         }
         UnloadScriptAssembly();
         return false;
     }
 
+    if (PlayerLoggingEnabled()) {
+        std::cout << "[Player] Registering scripts..." << std::endl;
+    }
     registerScripts(g_scripts);
+    if (PlayerLoggingEnabled()) {
+        std::cout << "[Player] Registered " << g_scripts.size() << " script(s)." << std::endl;
+    }
     return true;
 #endif
 }

@@ -23,6 +23,7 @@
 #include "../rendering/PrimitiveMeshes.h"
 #include "../scripting/ObjectScript.h"
 #include "../audio/VehicleSoundProfile.h"
+#include "../rendering/SkyboxController.h"
 
 class Model;
 
@@ -385,6 +386,10 @@ public:
 
     // Render both Scene (hierarchy) and Inspector panels; handle shortcuts (Ctrl+S)
     void RenderUI(float deltaTime);
+    void StartRuntime();
+    void UpdateRuntime(float deltaTime);
+    void StopRuntime();
+    void SetProjectRoot(std::string path);
 
     // Quick action: add a plane via external UI (Menu)
     void AddMeshPlane();
@@ -460,7 +465,11 @@ public:
     std::vector<std::string> GetSceneAssetPaths() const;
     const std::string& GetCurrentScenePath() const { return savePath_; }
     const std::string& GetProjectName() const { return projectName_; }
+    const SkyboxFaces& GetSkyboxFaces() const { return skyboxFaces_; }
+    void SetSkyboxFaces(const SkyboxFaces& faces) { skyboxFaces_ = faces; }
     const PhysicsWorld* GetPhysicsWorld() const { return physicsWorld_.get(); }
+    // Returns the active physics build progress if cooking is in progress, nullptr otherwise.
+    const PhysicsBuildProgress* GetPhysicsBuildProgress() const;
     void SetShowCullingDebug(bool show) { showCullingDebug_ = show; }
     bool IsPhysicsCullingEnabled() const { return enablePhysicsCulling_; }
     void SetPhysicsCullingEnabled(bool v) { enablePhysicsCulling_ = v; }
@@ -472,6 +481,7 @@ public:
     void ImportObj(const std::string& path);
     void ImportObjWithOptions(const std::string& path, int pivotMode);
     void ScanObjDir(const std::string& dir);
+    void SyncScripts() { SyncScriptProjectFiles(false); }
 
 private:
     // UI panels
@@ -598,6 +608,7 @@ private:
 
     // persistence
     std::string projectPath_{"project.raceman.json"};
+    SkyboxFaces skyboxFaces_{};
     std::string projectName_{"Project Raceman"};
     std::string assetsRootSetting_{"assets"};
     std::string defaultScenePath_{"assets/scenes/EditorScene.scene.json"};

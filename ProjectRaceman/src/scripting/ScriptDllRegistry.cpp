@@ -1,8 +1,10 @@
 #include "ScriptRegistry.h"
 
-#include "../../Project/assets/scripts/CameraOrbit.h"
-#include "../../Project/assets/scripts/CharacterControllerTest.h"
-#include "../../Project/assets/scripts/TestPlayerMovement.h"
+#include <cstring>
+
+#include "../../../Project1/assets/scripts/CameraOrbit.h"
+#include "../../../Project1/assets/scripts/CharacterControllerTest.h"
+#include "../../../Project1/assets/scripts/TestPlayerMovement.h"
 
 namespace raceman {
 namespace {
@@ -19,7 +21,40 @@ std::unique_ptr<IObjectScript> CreateTestPlayerMovement() {
     return std::make_unique<scripts::TestPlayerMovement>();
 }
 
+struct ScriptExportEntry {
+    const char* name;
+    const char* path;
+};
+
+const ScriptExportEntry kScripts[] = {
+    {"CameraOrbit", "assets/scripts/CameraOrbit.cpp"},
+    {"CharacterControllerTest", "assets/scripts/CharacterControllerTest.cpp"},
+    {"TestPlayerMovement", "assets/scripts/TestPlayerMovement.cpp"},
+};
+
 } // namespace
+
+extern "C" __declspec(dllexport) int RacemanGetScriptCount() {
+    return static_cast<int>(sizeof(kScripts) / sizeof(kScripts[0]));
+}
+
+extern "C" __declspec(dllexport) const char* RacemanGetScriptName(int index) {
+    const int count = RacemanGetScriptCount();
+    return index >= 0 && index < count ? kScripts[index].name : nullptr;
+}
+
+extern "C" __declspec(dllexport) const char* RacemanGetScriptPath(int index) {
+    const int count = RacemanGetScriptCount();
+    return index >= 0 && index < count ? kScripts[index].path : nullptr;
+}
+
+extern "C" __declspec(dllexport) raceman::IObjectScript* RacemanCreateScriptByName(const char* name) {
+    if (name == nullptr) return nullptr;
+    if (std::strcmp(name, "CameraOrbit") == 0) return new scripts::CameraOrbit();
+    if (std::strcmp(name, "CharacterControllerTest") == 0) return new scripts::CharacterControllerTest();
+    if (std::strcmp(name, "TestPlayerMovement") == 0) return new scripts::TestPlayerMovement();
+    return nullptr;
+}
 
 extern "C" __declspec(dllexport) void RacemanRegisterScripts(std::vector<raceman::ScriptDescriptor>& scripts) {
     scripts.clear();

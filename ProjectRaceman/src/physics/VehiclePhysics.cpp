@@ -367,7 +367,10 @@ void VehiclePhysics::update(float dt)
         m_lastTelemetry.wheels[i] = telemetry;
     }
 
-    totalForce += Vector3{0.0f, 0.0f, -m_config.chassis.mass * kGravity};
+    if (!m_externalBodySimulation)
+    {
+        totalForce += Vector3{0.0f, 0.0f, -m_config.chassis.mass * kGravity};
+    }
 
     m_pendingChassisForce = totalForce;
     m_pendingChassisTorque = totalTorque;

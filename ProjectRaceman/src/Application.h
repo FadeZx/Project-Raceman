@@ -1,7 +1,10 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
 
 #include <glm/glm.hpp>
 
@@ -19,12 +22,15 @@ class Console;
 class SceneEditor;
 class SkyboxController;
 class AudioManager;
+class ProjectLauncher;
 
 struct ApplicationConfig {
     std::string windowTitle{"Project Raceman"};
     int width{1920};
     int height{1080};
     bool enableImGui{true};
+    bool playerMode{false};
+    std::string projectRoot{"Project"};
 };
 
 class Application {
@@ -51,6 +57,8 @@ private:
     void Update(float deltaTime);
     void Render();
     void FocusEditorCameraOn(const glm::vec3& target, float radius);
+    void InitializeEditor(const std::string& projectPath);
+    void RenderPlayerDebugOverlay(float deltaTime);
 
     ApplicationConfig config_{};
     GLFWwindow* window_{nullptr};
@@ -63,9 +71,24 @@ private:
     std::unique_ptr<SceneEditor> sceneEditor_;
     std::unique_ptr<SkyboxController> skyboxController_;
     std::unique_ptr<AudioManager> audioManager_;
+    std::unique_ptr<ProjectLauncher> launcher_;
+
+    struct StandaloneBuildStatus {
+        std::atomic<bool> isDone{false};
+        std::mutex resultMutex;
+        bool success{false};
+        std::string outputFolder;
+        std::string message;
+    };
+    std::unique_ptr<std::thread> standaloneBuildThread_;
+    std::shared_ptr<StandaloneBuildStatus> standaloneBuildStatus_;
 
     bool running_{true};
     bool pendingExit_{false};  // set when user clicks X with unsaved changes
+    bool playerDebugMode_{false};
+    bool playerDebugStatsOpen_{false};
+    bool playerDebugConsoleOpen_{false};
+    float consoleSlideY_{4000.0f};  // animated Y; starts far below screen
     double lastFrameTime_{0.0};
 
     // Render/physics debug toggles (edited via Project Settings)
@@ -77,6 +100,7 @@ private:
     int fpsFrames_{0};
     std::string baseTitle_{};
     bool vsyncEnabled_{true};
+    bool playerRuntimeStarted_{false};
 
     // Editor camera state
     float camPosX_{0.0f}, camPosY_{5.0f}, camPosZ_{10.0f};

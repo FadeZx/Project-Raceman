@@ -1,9 +1,13 @@
 #pragma once
 
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 #include <array>
-#include <functional>
 
 namespace raceman {
 
@@ -20,6 +24,8 @@ struct EditorProjectMenu {
     std::function<void()> onSaveScene;
     std::function<void(const std::string&)> onOpenScene;
     std::function<void()> onSaveProject;
+    std::function<void(const std::string&)> onBuildProject;
+    std::function<void()> onOpenProjectLauncher;
     std::function<void()> renderInputSettings;
     std::function<void()> renderProjectSettings;
     std::function<void()> renderTagsAndLayersSettings;
@@ -74,6 +80,16 @@ private:
     bool hasSelectedSkyboxFaces_{false};
     // Selected folder index for UI
     int selectedFolder_{-1};
+
+    // Async folder picker for Build...
+    struct FolderPickerState {
+        std::atomic<bool> isDone{false};
+        std::mutex resultMutex;
+        std::string result;
+    };
+    std::unique_ptr<std::thread> folderPickerThread_;
+    std::shared_ptr<FolderPickerState> folderPickerState_;
+    std::function<void(const std::string&)> pendingBuildCallback_;
 
     // State file
     std::string stateFile_{"config/menu.json"};
