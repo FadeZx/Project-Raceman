@@ -1,5 +1,6 @@
 #include "SceneEditorInternal.h"
 #include "../physics/SimpleJson.h"
+#include "../rendering/ShaderRegistry.h"
 #include <GLFW/glfw3.h>
 
 namespace fs = std::filesystem;
@@ -16,6 +17,7 @@ const char* ProjectCreateAssetTypeTitle(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::VehicleProfile) return "Create Vehicle Profile";
     if (type == ProjectCreateAssetType::VehicleSoundProfile) return "Create Vehicle Sound Profile";
     if (type == ProjectCreateAssetType::Script) return "Create C++ Script";
+    if (type == ProjectCreateAssetType::ShaderGraph) return "Create Shader Graph";
     return "Create Asset";
 }
 
@@ -26,6 +28,7 @@ const char* ProjectCreateAssetTypeDefaultName(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::VehicleProfile) return "NewVehicleProfile";
     if (type == ProjectCreateAssetType::VehicleSoundProfile) return "NewVehicleSoundProfile";
     if (type == ProjectCreateAssetType::Script) return "NewScript";
+    if (type == ProjectCreateAssetType::ShaderGraph) return "NewShaderGraph";
     return "NewAsset";
 }
 
@@ -302,6 +305,7 @@ std::string AssetIconForProjectFile(const std::string& path) {
     const std::string extension = ToLowerCopy(fs::path(path).extension().string());
     if (IsSceneAssetPath(path))        return "asset-scene.png";
     if (IsMaterialAssetPath(path))     return "asset-material.png";
+    if (IsShaderGraphAssetPath(path))  return "asset-material.png";
     if (IsVehicleConfigAssetPath(path))return "asset-vehicle.png";
     if (IsVehicleSoundAssetPath(path)) return "asset-vehicle-sound.png";
     if (IsMeshAssetPath(path))         return "asset-mesh.png";
@@ -660,6 +664,7 @@ void SceneEditor::RenderProjectPanel() {
                     const bool isMaterial = IsMaterialAssetPath(file);
                     const bool isScene = IsSceneAssetPath(file);
                     const bool isPrefab = IsPrefabAssetPath(file);
+                    const bool isShaderGraph = IsShaderGraphAssetPath(file);
                     std::string filename = ProjectAssetDisplayFilename(file);
 
                     ImGui::PushID(file.c_str());
@@ -675,6 +680,8 @@ void SceneEditor::RenderProjectPanel() {
                                     sceneToOpen = file;
                                 } else if (isMaterial) {
                                     OpenMaterialEditor(MaterialIdFromAssetPath(file));
+                                } else if (isShaderGraph) {
+                                    OpenShaderGraphEditor(file);
                                 } else if (isPrefab) {
                                     if (InstantiatePrefab(file)) {
                                         if (console_) console_->AddLog("Instantiated prefab: " + file);
@@ -709,6 +716,19 @@ void SceneEditor::RenderProjectPanel() {
                             } else if (isMaterial) {
                                 if (ImGui::MenuItem("Edit")) {
                                     OpenMaterialEditor(MaterialIdFromAssetPath(file));
+                                }
+                                if (ImGui::MenuItem("Open in Default App")) {
+                                    if (OpenProjectAssetInDefaultEditor(file)) {
+                                        if (console_) {
+                                            console_->AddLog("Opened project file: " + file);
+                                        }
+                                    } else if (console_) {
+                                        console_->AddError("Failed to open project file: " + file);
+                                    }
+                                }
+                            } else if (isShaderGraph) {
+                                if (ImGui::MenuItem("Edit")) {
+                                    OpenShaderGraphEditor(file);
                                 }
                                 if (ImGui::MenuItem("Open in Default App")) {
                                     if (OpenProjectAssetInDefaultEditor(file)) {
@@ -845,6 +865,12 @@ void SceneEditor::RenderProjectPanel() {
                         if (ImGui::MenuItem("Material")) {
                             createProjectAssetType_ = ProjectCreateAssetType::Material;
                             std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
+                            createProjectMaterialShaderIndex_ = 0;
+                            showCreateProjectAssetPopup_ = true;
+                        }
+                        if (ImGui::MenuItem("Shader Graph")) {
+                            createProjectAssetType_ = ProjectCreateAssetType::ShaderGraph;
+                            std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
                             showCreateProjectAssetPopup_ = true;
                         }
                         if (ImGui::MenuItem("C++ Script")) {
@@ -951,6 +977,25 @@ void SceneEditor::RenderProjectPanel() {
                     ImGui::TextDisabled("Directory: %s", selectedProjectDirectory_.c_str());
                     ImGui::SetNextItemWidth(260.0f);
                     ImGui::InputText("Name", createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_));
+                    if (createProjectAssetType_ == ProjectCreateAssetType::Material) {
+                        const auto& shaders = ShaderRegistry::BuiltInShaders();
+                        createProjectMaterialShaderIndex_ = (std::max)(0, (std::min)(createProjectMaterialShaderIndex_, static_cast<int>(shaders.size()) - 1));
+                        const ShaderDefinition& currentShader = shaders[static_cast<std::size_t>(createProjectMaterialShaderIndex_)];
+                        ImGui::SetNextItemWidth(260.0f);
+                        if (ImGui::BeginCombo("Shader", currentShader.displayName.c_str())) {
+                            for (int i = 0; i < static_cast<int>(shaders.size()); ++i) {
+                                const ShaderDefinition& shader = shaders[static_cast<std::size_t>(i)];
+                                const bool selected = i == createProjectMaterialShaderIndex_;
+                                if (ImGui::Selectable(shader.displayName.c_str(), selected)) {
+                                    createProjectMaterialShaderIndex_ = i;
+                                }
+                                if (selected) {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+                    }
                     const bool submit = ImGui::Button("Create") || ImGui::IsKeyPressed(ImGuiKey_Enter);
                     ImGui::SameLine();
                     if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
@@ -970,9 +1015,18 @@ void SceneEditor::RenderProjectPanel() {
                             }
                         } else if (createProjectAssetType_ == ProjectCreateAssetType::Material) {
                             std::string materialId;
-                            created = CreateMaterialAsset(createProjectAssetNameBuffer_, &materialId);
+                            const auto& shaders = ShaderRegistry::BuiltInShaders();
+                            createProjectMaterialShaderIndex_ = (std::max)(0, (std::min)(createProjectMaterialShaderIndex_, static_cast<int>(shaders.size()) - 1));
+                            created = CreateMaterialAsset(createProjectAssetNameBuffer_, &materialId, shaders[static_cast<std::size_t>(createProjectMaterialShaderIndex_)].id);
                             if (created) {
                                 selectedProjectFile_ = selectedProjectDirectory_ + "/" + materialId + ".mat.json";
+                            }
+                        } else if (createProjectAssetType_ == ProjectCreateAssetType::ShaderGraph) {
+                            std::string graphPath;
+                            created = CreateShaderGraphAsset(createProjectAssetNameBuffer_, &graphPath);
+                            if (created) {
+                                selectedProjectFile_ = graphPath;
+                                OpenShaderGraphEditor(graphPath);
                             }
                         } else if (createProjectAssetType_ == ProjectCreateAssetType::VehicleProfile) {
                             created = CreateVehicleConfigAsset(createProjectAssetNameBuffer_, &createdVehicleConfigPath);
@@ -2069,6 +2123,22 @@ void SceneEditor::DeleteProjectFile(const std::string& path) {
             materialManager_.LoadAll();
         }
 
+        if (IsShaderGraphAssetPath(projectPath)) {
+            const std::string graphShaderId = ShaderRegistry::MakeGraphShaderId(projectPath);
+            for (auto& object : objects_) {
+                Material* material = materialManager_.Get(object.meshRenderer.materialId);
+                if (material != nullptr && material->shader == graphShaderId) {
+                    material->shader = "pbr";
+                    materialManager_.Save(object.meshRenderer.materialId, *material);
+                }
+            }
+            if (inspectedShaderGraphPath_ == projectPath) {
+                showShaderGraphEditor_ = false;
+                inspectedShaderGraphPath_.clear();
+            }
+            materialManager_.LoadAll();
+        }
+
         for (auto& object : objects_) {
             if (NormalizeSlashes(object.meshFilter.sourcePath) == projectPath) {
                 object.meshFilter.sourcePath.clear();
@@ -2397,8 +2467,8 @@ void SceneEditor::RefreshProjectFiles() {
         projectDirectories_.erase(std::unique(projectDirectories_.begin(), projectDirectories_.end()), projectDirectories_.end());
 
         std::sort(projectFiles_.begin(), projectFiles_.end(), [](const std::string& a, const std::string& b) {
-            const bool aSpecial = IsSceneAssetPath(a) || IsMeshAssetPath(a) || IsMaterialAssetPath(a);
-            const bool bSpecial = IsSceneAssetPath(b) || IsMeshAssetPath(b) || IsMaterialAssetPath(b);
+            const bool aSpecial = IsSceneAssetPath(a) || IsMeshAssetPath(a) || IsMaterialAssetPath(a) || IsShaderGraphAssetPath(a);
+            const bool bSpecial = IsSceneAssetPath(b) || IsMeshAssetPath(b) || IsMaterialAssetPath(b) || IsShaderGraphAssetPath(b);
             if (aSpecial != bSpecial) {
                 return aSpecial > bSpecial;
             }

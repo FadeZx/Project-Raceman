@@ -1,13 +1,23 @@
 #include "Renderer.h"
 #include "shader.h"
+#include "ShaderRegistry.h"
 
 #include <glad/glad.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <stdexcept>
 
 namespace raceman {
+
+namespace {
+
+std::string ShaderPathForId(const ShaderDefinition& definition, bool vertex) {
+    return vertex ? definition.vertexPath : definition.fragmentPath;
+}
+
+} // namespace
 
 Renderer::Renderer(const RendererConfig& config) : config_(config) {
     viewport_.width = config.width;
@@ -239,10 +249,34 @@ void Renderer::SubmitLight(const LightDrawCommand& cmd) {
 void Renderer::SubmitLine(const DebugLineCommand& cmd) { lineDrawList_.push_back(cmd); }
 
 void Renderer::Flush() {
-    if (!simpleShader_) {
-        // Fallback: create simple shader once
-        simpleShader_ = std::make_unique<Shader>("src/shaders/simple/simple.vs", "src/shaders/simple/simple.fs");
-    }
+    auto resolveShader = [&](const std::string& shaderId) -> Shader* {
+        const std::string normalized = ShaderRegistry::NormalizeShaderId(shaderId);
+        std::string cacheKey = normalized;
+        std::string vertexPath;
+        std::string fragmentPath;
+        if (ShaderRegistry::IsGraphShaderId(normalized)) {
+            cacheKey = normalized;
+            vertexPath = "src/shaders/default/default.vs";
+            fragmentPath = ShaderRegistry::GraphFragmentPathForShaderId(normalized);
+        } else {
+            const ShaderDefinition& definition = ShaderRegistry::Resolve(normalized);
+            vertexPath = ShaderPathForId(definition, true);
+            fragmentPath = ShaderPathForId(definition, false);
+        }
+        if (fragmentPath.empty() || !std::filesystem::exists(fragmentPath)) {
+            cacheKey = "pbr";
+            vertexPath = "src/shaders/default/default.vs";
+            fragmentPath = "src/shaders/default/pbr.fs";
+        }
+        auto it = materialShaders_.find(cacheKey);
+        if (it != materialShaders_.end()) {
+            return it->second.get();
+        }
+        auto shader = std::make_unique<Shader>(vertexPath.c_str(), fragmentPath.c_str());
+        Shader* result = shader.get();
+        materialShaders_[cacheKey] = std::move(shader);
+        return result;
+    };
 
     // Draw editor meshes as real scene geometry, while preserving caller GL state.
     GLboolean depthEnabled = glIsEnabled(GL_DEPTH_TEST);
@@ -281,47 +315,76 @@ void Renderer::Flush() {
     // Sort draw calls to minimize GPU state changes (texture binds, VAO switches).
     if (settings_.enableDrawCallSorting && drawList_.size() > 1) {
         std::sort(drawList_.begin(), drawList_.end(), [](const MeshDrawCommand& a, const MeshDrawCommand& b) {
+            if (a.shaderId != b.shaderId) return a.shaderId < b.shaderId;
             if (a.diffuseTextureId != b.diffuseTextureId) return a.diffuseTextureId < b.diffuseTextureId;
             if (a.vao != b.vao) return a.vao < b.vao;
             return a.materialId < b.materialId;
         });
     }
 
-    simpleShader_->use();
-    simpleShader_->setInt("uDiffuseTexture", 0);
-    simpleShader_->setVec3("uAmbientColor", settings_.ambientColor);
+    auto bindCommonUniforms = [&](Shader& shader) {
+        shader.use();
+        shader.setInt("uDiffuseTexture", 0);
+        shader.setVec3("uAmbientColor", settings_.ambientColor);
+        shader.setVec3("uCameraPosition", glm::vec3(glm::inverse(view_)[3]));
+    };
     const int lightCount = static_cast<int>((std::min)(lightDrawList_.size(), static_cast<std::size_t>(8)));
-    simpleShader_->setInt("uLightCount", lightCount);
-    simpleShader_->setVec3("uCameraPosition", glm::vec3(glm::inverse(view_)[3]));
-    for (int i = 0; i < lightCount; ++i) {
-        const LightDrawCommand& light = lightDrawList_[static_cast<std::size_t>(i)];
-        const std::string prefix = "uLights[" + std::to_string(i) + "].";
-        int type = 1;
-        if (light.type == RenderLightType::Directional) {
-            type = 0;
-        } else if (light.type == RenderLightType::Spot) {
-            type = 2;
+    auto bindLights = [&](Shader& shader) {
+        shader.setInt("uLightCount", lightCount);
+        for (int i = 0; i < lightCount; ++i) {
+            const LightDrawCommand& light = lightDrawList_[static_cast<std::size_t>(i)];
+            const std::string prefix = "uLights[" + std::to_string(i) + "].";
+            int type = 1;
+            if (light.type == RenderLightType::Directional) {
+                type = 0;
+            } else if (light.type == RenderLightType::Spot) {
+                type = 2;
+            }
+            shader.setInt(prefix + "type", type);
+            shader.setVec3(prefix + "position", light.position);
+            shader.setVec3(prefix + "direction", glm::length(light.direction) > 0.0001f ? glm::normalize(light.direction) : glm::vec3{0.0f, -1.0f, 0.0f});
+            shader.setVec3(prefix + "color", light.color);
+            shader.setFloat(prefix + "intensity", light.intensity);
+            shader.setFloat(prefix + "range", (std::max)(0.001f, light.range));
+            shader.setFloat(prefix + "spotAngleDegrees", (std::max)(1.0f, (std::min)(179.0f, light.spotAngleDegrees)));
         }
-        simpleShader_->setInt(prefix + "type", type);
-        simpleShader_->setVec3(prefix + "position", light.position);
-        simpleShader_->setVec3(prefix + "direction", glm::length(light.direction) > 0.0001f ? glm::normalize(light.direction) : glm::vec3{0.0f, -1.0f, 0.0f});
-        simpleShader_->setVec3(prefix + "color", light.color);
-        simpleShader_->setFloat(prefix + "intensity", light.intensity);
-        simpleShader_->setFloat(prefix + "range", (std::max)(0.001f, light.range));
-        simpleShader_->setFloat(prefix + "spotAngleDegrees", (std::max)(1.0f, (std::min)(179.0f, light.spotAngleDegrees)));
-    }
+    };
+    std::string boundShaderId;
     for (const auto& cmd : drawList_) {
+        Shader* activeShader = resolveShader(cmd.unlit ? std::string("unlit") : cmd.shaderId);
+        if (activeShader == nullptr) {
+            continue;
+        }
+        const std::string currentShaderId = cmd.unlit ? std::string("unlit") : ShaderRegistry::NormalizeShaderId(cmd.shaderId);
+        if (boundShaderId != currentShaderId) {
+            bindCommonUniforms(*activeShader);
+            bindLights(*activeShader);
+            boundShaderId = currentShaderId;
+        } else {
+            activeShader->use();
+        }
+
+        const bool transparent = ShaderRegistry::Resolve(currentShaderId).transparent || cmd.color.a < 0.999f;
+        if (transparent) {
+            glEnable(GL_BLEND);
+            glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        } else {
+            glDisable(GL_BLEND);
+        }
+
         // MVP = proj * view * model
         glm::mat4 mvp = proj_ * view_ * cmd.modelMatrix;
-        simpleShader_->setMat4("uMVP", mvp);
-        simpleShader_->setMat4("uModel", cmd.modelMatrix);
+        activeShader->setMat4("uMVP", mvp);
+        activeShader->setMat4("uModel", cmd.modelMatrix);
         // Per-object color
-        simpleShader_->setVec4("uColor", cmd.color);
-        simpleShader_->setVec3("uEmissiveColor", cmd.emissiveColor);
-        simpleShader_->setFloat("uMetallic", (std::max)(0.0f, (std::min)(1.0f, cmd.metallic)));
-        simpleShader_->setFloat("uRoughness", (std::max)(0.02f, (std::min)(1.0f, cmd.roughness)));
-        simpleShader_->setBool("uUseDiffuseTexture", cmd.useDiffuseTexture && cmd.diffuseTextureId != 0);
-        simpleShader_->setBool("uUnlit", cmd.unlit);
+        activeShader->setVec4("uColor", cmd.color);
+        activeShader->setVec3("uEmissiveColor", cmd.emissiveColor);
+        activeShader->setFloat("uMetallic", (std::max)(0.0f, (std::min)(1.0f, cmd.metallic)));
+        activeShader->setFloat("uRoughness", (std::max)(0.02f, (std::min)(1.0f, cmd.roughness)));
+        activeShader->setVec2("uUvTiling", cmd.uvTiling);
+        activeShader->setVec2("uUvOffset", cmd.uvOffset);
+        activeShader->setBool("uUseDiffuseTexture", cmd.useDiffuseTexture && cmd.diffuseTextureId != 0);
         if (cmd.useDiffuseTexture && cmd.diffuseTextureId != 0) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, cmd.diffuseTextureId);
@@ -347,14 +410,16 @@ void Renderer::Flush() {
             glBindVertexArray(0);
         }
 
-        simpleShader_->use();
-        simpleShader_->setMat4("uMVP", proj_ * view_);
-        simpleShader_->setMat4("uModel", glm::mat4(1.0f));
-        simpleShader_->setVec3("uEmissiveColor", glm::vec3(0.0f));
-        simpleShader_->setFloat("uMetallic", 0.0f);
-        simpleShader_->setFloat("uRoughness", 1.0f);
-        simpleShader_->setBool("uUseDiffuseTexture", false);
-        simpleShader_->setBool("uUnlit", true);
+        Shader* lineShader = resolveShader("unlit");
+        lineShader->use();
+        lineShader->setMat4("uMVP", proj_ * view_);
+        lineShader->setMat4("uModel", glm::mat4(1.0f));
+        lineShader->setVec2("uUvTiling", glm::vec2(1.0f));
+        lineShader->setVec2("uUvOffset", glm::vec2(0.0f));
+        lineShader->setVec3("uEmissiveColor", glm::vec3(0.0f));
+        lineShader->setFloat("uMetallic", 0.0f);
+        lineShader->setFloat("uRoughness", 1.0f);
+        lineShader->setBool("uUseDiffuseTexture", false);
         glBindVertexArray(lineVao_);
 
         auto drawLineBatch = [&](DebugLineDepthMode mode, bool overlayPass) {
@@ -386,7 +451,7 @@ void Renderer::Flush() {
                 if (overlayPass) {
                     color.a *= 0.25f;
                 }
-                simpleShader_->setVec4("uColor", color);
+                lineShader->setVec4("uColor", color);
                 glDrawArrays(GL_LINES, 0, 2);
             }
         };
@@ -421,12 +486,7 @@ void Renderer::SetCamera(const glm::mat4& view, const glm::mat4& proj) {
 }
 
 void Renderer::InitializePipelines() {
-    // Initialize shader programs, samplers, and render states required for PBR.
-    // These are placeholders; actual shader compilation is left to the integration layer.
-    // Prepare simple shader eagerly to avoid hiccup on first draw.
-    if (!simpleShader_) {
-        simpleShader_ = std::make_unique<Shader>("src/shaders/simple/simple.vs", "src/shaders/simple/simple.fs");
-    }
+    materialShaders_["pbr"] = std::make_unique<Shader>("src/shaders/default/default.vs", "src/shaders/default/pbr.fs");
 }
 
 void Renderer::InitializeQuad() {

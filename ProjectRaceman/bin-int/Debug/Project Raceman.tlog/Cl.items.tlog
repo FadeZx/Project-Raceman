@@ -12,6 +12,7 @@ D:\Capt\Project-Raceman\ProjectRaceman\src\physics\VehicleConfig.cpp;D:\Capt\Pro
 D:\Capt\Project-Raceman\ProjectRaceman\src\physics\VehiclePhysics.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\VehiclePhysics.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\Material.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Material.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\Renderer.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Renderer.obj
+D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\ShaderRegistry.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\ShaderRegistry.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\Skybox.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\Skybox.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\rendering\SkyboxController.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\SkyboxController.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\scripting\ObjectScript.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\ObjectScript.obj
@@ -36,3 +37,5 @@ D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorGizmo.cpp;D:\Capt\Proje
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorHierarchy.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\SceneEditorHierarchy.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorInspector.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\SceneEditorInspector.obj
 D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorProject.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\SceneEditorProject.obj
+D:\Capt\Project-Raceman\ProjectRaceman\src\ui\SceneEditorShaderGraph.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\SceneEditorShaderGraph.obj
+D:\Capt\Project-Raceman\ProjectRaceman\editor-assets\third_party\imnodes\imnodes.cpp;D:\Capt\Project-Raceman\ProjectRaceman\bin-int\Debug\imnodes.obj

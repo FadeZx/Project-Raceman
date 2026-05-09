@@ -62,7 +62,8 @@ enum class ProjectCreateAssetType {
     Material,
     VehicleProfile,
     VehicleSoundProfile,
-    Script
+    Script,
+    ShaderGraph
 };
 
 enum class SceneComponentType {
@@ -492,6 +493,7 @@ private:
     void RenderViewportPanel();
     void RenderDockspaceHost();
     void RenderMaterialInspector();
+    void RenderShaderGraphEditorWindow();
     void RenderVehicleConfigEditorWindow();
     void RenderVehicleSoundEditorWindow();
     void RenderMaterialProperties(const std::string& materialId, bool showBackButton);
@@ -550,7 +552,8 @@ private:
     // (name, projectSourcePath) pairs for every .h+.cpp script under assets/.
     std::vector<std::pair<std::string, std::string>> ScanProjectScripts() const;
     bool SyncAttachmentScriptFields(ObjectScriptAttachment& attachment);
-    bool CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId = nullptr);
+    bool CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId = nullptr, const std::string& shaderId = "pbr");
+    bool CreateShaderGraphAsset(const std::string& requestedName, std::string* outGraphPath = nullptr);
     bool CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath = nullptr);
     bool CreateVehicleSoundAsset(const std::string& requestedName, std::string* outProfilePath = nullptr);
     bool CreateSceneAsset(const std::string& requestedName, std::string* outScenePath = nullptr);
@@ -559,6 +562,7 @@ private:
     bool InstantiatePrefab(const std::string& path);
     void SyncScriptProjectFiles(bool logResult = true);
     void OpenMaterialEditor(const std::string& materialId);
+    void OpenShaderGraphEditor(const std::string& graphPath);
     void OpenVehicleConfigEditor(const std::string& configPath);
     void OpenVehicleSoundEditor(const std::string& profilePath);
     void BeginObjectRename(int index);
@@ -650,6 +654,19 @@ private:
 
     bool inspectMaterial_{false};
     std::string inspectedMaterialId_;
+    bool showShaderGraphEditor_{false};
+    std::string inspectedShaderGraphPath_;
+    char shaderGraphNameBuffer_[128]{};
+    int shaderGraphBaseColorNode_{1};
+    int shaderGraphEmissiveNode_{0};
+    int shaderGraphMetallicNode_{0};
+    int shaderGraphRoughnessNode_{0};
+    float shaderGraphBaseColor_[4]{1.0f, 1.0f, 1.0f, 1.0f};
+    float shaderGraphEmissive_[3]{0.0f, 0.0f, 0.0f};
+    float shaderGraphMetallic_{0.0f};
+    float shaderGraphRoughness_{0.5f};
+    bool shaderGraphLoaded_{false};
+    bool shaderGraphDirty_{false};
     bool showVehicleConfigEditor_{false};
     std::string inspectedVehicleConfigPath_;
     physics::VehicleConfig inspectedVehicleConfig_{};
@@ -678,6 +695,7 @@ private:
     bool showCreateProjectAssetPopup_{false};
     ProjectCreateAssetType createProjectAssetType_{ProjectCreateAssetType::None};
     char createProjectAssetNameBuffer_[128]{};
+    int createProjectMaterialShaderIndex_{0};
 
     bool showSavePrefabPopup_{false};
     int pendingPrefabObjectIndex_{-1};

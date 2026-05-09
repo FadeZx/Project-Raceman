@@ -1,4 +1,5 @@
 #include "SceneEditorInternal.h"
+#include "../rendering/ShaderRegistry.h"
 #include "../physics/SimpleJson.h"
 #include "../physics/VehicleConfig.h"
 #include "../physics/VehiclePhysics.h"
@@ -4355,21 +4356,56 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         material->name = nameBuf;
     }
 
-    char shaderBuf[128];
-    std::snprintf(shaderBuf, sizeof(shaderBuf), "%s", material->shader.c_str());
-    if (ImGui::InputText("Shader##materialShader", shaderBuf, sizeof(shaderBuf))) {
-        material->shader = shaderBuf;
+    std::string shaderId = ShaderRegistry::NormalizeShaderId(material->shader);
+    int currentShaderIndex = 0;
+    const auto& shaders = ShaderRegistry::BuiltInShaders();
+    for (int i = 0; i < static_cast<int>(shaders.size()); ++i) {
+        if (shaders[static_cast<std::size_t>(i)].id == shaderId) {
+            currentShaderIndex = i;
+            break;
+        }
+    }
+    const std::string shaderPreview = ShaderRegistry::IsGraphShaderId(shaderId)
+        ? shaderId
+        : shaders[static_cast<std::size_t>(currentShaderIndex)].displayName;
+    if (ImGui::BeginCombo("Shader##materialShader", shaderPreview.c_str())) {
+        for (int i = 0; i < static_cast<int>(shaders.size()); ++i) {
+            const ShaderDefinition& shader = shaders[static_cast<std::size_t>(i)];
+            const bool selected = shader.id == shaderId;
+            const std::string label = shader.displayName + "##" + shader.id;
+            if (ImGui::Selectable(label.c_str(), selected)) {
+                material->shader = shader.id;
+            }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        if (ShaderRegistry::IsGraphShaderId(shaderId)) {
+            ImGui::Separator();
+            ImGui::Selectable(shaderId.c_str(), true);
+        }
+        ImGui::EndCombo();
     }
 
+    shaderId = ShaderRegistry::NormalizeShaderId(material->shader);
+    const ShaderDefinition& shaderDefinition = ShaderRegistry::Resolve(shaderId);
     ImGui::ColorEdit4("Albedo Color", material->albedoColor);
-    ImGui::SliderFloat("Metallic", &material->metallic, 0.0f, 1.0f);
-    ImGui::SliderFloat("Roughness", &material->roughness, 0.0f, 1.0f);
-    ImGui::ColorEdit3("Emissive Color", material->emissiveColor);
+    if (shaderDefinition.supportsMetallic || ShaderRegistry::IsGraphShaderId(shaderId)) {
+        ImGui::SliderFloat("Metallic", &material->metallic, 0.0f, 1.0f);
+    }
+    if (shaderDefinition.supportsRoughness || ShaderRegistry::IsGraphShaderId(shaderId)) {
+        ImGui::SliderFloat("Roughness", &material->roughness, 0.0f, 1.0f);
+    }
+    if (shaderDefinition.supportsEmissive || ShaderRegistry::IsGraphShaderId(shaderId)) {
+        ImGui::ColorEdit3("Emissive Color", material->emissiveColor);
+    }
     ImGui::DragFloat2("UV Tiling", material->uvTiling, 0.01f, 0.01f, 10.0f);
     ImGui::DragFloat2("UV Offset", material->uvOffset, 0.01f, -10.0f, 10.0f);
 
-    ImGui::Separator();
-    ImGui::TextUnformatted("Texture Paths");
+    if (shaderDefinition.supportsTextures || ShaderRegistry::IsGraphShaderId(shaderId)) {
+        ImGui::Separator();
+        ImGui::TextUnformatted("Texture Paths");
+    }
 
     std::string materialProjectPath;
     for (const std::string& file : projectFiles_) {
@@ -4435,11 +4471,13 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         }
     };
 
-    editTexturePath("Albedo", "matTexAlbedo", material->texAlbedo);
-    editTexturePath("Normal", "matTexNormal", material->texNormal);
-    editTexturePath("Metallic", "matTexMetallic", material->texMetallic);
-    editTexturePath("Roughness", "matTexRoughness", material->texRoughness);
-    editTexturePath("AO", "matTexAo", material->texAo);
+    if (shaderDefinition.supportsTextures || ShaderRegistry::IsGraphShaderId(shaderId)) {
+        editTexturePath("Albedo", "matTexAlbedo", material->texAlbedo);
+        editTexturePath("Normal", "matTexNormal", material->texNormal);
+        editTexturePath("Metallic", "matTexMetallic", material->texMetallic);
+        editTexturePath("Roughness", "matTexRoughness", material->texRoughness);
+        editTexturePath("AO", "matTexAo", material->texAo);
+    }
 
     ImGui::Separator();
     if (ImGui::Button("Save Material (Ctrl+S)")) {
@@ -4461,7 +4499,7 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
     ImGui::PopID();
 }
 
-bool SceneEditor::CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId) {
+bool SceneEditor::CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId, const std::string& shaderId) {
     std::string materialId = TrimCopyLocal(requestedName);
     if (materialId.empty()) {
         if (console_) {
@@ -4514,8 +4552,7 @@ bool SceneEditor::CreateMaterialAsset(const std::string& requestedName, std::str
         return false;
     }
 
-    Material material;
-    material.name = materialId;
+    Material material = ShaderRegistry::MakeDefaultMaterial(shaderId, materialId);
     try {
         fs::create_directories(targetPath.parent_path());
         std::ofstream out(targetPath, std::ios::trunc);
@@ -4525,11 +4562,11 @@ bool SceneEditor::CreateMaterialAsset(const std::string& requestedName, std::str
         out << "{\n";
         out << "  \"version\": 1,\n";
         out << "  \"name\": \"" << JsonEscape(material.name) << "\",\n";
-        out << "  \"shader\": \"pbr\",\n";
-        out << "  \"albedoColor\": [1, 1, 1, 1],\n";
-        out << "  \"metallic\": 0,\n";
-        out << "  \"roughness\": 0.5,\n";
-        out << "  \"emissiveColor\": [0, 0, 0],\n";
+        out << "  \"shader\": \"" << JsonEscape(material.shader) << "\",\n";
+        out << "  \"albedoColor\": [" << material.albedoColor[0] << ", " << material.albedoColor[1] << ", " << material.albedoColor[2] << ", " << material.albedoColor[3] << "],\n";
+        out << "  \"metallic\": " << material.metallic << ",\n";
+        out << "  \"roughness\": " << material.roughness << ",\n";
+        out << "  \"emissiveColor\": [" << material.emissiveColor[0] << ", " << material.emissiveColor[1] << ", " << material.emissiveColor[2] << "],\n";
         out << "  \"uvTiling\": [1, 1],\n";
         out << "  \"uvOffset\": [0, 0],\n";
         out << "  \"textures\": {\n";

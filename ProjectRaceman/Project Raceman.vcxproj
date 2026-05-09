@@ -130,6 +130,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="src\rendering\PrimitivePlane.h" />
     <ClInclude Include="src\rendering\Renderer.h" />
     <ClInclude Include="src\rendering\shader.h" />
+    <ClInclude Include="src\rendering\ShaderRegistry.h" />
     <ClInclude Include="src\rendering\Skybox.h" />
     <ClInclude Include="src\rendering\SkyboxController.h" />
     <ClInclude Include="src\scripting\ObjectScript.h" />
@@ -142,6 +143,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="src\ui\SceneEditor.h" />
     <ClInclude Include="src\ui\SceneEditorInternal.h" />
     <ClInclude Include="editor-assets\third_party\ImGuizmo\ImGuizmo.h" />
+    <ClInclude Include="editor-assets\third_party\imnodes\imnodes.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -158,6 +160,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\physics\VehiclePhysics.cpp" />
     <ClCompile Include="src\rendering\Material.cpp" />
     <ClCompile Include="src\rendering\Renderer.cpp" />
+    <ClCompile Include="src\rendering\ShaderRegistry.cpp" />
     <ClCompile Include="src\rendering\Skybox.cpp" />
     <ClCompile Include="src\rendering\SkyboxController.cpp" />
     <ClCompile Include="src\scripting\ObjectScript.cpp" />
@@ -182,6 +185,8 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\ui\SceneEditorHierarchy.cpp" />
     <ClCompile Include="src\ui\SceneEditorInspector.cpp" />
     <ClCompile Include="src\ui\SceneEditorProject.cpp" />
+    <ClCompile Include="src\ui\SceneEditorShaderGraph.cpp" />
+    <ClCompile Include="editor-assets\third_party\imnodes\imnodes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assimp-vc140-mt.dll" />
@@ -196,6 +201,13 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <None Include="src\irrKlang.dll" />
     <None Include="src\shaders\diffuse lighting\lighting_shader.fs" />
     <None Include="src\shaders\diffuse lighting\lighting_shader.vs" />
+    <None Include="src\shaders\default\default.vs" />
+    <None Include="src\shaders\default\pbr.fs" />
+    <None Include="src\shaders\default\unlit.fs" />
+    <None Include="src\shaders\default\transparent.fs" />
+    <None Include="src\shaders\default\emissive.fs" />
+    <None Include="src\shaders\default\normal_debug.fs" />
+    <None Include="src\shaders\default\vertex_color.fs" />
     <None Include="src\shaders\diffuse lighting\light_cube.fs" />
     <None Include="src\shaders\diffuse lighting\light_cube.vs" />
     <None Include="src\shaders\model\model_loading.fs" />

@@ -1,4 +1,5 @@
 #include "Material.h"
+#include "ShaderRegistry.h"
 
 #include <filesystem>
 #include <fstream>
@@ -106,6 +107,10 @@ bool MaterialManager::LoadOne(const std::string& path, Material& out) {
 
         gets(obj, "name", out.name);
         gets(obj, "shader", out.shader);
+        out.shader = ShaderRegistry::NormalizeShaderId(out.shader);
+        if (!ShaderRegistry::IsKnownShader(out.shader) && !ShaderRegistry::IsGraphShaderId(out.shader)) {
+            out.shader = "pbr";
+        }
         getf(obj, "metallic", out.metallic);
         getf(obj, "roughness", out.roughness);
         getv4(obj, "albedoColor", out.albedoColor);
@@ -172,7 +177,8 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
     out << "{\n";
     out << "  \"version\": 1,\n";
     out << "  \"name\": \"" << JsonEscape(m.name.empty() ? id : m.name) << "\",\n";
-    out << "  \"shader\": \"" << JsonEscape(m.shader.empty() ? std::string("pbr") : m.shader) << "\",\n";
+    const std::string shaderId = ShaderRegistry::NormalizeShaderId(m.shader.empty() ? std::string("pbr") : m.shader);
+    out << "  \"shader\": \"" << JsonEscape((ShaderRegistry::IsKnownShader(shaderId) || ShaderRegistry::IsGraphShaderId(shaderId)) ? shaderId : std::string("pbr")) << "\",\n";
     out << "  \"albedoColor\": [" << m.albedoColor[0] << ", " << m.albedoColor[1] << ", " << m.albedoColor[2] << ", " << m.albedoColor[3] << "],\n";
     out << "  \"metallic\": " << m.metallic << ",\n";
     out << "  \"roughness\": " << m.roughness << ",\n";
@@ -193,6 +199,7 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
 Material& MaterialManager::CreateDefault(const std::string& id, bool autoSave) {
     Material m;
     m.name = id;
+    m.shader = ShaderRegistry::NormalizeShaderId(m.shader);
     materials_[id] = m;
     if (autoSave) Save(id, m);
     return materials_[id];

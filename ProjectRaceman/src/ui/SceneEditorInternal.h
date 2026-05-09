@@ -362,6 +362,10 @@ inline bool IsVehicleSoundAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".vehiclesound.json");
 }
 
+inline bool IsShaderGraphAssetPath(const std::string& path) {
+    return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".shadergraph.json");
+}
+
 inline bool IsAudioAssetPath(const std::string& path) {
     const std::string ext = ToLowerCopy(fs::path(path).extension().string());
     return ext == ".wav" || ext == ".ogg" || ext == ".mp3" || ext == ".flac";
@@ -403,6 +407,15 @@ inline std::string ProjectAssetDisplayFilename(const std::string& path) {
     }
     if (IsMaterialAssetPath(path)) {
         return MaterialIdFromAssetPath(path) + ".mat";
+    }
+    if (IsShaderGraphAssetPath(path)) {
+        std::string filename = fs::path(path).filename().string();
+        const std::string suffix = ".shadergraph.json";
+        if (EndsWith(ToLowerCopy(filename), suffix)) {
+            filename.resize(filename.size() - suffix.size());
+            filename += ".shadergraph";
+        }
+        return filename;
     }
     if (IsVehicleConfigAssetPath(path)) {
         std::string filename = fs::path(path).filename().string();

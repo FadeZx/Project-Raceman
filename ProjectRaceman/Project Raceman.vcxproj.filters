@@ -96,6 +96,9 @@
     <ClInclude Include="src\rendering\Material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\rendering\ShaderRegistry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\scripting\ObjectScript.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -103,6 +106,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="editor-assets\third_party\ImGuizmo\ImGuizmo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="editor-assets\third_party\imnodes\imnodes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -212,10 +218,19 @@
     <ClCompile Include="src\rendering\Material.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\rendering\ShaderRegistry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\scripting\ObjectScript.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\scripting\ScriptRegistry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\SceneEditorShaderGraph.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="editor-assets\third_party\imnodes\imnodes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -252,5 +267,12 @@
     <None Include="src\dlls\assimp-vc143-mt.dll" />
     <None Include="src\dlls\ikpMP3.dll" />
     <None Include="src\dlls\irrKlang.dll" />
+    <None Include="src\shaders\default\default.vs" />
+    <None Include="src\shaders\default\pbr.fs" />
+    <None Include="src\shaders\default\unlit.fs" />
+    <None Include="src\shaders\default\transparent.fs" />
+    <None Include="src\shaders\default\emissive.fs" />
+    <None Include="src\shaders\default\normal_debug.fs" />
+    <None Include="src\shaders\default\vertex_color.fs" />
   </ItemGroup>
 </Project>

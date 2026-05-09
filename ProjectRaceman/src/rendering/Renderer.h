@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class Shader;
@@ -46,6 +47,9 @@ struct MeshDrawCommand {
     glm::vec3 emissiveColor{0.0f};
     float metallic{0.0f};
     float roughness{1.0f};
+    glm::vec2 uvTiling{1.0f, 1.0f};
+    glm::vec2 uvOffset{0.0f, 0.0f};
+    std::string shaderId{"pbr"};
     unsigned int diffuseTextureId{0};
     bool useDiffuseTexture{false};
     bool unlit{false};
@@ -163,6 +167,7 @@ private:
 
     // Simple fallback pipeline state
     std::unique_ptr<Shader> simpleShader_;
+    std::unordered_map<std::string, std::unique_ptr<Shader>> materialShaders_;
     glm::mat4 view_{1.0f};
     glm::mat4 proj_{1.0f};
 };
