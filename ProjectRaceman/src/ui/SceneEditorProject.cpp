@@ -305,7 +305,7 @@ std::string AssetIconForProjectFile(const std::string& path) {
     const std::string extension = ToLowerCopy(fs::path(path).extension().string());
     if (IsSceneAssetPath(path))        return "asset-scene.png";
     if (IsMaterialAssetPath(path))     return "asset-material.png";
-    if (IsShaderGraphAssetPath(path))  return "asset-material.png";
+    if (IsShaderGraphAssetPath(path))  return "asset-shader-graph.png";
     if (IsVehicleConfigAssetPath(path))return "asset-vehicle.png";
     if (IsVehicleSoundAssetPath(path)) return "asset-vehicle-sound.png";
     if (IsMeshAssetPath(path))         return "asset-mesh.png";
@@ -549,12 +549,25 @@ void SceneEditor::RenderProjectPanel() {
                         drawList->AddRectFilled(pos, ImVec2(pos.x + tileWidth, pos.y + tileHeight), background, 6.0f);
                     }
                     unsigned int icon = GetComponentIconTexture(iconFilename);
-                    if (icon == 0 && iconFilename != "asset-file.png") {
+                    const bool drawGeneratedShaderGraphIcon = icon == 0 && iconFilename == "asset-shader-graph.png";
+                    if (icon == 0 && iconFilename != "asset-file.png" && !drawGeneratedShaderGraphIcon) {
                         icon = GetComponentIconTexture("asset-file.png");
                     }
                     const ImVec2 iconMin(pos.x + (tileWidth - iconSize) * 0.5f, pos.y + 8.0f);
                     const ImVec2 iconMax(iconMin.x + iconSize, iconMin.y + iconSize);
-                    if (icon != 0) {
+                    if (drawGeneratedShaderGraphIcon) {
+                        const ImU32 bg = ImGui::ColorConvertFloat4ToU32(ImVec4(0.12f, 0.18f, 0.30f, 1.0f));
+                        const ImU32 line = ImGui::ColorConvertFloat4ToU32(ImVec4(0.24f, 0.72f, 0.95f, 1.0f));
+                        const ImU32 nodeA = ImGui::ColorConvertFloat4ToU32(ImVec4(0.95f, 0.44f, 0.36f, 1.0f));
+                        const ImU32 nodeB = ImGui::ColorConvertFloat4ToU32(ImVec4(0.42f, 0.82f, 0.50f, 1.0f));
+                        drawList->AddRectFilled(iconMin, iconMax, bg, 7.0f);
+                        const ImVec2 a(iconMin.x + 12.0f, iconMin.y + 16.0f);
+                        const ImVec2 b(iconMax.x - 12.0f, iconMax.y - 16.0f);
+                        drawList->AddLine(a, b, line, 2.5f);
+                        drawList->AddCircleFilled(a, 7.0f, nodeA);
+                        drawList->AddCircleFilled(b, 7.0f, nodeB);
+                        drawList->AddText(ImVec2(iconMin.x + 13.0f, iconMax.y - 18.0f), ImGui::GetColorU32(ImGuiCol_Text), "SG");
+                    } else if (icon != 0) {
                         drawList->AddImage(static_cast<ImTextureID>(icon), iconMin, iconMax);
                     } else {
                         drawList->AddRect(iconMin, iconMax, ImGui::GetColorU32(ImGuiCol_TextDisabled), 4.0f);

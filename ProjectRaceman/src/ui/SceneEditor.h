@@ -114,6 +114,32 @@ enum class SceneEditorActiveViewport {
     Game
 };
 
+struct ShaderGraphNodeState {
+    int id{0};
+    std::string type;
+    std::string title;
+    std::string noteText;
+    glm::vec2 position{0.0f, 0.0f};
+    float color[4]{1.0f, 1.0f, 1.0f, 1.0f};
+    float vectorValue[4]{0.0f, 0.0f, 0.0f, 0.0f};
+    float floatValue{0.0f};
+};
+
+struct ShaderGraphLinkState {
+    int id{0};
+    int startPin{0};
+    int endPin{0};
+};
+
+struct ShaderGraphHistoryState {
+    std::string name;
+    std::vector<ShaderGraphNodeState> nodes;
+    std::vector<ShaderGraphLinkState> links;
+    int nextNodeId{101};
+    int nextLinkId{1};
+    int selectedNodeId{0};
+};
+
 enum class LightType {
     Directional,
     Point,
@@ -533,6 +559,9 @@ private:
     void RedoVehicleConfig();
     void UndoVehicleSound();
     void RedoVehicleSound();
+    void PushShaderGraphUndoState();
+    void UndoShaderGraph();
+    void RedoShaderGraph();
     void RequestFocusSelectedObject();
 
     // Actions
@@ -554,6 +583,7 @@ private:
     bool SyncAttachmentScriptFields(ObjectScriptAttachment& attachment);
     bool CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId = nullptr, const std::string& shaderId = "pbr");
     bool CreateShaderGraphAsset(const std::string& requestedName, std::string* outGraphPath = nullptr);
+    bool SaveShaderGraphAsset();
     bool CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath = nullptr);
     bool CreateVehicleSoundAsset(const std::string& requestedName, std::string* outProfilePath = nullptr);
     bool CreateSceneAsset(const std::string& requestedName, std::string* outScenePath = nullptr);
@@ -657,6 +687,19 @@ private:
     bool showShaderGraphEditor_{false};
     std::string inspectedShaderGraphPath_;
     char shaderGraphNameBuffer_[128]{};
+    std::vector<ShaderGraphNodeState> shaderGraphNodes_;
+    std::vector<ShaderGraphLinkState> shaderGraphLinks_;
+    int shaderGraphNextNodeId_{101};
+    int shaderGraphNextLinkId_{1};
+    int shaderGraphSelectedNodeId_{0};
+    std::string shaderGraphStatus_;
+    std::vector<ShaderGraphHistoryState> shaderGraphUndoStack_;
+    std::vector<ShaderGraphHistoryState> shaderGraphRedoStack_;
+    bool shaderGraphEditorFocused_{false};
+    bool shaderGraphEditorHovered_{false};
+    bool shaderGraphDragUndoArmed_{false};
+    glm::vec2 shaderGraphContextScreenPos_{0.0f, 0.0f};
+    glm::vec2 shaderGraphCanvasSize_{720.0f, 420.0f};
     int shaderGraphBaseColorNode_{1};
     int shaderGraphEmissiveNode_{0};
     int shaderGraphMetallicNode_{0};

@@ -1214,8 +1214,12 @@ void SceneEditor::HandleEditorShortcuts() {
         (vehicleConfigEditorFocused_ || vehicleConfigEditorHovered_);
     const bool vehicleSoundShortcutTarget = showVehicleSoundEditor_ &&
         (vehicleSoundEditorFocused_ || vehicleSoundEditorHovered_);
+    const bool shaderGraphShortcutTarget = showShaderGraphEditor_ &&
+        (shaderGraphEditorFocused_ || shaderGraphEditorHovered_);
     if (IsCtrlZPressed()) {
-        if (vehicleConfigShortcutTarget) {
+        if (shaderGraphShortcutTarget) {
+            UndoShaderGraph();
+        } else if (vehicleConfigShortcutTarget) {
             UndoVehicleConfig();
         } else if (vehicleSoundShortcutTarget) {
             UndoVehicleSound();
@@ -1225,7 +1229,9 @@ void SceneEditor::HandleEditorShortcuts() {
         return;
     }
     if (IsCtrlYPressed()) {
-        if (vehicleConfigShortcutTarget) {
+        if (shaderGraphShortcutTarget) {
+            RedoShaderGraph();
+        } else if (vehicleConfigShortcutTarget) {
             RedoVehicleConfig();
         } else if (vehicleSoundShortcutTarget) {
             RedoVehicleSound();
@@ -3545,75 +3551,7 @@ void SceneEditor::SaveCurrentScene() {
 
 void SceneEditor::SaveActiveAsset() {
     if (showShaderGraphEditor_ && !inspectedShaderGraphPath_.empty()) {
-        const fs::path graphPath = ProjectAssetPathToAbsolute(inspectedShaderGraphPath_);
-        std::string error;
-        const fs::path generatedPath = FindProjectRoot() / "assets" / "generated-shaders" /
-            (ShaderRegistry::MakeGraphShaderId(inspectedShaderGraphPath_).substr(std::string("graph:").size()) + ".fs");
-        const bool valid = shaderGraphBaseColorNode_ > 0;
-        bool saved = false;
-        try {
-            fs::create_directories(graphPath.parent_path());
-            std::ofstream out(graphPath, std::ios::trunc);
-            if (out.good()) {
-                out << "{\n";
-                out << "  \"version\": 1,\n";
-                out << "  \"name\": \"" << JsonEscape(shaderGraphNameBuffer_) << "\",\n";
-                out << "  \"nodes\": [\"Texture Sample\", \"Color\", \"Float\", \"Multiply\", \"Add\", \"Lerp\", \"Fresnel\", \"UV Tiling/Offset\", \"Material Output\"],\n";
-                out << "  \"output\": {\n";
-                out << "    \"baseColorNode\": " << shaderGraphBaseColorNode_ << ",\n";
-                out << "    \"emissiveNode\": " << shaderGraphEmissiveNode_ << ",\n";
-                out << "    \"metallicNode\": " << shaderGraphMetallicNode_ << ",\n";
-                out << "    \"roughnessNode\": " << shaderGraphRoughnessNode_ << "\n";
-                out << "  },\n";
-                out << "  \"baseColor\": [" << shaderGraphBaseColor_[0] << ", " << shaderGraphBaseColor_[1] << ", " << shaderGraphBaseColor_[2] << ", " << shaderGraphBaseColor_[3] << "],\n";
-                out << "  \"emissive\": [" << shaderGraphEmissive_[0] << ", " << shaderGraphEmissive_[1] << ", " << shaderGraphEmissive_[2] << "],\n";
-                out << "  \"metallic\": " << shaderGraphMetallic_ << ",\n";
-                out << "  \"roughness\": " << shaderGraphRoughness_ << "\n";
-                out << "}\n";
-                saved = true;
-            }
-        } catch (...) {
-            saved = false;
-        }
-
-        if (saved && valid) {
-            try {
-                fs::create_directories(generatedPath.parent_path());
-                std::ofstream out(generatedPath, std::ios::trunc);
-                if (out.good()) {
-                    out << "#version 450 core\n";
-                    out << "out vec4 FragColor;\n";
-                    out << "in vec2 vUV;\n";
-                    out << "in vec3 vWorldNormal;\n";
-                    out << "uniform vec4 uColor;\n";
-                    out << "uniform sampler2D uDiffuseTexture;\n";
-                    out << "uniform bool uUseDiffuseTexture;\n";
-                    out << "void main() {\n";
-                    out << "    vec4 graphBase = vec4(" << shaderGraphBaseColor_[0] << ", " << shaderGraphBaseColor_[1] << ", " << shaderGraphBaseColor_[2] << ", " << shaderGraphBaseColor_[3] << ");\n";
-                    out << "    vec4 sampled = uUseDiffuseTexture ? texture(uDiffuseTexture, vUV) : vec4(1.0);\n";
-                    out << "    vec3 normalTint = normalize(vWorldNormal) * 0.5 + 0.5;\n";
-                    out << "    vec3 emissive = vec3(" << shaderGraphEmissive_[0] << ", " << shaderGraphEmissive_[1] << ", " << shaderGraphEmissive_[2] << ");\n";
-                    out << "    float metallic = clamp(" << shaderGraphMetallic_ << ", 0.0, 1.0);\n";
-                    out << "    float roughness = clamp(" << shaderGraphRoughness_ << ", 0.02, 1.0);\n";
-                    out << "    vec4 base = graphBase * sampled * uColor;\n";
-                    out << "    vec3 lit = base.rgb * mix(vec3(0.9), normalTint, 0.12 + metallic * 0.18) + emissive * (1.0 + (1.0 - roughness));\n";
-                    out << "    FragColor = vec4(lit, base.a);\n";
-                    out << "}\n";
-                }
-            } catch (...) {
-                saved = false;
-            }
-        }
-
-        if (saved) {
-            shaderGraphDirty_ = false;
-            RefreshProjectFiles();
-            if (console_) {
-                console_->AddLog(valid ? "Saved shader graph: " + inspectedShaderGraphPath_ : "Saved shader graph with disconnected output: " + inspectedShaderGraphPath_);
-            }
-        } else if (console_) {
-            console_->AddError("Failed to save shader graph: " + inspectedShaderGraphPath_);
-        }
+        SaveShaderGraphAsset();
         return;
     }
 

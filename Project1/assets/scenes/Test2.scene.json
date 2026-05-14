@@ -7255,7 +7255,7 @@
         {
           "type": "MeshRenderer",
           "enabled": true,
-          "materialId": "pbr_default",
+          "materialId": "Emissive_1",
           "color": [1, 1, 1, 1]
         },
         {
@@ -7284,5 +7284,6 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_1635", "gameobject_7", "gameobject_8"]
+  "hierarchyClosed": ["gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_8"],
+  "inspectorComponentsClosed": []
 }

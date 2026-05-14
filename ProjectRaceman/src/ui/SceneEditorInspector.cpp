@@ -10,6 +10,8 @@
 
 #include <cstdio>
 #include <cstdint>
+#include <fstream>
+#include <sstream>
 
 #ifndef GLM_ENABLE_EXPERIMENTAL
 #define GLM_ENABLE_EXPERIMENTAL
@@ -96,6 +98,82 @@ bool RenderInspectorDragInt(const char* label, const char* id, int* value, float
         return ImGui::DragInt(id, value, speed, min, max);
     }
     return ImGui::DragInt(label, value, speed, min, max);
+}
+
+void RenderShaderGraphParametersPreview(const std::string& graphPath) {
+    if (graphPath.empty()) return;
+
+    std::ifstream in(ProjectAssetPathToAbsolute(graphPath));
+    if (!in.good()) {
+        ImGui::TextDisabled("Graph parameters unavailable");
+        return;
+    }
+
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    try {
+        using namespace raceman::physics::json;
+        Value root = parse(buffer.str());
+        if (!root.is_object()) return;
+        const auto& object = root.as_object();
+        auto nodesIt = object.find("nodes");
+        if (nodesIt == object.end() || !nodesIt->second.is_array()) return;
+
+        bool drewHeader = false;
+        int visibleCount = 0;
+        for (const Value& nodeValue : nodesIt->second.as_array()) {
+            if (!nodeValue.is_object()) continue;
+            const auto& nodeObject = nodeValue.as_object();
+            auto typeIt = nodeObject.find("type");
+            if (typeIt == nodeObject.end() || !typeIt->second.is_string()) continue;
+            const std::string type = typeIt->second.as_string();
+            if (type != "Color" && type != "Float" && type != "Vector2" && type != "Vector3" && type != "Vector4") continue;
+
+            auto propsIt = nodeObject.find("properties");
+            if (propsIt == nodeObject.end() || !propsIt->second.is_object()) continue;
+            const auto& props = propsIt->second.as_object();
+
+            std::string title = type;
+            if (auto titleIt = nodeObject.find("title"); titleIt != nodeObject.end() && titleIt->second.is_string()) {
+                title = titleIt->second.as_string();
+            }
+
+            if (!drewHeader) {
+                ImGui::Separator();
+                ImGui::TextUnformatted("Graph Parameters");
+                drewHeader = true;
+            }
+
+            ImGui::PushID(visibleCount++);
+            if (type == "Float") {
+                float value = 0.0f;
+                if (auto valueIt = props.find("value"); valueIt != props.end() && valueIt->second.is_number()) {
+                    value = static_cast<float>(valueIt->second.as_number());
+                }
+                ImGui::BeginDisabled();
+                ImGui::DragFloat(title.c_str(), &value, 0.01f);
+                ImGui::EndDisabled();
+            } else {
+                float values[4]{0.0f, 0.0f, 0.0f, 1.0f};
+                const char* key = type == "Color" ? "color" : "vector";
+                if (auto valueIt = props.find(key); valueIt != props.end() && valueIt->second.is_array()) {
+                    const auto& array = valueIt->second.as_array();
+                    for (std::size_t i = 0; i < array.size() && i < 4; ++i) {
+                        if (array[i].is_number()) values[i] = static_cast<float>(array[i].as_number());
+                    }
+                }
+                ImGui::BeginDisabled();
+                if (type == "Color") ImGui::ColorEdit4(title.c_str(), values);
+                else if (type == "Vector2") ImGui::DragFloat2(title.c_str(), values, 0.01f);
+                else if (type == "Vector3") ImGui::DragFloat3(title.c_str(), values, 0.01f);
+                else ImGui::DragFloat4(title.c_str(), values, 0.01f);
+                ImGui::EndDisabled();
+            }
+            ImGui::PopID();
+        }
+    } catch (...) {
+        ImGui::TextDisabled("Graph parameters unavailable");
+    }
 }
 
 bool RenderInspectorAxisToggles(const char* label, const char* idPrefix, bool& x, bool& y, bool& z) {
@@ -839,6 +917,7 @@ void SceneEditor::RenderInspectorPanel() {
                     openState = !openState;
                     inspectorComponentOpenStates_[key] = openState;
                     pendingInspectorToggleComponentKey_.clear();
+                    if (onDirty_) onDirty_();
                 }
                 ImGui::SetNextItemOpen(openState, ImGuiCond_Always);
                 return key;
@@ -855,6 +934,7 @@ void SceneEditor::RenderInspectorPanel() {
                 }
                 if (headerToggledOpen) {
                     inspectorComponentOpenStates_[key] = open;
+                    if (onDirty_) onDirty_();
                 }
             };
 
@@ -2592,8 +2672,12 @@ void SceneEditor::RenderInspectorPanel() {
                     ImGui::EndDragDropTarget();
                 }
                 const ImGuiPayload* activePayload = ImGui::GetDragDropPayload();
-                const bool dragActive = activePayload != nullptr;
-                if (dragActive) {
+                bool scriptDragActive = false;
+                if (activePayload != nullptr && activePayload->IsDataType(kProjectFilePayload)) {
+                    const char* projectPath = static_cast<const char*>(activePayload->Data);
+                    scriptDragActive = projectPath != nullptr && IsScriptAssetPath(projectPath);
+                }
+                if (scriptDragActive) {
                     ImGui::GetWindowDrawList()->AddRect(dropMin, dropMax,
                         ImGui::GetColorU32(ImGuiCol_DragDropTarget), 4.0f, 0, 2.0f);
                     const char* hint = "Drop script here to add as component";
@@ -4368,7 +4452,23 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
     const std::string shaderPreview = ShaderRegistry::IsGraphShaderId(shaderId)
         ? shaderId
         : shaders[static_cast<std::size_t>(currentShaderIndex)].displayName;
-    if (ImGui::BeginCombo("Shader##materialShader", shaderPreview.c_str())) {
+
+    std::string editableShaderGraphPath;
+    if (ShaderRegistry::IsGraphShaderId(shaderId)) {
+        for (const std::string& file : projectFiles_) {
+            if (IsShaderGraphAssetPath(file) && ShaderRegistry::MakeGraphShaderId(file) == shaderId) {
+                editableShaderGraphPath = file;
+                break;
+            }
+        }
+    }
+
+    const float shaderLabelWidth = ImGui::CalcTextSize("Shader").x;
+    const float editButtonWidth = ImGui::CalcTextSize("Edit").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    const float shaderComboWidth = (std::max)(1.0f,
+        ImGui::CalcItemWidth() - editButtonWidth - shaderLabelWidth - ImGui::GetStyle().ItemSpacing.x * 2.0f);
+    ImGui::SetNextItemWidth(shaderComboWidth);
+    if (ImGui::BeginCombo("##materialShader", shaderPreview.c_str())) {
         for (int i = 0; i < static_cast<int>(shaders.size()); ++i) {
             const ShaderDefinition& shader = shaders[static_cast<std::size_t>(i)];
             const bool selected = shader.id == shaderId;
@@ -4386,9 +4486,23 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         }
         ImGui::EndCombo();
     }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(editableShaderGraphPath.empty());
+    if (ImGui::Button("Edit##materialShaderEdit", ImVec2(editButtonWidth, 0.0f))) {
+        OpenShaderGraphEditor(editableShaderGraphPath);
+    }
+    if (editableShaderGraphPath.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Built-in shaders are read-only engine shaders. Select or create a Shader Graph to edit shader logic.");
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::TextUnformatted("Shader");
 
     shaderId = ShaderRegistry::NormalizeShaderId(material->shader);
     const ShaderDefinition& shaderDefinition = ShaderRegistry::Resolve(shaderId);
+    if (ShaderRegistry::IsGraphShaderId(shaderId)) {
+        RenderShaderGraphParametersPreview(editableShaderGraphPath);
+    }
     ImGui::ColorEdit4("Albedo Color", material->albedoColor);
     if (shaderDefinition.supportsMetallic || ShaderRegistry::IsGraphShaderId(shaderId)) {
         ImGui::SliderFloat("Metallic", &material->metallic, 0.0f, 1.0f);

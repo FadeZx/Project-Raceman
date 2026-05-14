@@ -6,6 +6,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 
 #include "../physics/SimpleJson.h"
 
@@ -15,14 +16,48 @@ namespace raceman {
 
 namespace {
 
-fs::path FindAssetsRoot() {
+fs::path FindEngineRoot() {
     if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
-        return fs::absolute("ProjectRaceman/Project/assets").lexically_normal();
+        return fs::absolute("ProjectRaceman").lexically_normal();
     }
     if (fs::exists("src") && fs::is_directory("src")) {
-        return fs::absolute("Project/assets").lexically_normal();
+        return fs::absolute(".").lexically_normal();
     }
-    return fs::absolute("Project/assets").lexically_normal();
+    return fs::absolute(".").lexically_normal();
+}
+
+fs::path FindProjectRoot() {
+#if defined(_WIN32)
+    char* overrideRoot = nullptr;
+    std::size_t overrideRootLength = 0;
+    if (_dupenv_s(&overrideRoot, &overrideRootLength, "RACEMAN_PROJECT_ROOT") == 0 && overrideRoot != nullptr) {
+        std::string value = overrideRoot;
+        std::free(overrideRoot);
+        if (!value.empty()) {
+            return fs::absolute(value).lexically_normal();
+        }
+    }
+#else
+    if (const char* overrideRoot = std::getenv("RACEMAN_PROJECT_ROOT")) {
+        if (overrideRoot[0] != '\0') {
+            return fs::absolute(overrideRoot).lexically_normal();
+        }
+    }
+#endif
+
+    const fs::path engineRoot = FindEngineRoot();
+    try {
+        for (const auto& entry : fs::directory_iterator(engineRoot)) {
+            if (entry.is_directory() && fs::exists(entry.path() / "project.raceman.json")) {
+                return entry.path().lexically_normal();
+            }
+        }
+    } catch (...) {}
+    return (engineRoot / "Project").lexically_normal();
+}
+
+fs::path FindAssetsRoot() {
+    return (FindProjectRoot() / "assets").lexically_normal();
 }
 
 fs::path DefaultMaterialDirectory() {

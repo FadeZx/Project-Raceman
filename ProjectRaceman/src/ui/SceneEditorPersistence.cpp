@@ -130,6 +130,7 @@ void SceneEditor::NewScene(const std::string& sceneName) {
     ClearScriptRuntime();
     objects_.clear();
     hierarchyOpenStates_.clear();
+    inspectorComponentOpenStates_.clear();
     selectedIndex_ = -1;
     selectedIndices_.clear();
     undoStack_.clear();
@@ -543,6 +544,19 @@ void SceneEditor::Save(const std::string& path) {
         out << "\"" << JsonEscape(entry.first) << "\"";
         wroteClosed = true;
     }
+    out << "],\n";
+    out << "  \"inspectorComponentsClosed\": [";
+    bool wroteInspectorClosed = false;
+    for (const auto& entry : inspectorComponentOpenStates_) {
+        if (entry.second) {
+            continue;
+        }
+        if (wroteInspectorClosed) {
+            out << ", ";
+        }
+        out << "\"" << JsonEscape(entry.first) << "\"";
+        wroteInspectorClosed = true;
+    }
     out << "]\n}\n";
 }
 
@@ -841,6 +855,7 @@ void SceneEditor::Load(const std::string& path) {
     using scene_editor_internal::ReadVec4;
     objects_.clear();
     hierarchyOpenStates_.clear();
+    inspectorComponentOpenStates_.clear();
     selectedIndex_ = -1;
     selectedIndices_.clear();
     undoStack_.clear();
@@ -1654,6 +1669,25 @@ void SceneEditor::Load(const std::string& path) {
                     }
                     hierarchyOpenStates_[idValue.as_string()] = true;
                 }
+            }
+        }
+
+        auto inspectorClosedIt = obj.find("inspectorComponentsClosed");
+        if (inspectorClosedIt != obj.end() && inspectorClosedIt->second.is_array()) {
+            for (const auto& keyValue : inspectorClosedIt->second.as_array()) {
+                if (!keyValue.is_string()) {
+                    continue;
+                }
+                const std::string key = keyValue.as_string();
+                const std::size_t separator = key.find('|');
+                if (separator == std::string::npos || separator == 0 || separator + 1 >= key.size()) {
+                    continue;
+                }
+                SceneInspectorComponentType componentType;
+                if (!InspectorComponentTypeFromString(key.substr(separator + 1), componentType)) {
+                    continue;
+                }
+                inspectorComponentOpenStates_[key] = false;
             }
         }
 
