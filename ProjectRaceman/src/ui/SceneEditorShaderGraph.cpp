@@ -79,6 +79,11 @@ const char* NodeTypeLabel(const std::string& type) {
     if (type == "Vector3") return "Vector3";
     if (type == "Vector4") return "Vector4";
     if (type == "TextureSample") return "Texture Sample";
+    if (type == "ChannelR") return "Channel R";
+    if (type == "ChannelG") return "Channel G";
+    if (type == "ChannelB") return "Channel B";
+    if (type == "ChannelA") return "Channel A";
+    if (type == "ChannelRGB") return "Channel RGB";
     if (type == "UV") return "UV Tiling/Offset";
     if (type == "Add") return "Add";
     if (type == "Multiply") return "Multiply";
@@ -91,10 +96,43 @@ const char* NodeTypeLabel(const std::string& type) {
     return "Node";
 }
 
+const char* TextureSlotLabel(const std::string& slot) {
+    if (slot == "normal") return "Normal";
+    if (slot == "metallic") return "Metallic";
+    if (slot == "roughness") return "Roughness";
+    if (slot == "ao") return "AO";
+    return "Albedo";
+}
+
+std::string NormalizeTextureSlot(const std::string& slot) {
+    const std::string value = ToLowerCopy(slot);
+    if (value == "normal" || value == "metallic" || value == "roughness" || value == "ao") return value;
+    return "albedo";
+}
+
+std::string TextureSlotSampler(const std::string& slot) {
+    const std::string value = NormalizeTextureSlot(slot);
+    if (value == "normal") return "uMaterialNormalTexture";
+    if (value == "metallic") return "uMaterialMetallicTexture";
+    if (value == "roughness") return "uMaterialRoughnessTexture";
+    if (value == "ao") return "uMaterialAoTexture";
+    return "uMaterialAlbedoTexture";
+}
+
+std::string TextureSlotUseUniform(const std::string& slot) {
+    const std::string value = NormalizeTextureSlot(slot);
+    if (value == "normal") return "uUseMaterialNormalTexture";
+    if (value == "metallic") return "uUseMaterialMetallicTexture";
+    if (value == "roughness") return "uUseMaterialRoughnessTexture";
+    if (value == "ao") return "uUseMaterialAoTexture";
+    return "uUseMaterialAlbedoTexture";
+}
+
 GraphValueType OutputTypeForNode(const ShaderGraphNodeState& node) {
     if (node.type == "Float" || node.type == "Fresnel" || node.type == "Clamp") return GraphValueType::Float;
+    if (node.type == "ChannelR" || node.type == "ChannelG" || node.type == "ChannelB" || node.type == "ChannelA") return GraphValueType::Float;
     if (node.type == "Vector2" || node.type == "UV") return GraphValueType::Vec2;
-    if (node.type == "Vector3") return GraphValueType::Vec3;
+    if (node.type == "Vector3" || node.type == "ChannelRGB") return GraphValueType::Vec3;
     if (node.type == "Color" || node.type == "Vector4" || node.type == "TextureSample") return GraphValueType::Vec4;
     return GraphValueType::Any;
 }
@@ -184,6 +222,7 @@ ShaderGraphNodeState MakeNode(int id, const std::string& type, const glm::vec2& 
     node.title = NodeTypeLabel(type);
     node.position = position;
     if (type == "Float") node.floatValue = 0.5f;
+    if (type == "TextureSample") node.textureSlot = "albedo";
     if (type == "Vector2") { node.vectorValue[0] = 1.0f; node.vectorValue[1] = 1.0f; }
     if (type == "Vector3") { node.vectorValue[0] = 1.0f; node.vectorValue[1] = 1.0f; node.vectorValue[2] = 1.0f; }
     if (type == "Vector4") { node.vectorValue[0] = 1.0f; node.vectorValue[1] = 1.0f; node.vectorValue[2] = 1.0f; node.vectorValue[3] = 1.0f; }
@@ -227,6 +266,8 @@ GraphValueType InputTypeForPin(const std::vector<ShaderGraphNodeState>& nodes, i
     const ShaderGraphNodeState* node = FindNode(nodes, nodeId);
     if (node == nullptr) return GraphValueType::Any;
     if (node->type == "TextureSample" && slot == 0) return GraphValueType::Vec2;
+    if ((node->type == "ChannelR" || node->type == "ChannelG" || node->type == "ChannelB" ||
+         node->type == "ChannelA" || node->type == "ChannelRGB") && slot == 0) return GraphValueType::Vec4;
     if (node->type == "Lerp" && (slot == 0 || slot == 1)) return GraphValueType::Vec4;
     if (node->type == "Lerp" && slot == 2) return GraphValueType::Float;
     if (node->type == "Clamp") return GraphValueType::Float;
@@ -411,6 +452,7 @@ bool SaveShaderGraphJson(const fs::path& path,
             out << "        \"color\": [" << node.color[0] << ", " << node.color[1] << ", " << node.color[2] << ", " << node.color[3] << "],\n";
             out << "        \"value\": " << node.floatValue << ",\n";
             out << "        \"vector\": [" << node.vectorValue[0] << ", " << node.vectorValue[1] << ", " << node.vectorValue[2] << ", " << node.vectorValue[3] << "],\n";
+            out << "        \"textureSlot\": \"" << JsonEscape(NormalizeTextureSlot(node.textureSlot)) << "\",\n";
             out << "        \"note\": \"" << JsonEscape(node.noteText) << "\"\n";
             out << "      }\n";
             out << "    }" << (i + 1 < nodes.size() ? "," : "") << "\n";
@@ -476,6 +518,9 @@ bool LoadShaderGraphJson(const fs::path& path,
                     }
                     if (auto noteIt = props.find("note"); noteIt != props.end() && noteIt->second.is_string()) {
                         node.noteText = noteIt->second.as_string();
+                    }
+                    if (auto textureIt = props.find("textureSlot"); textureIt != props.end() && textureIt->second.is_string()) {
+                        node.textureSlot = NormalizeTextureSlot(textureIt->second.as_string());
                     }
                 }
                 maxNodeId = (std::max)(maxNodeId, node.id);
@@ -585,8 +630,25 @@ CompiledValue CompileNodeExpression(const std::vector<ShaderGraphNodeState>& nod
     else if (node->type == "Vector4") result = {VecText("vec4", node->vectorValue, 4), GraphValueType::Vec4};
     else if (node->type == "TextureSample") {
         CompiledValue uv = ConvertValue(input(0, GraphValueType::Vec2, "vUV"), GraphValueType::Vec2);
-        result = {"(uUseDiffuseTexture ? texture(uDiffuseTexture, " + uv.code + ") : vec4(1.0))", GraphValueType::Vec4};
+        const std::string slot = NormalizeTextureSlot(node->textureSlot);
+        const std::string sampler = TextureSlotSampler(slot);
+        const std::string useUniform = TextureSlotUseUniform(slot);
+        std::string fallback = "vec4(1.0)";
+        if (slot == "normal") fallback = "vec4(0.5, 0.5, 1.0, 1.0)";
+        else if (slot == "metallic") fallback = "vec4(vec3(uMetallic), 1.0)";
+        else if (slot == "roughness") fallback = "vec4(vec3(uRoughness), 1.0)";
+        else if (slot == "ao") fallback = "vec4(1.0)";
+        else fallback = "(uUseDiffuseTexture ? texture(uDiffuseTexture, " + uv.code + ") : vec4(1.0))";
+        result = {"(" + useUniform + " ? texture(" + sampler + ", " + uv.code + ") : " + fallback + ")", GraphValueType::Vec4};
     } else if (node->type == "UV") result = {"(vUV * uUvTiling + uUvOffset)", GraphValueType::Vec2};
+    else if (node->type == "ChannelR" || node->type == "ChannelG" || node->type == "ChannelB" || node->type == "ChannelA" || node->type == "ChannelRGB") {
+        CompiledValue value = ConvertValue(input(0, GraphValueType::Vec4, "vec4(0.0)"), GraphValueType::Vec4);
+        if (node->type == "ChannelR") result = {"(" + value.code + ").r", GraphValueType::Float};
+        else if (node->type == "ChannelG") result = {"(" + value.code + ").g", GraphValueType::Float};
+        else if (node->type == "ChannelB") result = {"(" + value.code + ").b", GraphValueType::Float};
+        else if (node->type == "ChannelA") result = {"(" + value.code + ").a", GraphValueType::Float};
+        else result = {"(" + value.code + ").rgb", GraphValueType::Vec3};
+    }
     else if (node->type == "Add" || node->type == "Multiply") {
         CompiledValue a = input(0, GraphValueType::Float, "0.0");
         CompiledValue b = ConvertValue(input(1, a.type, node->type == "Multiply" ? "1.0" : "0.0"), a.type);
@@ -652,6 +714,9 @@ bool CompileShaderGraphFragment(const fs::path& fragmentPath,
     if (!error.empty()) return false;
     CompiledValue alpha = compileOutput(4, GraphValueType::Float, "(" + baseColor.code + ").a", false);
     if (!error.empty()) return false;
+    const bool normalConnected = FindInputLink(links, InputPin(kMaterialOutputNode, 5)) != nullptr;
+    CompiledValue normal = compileOutput(5, GraphValueType::Vec3, "vWorldNormal", false);
+    if (!error.empty()) return false;
 
     try {
         fs::create_directories(fragmentPath.parent_path());
@@ -663,21 +728,83 @@ bool CompileShaderGraphFragment(const fs::path& fragmentPath,
         out << "#version 450 core\n";
         out << "out vec4 FragColor;\n";
         out << "in vec2 vUV;\n";
+        out << "in vec3 vWorldPosition;\n";
         out << "in vec3 vWorldNormal;\n";
         out << "uniform vec4 uColor;\n";
+        out << "uniform vec3 uEmissiveColor;\n";
+        out << "uniform float uMetallic;\n";
+        out << "uniform float uRoughness;\n";
         out << "uniform sampler2D uDiffuseTexture;\n";
         out << "uniform bool uUseDiffuseTexture;\n";
+        out << "uniform sampler2D uMaterialAlbedoTexture;\n";
+        out << "uniform sampler2D uMaterialNormalTexture;\n";
+        out << "uniform sampler2D uMaterialMetallicTexture;\n";
+        out << "uniform sampler2D uMaterialRoughnessTexture;\n";
+        out << "uniform sampler2D uMaterialAoTexture;\n";
+        out << "uniform bool uUseMaterialAlbedoTexture;\n";
+        out << "uniform bool uUseMaterialNormalTexture;\n";
+        out << "uniform bool uUseMaterialMetallicTexture;\n";
+        out << "uniform bool uUseMaterialRoughnessTexture;\n";
+        out << "uniform bool uUseMaterialAoTexture;\n";
         out << "uniform vec2 uUvTiling;\n";
         out << "uniform vec2 uUvOffset;\n";
+        out << "uniform vec3 uCameraPosition;\n";
+        out << "uniform vec3 uAmbientColor;\n";
+        out << "struct Light { int type; vec3 position; vec3 direction; vec3 color; float intensity; float range; float spotAngleDegrees; };\n";
+        out << "uniform int uLightCount;\n";
+        out << "uniform Light uLights[8];\n";
+        out << "vec3 ApplyLighting(vec3 albedo, vec3 normal, float metallic, float roughness) {\n";
+        out << "    vec3 viewDir = normalize(uCameraPosition - vWorldPosition);\n";
+        out << "    float shininess = mix(96.0, 8.0, roughness);\n";
+        out << "    vec3 specularColor = mix(vec3(0.04), albedo, metallic);\n";
+        out << "    vec3 ambientDiffuse = albedo * uAmbientColor * (1.0 - metallic * 0.75);\n";
+        out << "    float rim = pow(clamp(1.0 - max(dot(normal, viewDir), 0.0), 0.0, 1.0), 2.0);\n";
+        out << "    vec3 ambientSpecular = specularColor * (uAmbientColor + vec3(0.08)) * mix(0.15, 1.0, 1.0 - roughness) * (0.35 + metallic * 0.65) * (0.7 + rim * 0.3);\n";
+        out << "    vec3 lit = ambientDiffuse + ambientSpecular;\n";
+        out << "    for (int i = 0; i < uLightCount; ++i) {\n";
+        out << "        Light light = uLights[i];\n";
+        out << "        vec3 lightDir;\n";
+        out << "        float attenuation = 1.0;\n";
+        out << "        if (light.type == 0) {\n";
+        out << "            lightDir = normalize(-light.direction);\n";
+        out << "        } else {\n";
+        out << "            vec3 toLight = light.position - vWorldPosition;\n";
+        out << "            float distanceToLight = length(toLight);\n";
+        out << "            if (distanceToLight > max(light.range, 0.001)) continue;\n";
+        out << "            lightDir = distanceToLight > 0.0001 ? toLight / distanceToLight : vec3(0.0, 1.0, 0.0);\n";
+        out << "            float rangeFactor = clamp(1.0 - distanceToLight / max(light.range, 0.001), 0.0, 1.0);\n";
+        out << "            attenuation = rangeFactor * rangeFactor;\n";
+        out << "            if (light.type == 2) {\n";
+        out << "                float cosTheta = dot(normalize(light.direction), normalize(vWorldPosition - light.position));\n";
+        out << "                float cutoff = cos(radians(clamp(light.spotAngleDegrees, 1.0, 179.0)) * 0.5);\n";
+        out << "                attenuation *= smoothstep(cutoff, min(cutoff + 0.08, 1.0), cosTheta);\n";
+        out << "            }\n";
+        out << "        }\n";
+        out << "        float ndotl = max(dot(normal, lightDir), 0.0);\n";
+        out << "        vec3 halfDir = normalize(lightDir + viewDir);\n";
+        out << "        float specular = pow(max(dot(normal, halfDir), 0.0), shininess) * ndotl * mix(0.2, 1.0, 1.0 - roughness);\n";
+        out << "        float broadSpecular = ndotl * metallic * mix(0.05, 0.45, roughness);\n";
+        out << "        vec3 radiance = light.color * max(light.intensity, 0.0) * attenuation;\n";
+        out << "        vec3 diffuse = albedo * ndotl * (1.0 - metallic);\n";
+        out << "        lit += (diffuse + specularColor * (specular + broadSpecular)) * radiance;\n";
+        out << "    }\n";
+        out << "    return lit;\n";
+        out << "}\n";
         out << "void main() {\n";
         out << "    vec4 graphBase = " << baseColor.code << ";\n";
-        out << "    vec3 emissive = " << emissive.code << ";\n";
+        out << "    vec3 emissive = " << emissive.code << " + uEmissiveColor;\n";
         out << "    float metallic = clamp(" << metallic.code << ", 0.0, 1.0);\n";
         out << "    float roughness = clamp(" << roughness.code << ", 0.02, 1.0);\n";
         out << "    float alpha = clamp(" << alpha.code << ", 0.0, 1.0);\n";
-        out << "    vec3 normalTint = normalize(vWorldNormal) * 0.5 + 0.5;\n";
+        if (normalConnected) {
+            out << "    vec3 normal = normalize((" << normal.code << ") * 2.0 - 1.0);\n";
+        } else {
+            out << "    vec3 normal = normalize(vWorldNormal);\n";
+        }
+        out << "    if (!gl_FrontFacing) normal = -normal;\n";
         out << "    vec4 base = graphBase * uColor;\n";
-        out << "    vec3 lit = base.rgb * mix(vec3(0.9), normalTint, 0.12 + metallic * 0.18) + emissive * (1.0 + (1.0 - roughness));\n";
+        out << "    float ao = uUseMaterialAoTexture ? texture(uMaterialAoTexture, vUV).r : 1.0;\n";
+        out << "    vec3 lit = ApplyLighting(base.rgb, normal, metallic, roughness) * ao + emissive;\n";
         out << "    FragColor = vec4(lit, base.a * alpha);\n";
         out << "}\n";
         return true;
@@ -702,7 +829,7 @@ std::string NodeValuePreview(const ShaderGraphNodeState& node) {
     if (node.type == "Vector2") return "XY " + FloatText(node.vectorValue[0]) + ", " + FloatText(node.vectorValue[1]);
     if (node.type == "Vector3") return "XYZ " + FloatText(node.vectorValue[0]) + ", " + FloatText(node.vectorValue[1]) + ", " + FloatText(node.vectorValue[2]);
     if (node.type == "Vector4") return "XYZW " + FloatText(node.vectorValue[0]) + ", " + FloatText(node.vectorValue[1]) + ", " + FloatText(node.vectorValue[2]) + ", " + FloatText(node.vectorValue[3]);
-    if (node.type == "TextureSample") return "Texture: material albedo";
+    if (node.type == "TextureSample") return std::string("Texture: material ") + TextureSlotLabel(node.textureSlot);
     if (node.type == "UV") return "Uses material tiling/offset";
     return {};
 }
@@ -829,8 +956,13 @@ bool RenderGraphNode(ShaderGraphNodeState& node, const std::vector<ShaderGraphNo
             }
         }
         if (node.type == "TextureSample") {
+            ImGui::TextDisabled("Slot: %s", TextureSlotLabel(node.textureSlot));
             BeginColoredInputAttribute(nodes, node.id, 0);
             ImGui::TextUnformatted("UV");
+            EndColoredInputAttribute();
+        } else if (node.type == "ChannelR" || node.type == "ChannelG" || node.type == "ChannelB" || node.type == "ChannelA" || node.type == "ChannelRGB") {
+            BeginColoredInputAttribute(nodes, node.id, 0);
+            ImGui::TextUnformatted("RGBA");
             EndColoredInputAttribute();
         } else if (node.type == "Add" || node.type == "Multiply") {
             BeginColoredInputAttribute(nodes, node.id, 0); ImGui::TextUnformatted("A"); EndColoredInputAttribute();
@@ -874,6 +1006,22 @@ bool RenderNodeInspector(ShaderGraphNodeState* node, const std::string& status) 
     else if (node->type == "Vector2") changed |= ImGui::DragFloat2("Vector", node->vectorValue, 0.01f);
     else if (node->type == "Vector3") changed |= ImGui::DragFloat3("Vector", node->vectorValue, 0.01f);
     else if (node->type == "Vector4") changed |= ImGui::DragFloat4("Vector", node->vectorValue, 0.01f);
+    else if (node->type == "TextureSample") {
+        const char* slots[] = {"albedo", "normal", "metallic", "roughness", "ao"};
+        const std::string currentSlot = NormalizeTextureSlot(node->textureSlot);
+        if (ImGui::BeginCombo("Texture Slot", TextureSlotLabel(currentSlot))) {
+            for (const char* slot : slots) {
+                const bool selected = currentSlot == slot;
+                if (ImGui::Selectable(TextureSlotLabel(slot), selected)) {
+                    node->textureSlot = slot;
+                    changed = true;
+                }
+                if (selected) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::TextWrapped("Samples the selected texture path from the material using this graph.");
+    }
     else if (node->type == "Note") {
         changed |= ImGui::ColorEdit4("Color", node->color);
         char note[512]{};
@@ -1152,7 +1300,7 @@ void SceneEditor::RenderShaderGraphEditorWindow() {
     }
     const ImVec2 contextPos(shaderGraphContextScreenPos_.x, shaderGraphContextScreenPos_.y);
     auto renderCreateNodeMenu = [&]() {
-        const char* types[] = {"Color", "Float", "Vector2", "Vector3", "Vector4", "TextureSample", "UV", "Add", "Multiply", "Lerp", "Clamp", "OneMinus", "Fresnel", "Note"};
+        const char* types[] = {"Color", "Float", "Vector2", "Vector3", "Vector4", "TextureSample", "ChannelR", "ChannelG", "ChannelB", "ChannelA", "ChannelRGB", "UV", "Add", "Multiply", "Lerp", "Clamp", "OneMinus", "Fresnel", "Note"};
         for (const char* type : types) {
             if (ImGui::MenuItem(NodeTypeLabel(type))) {
                 createNodeAt(type, contextPos);

@@ -765,22 +765,78 @@ void SceneEditor::RenderProjectPanel() {
                             }
                             ImGui::Separator();
                             if (ImGui::BeginMenu("Move To")) {
-                                bool anyMoveTarget = false;
                                 const std::string currentDirectory = ParentProjectDirectory(file);
-                                for (const std::string& directory : projectDirectories_) {
-                                    if (directory == currentDirectory) {
-                                        continue;
+
+                                auto renderMoveTarget = [&](auto&& self, const std::string& directory) -> bool {
+                                    std::vector<std::string> children;
+                                    for (const std::string& candidate : projectDirectories_) {
+                                        if (candidate != directory && IsDirectChildProjectPath(candidate, directory)) {
+                                            children.push_back(candidate);
+                                        }
                                     }
-                                    anyMoveTarget = true;
-                                    const std::string label = ProjectFolderDisplayName(directory) + "##moveTarget_" + directory;
-                                    if (ImGui::MenuItem(label.c_str())) {
+
+                                    const bool isCurrentDirectory = NormalizeSlashes(directory) == NormalizeSlashes(currentDirectory);
+                                    if (children.empty()) {
+                                        if (isCurrentDirectory) {
+                                            ImGui::BeginDisabled();
+                                            ImGui::MenuItem((ProjectFolderDisplayName(directory) + "##moveCurrent_" + directory).c_str());
+                                            ImGui::EndDisabled();
+                                            return false;
+                                        }
+                                        if (ImGui::MenuItem((ProjectFolderDisplayName(directory) + "##moveTarget_" + directory).c_str())) {
+                                            MoveProjectFile(file, directory);
+                                            return true;
+                                        }
+                                        return false;
+                                    }
+
+                                    if (!ImGui::BeginMenu((ProjectFolderDisplayName(directory) + "##moveMenu_" + directory).c_str())) {
+                                        return false;
+                                    }
+
+                                    bool moved = false;
+                                    if (isCurrentDirectory) {
+                                        ImGui::TextDisabled("Current folder");
+                                    } else if (ImGui::MenuItem(("Move here##moveHere_" + directory).c_str())) {
                                         MoveProjectFile(file, directory);
-                                        deletedFromContext = true;
+                                        moved = true;
+                                    }
+
+                                    ImGui::Separator();
+                                    for (const std::string& child : children) {
+                                        if (self(self, child)) {
+                                            moved = true;
+                                            break;
+                                        }
+                                    }
+
+                                    ImGui::EndMenu();
+                                    return moved;
+                                };
+
+                                bool anyMoveTarget = false;
+                                for (const std::string& directory : projectDirectories_) {
+                                    if (directory != currentDirectory) {
+                                        anyMoveTarget = true;
                                         break;
                                     }
                                 }
+
                                 if (!anyMoveTarget) {
                                     ImGui::TextDisabled("No other folders.");
+                                } else {
+                                    if (renderMoveTarget(renderMoveTarget, "assets")) {
+                                        deletedFromContext = true;
+                                    }
+                                    for (const std::string& directory : projectDirectories_) {
+                                        if (directory != "assets" &&
+                                            std::find(projectDirectories_.begin(), projectDirectories_.end(), ParentProjectDirectory(directory)) == projectDirectories_.end()) {
+                                            if (renderMoveTarget(renderMoveTarget, directory)) {
+                                                deletedFromContext = true;
+                                                break;
+                                            }
+                                        }
+                                    }
                                 }
                                 ImGui::EndMenu();
                             }
@@ -847,6 +903,14 @@ void SceneEditor::RenderProjectPanel() {
                             }
                         } else {
                             CopyProjectFileTo(fileClipboard_.path, selectedProjectDirectory_);
+                        }
+                    }
+                    if (!ctrl && ImGui::IsKeyPressed(ImGuiKey_Delete) && !selectedProjectFile_.empty()) {
+                        const fs::path selectedAbsolutePath = ProjectAssetPathToAbsolute(selectedProjectFile_);
+                        if (fs::is_directory(selectedAbsolutePath)) {
+                            DeleteProjectFolder(selectedProjectFile_);
+                        } else {
+                            DeleteProjectFile(selectedProjectFile_);
                         }
                     }
                 }
@@ -2491,7 +2555,9 @@ void SceneEditor::RefreshProjectFiles() {
         if (std::find(projectDirectories_.begin(), projectDirectories_.end(), selectedProjectDirectory_) == projectDirectories_.end()) {
             selectedProjectDirectory_ = "assets";
         }
-        if (!selectedProjectFile_.empty() && std::find(projectFiles_.begin(), projectFiles_.end(), selectedProjectFile_) == projectFiles_.end()) {
+        if (!selectedProjectFile_.empty() &&
+            std::find(projectFiles_.begin(), projectFiles_.end(), selectedProjectFile_) == projectFiles_.end() &&
+            std::find(projectDirectories_.begin(), projectDirectories_.end(), selectedProjectFile_) == projectDirectories_.end()) {
             selectedProjectFile_.clear();
         }
     } catch (...) {

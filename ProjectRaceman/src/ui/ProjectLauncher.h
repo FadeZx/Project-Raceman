@@ -57,6 +57,8 @@ private:
     std::string newParentPath_;
     bool showNewDialog_{false};
     std::string errorMsg_;
+    unsigned int logoTexture_{0};
+    bool logoTextureLoadAttempted_{false};
 };
 
 } // namespace raceman

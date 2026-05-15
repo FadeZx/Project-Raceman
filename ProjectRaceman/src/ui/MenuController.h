@@ -47,7 +47,9 @@ public:
                 EditorProjectMenu projectMenu = {},
                 const std::function<void(const SkyboxFaces&)>& onSkyboxChosen = {},
                 bool* frustumCullingEnabled = nullptr,
-                bool* physicsCullingEnabled = nullptr);
+                bool* physicsCullingEnabled = nullptr,
+                float* sceneCameraNearClip = nullptr,
+                float* sceneCameraFarClip = nullptr);
 
 private:
     // Panels

@@ -478,9 +478,9 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"cameraType\": \"" << cinemachineTypeStr(o.cinemachine.type) << "\",\n";
             out << "          \"followTargetId\": \"" << JsonEscape(o.cinemachine.followTargetId) << "\",\n";
             out << "          \"lookAtTargetId\": \"" << JsonEscape(o.cinemachine.lookAtTargetId) << "\",\n";
-            out << "          \"followOffset\": [" << o.cinemachine.followOffset.x << ", " << o.cinemachine.followOffset.y << ", " << o.cinemachine.followOffset.z << "],\n";
-            out << "          \"pitchOffset\": " << o.cinemachine.pitchOffset << ",\n";
-            out << "          \"yawOffset\": " << o.cinemachine.yawOffset << ",\n";
+            out << "          \"followOffset\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
+            out << "          \"pitchOffset\": " << o.transform.rotationEuler.x << ",\n";
+            out << "          \"yawOffset\": " << o.transform.rotationEuler.y << ",\n";
             out << "          \"positionDamping\": " << o.cinemachine.positionDamping << ",\n";
             out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << "\n";
             out << "        }";
@@ -787,9 +787,9 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
             out << "          \"cameraType\": \"" << cinemachineTypeStr(o.cinemachine.type) << "\",\n";
             out << "          \"followTargetId\": \"" << JsonEscape(o.cinemachine.followTargetId) << "\",\n";
             out << "          \"lookAtTargetId\": \"" << JsonEscape(o.cinemachine.lookAtTargetId) << "\",\n";
-            out << "          \"followOffset\": [" << o.cinemachine.followOffset.x << ", " << o.cinemachine.followOffset.y << ", " << o.cinemachine.followOffset.z << "],\n";
-            out << "          \"pitchOffset\": " << o.cinemachine.pitchOffset << ",\n";
-            out << "          \"yawOffset\": " << o.cinemachine.yawOffset << ",\n";
+            out << "          \"followOffset\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
+            out << "          \"pitchOffset\": " << o.transform.rotationEuler.x << ",\n";
+            out << "          \"yawOffset\": " << o.transform.rotationEuler.y << ",\n";
             out << "          \"positionDamping\": " << o.cinemachine.positionDamping << ",\n";
             out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << "\n";
             out << "        }";
@@ -1442,14 +1442,18 @@ void SceneEditor::Load(const std::string& path) {
                         }
                         ReadString(component, "followTargetId", so.cinemachine.followTargetId);
                         ReadString(component, "lookAtTargetId", so.cinemachine.lookAtTargetId);
-                        ReadVec3(component, "followOffset", so.cinemachine.followOffset);
+                        if (ReadVec3(component, "followOffset", so.cinemachine.followOffset)) {
+                            so.transform.position = so.cinemachine.followOffset;
+                        }
                         auto pitchIt = component.find("pitchOffset");
                         if (pitchIt != component.end() && pitchIt->second.is_number()) {
                             so.cinemachine.pitchOffset = static_cast<float>(pitchIt->second.as_number());
+                            so.transform.rotationEuler.x = so.cinemachine.pitchOffset;
                         }
                         auto yawIt = component.find("yawOffset");
                         if (yawIt != component.end() && yawIt->second.is_number()) {
                             so.cinemachine.yawOffset = static_cast<float>(yawIt->second.as_number());
+                            so.transform.rotationEuler.y = so.cinemachine.yawOffset;
                         }
                         auto posDampingIt = component.find("positionDamping");
                         if (posDampingIt != component.end() && posDampingIt->second.is_number()) {
@@ -2003,9 +2007,17 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                         }
                         ReadString(component, "followTargetId", so.cinemachine.followTargetId);
                         ReadString(component, "lookAtTargetId", so.cinemachine.lookAtTargetId);
-                        ReadVec3(component, "followOffset", so.cinemachine.followOffset);
-                        if (auto p = component.find("pitchOffset"); p != component.end() && p->second.is_number()) so.cinemachine.pitchOffset = static_cast<float>(p->second.as_number());
-                        if (auto y = component.find("yawOffset"); y != component.end() && y->second.is_number()) so.cinemachine.yawOffset = static_cast<float>(y->second.as_number());
+                        if (ReadVec3(component, "followOffset", so.cinemachine.followOffset)) {
+                            so.transform.position = so.cinemachine.followOffset;
+                        }
+                        if (auto p = component.find("pitchOffset"); p != component.end() && p->second.is_number()) {
+                            so.cinemachine.pitchOffset = static_cast<float>(p->second.as_number());
+                            so.transform.rotationEuler.x = so.cinemachine.pitchOffset;
+                        }
+                        if (auto y = component.find("yawOffset"); y != component.end() && y->second.is_number()) {
+                            so.cinemachine.yawOffset = static_cast<float>(y->second.as_number());
+                            so.transform.rotationEuler.y = so.cinemachine.yawOffset;
+                        }
                         if (auto pd = component.find("positionDamping"); pd != component.end() && pd->second.is_number()) so.cinemachine.positionDamping = (std::max)(0.0f, static_cast<float>(pd->second.as_number()));
                         if (auto rd = component.find("rotationDamping"); rd != component.end() && rd->second.is_number()) so.cinemachine.rotationDamping = (std::max)(0.0f, static_cast<float>(rd->second.as_number()));
                     } else if (componentType == "Light") {

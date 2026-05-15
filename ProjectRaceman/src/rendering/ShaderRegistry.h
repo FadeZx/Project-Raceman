@@ -19,6 +19,19 @@ struct ShaderDefinition {
     bool supportsEmissive{true};
     bool supportsTextures{true};
     bool transparent{false};
+    struct Property {
+        std::string id;
+        std::string label;
+        std::string uniformName;
+        MaterialPropertyType type{MaterialPropertyType::Float};
+        bool color{false};
+        float minValue{0.0f};
+        float maxValue{1.0f};
+        float defaultValues[4]{0.0f, 0.0f, 0.0f, 0.0f};
+        bool defaultBool{false};
+        std::string textureUseUniform;
+    };
+    std::vector<Property> properties;
 };
 
 class ShaderRegistry {

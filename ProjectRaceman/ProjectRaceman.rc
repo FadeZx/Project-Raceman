@@ -1,0 +1,3 @@
+#include "resource.h"
+
+IDI_RACEMAN_ICON ICON "editor-assets\\icons\\RaceMan_icon.ico"

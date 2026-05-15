@@ -10,6 +10,14 @@ uniform float uMetallic;
 uniform float uRoughness;
 uniform sampler2D uDiffuseTexture;
 uniform bool uUseDiffuseTexture;
+uniform sampler2D uMaterialNormalTexture;
+uniform sampler2D uMaterialMetallicTexture;
+uniform sampler2D uMaterialRoughnessTexture;
+uniform sampler2D uMaterialAoTexture;
+uniform bool uUseMaterialNormalTexture;
+uniform bool uUseMaterialMetallicTexture;
+uniform bool uUseMaterialRoughnessTexture;
+uniform bool uUseMaterialAoTexture;
 uniform vec3 uCameraPosition;
 
 struct Light {
@@ -30,7 +38,11 @@ vec3 ApplyLighting(vec3 albedo, vec3 normal, float metallic, float roughness) {
     vec3 viewDir = normalize(uCameraPosition - vWorldPosition);
     float shininess = mix(96.0, 8.0, roughness);
     vec3 specularColor = mix(vec3(0.04), albedo, metallic);
-    vec3 lit = albedo * uAmbientColor;
+    vec3 ambientDiffuse = albedo * uAmbientColor * (1.0 - metallic * 0.75);
+    float rim = pow(clamp(1.0 - max(dot(normal, viewDir), 0.0), 0.0, 1.0), 2.0);
+    vec3 ambientSpecular = specularColor * (uAmbientColor + vec3(0.08)) *
+        mix(0.15, 1.0, 1.0 - roughness) * (0.35 + metallic * 0.65) * (0.7 + rim * 0.3);
+    vec3 lit = ambientDiffuse + ambientSpecular;
     for (int i = 0; i < uLightCount; ++i) {
         Light light = uLights[i];
         vec3 lightDir;
@@ -52,10 +64,11 @@ vec3 ApplyLighting(vec3 albedo, vec3 normal, float metallic, float roughness) {
         }
         float ndotl = max(dot(normal, lightDir), 0.0);
         vec3 halfDir = normalize(lightDir + viewDir);
-        float specular = pow(max(dot(normal, halfDir), 0.0), shininess) * mix(0.2, 1.0, 1.0 - roughness);
+        float specular = pow(max(dot(normal, halfDir), 0.0), shininess) * ndotl * mix(0.2, 1.0, 1.0 - roughness);
+        float broadSpecular = ndotl * metallic * mix(0.05, 0.45, roughness);
         vec3 radiance = light.color * max(light.intensity, 0.0) * attenuation;
         vec3 diffuse = albedo * ndotl * (1.0 - metallic);
-        lit += (diffuse + specularColor * specular) * radiance;
+        lit += (diffuse + specularColor * (specular + broadSpecular)) * radiance;
     }
     return lit;
 }
@@ -64,8 +77,12 @@ void main() {
     vec4 base = uUseDiffuseTexture ? texture(uDiffuseTexture, vUV) : vec4(1.0);
     vec4 albedo = base * uColor;
     vec3 normal = normalize(vWorldNormal);
+    if (uUseMaterialNormalTexture) {
+        normal = normalize(texture(uMaterialNormalTexture, vUV).rgb * 2.0 - 1.0);
+    }
     if (!gl_FrontFacing) normal = -normal;
-    float metallic = clamp(uMetallic, 0.0, 1.0);
-    float roughness = clamp(uRoughness, 0.02, 1.0);
-    FragColor = vec4(ApplyLighting(albedo.rgb, normal, metallic, roughness) + uEmissiveColor, albedo.a);
+    float metallic = clamp(uUseMaterialMetallicTexture ? texture(uMaterialMetallicTexture, vUV).r : uMetallic, 0.0, 1.0);
+    float roughness = clamp(uUseMaterialRoughnessTexture ? texture(uMaterialRoughnessTexture, vUV).r : uRoughness, 0.02, 1.0);
+    float ao = uUseMaterialAoTexture ? texture(uMaterialAoTexture, vUV).r : 1.0;
+    FragColor = vec4(ApplyLighting(albedo.rgb, normal, metallic, roughness) * ao + uEmissiveColor, albedo.a);
 }

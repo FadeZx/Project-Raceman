@@ -142,6 +142,20 @@ glm::vec3 TransformDirection(const glm::mat4& transform, const glm::vec3& direct
     return glm::vec3(transform * glm::vec4(direction, 0.0f));
 }
 
+glm::vec3 NearestEulerEquivalent(glm::vec3 euler, const glm::vec3& reference) {
+    for (int axis = 0; axis < 3; ++axis) {
+        float* value = axis == 0 ? &euler.x : (axis == 1 ? &euler.y : &euler.z);
+        const float ref = axis == 0 ? reference.x : (axis == 1 ? reference.y : reference.z);
+        while (*value - ref > 180.0f) {
+            *value -= 360.0f;
+        }
+        while (*value - ref < -180.0f) {
+            *value += 360.0f;
+        }
+    }
+    return euler;
+}
+
 bool GetObjectLocalBounds(const SceneObject& object, glm::vec3& outMin, glm::vec3& outMax) {
     if (!object.hasMeshFilter) {
         if (object.hasCamera || object.hasLight) {
@@ -658,7 +672,14 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
     // sceneViewportHovered_ tracks the actual ImGui widget hover, which is
     // more reliable than a raw bounds check (prevents clicks on the game
     // viewport from triggering scene picks).
-    if (io.WantTextInput || io.MouseDown[1] || !io.MouseClicked[0] || !sceneViewportHovered_) {
+    if (io.WantTextInput ||
+        editorCameraNavigating_ ||
+        io.MouseDown[1] ||
+        !io.MouseClicked[0] ||
+        !sceneViewportHovered_ ||
+        activeGizmoAxis_ >= 0 ||
+        ImGuizmo::IsUsing() ||
+        ImGuizmo::IsOver()) {
         return;
     }
 
@@ -833,16 +854,20 @@ void SceneEditor::UpdateImGuizmo() {
         return;
     }
 
-    glm::mat4 objectWorldMatrix = GetObjectWorldMatrix(selectedIndex_);
+    glm::mat4 objectWorldMatrix = GetObjectDisplayWorldMatrix(selectedIndex_);
+    const glm::mat4 gizmoInputWorldMatrix = objectWorldMatrix;
     glm::mat4 deltaMatrix(1.0f);
-    const bool manipulated = !io.WantTextInput && !io.MouseDown[1] && sceneViewportHovered_ &&
-        ImGuizmo::Manipulate(
-            glm::value_ptr(editorCameraView_),
-            glm::value_ptr(editorCameraProj_),
-            ImGuizmoOperationFromMode(gizmoMode_),
-            ImGuizmoTransformModeFromMode(gizmoMode_),
-            glm::value_ptr(objectWorldMatrix),
-            glm::value_ptr(deltaMatrix));
+    const bool allowGizmoInput = !io.WantTextInput && !io.MouseDown[1] &&
+        (sceneViewportHovered_ || activeGizmoAxis_ >= 0 || ImGuizmo::IsUsing());
+    ImGuizmo::Enable(allowGizmoInput);
+    const bool manipulated = ImGuizmo::Manipulate(
+        glm::value_ptr(editorCameraView_),
+        glm::value_ptr(editorCameraProj_),
+        ImGuizmoOperationFromMode(gizmoMode_),
+        ImGuizmoTransformModeFromMode(gizmoMode_),
+        glm::value_ptr(objectWorldMatrix),
+        glm::value_ptr(deltaMatrix));
+    ImGuizmo::Enable(true);
 
     if (ImGuizmo::IsUsing()) {
         if (activeGizmoAxis_ < 0) {
@@ -860,45 +885,117 @@ void SceneEditor::UpdateImGuizmo() {
                 }
                 return a < b;
             });
+            gizmoDragSelectionIndices_.erase(
+                std::remove_if(gizmoDragSelectionIndices_.begin(), gizmoDragSelectionIndices_.end(), [&](int index) {
+                    if (index < 0 || index >= static_cast<int>(objects_.size())) {
+                        return true;
+                    }
+                    std::string parentId = objects_[index].parentId;
+                    std::vector<std::string> visited;
+                    while (!parentId.empty()) {
+                        if (std::find(visited.begin(), visited.end(), parentId) != visited.end()) {
+                            break;
+                        }
+                        visited.push_back(parentId);
+                        const int parentIndex = FindObjectIndexById(parentId);
+                        if (parentIndex < 0) {
+                            break;
+                        }
+                        if (std::find(gizmoDragSelectionIndices_.begin(), gizmoDragSelectionIndices_.end(), parentIndex) != gizmoDragSelectionIndices_.end()) {
+                            return true;
+                        }
+                        parentId = objects_[parentIndex].parentId;
+                    }
+                    return false;
+                }),
+                gizmoDragSelectionIndices_.end());
+            if (gizmoDragSelectionIndices_.empty()) {
+                gizmoDragSelectionIndices_.push_back(selectedIndex_);
+            }
             gizmoDragStartLocalTransforms_.clear();
             gizmoDragStartWorldMatrices_.clear();
             gizmoDragStartLocalTransforms_.reserve(gizmoDragSelectionIndices_.size());
             gizmoDragStartWorldMatrices_.reserve(gizmoDragSelectionIndices_.size());
             for (int index : gizmoDragSelectionIndices_) {
                 gizmoDragStartLocalTransforms_.push_back(objects_[index].transform);
-                gizmoDragStartWorldMatrices_.push_back(GetObjectWorldMatrix(index));
+                gizmoDragStartWorldMatrices_.push_back(GetObjectDisplayWorldMatrix(index));
             }
             gizmoDirtyDuringDrag_ = false;
         }
 
         if (manipulated && !gizmoDragStartWorldMatrices_.empty()) {
-            std::size_t selectedStartIndex = 0;
-            for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
-                if (gizmoDragSelectionIndices_[i] == selectedIndex_) {
-                    selectedStartIndex = i;
-                    break;
-                }
-            }
-
-            const glm::mat4 selectedStartWorld = gizmoDragStartWorldMatrices_[selectedStartIndex];
-            const glm::mat4 worldDelta = objectWorldMatrix * glm::inverse(selectedStartWorld);
-            for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
-                const int index = gizmoDragSelectionIndices_[i];
+            auto applyWorldMatrixToObject = [&](int index, const glm::mat4& targetWorld) {
                 if (index < 0 || index >= static_cast<int>(objects_.size())) {
-                    continue;
+                    return;
                 }
+                SceneObject& object = objects_[index];
+                if (object.hasCamera && object.camera.enabled && object.hasCinemachine && object.cinemachine.enabled) {
+                    const glm::vec3 targetPosition = glm::vec3(targetWorld[3]);
+                    if (object.cinemachine.type != CinemachineCameraType::LookAt && !object.cinemachine.followTargetId.empty()) {
+                        const int followIndex = FindObjectIndexById(object.cinemachine.followTargetId);
+                        object.transform.position = followIndex >= 0
+                            ? CinemachineWorldPositionToOffset(GetObjectWorldMatrix(followIndex), targetPosition)
+                            : targetPosition;
+                    } else {
+                        object.transform.position = targetPosition;
+                    }
 
-                const glm::mat4 targetWorld = worldDelta * gizmoDragStartWorldMatrices_[i];
+                    glm::quat baseRotation = ExtractWorldRotationNoScale(GetObjectWorldMatrix(index));
+                    if (object.cinemachine.type == CinemachineCameraType::Follow && !object.cinemachine.followTargetId.empty()) {
+                        const int followIndex = FindObjectIndexById(object.cinemachine.followTargetId);
+                        if (followIndex >= 0) {
+                            baseRotation = ExtractWorldRotationNoScale(GetObjectWorldMatrix(followIndex));
+                        }
+                    } else if ((object.cinemachine.type == CinemachineCameraType::LookAt || object.cinemachine.type == CinemachineCameraType::FollowAndLookAt)) {
+                        const std::string& lookAtId = object.cinemachine.lookAtTargetId.empty() ? object.cinemachine.followTargetId : object.cinemachine.lookAtTargetId;
+                        const int lookAtIndex = lookAtId.empty() ? -1 : FindObjectIndexById(lookAtId);
+                        if (lookAtIndex >= 0 && lookAtIndex != index) {
+                            const glm::vec3 lookAtPos = glm::vec3(GetObjectWorldMatrix(lookAtIndex)[3]);
+                            const glm::vec3 dir = lookAtPos - targetPosition;
+                            if (glm::length(dir) > 0.001f) {
+                                const glm::vec3 fwd = glm::normalize(dir);
+                                const glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
+                                glm::vec3 right = glm::cross(fwd, worldUp);
+                                right = (glm::length(right) > 0.001f) ? glm::normalize(right) : glm::vec3(1.0f, 0.0f, 0.0f);
+                                const glm::vec3 up = glm::normalize(glm::cross(right, fwd));
+                                baseRotation = glm::quat_cast(glm::mat3(right, up, -fwd));
+                            }
+                        }
+                    }
+                    const glm::quat targetRotation = ExtractWorldRotationNoScale(targetWorld);
+                    object.transform.rotationEuler = NearestEulerEquivalent(
+                        glm::degrees(glm::eulerAngles(glm::normalize(glm::inverse(baseRotation) * targetRotation))),
+                        object.transform.rotationEuler);
+                    object.cinemachine.followOffset = object.transform.position;
+                    object.cinemachine.pitchOffset = object.transform.rotationEuler.x;
+                    object.cinemachine.yawOffset = object.transform.rotationEuler.y;
+                    return;
+                }
                 const int parentIndex = FindObjectIndexById(objects_[index].parentId);
                 const glm::mat4 targetLocal = parentIndex >= 0
                     ? glm::inverse(GetObjectWorldMatrix(parentIndex)) * targetWorld
                     : targetWorld;
-                objects_[index].transform = TransformFromMatrix(targetLocal);
-                objects_[index].transform.scale = {
-                    (std::max)(objects_[index].transform.scale.x, 0.01f),
-                    (std::max)(objects_[index].transform.scale.y, 0.01f),
-                    (std::max)(objects_[index].transform.scale.z, 0.01f)
+                Transform targetTransform = TransformFromMatrix(targetLocal);
+                targetTransform.rotationEuler = NearestEulerEquivalent(targetTransform.rotationEuler, objects_[index].transform.rotationEuler);
+                targetTransform.scale = {
+                    (std::max)(targetTransform.scale.x, 0.01f),
+                    (std::max)(targetTransform.scale.y, 0.01f),
+                    (std::max)(targetTransform.scale.z, 0.01f)
                 };
+                objects_[index].transform = targetTransform;
+            };
+
+            if (gizmoDragSelectionIndices_.size() == 1 && gizmoDragSelectionIndices_.front() == selectedIndex_) {
+                applyWorldMatrixToObject(selectedIndex_, objectWorldMatrix);
+                gizmoDirtyDuringDrag_ = true;
+                return;
+            }
+
+            const glm::mat4 worldDelta = objectWorldMatrix * glm::inverse(gizmoInputWorldMatrix);
+            for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
+                const int index = gizmoDragSelectionIndices_[i];
+                const glm::mat4 targetWorld = worldDelta * GetObjectDisplayWorldMatrix(index);
+                applyWorldMatrixToObject(index, targetWorld);
             }
             gizmoDirtyDuringDrag_ = true;
         }
@@ -931,7 +1028,7 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
     const glm::vec4 colliderColor{0.1f, 0.9f, 0.35f, 1.0f};
     constexpr float colliderWidth = 2.0f;
     constexpr DebugLineDepthMode helperDepthMode = DebugLineDepthMode::DepthTestedOverlay;
-    const glm::mat4 objectMatrix = GetObjectWorldMatrix(selectedIndex_);
+    const glm::mat4 objectMatrix = GetObjectDisplayWorldMatrix(selectedIndex_);
     const SceneColliderType colliderType = GetActiveColliderType(object);
     if (colliderType == SceneColliderType::Box && object.boxCollider.enabled) {
         SubmitWireBox(

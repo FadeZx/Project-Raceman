@@ -125,7 +125,9 @@ void MenuController::Render(Renderer& renderer,
                             EditorProjectMenu projectMenu,
                             const std::function<void(const SkyboxFaces&)>& onSkyboxChosen,
                             bool* frustumCullingEnabled,
-                            bool* physicsCullingEnabled) {
+                            bool* physicsCullingEnabled,
+                            float* sceneCameraNearClip,
+                            float* sceneCameraFarClip) {
 
     // Tick async folder picker — fires onBuildProject once user picks a folder
     if (folderPickerState_ && folderPickerState_->isDone.load()) {
@@ -168,6 +170,23 @@ void MenuController::Render(Renderer& renderer,
                         ImGui::Checkbox("Frustum Culling", frustumCullingEnabled);
                     }
                     ImGui::Checkbox("Draw Call Sorting", &settings.enableDrawCallSorting);
+
+                    ImGui::Separator();
+                    ImGui::TextUnformatted("Scene Camera");
+                    if (sceneCameraNearClip && sceneCameraFarClip) {
+                        float nearClip = *sceneCameraNearClip;
+                        if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, 0.001f, 100000.0f)) {
+                            *sceneCameraNearClip = (std::max)(0.001f, nearClip);
+                            *sceneCameraFarClip = (std::max)(*sceneCameraNearClip + 0.001f, *sceneCameraFarClip);
+                        }
+
+                        float farClip = *sceneCameraFarClip;
+                        if (ImGui::DragFloat("Far Clip", &farClip, 1.0f, 0.002f, 1000000.0f)) {
+                            *sceneCameraFarClip = (std::max)(*sceneCameraNearClip + 0.001f, farClip);
+                        }
+                    } else {
+                        ImGui::TextDisabled("Scene camera clipping is unavailable.");
+                    }
 
                     ImGui::Separator();
                     if (showSkybox_) {

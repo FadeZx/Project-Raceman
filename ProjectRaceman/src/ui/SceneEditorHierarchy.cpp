@@ -436,7 +436,7 @@ void SceneEditor::RenderScenePanel() {
                             pendingHierarchySelectToggle_ = ImGui::GetIO().KeyCtrl;
                             pendingHierarchySelectRange_ = ImGui::GetIO().KeyShift;
                             pendingHierarchyRangeAnchor_ = selectedIndex_;
-                            pendingHierarchyFocusObject_ = false;
+                            pendingHierarchyFocusObject_ = !pendingHierarchySelectToggle_ && !pendingHierarchySelectRange_;
                             pendingHierarchySelectionDragged_ = false;
                         }
                     }

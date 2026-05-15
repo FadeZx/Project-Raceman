@@ -106,6 +106,8 @@ private:
     float camPosX_{0.0f}, camPosY_{5.0f}, camPosZ_{10.0f};
     float camYaw_{-90.0f};   // looking towards -Z initially
     float camPitch_{-20.0f};
+    float sceneCameraNearClip_{0.1f};
+    float sceneCameraFarClip_{500.0f};
     float camBaseSpeed_{5.0f};
     float camFastMultiplier_{4.0f};
     float camSlowMultiplier_{0.25f};

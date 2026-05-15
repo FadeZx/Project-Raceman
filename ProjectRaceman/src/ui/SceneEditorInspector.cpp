@@ -10,6 +10,7 @@
 
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <sstream>
 
@@ -52,7 +53,8 @@ bool RenderInspectorInputText(const char* label, const char* id, char* buffer, s
         ImGui::SetNextItemWidth(-1.0f);
         return ImGui::InputText(id, buffer, bufferSize);
     }
-    return ImGui::InputText(label, buffer, bufferSize);
+    const std::string fullId = std::string(label) + (id != nullptr && std::strncmp(id, "##", 2) == 0 ? id : (std::string("##") + (id != nullptr ? id : label)));
+    return ImGui::InputText(fullId.c_str(), buffer, bufferSize);
 }
 
 bool RenderInspectorDragFloat3(const char* label, const char* id, float* values, float speed, float min = 0.0f, float max = 0.0f) {
@@ -88,7 +90,8 @@ bool RenderInspectorDragFloat(const char* label, const char* id, float* value, f
         ImGui::SetNextItemWidth(-1.0f);
         return ImGui::DragFloat(id, value, speed, min, max);
     }
-    return ImGui::DragFloat(label, value, speed, min, max);
+    const std::string fullId = std::string(label) + (id != nullptr && std::strncmp(id, "##", 2) == 0 ? id : (std::string("##") + (id != nullptr ? id : label)));
+    return ImGui::DragFloat(fullId.c_str(), value, speed, min, max);
 }
 
 bool RenderInspectorDragInt(const char* label, const char* id, int* value, float speed, int min = 0, int max = 0) {
@@ -98,6 +101,27 @@ bool RenderInspectorDragInt(const char* label, const char* id, int* value, float
         return ImGui::DragInt(id, value, speed, min, max);
     }
     return ImGui::DragInt(label, value, speed, min, max);
+}
+
+const char* MaterialPropertyTypeName(MaterialPropertyType type) {
+    switch (type) {
+    case MaterialPropertyType::Float: return "float";
+    case MaterialPropertyType::Vec2: return "vec2";
+    case MaterialPropertyType::Vec3: return "vec3";
+    case MaterialPropertyType::Vec4: return "vec4";
+    case MaterialPropertyType::Bool: return "bool";
+    case MaterialPropertyType::Texture2D: return "texture2D";
+    default: return "float";
+    }
+}
+
+int MaterialPropertyComponentCount(MaterialPropertyType type) {
+    switch (type) {
+    case MaterialPropertyType::Vec2: return 2;
+    case MaterialPropertyType::Vec3: return 3;
+    case MaterialPropertyType::Vec4: return 4;
+    default: return 1;
+    }
 }
 
 void RenderShaderGraphParametersPreview(const std::string& graphPath) {
@@ -127,7 +151,7 @@ void RenderShaderGraphParametersPreview(const std::string& graphPath) {
             auto typeIt = nodeObject.find("type");
             if (typeIt == nodeObject.end() || !typeIt->second.is_string()) continue;
             const std::string type = typeIt->second.as_string();
-            if (type != "Color" && type != "Float" && type != "Vector2" && type != "Vector3" && type != "Vector4") continue;
+            if (type != "Color" && type != "Float" && type != "Vector2" && type != "Vector3" && type != "Vector4" && type != "TextureSample") continue;
 
             auto propsIt = nodeObject.find("properties");
             if (propsIt == nodeObject.end() || !propsIt->second.is_object()) continue;
@@ -145,7 +169,17 @@ void RenderShaderGraphParametersPreview(const std::string& graphPath) {
             }
 
             ImGui::PushID(visibleCount++);
-            if (type == "Float") {
+            if (type == "TextureSample") {
+                std::string slot = "albedo";
+                if (auto slotIt = props.find("textureSlot"); slotIt != props.end() && slotIt->second.is_string()) {
+                    slot = slotIt->second.as_string();
+                }
+                ImGui::BeginDisabled();
+                char slotBuffer[64];
+                std::snprintf(slotBuffer, sizeof(slotBuffer), "%s", slot.c_str());
+                ImGui::InputText(title.c_str(), slotBuffer, sizeof(slotBuffer));
+                ImGui::EndDisabled();
+            } else if (type == "Float") {
                 float value = 0.0f;
                 if (auto valueIt = props.find("value"); valueIt != props.end() && valueIt->second.is_number()) {
                     value = static_cast<float>(valueIt->second.as_number());
@@ -1074,11 +1108,35 @@ void SceneEditor::RenderInspectorPanel() {
                 if (meshType == "Mesh") {
                     RenderInspectorWrappedValue("Source:", obj.meshFilter.sourcePath.empty() ? "(none)" : obj.meshFilter.sourcePath);
                     ImGui::TextDisabled("Submesh Index: %d", obj.meshFilter.meshIndex);
+                    RenderInspectorWrappedValue("Submesh Name:", obj.meshFilter.meshName.empty() ? "(unnamed)" : obj.meshFilter.meshName);
                     RenderInspectorWrappedValue("Imported Material:", obj.meshFilter.importedMaterialName.empty() ? "(none)" : obj.meshFilter.importedMaterialName);
                     RenderInspectorWrappedValue("Imported Diffuse:", obj.meshFilter.diffuseTexturePath.empty() ? "(none)" : obj.meshFilter.diffuseTexturePath);
                 } else {
                     ImGui::TextDisabled("Built-in mesh: %s", meshType.c_str());
                 }
+                ImGui::SeparatorText("Mesh Data");
+                const unsigned int indexCount = obj.meshFilter.indexCount;
+                const unsigned int polygonCount = indexCount / 3;
+                const std::size_t vertexCount = !obj.meshFilter.pickVertices.empty()
+                    ? obj.meshFilter.pickVertices.size()
+                    : 0;
+                ImGui::TextDisabled("Vertices: %s",
+                    vertexCount > 0 ? std::to_string(vertexCount).c_str() : "(not cached)");
+                ImGui::TextDisabled("Indices: %u", indexCount);
+                ImGui::TextDisabled("Polygons: %u triangles", polygonCount);
+                const glm::vec3 boundsSize = obj.meshFilter.localBoundsMax - obj.meshFilter.localBoundsMin;
+                ImGui::TextDisabled("Bounds Min: %.3f, %.3f, %.3f",
+                    obj.meshFilter.localBoundsMin.x,
+                    obj.meshFilter.localBoundsMin.y,
+                    obj.meshFilter.localBoundsMin.z);
+                ImGui::TextDisabled("Bounds Max: %.3f, %.3f, %.3f",
+                    obj.meshFilter.localBoundsMax.x,
+                    obj.meshFilter.localBoundsMax.y,
+                    obj.meshFilter.localBoundsMax.z);
+                ImGui::TextDisabled("Bounds Size: %.3f, %.3f, %.3f",
+                    boundsSize.x,
+                    boundsSize.y,
+                    boundsSize.z);
             }
             }
 
@@ -2213,10 +2271,35 @@ void SceneEditor::RenderInspectorPanel() {
                     std::string followPreview = followTargetIndex >= 0
                         ? (objects_[followTargetIndex].name.empty() ? "(unnamed)" : objects_[followTargetIndex].name)
                         : "(none)";
+                    auto setFollowTargetPreservingCameraPosition = [&](const std::string& targetId) {
+                        const int cameraIndex = selectedIndex_;
+                        if (cameraIndex < 0 || cameraIndex >= static_cast<int>(objects_.size())) {
+                            obj.cinemachine.followTargetId = targetId;
+                            return;
+                        }
+
+                        auto findById = [this](const std::string& id) { return FindObjectIndexById(id); };
+                        auto getMatrix = [this](int idx) { return GetObjectWorldMatrix(idx); };
+                        glm::mat4 currentWorld = GetObjectWorldMatrix(cameraIndex);
+                        glm::mat4 drivenWorld(1.0f);
+                        if (ComputeCinemachineDesiredWorldMatrix(obj.cinemachine, cameraIndex, objects_, findById, getMatrix, drivenWorld)) {
+                            currentWorld = drivenWorld;
+                        }
+
+                        const glm::vec3 currentWorldPosition = glm::vec3(currentWorld[3]);
+                        const int targetIndex = targetId.empty() ? -1 : FindObjectIndexById(targetId);
+                        if (targetIndex >= 0) {
+                            obj.transform.position = CinemachineWorldPositionToOffset(GetObjectWorldMatrix(targetIndex), currentWorldPosition);
+                        } else {
+                            obj.transform.position = currentWorldPosition;
+                        }
+                        obj.cinemachine.followOffset = obj.transform.position;
+                        obj.cinemachine.followTargetId = targetId;
+                    };
                     if (ImGui::BeginCombo("Follow Target##cinemachineFollow", followPreview.c_str())) {
                         if (ImGui::Selectable("(none)", followTargetIndex < 0)) {
                             PushUndoState();
-                            obj.cinemachine.followTargetId.clear();
+                            setFollowTargetPreservingCameraPosition("");
                             if (onDirty_) onDirty_();
                         }
                         for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
@@ -2224,7 +2307,7 @@ void SceneEditor::RenderInspectorPanel() {
                             const std::string itemName = objects_[i].name.empty() ? "(unnamed)" : objects_[i].name;
                             if (ImGui::Selectable((itemName + "##cinemachineFollowObj_" + objects_[i].id).c_str(), i == followTargetIndex)) {
                                 PushUndoState();
-                                obj.cinemachine.followTargetId = objects_[i].id;
+                                setFollowTargetPreservingCameraPosition(objects_[i].id);
                                 if (onDirty_) onDirty_();
                             }
                         }
@@ -2236,7 +2319,7 @@ void SceneEditor::RenderInspectorPanel() {
                                 const int droppedIndex = *static_cast<const int*>(payload->Data);
                                 if (droppedIndex >= 0 && droppedIndex < static_cast<int>(objects_.size()) && objects_[droppedIndex].id != obj.id) {
                                     PushUndoState();
-                                    obj.cinemachine.followTargetId = objects_[droppedIndex].id;
+                                    setFollowTargetPreservingCameraPosition(objects_[droppedIndex].id);
                                     if (onDirty_) onDirty_();
                                 }
                             }
@@ -2244,13 +2327,6 @@ void SceneEditor::RenderInspectorPanel() {
                         ImGui::EndDragDropTarget();
                     }
 
-                    glm::vec3 offset = obj.cinemachine.followOffset;
-                    if (RenderInspectorDragFloat3("Follow Offset", "##cinemachineOffset", &offset.x, 0.05f)) {
-                        beginInspectorContinuousEdit();
-                        obj.cinemachine.followOffset = offset;
-                        if (onDirty_) onDirty_();
-                    }
-                    endInspectorContinuousEdit();
                 }
 
                 // Look-at target (optional override)
@@ -2296,25 +2372,6 @@ void SceneEditor::RenderInspectorPanel() {
                         }
                         ImGui::EndDragDropTarget();
                     }
-                }
-
-                // Rotation offsets
-                if (obj.cinemachine.type != CinemachineCameraType::Follow) {
-                    float pitchOffset = obj.cinemachine.pitchOffset;
-                    if (ImGui::DragFloat("Pitch Offset", &pitchOffset, 0.5f, -89.0f, 89.0f, "%.1f deg")) {
-                        beginInspectorContinuousEdit();
-                        obj.cinemachine.pitchOffset = (std::max)(-89.0f, (std::min)(89.0f, pitchOffset));
-                        if (onDirty_) onDirty_();
-                    }
-                    endInspectorContinuousEdit();
-
-                    float yawOffset = obj.cinemachine.yawOffset;
-                    if (ImGui::DragFloat("Yaw Offset", &yawOffset, 0.5f, -180.0f, 180.0f, "%.1f deg")) {
-                        beginInspectorContinuousEdit();
-                        obj.cinemachine.yawOffset = yawOffset;
-                        if (onDirty_) onDirty_();
-                    }
-                    endInspectorContinuousEdit();
                 }
 
                 // Damping
@@ -4434,10 +4491,14 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
     ImGui::TextWrapped("ID: %s", materialId.c_str());
     ImGui::Separator();
 
+    const Material beforeEdit = *material;
+    bool materialChanged = false;
+
     char nameBuf[128];
     std::snprintf(nameBuf, sizeof(nameBuf), "%s", material->name.c_str());
     if (ImGui::InputText("Name##materialName", nameBuf, sizeof(nameBuf))) {
         material->name = nameBuf;
+        materialChanged = true;
     }
 
     std::string shaderId = ShaderRegistry::NormalizeShaderId(material->shader);
@@ -4449,15 +4510,30 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
             break;
         }
     }
-    const std::string shaderPreview = ShaderRegistry::IsGraphShaderId(shaderId)
-        ? shaderId
-        : shaders[static_cast<std::size_t>(currentShaderIndex)].displayName;
-
+    std::vector<std::pair<std::string, std::string>> graphShaders;
     std::string editableShaderGraphPath;
-    if (ShaderRegistry::IsGraphShaderId(shaderId)) {
-        for (const std::string& file : projectFiles_) {
-            if (IsShaderGraphAssetPath(file) && ShaderRegistry::MakeGraphShaderId(file) == shaderId) {
+    for (const std::string& file : projectFiles_) {
+        if (IsShaderGraphAssetPath(file)) {
+            const std::string graphShaderId = ShaderRegistry::MakeGraphShaderId(file);
+            std::string graphName = ProjectAssetDisplayFilename(file);
+            const std::string suffix = ".shadergraph.json";
+            if (graphName.size() >= suffix.size() &&
+                ToLowerCopy(graphName.substr(graphName.size() - suffix.size())) == suffix) {
+                graphName.resize(graphName.size() - suffix.size());
+            }
+            graphShaders.push_back({graphShaderId, graphName});
+            if (graphShaderId == shaderId) {
                 editableShaderGraphPath = file;
+            }
+        }
+    }
+
+    std::string shaderPreview = shaders[static_cast<std::size_t>(currentShaderIndex)].displayName;
+    if (ShaderRegistry::IsGraphShaderId(shaderId)) {
+        shaderPreview = shaderId;
+        for (const auto& graphShader : graphShaders) {
+            if (graphShader.first == shaderId) {
+                shaderPreview = graphShader.second + " (Shader Graph)";
                 break;
             }
         }
@@ -4475,12 +4551,27 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
             const std::string label = shader.displayName + "##" + shader.id;
             if (ImGui::Selectable(label.c_str(), selected)) {
                 material->shader = shader.id;
+                materialChanged = true;
             }
             if (selected) {
                 ImGui::SetItemDefaultFocus();
             }
         }
-        if (ShaderRegistry::IsGraphShaderId(shaderId)) {
+        if (!graphShaders.empty()) {
+            ImGui::Separator();
+            ImGui::TextDisabled("Shader Graphs");
+            for (const auto& graphShader : graphShaders) {
+                const bool selected = graphShader.first == shaderId;
+                const std::string label = graphShader.second + "##" + graphShader.first;
+                if (ImGui::Selectable(label.c_str(), selected)) {
+                    material->shader = graphShader.first;
+                    materialChanged = true;
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+        } else if (ShaderRegistry::IsGraphShaderId(shaderId)) {
             ImGui::Separator();
             ImGui::Selectable(shaderId.c_str(), true);
         }
@@ -4502,23 +4593,6 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
     const ShaderDefinition& shaderDefinition = ShaderRegistry::Resolve(shaderId);
     if (ShaderRegistry::IsGraphShaderId(shaderId)) {
         RenderShaderGraphParametersPreview(editableShaderGraphPath);
-    }
-    ImGui::ColorEdit4("Albedo Color", material->albedoColor);
-    if (shaderDefinition.supportsMetallic || ShaderRegistry::IsGraphShaderId(shaderId)) {
-        ImGui::SliderFloat("Metallic", &material->metallic, 0.0f, 1.0f);
-    }
-    if (shaderDefinition.supportsRoughness || ShaderRegistry::IsGraphShaderId(shaderId)) {
-        ImGui::SliderFloat("Roughness", &material->roughness, 0.0f, 1.0f);
-    }
-    if (shaderDefinition.supportsEmissive || ShaderRegistry::IsGraphShaderId(shaderId)) {
-        ImGui::ColorEdit3("Emissive Color", material->emissiveColor);
-    }
-    ImGui::DragFloat2("UV Tiling", material->uvTiling, 0.01f, 0.01f, 10.0f);
-    ImGui::DragFloat2("UV Offset", material->uvOffset, 0.01f, -10.0f, 10.0f);
-
-    if (shaderDefinition.supportsTextures || ShaderRegistry::IsGraphShaderId(shaderId)) {
-        ImGui::Separator();
-        ImGui::TextUnformatted("Texture Paths");
     }
 
     std::string materialProjectPath;
@@ -4562,6 +4636,7 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         std::snprintf(buffer, sizeof(buffer), "%s", value.c_str());
         if (RenderInspectorInputText(label, idSuffix, buffer, sizeof(buffer))) {
             value = buffer;
+            materialChanged = true;
         }
         const fs::path resolvedPath = resolveTexturePath(value);
         const std::string wrappedValue = value.empty() ? std::string("(none)") : NormalizeSlashes(value);
@@ -4571,6 +4646,7 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
             const std::string selected = OpenTextureFileDialogWin32(initialDirectory.string());
             if (!selected.empty()) {
                 storeTexturePath(fs::path(selected), value);
+                materialChanged = true;
             }
         }
         ImGui::SameLine();
@@ -4582,15 +4658,103 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         ImGui::SameLine();
         if (ImGui::Button((std::string("Clear##") + idSuffix).c_str())) {
             value.clear();
+            materialChanged = true;
         }
     };
 
-    if (shaderDefinition.supportsTextures || ShaderRegistry::IsGraphShaderId(shaderId)) {
-        editTexturePath("Albedo", "matTexAlbedo", material->texAlbedo);
-        editTexturePath("Normal", "matTexNormal", material->texNormal);
-        editTexturePath("Metallic", "matTexMetallic", material->texMetallic);
-        editTexturePath("Roughness", "matTexRoughness", material->texRoughness);
-        editTexturePath("AO", "matTexAo", material->texAo);
+    auto defaultPropertyValue = [](const ShaderDefinition::Property& property) {
+        MaterialPropertyValue value;
+        value.type = property.type;
+        value.values[0] = property.defaultValues[0];
+        value.values[1] = property.defaultValues[1];
+        value.values[2] = property.defaultValues[2];
+        value.values[3] = property.defaultValues[3];
+        value.boolValue = property.defaultBool;
+        return value;
+    };
+
+    auto editDynamicProperty = [&](const ShaderDefinition::Property& property) {
+        const bool hadValue = material->properties.find(property.id) != material->properties.end();
+        MaterialPropertyValue& value = material->properties[property.id];
+        if (!hadValue || value.type != property.type) {
+            value = defaultPropertyValue(property);
+        }
+        switch (property.type) {
+        case MaterialPropertyType::Float:
+            materialChanged |= ImGui::SliderFloat(property.label.c_str(), &value.values[0], property.minValue, property.maxValue);
+            break;
+        case MaterialPropertyType::Vec2:
+            materialChanged |= ImGui::DragFloat2(property.label.c_str(), value.values.data(), 0.01f, property.minValue, property.maxValue);
+            break;
+        case MaterialPropertyType::Vec3:
+            if (property.color) {
+                materialChanged |= ImGui::ColorEdit3(property.label.c_str(), value.values.data());
+            } else {
+                materialChanged |= ImGui::DragFloat3(property.label.c_str(), value.values.data(), 0.01f, property.minValue, property.maxValue);
+            }
+            break;
+        case MaterialPropertyType::Vec4:
+            if (property.color) {
+                materialChanged |= ImGui::ColorEdit4(property.label.c_str(), value.values.data());
+            } else {
+                materialChanged |= ImGui::DragFloat4(property.label.c_str(), value.values.data(), 0.01f, property.minValue, property.maxValue);
+            }
+            break;
+        case MaterialPropertyType::Bool:
+            materialChanged |= ImGui::Checkbox(property.label.c_str(), &value.boolValue);
+            break;
+        case MaterialPropertyType::Texture2D:
+            editTexturePath(property.label.c_str(), property.id.c_str(), value.texturePath);
+            break;
+        }
+    };
+
+    bool textureHeaderShown = false;
+    const std::vector<ShaderDefinition::Property>* properties = &shaderDefinition.properties;
+    std::vector<ShaderDefinition::Property> graphProperties;
+    if (ShaderRegistry::IsGraphShaderId(shaderId)) {
+        graphProperties = ShaderRegistry::Resolve("pbr").properties;
+        properties = &graphProperties;
+    }
+    for (const ShaderDefinition::Property& property : *properties) {
+        if (property.type == MaterialPropertyType::Texture2D && !textureHeaderShown) {
+            ImGui::Separator();
+            ImGui::TextUnformatted("Texture Paths");
+            textureHeaderShown = true;
+        }
+        if (property.id == "albedoColor") {
+            materialChanged |= ImGui::ColorEdit4(property.label.c_str(), material->albedoColor);
+        } else if (property.id == "emissiveColor") {
+            materialChanged |= ImGui::ColorEdit3(property.label.c_str(), material->emissiveColor);
+        } else if (property.id == "metallic") {
+            materialChanged |= ImGui::SliderFloat(property.label.c_str(), &material->metallic, property.minValue, property.maxValue);
+        } else if (property.id == "roughness") {
+            materialChanged |= ImGui::SliderFloat(property.label.c_str(), &material->roughness, property.minValue, property.maxValue);
+        } else if (property.id == "uvTiling") {
+            materialChanged |= ImGui::DragFloat2(property.label.c_str(), material->uvTiling, 0.01f, property.minValue, property.maxValue);
+        } else if (property.id == "uvOffset") {
+            materialChanged |= ImGui::DragFloat2(property.label.c_str(), material->uvOffset, 0.01f, property.minValue, property.maxValue);
+        } else if (property.id == "albedoTexture") {
+            editTexturePath(property.label.c_str(), "matTexAlbedo", material->texAlbedo);
+        } else if (property.id == "normalTexture") {
+            editTexturePath(property.label.c_str(), "matTexNormal", material->texNormal);
+        } else if (property.id == "metallicTexture") {
+            editTexturePath(property.label.c_str(), "matTexMetallic", material->texMetallic);
+        } else if (property.id == "roughnessTexture") {
+            editTexturePath(property.label.c_str(), "matTexRoughness", material->texRoughness);
+        } else if (property.id == "aoTexture") {
+            editTexturePath(property.label.c_str(), "matTexAo", material->texAo);
+        } else {
+            editDynamicProperty(property);
+        }
+    }
+
+    if (materialChanged && !materialEditActive_) {
+        PushMaterialUndoState(beforeEdit);
+        materialEditActive_ = true;
+    }
+    if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        materialEditActive_ = false;
     }
 
     ImGui::Separator();
@@ -4689,6 +4853,33 @@ bool SceneEditor::CreateMaterialAsset(const std::string& requestedName, std::str
         out << "    \"metallic\": \"\",\n";
         out << "    \"roughness\": \"\",\n";
         out << "    \"ao\": \"\"\n";
+        out << "  },\n";
+        out << "  \"properties\": {\n";
+        std::size_t propertyIndex = 0;
+        for (const auto& entry : material.properties) {
+            const MaterialPropertyValue& property = entry.second;
+            out << "    \"" << JsonEscape(entry.first) << "\": { \"type\": \"" << MaterialPropertyTypeName(property.type) << "\", \"value\": ";
+            if (property.type == MaterialPropertyType::Bool) {
+                out << (property.boolValue ? "true" : "false");
+            } else if (property.type == MaterialPropertyType::Texture2D) {
+                out << "\"" << JsonEscape(property.texturePath) << "\"";
+            } else if (property.type == MaterialPropertyType::Float) {
+                out << property.values[0];
+            } else {
+                const int count = MaterialPropertyComponentCount(property.type);
+                out << "[";
+                for (int i = 0; i < count; ++i) {
+                    if (i > 0) out << ", ";
+                    out << property.values[static_cast<std::size_t>(i)];
+                }
+                out << "]";
+            }
+            out << " }";
+            if (++propertyIndex < material.properties.size()) {
+                out << ",";
+            }
+            out << "\n";
+        }
         out << "  }\n";
         out << "}\n";
     } catch (...) {
@@ -4861,7 +5052,13 @@ void SceneEditor::OpenMaterialEditor(const std::string& materialId) {
         materialManager_.LoadAll();
     }
 
+    const bool materialChanged = inspectedMaterialId_ != materialId;
     inspectedMaterialId_ = materialId;
+    if (materialChanged) {
+        materialUndoStack_.clear();
+        materialRedoStack_.clear();
+        materialEditActive_ = false;
+    }
     inspectMaterial_ = true;
 }
 } // namespace raceman

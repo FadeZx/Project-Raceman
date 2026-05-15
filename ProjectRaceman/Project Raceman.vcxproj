@@ -111,7 +111,11 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ResourceCompile Include="ProjectRaceman.rc" />
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="assets\mesh\plane.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\build\BuildSystem.h" />
     <ClInclude Include="src\input\InputManager.h" />
@@ -193,6 +197,8 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <None Include="ikpMP3.dll" />
     <None Include="imgui.ini" />
     <None Include="irrKlang.dll" />
+    <Image Include="editor-assets\icons\RaceMan_icon.ico" />
+    <Image Include="editor-assets\icons\RaceMan_icon.png" />
     <None Include="src\assimp-vc140-mt.dll" />
     <None Include="src\dlls\assimp-vc143-mt.dll" />
     <None Include="src\dlls\ikpMP3.dll" />

@@ -119,6 +119,7 @@ struct ShaderGraphNodeState {
     std::string type;
     std::string title;
     std::string noteText;
+    std::string textureSlot{"albedo"};
     glm::vec2 position{0.0f, 0.0f};
     float color[4]{1.0f, 1.0f, 1.0f, 1.0f};
     float vectorValue[4]{0.0f, 0.0f, 0.0f, 0.0f};
@@ -299,9 +300,9 @@ struct CinemachineCameraComponent {
     CinemachineCameraType type{CinemachineCameraType::FollowAndLookAt};
     std::string followTargetId;
     std::string lookAtTargetId;  // if empty, uses followTargetId
-    glm::vec3 followOffset{0.0f, 2.0f, -5.0f};  // offset in target-local space
-    float pitchOffset{0.0f};  // degrees — tilts camera up/down after look-at
-    float yawOffset{0.0f};    // degrees — rotates camera left/right after look-at
+    glm::vec3 followOffset{0.0f, 2.0f, -5.0f};  // legacy scene data; Transform position is the active follow offset
+    float pitchOffset{0.0f};  // legacy scene data; Transform rotation is the active look offset
+    float yawOffset{0.0f};    // legacy scene data; Transform rotation is the active look offset
     float positionDamping{5.0f};
     float rotationDamping{5.0f};
 };
@@ -441,6 +442,7 @@ public:
     bool ContainsGameViewportPoint(float x, float y) const;
     bool ShouldRouteInputToGame() const { return activeViewport_ == SceneEditorActiveViewport::Game; }
     bool IsSceneViewportActiveForEditorControls() const { return activeViewport_ == SceneEditorActiveViewport::Scene; }
+    void SetEditorCameraNavigating(bool navigating) { editorCameraNavigating_ = navigating; }
     void SetSceneViewportTexture(unsigned int textureId) { sceneViewportTextureId_ = textureId; }
     void SetGameViewportTexture(unsigned int textureId) { gameViewportTextureId_ = textureId; }
     void SetEditorCameraMatrices(const glm::mat4& view, const glm::mat4& proj) {
@@ -559,6 +561,9 @@ private:
     void RedoVehicleConfig();
     void UndoVehicleSound();
     void RedoVehicleSound();
+    void PushMaterialUndoState(const Material& snapshot);
+    void UndoMaterial();
+    void RedoMaterial();
     void PushShaderGraphUndoState();
     void UndoShaderGraph();
     void RedoShaderGraph();
@@ -620,6 +625,7 @@ private:
     void SetParent(int childIndex, int parentIndex);
     bool MoveObjectInHierarchy(int childIndex, int newParentIndex, int insertAfterIndex);
     glm::mat4 GetObjectWorldMatrix(int index) const;
+    glm::mat4 GetObjectDisplayWorldMatrix(int index) const;
     glm::vec3 GetObjectWorldPosition(int index) const;
     int ClampPhysicsLayerIndex(int layer) const;
     const char* GetPhysicsLayerName(int layer) const;
@@ -666,6 +672,7 @@ private:
     // Materials
     MaterialManager materialManager_;
     std::unordered_map<std::string, unsigned int> componentIconTextures_;
+    std::unordered_map<std::string, unsigned int> materialTextureCache_;
 
     // Import dialog state
     bool showImportObjPopup_{false};
@@ -872,6 +879,7 @@ private:
     bool sceneViewportFocused_{false};
     bool gameViewportHovered_{false};
     bool gameViewportFocused_{false};
+    bool editorCameraNavigating_{false};
     glm::mat4 editorCameraView_{1.0f};
     glm::mat4 editorCameraProj_{1.0f};
     bool hasEditorCameraMatrices_{false};
@@ -894,6 +902,13 @@ private:
     };
     std::vector<VehicleSoundHistoryState> vehicleSoundUndoStack_;
     std::vector<VehicleSoundHistoryState> vehicleSoundRedoStack_;
+    struct MaterialHistoryState {
+        std::string materialId;
+        Material material;
+    };
+    std::vector<MaterialHistoryState> materialUndoStack_;
+    std::vector<MaterialHistoryState> materialRedoStack_;
+    bool materialEditActive_{false};
     HistoryState playModeSnapshot_{};
     bool hasPlayModeSnapshot_{false};
     std::unique_ptr<PhysicsWorld> physicsWorld_;

@@ -73,10 +73,11 @@ void main() {
 
         float ndotl = max(dot(normal, lightDir), 0.0);
         vec3 halfDir = normalize(lightDir + viewDir);
-        float specular = pow(max(dot(normal, halfDir), 0.0), shininess) * mix(0.2, 1.0, 1.0 - roughness);
+        float specular = pow(max(dot(normal, halfDir), 0.0), shininess) * ndotl * mix(0.2, 1.0, 1.0 - roughness);
+        float broadSpecular = ndotl * metallic * mix(0.05, 0.45, roughness);
         vec3 radiance = light.color * max(light.intensity, 0.0) * attenuation;
         vec3 diffuse = albedo.rgb * ndotl * (1.0 - metallic);
-        lit += (diffuse + specularColor * specular) * radiance;
+        lit += (diffuse + specularColor * (specular + broadSpecular)) * radiance;
     }
 
     FragColor = vec4(lit + uEmissiveColor, albedo.a);

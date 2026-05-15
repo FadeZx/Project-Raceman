@@ -80,6 +80,36 @@ std::string JsonEscape(const std::string& value) {
     return out;
 }
 
+const char* MaterialPropertyTypeName(MaterialPropertyType type) {
+    switch (type) {
+    case MaterialPropertyType::Float: return "float";
+    case MaterialPropertyType::Vec2: return "vec2";
+    case MaterialPropertyType::Vec3: return "vec3";
+    case MaterialPropertyType::Vec4: return "vec4";
+    case MaterialPropertyType::Bool: return "bool";
+    case MaterialPropertyType::Texture2D: return "texture2D";
+    default: return "float";
+    }
+}
+
+MaterialPropertyType ParseMaterialPropertyType(const std::string& value) {
+    if (value == "vec2") return MaterialPropertyType::Vec2;
+    if (value == "vec3") return MaterialPropertyType::Vec3;
+    if (value == "vec4") return MaterialPropertyType::Vec4;
+    if (value == "bool") return MaterialPropertyType::Bool;
+    if (value == "texture2D") return MaterialPropertyType::Texture2D;
+    return MaterialPropertyType::Float;
+}
+
+int MaterialPropertyComponentCount(MaterialPropertyType type) {
+    switch (type) {
+    case MaterialPropertyType::Vec2: return 2;
+    case MaterialPropertyType::Vec3: return 3;
+    case MaterialPropertyType::Vec4: return 4;
+    default: return 1;
+    }
+}
+
 } // namespace
 
 static inline std::string trim_copy(std::string s) {
@@ -162,6 +192,37 @@ bool MaterialManager::LoadOne(const std::string& path, Material& out) {
             gets(to, "ao", out.texAo);
         }
 
+        if (auto it = obj.find("properties"); it != obj.end() && it->second.is_object()) {
+            for (const auto& entry : it->second.as_object()) {
+                if (!entry.second.is_object()) {
+                    continue;
+                }
+                const auto& po = entry.second.as_object();
+                MaterialPropertyValue property;
+                if (auto typeIt = po.find("type"); typeIt != po.end() && typeIt->second.is_string()) {
+                    property.type = ParseMaterialPropertyType(typeIt->second.as_string());
+                }
+                if (auto valueIt = po.find("value"); valueIt != po.end()) {
+                    if (property.type == MaterialPropertyType::Bool && valueIt->second.is_bool()) {
+                        property.boolValue = valueIt->second.as_bool();
+                    } else if (property.type == MaterialPropertyType::Texture2D && valueIt->second.is_string()) {
+                        property.texturePath = valueIt->second.as_string();
+                    } else if (property.type == MaterialPropertyType::Float && valueIt->second.is_number()) {
+                        property.values[0] = static_cast<float>(valueIt->second.as_number());
+                    } else if (valueIt->second.is_array()) {
+                        const auto& array = valueIt->second.as_array();
+                        const int count = (std::min)(MaterialPropertyComponentCount(property.type), static_cast<int>(array.size()));
+                        for (int i = 0; i < count; ++i) {
+                            if (array[static_cast<std::size_t>(i)].is_number()) {
+                                property.values[static_cast<std::size_t>(i)] = static_cast<float>(array[static_cast<std::size_t>(i)].as_number());
+                            }
+                        }
+                    }
+                }
+                out.properties[entry.first] = property;
+            }
+        }
+
         return true;
     } catch (...) {
         return false;
@@ -226,6 +287,33 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
     out << "    \"metallic\": \"" << JsonEscape(m.texMetallic) << "\",\n";
     out << "    \"roughness\": \"" << JsonEscape(m.texRoughness) << "\",\n";
     out << "    \"ao\": \"" << JsonEscape(m.texAo) << "\"\n";
+    out << "  },\n";
+    out << "  \"properties\": {\n";
+    std::size_t propertyIndex = 0;
+    for (const auto& entry : m.properties) {
+        const MaterialPropertyValue& property = entry.second;
+        out << "    \"" << JsonEscape(entry.first) << "\": { \"type\": \"" << MaterialPropertyTypeName(property.type) << "\", \"value\": ";
+        if (property.type == MaterialPropertyType::Bool) {
+            out << (property.boolValue ? "true" : "false");
+        } else if (property.type == MaterialPropertyType::Texture2D) {
+            out << "\"" << JsonEscape(property.texturePath) << "\"";
+        } else if (property.type == MaterialPropertyType::Float) {
+            out << property.values[0];
+        } else {
+            const int count = MaterialPropertyComponentCount(property.type);
+            out << "[";
+            for (int i = 0; i < count; ++i) {
+                if (i > 0) out << ", ";
+                out << property.values[static_cast<std::size_t>(i)];
+            }
+            out << "]";
+        }
+        out << " }";
+        if (++propertyIndex < m.properties.size()) {
+            out << ",";
+        }
+        out << "\n";
+    }
     out << "  }\n";
     out << "}\n";
     return true;

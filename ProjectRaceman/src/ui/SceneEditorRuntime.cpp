@@ -1591,69 +1591,6 @@ void SceneEditor::HandleConsoleCommand(const std::string& command) {
     }
 }
 
-// Shared helper: compute the instantaneous (no-damping) desired world transform for
-// a camera driven by a CinemachineCameraComponent. Returns false if the component
-// has no valid follow/look-at target, meaning the camera should not be moved.
-static bool ComputeCinemachineDesiredTransform(
-    const CinemachineCameraComponent& cine,
-    int camIdx,
-    const std::vector<SceneObject>& objects,
-    const std::function<int(const std::string&)>& findById,
-    const std::function<glm::mat4(int)>& getWorldMatrix,
-    Transform& outTransform)
-{
-    const int followIdx = cine.followTargetId.empty() ? -1 : findById(cine.followTargetId);
-    const std::string& lookAtId = cine.lookAtTargetId.empty() ? cine.followTargetId : cine.lookAtTargetId;
-    const int lookAtIdx = lookAtId.empty() ? -1 : findById(lookAtId);
-
-    const bool hasFollow  = followIdx >= 0 && followIdx != camIdx;
-    const bool hasLookAt  = lookAtIdx >= 0 && lookAtIdx != camIdx;
-
-    if (!hasFollow && !hasLookAt) {
-        return false;
-    }
-
-    // --- position ---
-    glm::vec3 desiredPos = glm::vec3(getWorldMatrix(camIdx)[3]);  // default: stay put
-
-    if (hasFollow && cine.type != CinemachineCameraType::LookAt) {
-        const glm::mat4 targetWorld = getWorldMatrix(followIdx);
-        desiredPos = glm::vec3(targetWorld * glm::vec4(cine.followOffset, 1.0f));
-    }
-
-    // --- rotation ---
-    glm::quat desiredRot{1.0f, 0.0f, 0.0f, 0.0f};
-
-    if (cine.type == CinemachineCameraType::LookAt || cine.type == CinemachineCameraType::FollowAndLookAt) {
-        const int resolvedLookIdx = hasLookAt ? lookAtIdx : followIdx;
-        if (resolvedLookIdx >= 0 && resolvedLookIdx != camIdx) {
-            const glm::vec3 lookAtPos = glm::vec3(getWorldMatrix(resolvedLookIdx)[3]);
-            const glm::vec3 dir = lookAtPos - desiredPos;
-            if (glm::length(dir) > 0.001f) {
-                const glm::vec3 fwd = glm::normalize(dir);
-                const glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
-                glm::vec3 right = glm::cross(fwd, worldUp);
-                right = (glm::length(right) > 0.001f) ? glm::normalize(right) : glm::vec3(1.0f, 0.0f, 0.0f);
-                const glm::vec3 up = glm::normalize(glm::cross(right, fwd));
-                desiredRot = glm::quat_cast(glm::mat3(right, up, -fwd));
-            }
-        }
-    } else if (cine.type == CinemachineCameraType::Follow && hasFollow) {
-        desiredRot = glm::quat_cast(glm::mat3(getWorldMatrix(followIdx)));
-    }
-
-    // --- pitch / yaw offsets ---
-    if (cine.pitchOffset != 0.0f || cine.yawOffset != 0.0f) {
-        const glm::quat pitchRot = glm::angleAxis(glm::radians(cine.pitchOffset), glm::vec3(1.0f, 0.0f, 0.0f));
-        const glm::quat yawRot   = glm::angleAxis(glm::radians(cine.yawOffset),   glm::vec3(0.0f, 1.0f, 0.0f));
-        desiredRot = glm::normalize(desiredRot * yawRot * pitchRot);
-    }
-
-    const glm::mat4 newWorld = glm::translate(glm::mat4(1.0f), desiredPos) * glm::toMat4(desiredRot);
-    outTransform = TransformFromMatrix(newWorld);
-    return true;
-}
-
 void SceneEditor::UpdateCinemachine(float deltaTime) {
     if (!scriptsRunning_ || scriptsPaused_ || deltaTime <= 0.0f) {
         return;
@@ -1676,9 +1613,8 @@ void SceneEditor::UpdateCinemachine(float deltaTime) {
 
         const CinemachineCameraComponent& cine = camObj.cinemachine;
 
-        // Compute the instantaneous desired transform
-        Transform desired;
-        if (!ComputeCinemachineDesiredTransform(cine, camIdx, objects_, findById, getMatrix, desired)) {
+        glm::mat4 desiredWorld(1.0f);
+        if (!ComputeCinemachineDesiredWorldMatrix(cine, camIdx, objects_, findById, getMatrix, desiredWorld)) {
             continue;
         }
 
@@ -1694,18 +1630,11 @@ void SceneEditor::UpdateCinemachine(float deltaTime) {
         const float posT = 1.0f - std::exp(-cine.positionDamping * deltaTime);
         const float rotT = 1.0f - std::exp(-cine.rotationDamping * deltaTime);
 
-        // desired transform holds the fully-computed target (pos + rot + pitch/yaw)
-        const glm::mat4 desiredWorld = BuildTransformMatrix(desired);
         const glm::vec3 desiredPos = glm::vec3(desiredWorld[3]);
         const glm::quat desiredRot = glm::normalize(glm::quat_cast(desiredWorld));
 
         state.smoothedPosition = glm::mix(state.smoothedPosition, desiredPos, posT);
         state.smoothedRotation = glm::normalize(glm::slerp(state.smoothedRotation, desiredRot, rotT));
-
-        const glm::mat4 smoothWorld = glm::translate(glm::mat4(1.0f), state.smoothedPosition)
-                                    * glm::toMat4(state.smoothedRotation);
-        const Transform smoothTransform = TransformFromMatrix(smoothWorld);
-        ApplyWorldTransformToSceneObject(objects_, findById, getMatrix, camIdx, smoothTransform, false);
     }
 
     // Clear states for cameras that no longer exist
@@ -1720,33 +1649,6 @@ void SceneEditor::UpdateCinemachine(float deltaTime) {
 }
 
 void SceneEditor::PreviewCinemachineInEditor() {
-    if (scriptsRunning_) {
-        return;  // runtime UpdateCinemachine handles play mode
-    }
-
-    auto findById  = [this](const std::string& id) { return FindObjectIndexById(id); };
-    auto getMatrix = [this](int idx) { return GetObjectWorldMatrix(idx); };
-
-    for (int camIdx = 0; camIdx < static_cast<int>(objects_.size()); ++camIdx) {
-        SceneObject& camObj = objects_[camIdx];
-        if (!IsObjectEffectivelyEnabled(camIdx)) {
-            continue;
-        }
-        if (!camObj.hasCamera || !camObj.camera.enabled) {
-            continue;
-        }
-        if (!camObj.hasCinemachine || !camObj.cinemachine.enabled) {
-            continue;
-        }
-
-        Transform desired;
-        if (!ComputeCinemachineDesiredTransform(camObj.cinemachine, camIdx, objects_, findById, getMatrix, desired)) {
-            continue;
-        }
-
-        ApplyWorldTransformToSceneObject(objects_, findById, getMatrix, camIdx, desired, false);
-        // Intentionally no onDirty_ — this is a visual preview only
-    }
 }
 
 } // namespace raceman

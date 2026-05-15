@@ -1468,6 +1468,87 @@ inline Transform TransformFromMatrix(const glm::mat4& matrix) {
     return transform;
 }
 
+inline glm::quat ExtractWorldRotationNoScale(const glm::mat4& matrix) {
+    glm::vec3 scale;
+    glm::vec3 translation;
+    glm::vec3 skew;
+    glm::vec4 perspective;
+    glm::quat orientation{1.0f, 0.0f, 0.0f, 0.0f};
+    glm::decompose(matrix, scale, orientation, translation, skew, perspective);
+    return glm::normalize(orientation);
+}
+
+inline glm::vec3 CinemachineOffsetToWorldPosition(const glm::mat4& targetWorld, const glm::vec3& offset) {
+    const glm::vec3 targetPos = glm::vec3(targetWorld[3]);
+    return targetPos + ExtractWorldRotationNoScale(targetWorld) * offset;
+}
+
+inline glm::vec3 CinemachineWorldPositionToOffset(const glm::mat4& targetWorld, const glm::vec3& worldPosition) {
+    const glm::vec3 targetPos = glm::vec3(targetWorld[3]);
+    return glm::inverse(ExtractWorldRotationNoScale(targetWorld)) * (worldPosition - targetPos);
+}
+
+inline bool ComputeCinemachineDesiredWorldMatrix(
+    const CinemachineCameraComponent& cine,
+    int camIdx,
+    const std::vector<SceneObject>& objects,
+    const std::function<int(const std::string&)>& findById,
+    const std::function<glm::mat4(int)>& getWorldMatrix,
+    glm::mat4& outWorldMatrix)
+{
+    if (camIdx < 0 || camIdx >= static_cast<int>(objects.size())) {
+        return false;
+    }
+
+    const int followIdx = cine.followTargetId.empty() ? -1 : findById(cine.followTargetId);
+    const std::string& lookAtId = cine.lookAtTargetId.empty() ? cine.followTargetId : cine.lookAtTargetId;
+    const int lookAtIdx = lookAtId.empty() ? -1 : findById(lookAtId);
+
+    const bool hasFollow = followIdx >= 0 && followIdx != camIdx;
+    const bool hasLookAt = lookAtIdx >= 0 && lookAtIdx != camIdx;
+
+    if (!hasFollow && !hasLookAt) {
+        return false;
+    }
+
+    const glm::mat4 cameraAuthoredWorld = getWorldMatrix(camIdx);
+    glm::vec3 desiredPos = glm::vec3(cameraAuthoredWorld[3]);
+
+    if (hasFollow && cine.type != CinemachineCameraType::LookAt) {
+        const glm::mat4 targetWorld = getWorldMatrix(followIdx);
+        desiredPos = CinemachineOffsetToWorldPosition(targetWorld, objects[camIdx].transform.position);
+    }
+
+    glm::quat desiredRot = glm::normalize(glm::quat_cast(cameraAuthoredWorld));
+
+    if (cine.type == CinemachineCameraType::LookAt || cine.type == CinemachineCameraType::FollowAndLookAt) {
+        const int resolvedLookIdx = hasLookAt ? lookAtIdx : followIdx;
+        if (resolvedLookIdx >= 0 && resolvedLookIdx != camIdx) {
+            const glm::vec3 lookAtPos = glm::vec3(getWorldMatrix(resolvedLookIdx)[3]);
+            const glm::vec3 dir = lookAtPos - desiredPos;
+            if (glm::length(dir) > 0.001f) {
+                const glm::vec3 fwd = glm::normalize(dir);
+                const glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
+                glm::vec3 right = glm::cross(fwd, worldUp);
+                right = (glm::length(right) > 0.001f) ? glm::normalize(right) : glm::vec3(1.0f, 0.0f, 0.0f);
+                const glm::vec3 up = glm::normalize(glm::cross(right, fwd));
+                desiredRot = glm::quat_cast(glm::mat3(right, up, -fwd));
+            }
+        }
+    } else if (cine.type == CinemachineCameraType::Follow && hasFollow) {
+        desiredRot = ExtractWorldRotationNoScale(getWorldMatrix(followIdx));
+    }
+
+    const glm::vec3 authoredRotation = objects[camIdx].transform.rotationEuler;
+    if (authoredRotation.x != 0.0f || authoredRotation.y != 0.0f || authoredRotation.z != 0.0f) {
+        const glm::mat4 offsetMatrix = BuildTransformMatrix(Transform{{0.0f, 0.0f, 0.0f}, authoredRotation, {1.0f, 1.0f, 1.0f}});
+        desiredRot = glm::normalize(desiredRot * glm::quat_cast(offsetMatrix));
+    }
+
+    outWorldMatrix = glm::translate(glm::mat4(1.0f), desiredPos) * glm::toMat4(desiredRot);
+    return true;
+}
+
 inline glm::vec3 TransformPoint(const glm::mat4& transform, const glm::vec3& point) {
     return glm::vec3(transform * glm::vec4(point, 1.0f));
 }

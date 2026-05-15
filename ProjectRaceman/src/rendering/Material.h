@@ -1,9 +1,26 @@
 #pragma once
 #include <string>
+#include <array>
 #include <unordered_map>
 #include <vector>
 
 namespace raceman {
+
+enum class MaterialPropertyType {
+    Float,
+    Vec2,
+    Vec3,
+    Vec4,
+    Bool,
+    Texture2D
+};
+
+struct MaterialPropertyValue {
+    MaterialPropertyType type{MaterialPropertyType::Float};
+    std::array<float, 4> values{0.0f, 0.0f, 0.0f, 0.0f};
+    bool boolValue{false};
+    std::string texturePath;
+};
 
 struct Material {
     int version{1};
@@ -28,6 +45,8 @@ struct Material {
     std::string texMetallic;
     std::string texRoughness;
     std::string texAo;
+
+    std::unordered_map<std::string, MaterialPropertyValue> properties;
 };
 
 class MaterialManager {

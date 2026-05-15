@@ -15,6 +15,14 @@
 #include <glad/glad.h>
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
+#include <GLFW/glfw3native.h>
+#endif
 #include <imgui/imgui.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -66,6 +74,54 @@ void OpenFolderInExplorer(const std::string& folder) {
     ShellExecuteA(nullptr, "open", folder.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 #else
     (void)folder;
+#endif
+}
+
+std::filesystem::path FindEngineRootForApplication() {
+    namespace fs = std::filesystem;
+    if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
+        return fs::absolute("ProjectRaceman").lexically_normal();
+    }
+    if (fs::exists("src") && fs::is_directory("src")) {
+        return fs::absolute(".").lexically_normal();
+    }
+    return fs::absolute(".").lexically_normal();
+}
+
+void ApplyRacemanWindowIcon(GLFWwindow* window) {
+#if defined(_WIN32)
+    if (window == nullptr) {
+        return;
+    }
+
+    HWND hwnd = glfwGetWin32Window(window);
+    if (hwnd == nullptr) {
+        return;
+    }
+
+    static HICON bigIcon = nullptr;
+    static HICON smallIcon = nullptr;
+    const std::filesystem::path iconPath =
+        FindEngineRootForApplication() / "editor-assets" / "icons" / "RaceMan_icon.ico";
+    const std::string iconFile = iconPath.string();
+    if (bigIcon == nullptr) {
+        bigIcon = static_cast<HICON>(LoadImageA(
+            nullptr, iconFile.c_str(), IMAGE_ICON, 256, 256, LR_LOADFROMFILE));
+    }
+    if (smallIcon == nullptr) {
+        smallIcon = static_cast<HICON>(LoadImageA(
+            nullptr, iconFile.c_str(), IMAGE_ICON,
+            GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
+            LR_LOADFROMFILE));
+    }
+    if (bigIcon != nullptr) {
+        SendMessageA(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(bigIcon));
+    }
+    if (smallIcon != nullptr) {
+        SendMessageA(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(smallIcon));
+    }
+#else
+    (void)window;
 #endif
 }
 
@@ -263,6 +319,7 @@ Application::~Application() {
         sceneEditor_->StopRuntime();
     }
     sceneEditor_.reset(); // stop audio sources before audio engine shuts down
+    launcher_.reset();
     if (config_.enableImGui) {
         ShutdownImGui();
     }
@@ -362,6 +419,7 @@ void Application::InitializeGlfw() {
         glfwTerminate();
         throw std::runtime_error("Failed to create GLFW window");
     }
+    ApplyRacemanWindowIcon(window_);
 
     glfwMakeContextCurrent(window_);
     glfwSwapInterval(vsyncEnabled_ ? 1 : 0);
@@ -491,6 +549,9 @@ void Application::Update(float deltaTime) {
             rmbHeld_ = false;
             glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
+        if (sceneEditor_) {
+            sceneEditor_->SetEditorCameraNavigating(rmbHeld_);
+        }
 
         if (rmbHeld_) {
             // Mouse look
@@ -617,7 +678,7 @@ void Application::Update(float deltaTime) {
             const glm::vec3 camPos(camPosX_, camPosY_, camPosZ_);
             sceneEditor_->SetEditorCameraMatrices(
                 glm::lookAt(camPos, camPos + front, up),
-                glm::perspective(glm::radians(60.0f), sceneAspect, 0.1f, 500.0f));
+                glm::perspective(glm::radians(60.0f), sceneAspect, sceneCameraNearClip_, sceneCameraFarClip_));
             sceneEditor_->RenderUI(deltaTime);
         }
         const SceneProfilerStats sceneStats = sceneEditor_ ? sceneEditor_->CollectProfilerStats() : SceneProfilerStats{};
@@ -699,7 +760,9 @@ void Application::Update(float deltaTime) {
                 }
             },
             &frustumCullingEnabled_,
-            &physicsCullingEnabled_);
+            &physicsCullingEnabled_,
+            &sceneCameraNearClip_,
+            &sceneCameraFarClip_);
 
         // Anchor the stats overlay to the top-left of the Game View
         glm::vec2 statsAnchor(-1.0f);
@@ -831,7 +894,7 @@ void Application::Render() {
 
         const glm::vec3 camPos(camPosX_, camPosY_, camPosZ_);
         const glm::mat4 view = glm::lookAt(camPos, camPos + front, up);
-        const glm::mat4 proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 500.0f);
+        const glm::mat4 proj = glm::perspective(glm::radians(60.0f), aspect, sceneCameraNearClip_, sceneCameraFarClip_);
 
         renderer_->SetViewport(viewport);
         renderer_->EnsureViewportRenderTarget(ViewportRenderTarget::Scene, viewport.width, viewport.height);

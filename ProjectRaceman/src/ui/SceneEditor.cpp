@@ -9,6 +9,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <imgui/imgui_internal.h>
+#include <stb_image.h>
 
 #include <cmath>
 #include <cstdlib>
@@ -52,6 +53,52 @@ glm::vec3 CameraForwardFromEuler(const glm::vec3& rotationEuler) {
 
 glm::vec3 ForwardFromEuler(const glm::vec3& rotationEuler) {
     return CameraForwardFromEuler(rotationEuler);
+}
+
+fs::path ResolveProjectTexturePath(const std::string& value) {
+    if (value.empty()) return {};
+    fs::path path(NormalizeSlashes(value));
+    if (path.is_absolute()) return path.lexically_normal();
+    if (NormalizeSlashes(value).rfind("assets/", 0) == 0) {
+        return ProjectAssetPathToAbsolute(value);
+    }
+    return (FindAssetsRoot() / path).lexically_normal();
+}
+
+unsigned int LoadMaterialTextureCached(const std::string& texturePath,
+                                       std::unordered_map<std::string, unsigned int>& cache,
+                                       Console* console) {
+    const fs::path absolutePath = ResolveProjectTexturePath(texturePath);
+    if (absolutePath.empty()) return 0;
+    const std::string key = NormalizeSlashes(absolutePath.lexically_normal().string());
+    if (auto existing = cache.find(key); existing != cache.end()) {
+        return existing->second;
+    }
+
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    unsigned char* data = stbi_load(key.c_str(), &width, &height, &channels, 4);
+    if (data == nullptr || width <= 0 || height <= 0) {
+        cache[key] = 0;
+        if (console) console->AddError("Failed to load material texture: " + key);
+        return 0;
+    }
+
+    unsigned int textureId = 0;
+    glGenTextures(1, &textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(data);
+
+    cache[key] = textureId;
+    return textureId;
 }
 
 glm::vec3 CameraUpFromEuler(const glm::vec3& rotationEuler) {
@@ -368,6 +415,16 @@ void AddDefaultPlaneColliderToPlane(SceneObject& object) {
 }
 
 void WriteTextFile(const fs::path& path, const std::string& content) {
+    {
+        std::ifstream in(path);
+        if (in.good()) {
+            std::stringstream buffer;
+            buffer << in.rdbuf();
+            if (buffer.str() == content) {
+                return;
+            }
+        }
+    }
     fs::create_directories(path.parent_path());
     std::ofstream out(path, std::ios::trunc);
     out << content;
@@ -789,6 +846,12 @@ SceneEditor::~SceneEditor() {
             glDeleteTextures(1, &textureId);
         }
     }
+    for (const auto& [path, textureId] : materialTextureCache_) {
+        (void)path;
+        if (textureId != 0) {
+            glDeleteTextures(1, &textureId);
+        }
+    }
 }
 
 void SceneEditor::SetConsole(Console* console) {
@@ -850,7 +913,7 @@ bool SceneEditor::TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float
 
     const CameraComponent& camera = fallbackCamera->camera;
     const int cameraIndex = static_cast<int>(fallbackCamera - objects_.data());
-    const glm::mat4 worldMatrix = GetObjectWorldMatrix(cameraIndex);
+    glm::mat4 worldMatrix = GetObjectDisplayWorldMatrix(cameraIndex);
     const float safeAspect = aspect > 0.0001f ? aspect : 1.0f;
     const float fov = (std::max)(1.0f, (std::min)(camera.fieldOfViewDegrees, 179.0f));
     const float nearClip = (std::max)(0.001f, camera.nearClip);
@@ -952,10 +1015,16 @@ RendererViewport SceneEditor::GetRenderViewport(int framebufferWidth, int frameb
 }
 
 RendererViewport SceneEditor::GetSceneRenderViewport(int framebufferWidth, int framebufferHeight) const {
+    if (sceneViewportSize_.x <= 1.0f || sceneViewportSize_.y <= 1.0f) {
+        return {};
+    }
     return BuildRenderViewportFromLogicalRect(sceneViewportPos_, sceneViewportSize_, framebufferWidth, framebufferHeight);
 }
 
 RendererViewport SceneEditor::GetGameRenderViewport(int framebufferWidth, int framebufferHeight) const {
+    if (gameViewportSize_.x <= 1.0f || gameViewportSize_.y <= 1.0f) {
+        return {};
+    }
     return BuildRenderViewportFromLogicalRect(gameViewportPos_, gameViewportSize_, framebufferWidth, framebufferHeight);
 }
 
@@ -1051,12 +1120,28 @@ void SceneEditor::RenderViewportPanel() {
     bool sceneWindowOpen = ImGui::Begin("Scene View", nullptr, viewportWindowFlags);
     if (sceneWindowOpen) {
         renderViewportSurface("SceneViewportSurface", SceneEditorActiveViewport::Scene, sceneViewportTextureId_, sceneViewportPos_, sceneViewportSize_, sceneViewportHovered_);
-        // Accept prefab drag from the project browser onto the viewport.
+        // Accept scene asset drops from the project browser onto the viewport.
         if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
+                const char* droppedPath = static_cast<const char*>(payload->Data);
+                if (droppedPath != nullptr && droppedPath[0] != '\0') {
+                    ImportObj(droppedPath);
+                }
+            }
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
                 const char* droppedPath = static_cast<const char*>(payload->Data);
-                if (droppedPath != nullptr && droppedPath[0] != '\0' && IsPrefabAssetPath(droppedPath)) {
-                    InstantiatePrefab(droppedPath);
+                if (droppedPath != nullptr && droppedPath[0] != '\0') {
+                    if (IsPrefabAssetPath(droppedPath)) {
+                        InstantiatePrefab(droppedPath);
+                    } else if (IsMeshAssetPath(droppedPath)) {
+                        ImportObj(droppedPath);
+                    }
+                }
+            }
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
+                const char* droppedPath = static_cast<const char*>(payload->Data);
+                if (droppedPath != nullptr && droppedPath[0] != '\0') {
+                    ImportObj(droppedPath);
                 }
             }
             ImGui::EndDragDropTarget();
@@ -1216,6 +1301,8 @@ void SceneEditor::HandleEditorShortcuts() {
         (vehicleSoundEditorFocused_ || vehicleSoundEditorHovered_);
     const bool shaderGraphShortcutTarget = showShaderGraphEditor_ &&
         (shaderGraphEditorFocused_ || shaderGraphEditorHovered_);
+    const bool materialShortcutTarget = inspectMaterial_ &&
+        (inspectorPanelFocused_ || inspectorPanelHovered_);
     if (IsCtrlZPressed()) {
         if (shaderGraphShortcutTarget) {
             UndoShaderGraph();
@@ -1223,6 +1310,8 @@ void SceneEditor::HandleEditorShortcuts() {
             UndoVehicleConfig();
         } else if (vehicleSoundShortcutTarget) {
             UndoVehicleSound();
+        } else if (materialShortcutTarget) {
+            UndoMaterial();
         } else {
             Undo();
         }
@@ -1235,6 +1324,8 @@ void SceneEditor::HandleEditorShortcuts() {
             RedoVehicleConfig();
         } else if (vehicleSoundShortcutTarget) {
             RedoVehicleSound();
+        } else if (materialShortcutTarget) {
+            RedoMaterial();
         } else {
             Redo();
         }
@@ -1270,7 +1361,42 @@ void SceneEditor::HandleEditorShortcuts() {
         return;
     }
 
+    if (!io.KeyCtrl && !io.KeyAlt && ImGui::IsKeyPressed(ImGuiKey_Delete)) {
+        const bool wantsSceneDelete =
+            selectedIndex_ >= 0 &&
+            selectedIndex_ < static_cast<int>(objects_.size()) &&
+            activeViewport_ == SceneEditorActiveViewport::Scene &&
+            !(inspectorPanelHovered_ || inspectorPanelFocused_) &&
+            !(scenePanelHovered_ || scenePanelFocused_) &&
+            !shaderGraphShortcutTarget &&
+            !vehicleConfigShortcutTarget &&
+            !vehicleSoundShortcutTarget;
+        if (wantsSceneDelete) {
+            DeleteSelectedObject();
+            return;
+        }
+    }
+
     if (!io.KeyCtrl && !io.KeyAlt && !io.MouseDown[1]) {
+        const bool wantsSceneGizmoShortcut =
+            selectedIndex_ >= 0 &&
+            activeViewport_ == SceneEditorActiveViewport::Scene &&
+            !(inspectorPanelHovered_ || inspectorPanelFocused_);
+        if (wantsSceneGizmoShortcut) {
+            if (ImGui::IsKeyPressed(ImGuiKey_W)) {
+                gizmoMode_ = GizmoMode::Move;
+                return;
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_E)) {
+                gizmoMode_ = GizmoMode::Rotate;
+                return;
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_R)) {
+                gizmoMode_ = GizmoMode::Scale;
+                return;
+            }
+        }
+
         if (ImGui::IsKeyPressed(ImGuiKey_E)) {
             if ((inspectorPanelHovered_ || inspectorPanelFocused_) && !inspectorKeyboardTargetComponentKey_.empty()) {
                 pendingInspectorToggleComponentKey_ = inspectorKeyboardTargetComponentKey_;
@@ -2086,6 +2212,30 @@ glm::mat4 SceneEditor::GetObjectWorldMatrix(int index) const {
     return GetObjectWorldMatrix(parentIndex) * local;
 }
 
+glm::mat4 SceneEditor::GetObjectDisplayWorldMatrix(int index) const {
+    if (index < 0 || index >= static_cast<int>(objects_.size())) {
+        return glm::mat4(1.0f);
+    }
+
+    const SceneObject& object = objects_[index];
+    if (!object.hasCamera || !object.camera.enabled || !object.hasCinemachine || !object.cinemachine.enabled) {
+        return GetObjectWorldMatrix(index);
+    }
+
+    auto stateIt = runtimeCinemachineStates_.find(object.id);
+    if (scriptsRunning_ && stateIt != runtimeCinemachineStates_.end() && stateIt->second.initialized) {
+        return glm::translate(glm::mat4(1.0f), stateIt->second.smoothedPosition) * glm::toMat4(stateIt->second.smoothedRotation);
+    }
+
+    auto findById = [this](const std::string& id) { return FindObjectIndexById(id); };
+    auto getMatrix = [this](int idx) { return GetObjectWorldMatrix(idx); };
+    glm::mat4 desiredWorld(1.0f);
+    if (ComputeCinemachineDesiredWorldMatrix(object.cinemachine, index, objects_, findById, getMatrix, desiredWorld)) {
+        return desiredWorld;
+    }
+    return GetObjectWorldMatrix(index);
+}
+
 glm::vec3 SceneEditor::GetObjectWorldPosition(int index) const {
     return glm::vec3(GetObjectWorldMatrix(index) * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 }
@@ -2096,8 +2246,8 @@ void SceneEditor::RequestFocusSelectedObject() {
     }
 
     const SceneObject& object = objects_[selectedIndex_];
-    const glm::mat4 world = GetObjectWorldMatrix(selectedIndex_);
-    const glm::vec3 center = GetObjectWorldPosition(selectedIndex_);
+    const glm::mat4 world = GetObjectDisplayWorldMatrix(selectedIndex_);
+    const glm::vec3 center = glm::vec3(world[3]);
     float radius = 1.0f;
 
     if (object.hasMeshFilter) {
@@ -2215,6 +2365,19 @@ void SceneEditor::PushVehicleSoundUndoState() {
     }
 }
 
+void SceneEditor::PushMaterialUndoState(const Material& snapshot) {
+    if (!inspectMaterial_ || inspectedMaterialId_.empty()) {
+        return;
+    }
+
+    materialUndoStack_.push_back({inspectedMaterialId_, snapshot});
+    materialRedoStack_.clear();
+    constexpr std::size_t maxHistory = 128;
+    if (materialUndoStack_.size() > maxHistory) {
+        materialUndoStack_.erase(materialUndoStack_.begin());
+    }
+}
+
 void SceneEditor::Undo() {
     if (undoStack_.empty()) {
         return;
@@ -2232,6 +2395,26 @@ void SceneEditor::Undo() {
     inspectMaterial_ = false;
     activeGizmoAxis_ = -1;
     if (onDirty_) onDirty_();
+}
+
+void SceneEditor::UndoMaterial() {
+    if (materialUndoStack_.empty() || !inspectMaterial_) {
+        return;
+    }
+
+    Material* current = materialManager_.Get(inspectedMaterialId_);
+    if (current == nullptr) {
+        return;
+    }
+
+    materialRedoStack_.push_back({inspectedMaterialId_, *current});
+    const MaterialHistoryState state = materialUndoStack_.back();
+    materialUndoStack_.pop_back();
+    if (state.materialId != inspectedMaterialId_) {
+        return;
+    }
+    *current = state.material;
+    materialEditActive_ = false;
 }
 
 void SceneEditor::UndoVehicleConfig() {
@@ -2856,14 +3039,18 @@ void SceneEditor::Load(const std::string& path) {
                         }
                         ReadString(component, "followTargetId", so.cinemachine.followTargetId);
                         ReadString(component, "lookAtTargetId", so.cinemachine.lookAtTargetId);
-                        ReadVec3(component, "followOffset", so.cinemachine.followOffset);
+                        if (ReadVec3(component, "followOffset", so.cinemachine.followOffset)) {
+                            so.transform.position = so.cinemachine.followOffset;
+                        }
                         auto pitchIt = component.find("pitchOffset");
                         if (pitchIt != component.end() && pitchIt->second.is_number()) {
                             so.cinemachine.pitchOffset = static_cast<float>(pitchIt->second.as_number());
+                            so.transform.rotationEuler.x = so.cinemachine.pitchOffset;
                         }
                         auto yawIt = component.find("yawOffset");
                         if (yawIt != component.end() && yawIt->second.is_number()) {
                             so.cinemachine.yawOffset = static_cast<float>(yawIt->second.as_number());
+                            so.transform.rotationEuler.y = so.cinemachine.yawOffset;
                         }
                         auto posDampIt = component.find("positionDamping");
                         if (posDampIt != component.end() && posDampIt->second.is_number()) {
@@ -3424,6 +3611,26 @@ void SceneEditor::RedoVehicleConfig() {
     inspectedVehicleConfig_ = vehicleConfigRedoStack_.back().config;
     vehicleConfigRedoStack_.pop_back();
     vehicleConfigEditActive_ = false;
+}
+
+void SceneEditor::RedoMaterial() {
+    if (materialRedoStack_.empty() || !inspectMaterial_) {
+        return;
+    }
+
+    Material* current = materialManager_.Get(inspectedMaterialId_);
+    if (current == nullptr) {
+        return;
+    }
+
+    materialUndoStack_.push_back({inspectedMaterialId_, *current});
+    const MaterialHistoryState state = materialRedoStack_.back();
+    materialRedoStack_.pop_back();
+    if (state.materialId != inspectedMaterialId_) {
+        return;
+    }
+    *current = state.material;
+    materialEditActive_ = false;
 }
 
 void SceneEditor::UndoVehicleSound() {
@@ -4155,10 +4362,40 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
             cmd.uvTiling = {material->uvTiling[0], material->uvTiling[1]};
             cmd.uvOffset = {material->uvOffset[0], material->uvOffset[1]};
             cmd.unlit = ToLowerCopy(material->shader) == "unlit";
+            cmd.materialTextureIds[0] = LoadMaterialTextureCached(material->texAlbedo, materialTextureCache_, console_);
+            cmd.materialTextureIds[1] = LoadMaterialTextureCached(material->texNormal, materialTextureCache_, console_);
+            cmd.materialTextureIds[2] = LoadMaterialTextureCached(material->texMetallic, materialTextureCache_, console_);
+            cmd.materialTextureIds[3] = LoadMaterialTextureCached(material->texRoughness, materialTextureCache_, console_);
+            cmd.materialTextureIds[4] = LoadMaterialTextureCached(material->texAo, materialTextureCache_, console_);
+            const ShaderDefinition& shaderDefinition = ShaderRegistry::Resolve(material->shader);
+            for (const ShaderDefinition::Property& property : shaderDefinition.properties) {
+                if (property.id == "albedoColor" || property.id == "emissiveColor" || property.id == "metallic" ||
+                    property.id == "roughness" || property.id == "uvTiling" || property.id == "uvOffset" ||
+                    property.id == "albedoTexture" || property.id == "normalTexture" || property.id == "metallicTexture" ||
+                    property.id == "roughnessTexture" || property.id == "aoTexture") {
+                    continue;
+                }
+                MeshDrawCommand::MaterialUniform uniform;
+                uniform.uniformName = property.uniformName;
+                uniform.textureUseUniform = property.textureUseUniform;
+                uniform.value.type = property.type;
+                uniform.value.values[0] = property.defaultValues[0];
+                uniform.value.values[1] = property.defaultValues[1];
+                uniform.value.values[2] = property.defaultValues[2];
+                uniform.value.values[3] = property.defaultValues[3];
+                uniform.value.boolValue = property.defaultBool;
+                if (auto propertyIt = material->properties.find(property.id); propertyIt != material->properties.end()) {
+                    uniform.value = propertyIt->second;
+                }
+                if (uniform.value.type == MaterialPropertyType::Texture2D) {
+                    uniform.textureId = LoadMaterialTextureCached(uniform.value.texturePath, materialTextureCache_, console_);
+                }
+                cmd.materialUniforms.push_back(uniform);
+            }
         } else {
             cmd.color = o.meshRenderer.color;
         }
-        cmd.diffuseTextureId = o.meshFilter.diffuseTextureId;
+        cmd.diffuseTextureId = cmd.materialTextureIds[0] != 0 ? cmd.materialTextureIds[0] : o.meshFilter.diffuseTextureId;
         cmd.useDiffuseTexture = (cmd.diffuseTextureId != 0);
 
         renderer.SubmitMesh(cmd);

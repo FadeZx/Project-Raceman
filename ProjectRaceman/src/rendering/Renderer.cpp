@@ -325,6 +325,11 @@ void Renderer::Flush() {
     auto bindCommonUniforms = [&](Shader& shader) {
         shader.use();
         shader.setInt("uDiffuseTexture", 0);
+        shader.setInt("uMaterialAlbedoTexture", 0);
+        shader.setInt("uMaterialNormalTexture", 1);
+        shader.setInt("uMaterialMetallicTexture", 2);
+        shader.setInt("uMaterialRoughnessTexture", 3);
+        shader.setInt("uMaterialAoTexture", 4);
         shader.setVec3("uAmbientColor", settings_.ambientColor);
         shader.setVec3("uCameraPosition", glm::vec3(glm::inverse(view_)[3]));
     };
@@ -385,6 +390,50 @@ void Renderer::Flush() {
         activeShader->setVec2("uUvTiling", cmd.uvTiling);
         activeShader->setVec2("uUvOffset", cmd.uvOffset);
         activeShader->setBool("uUseDiffuseTexture", cmd.useDiffuseTexture && cmd.diffuseTextureId != 0);
+        activeShader->setBool("uUseMaterialAlbedoTexture", cmd.materialTextureIds[0] != 0);
+        activeShader->setBool("uUseMaterialNormalTexture", cmd.materialTextureIds[1] != 0);
+        activeShader->setBool("uUseMaterialMetallicTexture", cmd.materialTextureIds[2] != 0);
+        activeShader->setBool("uUseMaterialRoughnessTexture", cmd.materialTextureIds[3] != 0);
+        activeShader->setBool("uUseMaterialAoTexture", cmd.materialTextureIds[4] != 0);
+        for (int textureIndex = 0; textureIndex < static_cast<int>(cmd.materialTextureIds.size()); ++textureIndex) {
+            if (cmd.materialTextureIds[static_cast<std::size_t>(textureIndex)] != 0) {
+                glActiveTexture(GL_TEXTURE0 + textureIndex);
+                glBindTexture(GL_TEXTURE_2D, cmd.materialTextureIds[static_cast<std::size_t>(textureIndex)]);
+            }
+        }
+        int nextMaterialTextureUnit = 5;
+        for (const MeshDrawCommand::MaterialUniform& uniform : cmd.materialUniforms) {
+            if (uniform.uniformName.empty()) {
+                continue;
+            }
+            const MaterialPropertyValue& value = uniform.value;
+            switch (value.type) {
+            case MaterialPropertyType::Float:
+                activeShader->setFloat(uniform.uniformName, value.values[0]);
+                break;
+            case MaterialPropertyType::Vec2:
+                activeShader->setVec2(uniform.uniformName, value.values[0], value.values[1]);
+                break;
+            case MaterialPropertyType::Vec3:
+                activeShader->setVec3(uniform.uniformName, value.values[0], value.values[1], value.values[2]);
+                break;
+            case MaterialPropertyType::Vec4:
+                activeShader->setVec4(uniform.uniformName, value.values[0], value.values[1], value.values[2], value.values[3]);
+                break;
+            case MaterialPropertyType::Bool:
+                activeShader->setBool(uniform.uniformName, value.boolValue);
+                break;
+            case MaterialPropertyType::Texture2D:
+                activeShader->setBool(uniform.textureUseUniform, uniform.textureId != 0);
+                activeShader->setInt(uniform.uniformName, nextMaterialTextureUnit);
+                if (uniform.textureId != 0) {
+                    glActiveTexture(GL_TEXTURE0 + nextMaterialTextureUnit);
+                    glBindTexture(GL_TEXTURE_2D, uniform.textureId);
+                }
+                ++nextMaterialTextureUnit;
+                break;
+            }
+        }
         if (cmd.useDiffuseTexture && cmd.diffuseTextureId != 0) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, cmd.diffuseTextureId);

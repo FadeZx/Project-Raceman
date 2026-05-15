@@ -3,10 +3,13 @@
 #include <glm/glm.hpp>
 
 #include <cstdint>
+#include <array>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "Material.h"
 
 class Shader;
 
@@ -51,6 +54,14 @@ struct MeshDrawCommand {
     glm::vec2 uvOffset{0.0f, 0.0f};
     std::string shaderId{"pbr"};
     unsigned int diffuseTextureId{0};
+    std::array<unsigned int, 5> materialTextureIds{0, 0, 0, 0, 0};
+    struct MaterialUniform {
+        std::string uniformName;
+        std::string textureUseUniform;
+        MaterialPropertyValue value;
+        unsigned int textureId{0};
+    };
+    std::vector<MaterialUniform> materialUniforms;
     bool useDiffuseTexture{false};
     bool unlit{false};
 };

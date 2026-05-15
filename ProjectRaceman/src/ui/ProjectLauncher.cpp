@@ -1,6 +1,8 @@
 #include "ProjectLauncher.h"
 
+#include <glad/glad.h>
 #include <imgui/imgui.h>
+#include <stb_image.h>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -23,6 +25,42 @@ namespace fs = std::filesystem;
 namespace raceman {
 
 namespace {
+
+fs::path FindEngineRoot() {
+    if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
+        return fs::absolute("ProjectRaceman").lexically_normal();
+    }
+    if (fs::exists("src") && fs::is_directory("src")) {
+        return fs::absolute(".").lexically_normal();
+    }
+    return fs::absolute(".").lexically_normal();
+}
+
+unsigned int LoadLogoTexture() {
+    const fs::path iconPath = FindEngineRoot() / "editor-assets" / "icons" / "ProjectRaceman_icon_full.png";
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    unsigned char* data = stbi_load(iconPath.string().c_str(), &width, &height, &channels, 4);
+    if (data == nullptr || width <= 0 || height <= 0) {
+        if (data != nullptr) {
+            stbi_image_free(data);
+        }
+        return 0;
+    }
+
+    unsigned int textureId = 0;
+    glGenTextures(1, &textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(data);
+    return textureId;
+}
 
 std::string PickFolder(const wchar_t* title) {
 #if defined(_WIN32)
@@ -221,6 +259,10 @@ ProjectLauncher::ProjectLauncher() {
 ProjectLauncher::~ProjectLauncher() {
     if (pickerThread_ && pickerThread_->joinable())
         pickerThread_->join();
+    if (logoTexture_ != 0) {
+        glDeleteTextures(1, &logoTexture_);
+        logoTexture_ = 0;
+    }
 }
 
 // ---- Async folder picker ----
@@ -302,6 +344,10 @@ void ProjectLauncher::Render(const OnProjectOpened& onProjectOpened) {
         projects_ = LoadRegistry();
         loaded_ = true;
     }
+    if (!logoTextureLoadAttempted_) {
+        logoTexture_ = LoadLogoTexture();
+        logoTextureLoadAttempted_ = true;
+    }
     TickPicker(onProjectOpened);
 
     const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -326,16 +372,17 @@ void ProjectLauncher::Render(const OnProjectOpened& onProjectOpened) {
     ImGui::SetCursorPos(ImVec2(0, 0));
     ImGui::BeginChild("##Sidebar", ImVec2(sidebarW, H), false, ImGuiWindowFlags_NoScrollbar);
 
-    ImGui::Dummy(ImVec2(1, 28));
-    ImGui::SetCursorPosX(20.0f);
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.95f, 0.95f, 1.0f));
-    ImGui::TextUnformatted("Project Raceman");
-    ImGui::PopStyleColor();
-    ImGui::SetCursorPosX(20.0f);
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.50f, 0.50f, 0.55f, 1.0f));
-    ImGui::TextUnformatted("Engine");
-    ImGui::PopStyleColor();
-    ImGui::Dummy(ImVec2(1, 16));
+    ImGui::Dummy(ImVec2(1, 18));
+    if (logoTexture_ != 0) {
+        const ImVec2 uv0(0.039f, 0.402f);
+        const ImVec2 uv1(0.974f, 0.572f);
+        const ImVec2 logoSize(sidebarW - 24.0f, 54.0f);
+        ImGui::SetCursorPosX((sidebarW - logoSize.x) * 0.5f);
+        ImGui::Image(static_cast<ImTextureID>(logoTexture_), logoSize, uv0, uv1);
+        ImGui::Dummy(ImVec2(1, 18));
+    } else {
+        ImGui::Dummy(ImVec2(1, 18));
+    }
     ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(0.22f, 0.22f, 0.26f, 1.0f));
     ImGui::Separator();
     ImGui::PopStyleColor();

@@ -45,8 +45,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.68707, 4.98765, -11.8331],
-          "rotationEuler": [166.142, -0, -180],
+          "position": [0, 2.60622, -4.89506],
+          "rotationEuler": [10.7257, -0.882681, -0.469997],
           "scale": [1, 1, 1]
         },
         {
@@ -59,7 +59,7 @@
           "type": "Camera",
           "enabled": true,
           "isMain": true,
-          "fieldOfViewDegrees": 60,
+          "fieldOfViewDegrees": 82.5,
           "nearClip": 0.1,
           "farClip": 500,
           "clearColor": [0.02, 0.02, 0.02, 1]
@@ -68,17 +68,141 @@
           "type": "Cinemachine",
           "enabled": true,
           "cameraType": "FollowAndLookAt",
-          "followTargetId": "mesh_6",
-          "lookAtTargetId": "mesh_6",
-          "followOffset": [0, 4.1, -7],
-          "pitchOffset": 16.5,
-          "yawOffset": 0,
-          "positionDamping": 9.6,
-          "rotationDamping": 5
+          "followTargetId": "gameobject_11",
+          "lookAtTargetId": "gameobject_11",
+          "followOffset": [0, 2.60622, -4.89506],
+          "pitchOffset": 10.7257,
+          "yawOffset": -0.882681,
+          "positionDamping": 11,
+          "rotationDamping": 8.2
         },
         {
           "type": "AudioListener",
           "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "gameobject_11",
+      "parentId": "",
+      "name": "F1",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Vehicle", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 1.7, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [0.012, 0.012, 0.012]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Vehicle",
+          "enabled": true,
+          "canTilt": true,
+          "configPath": "assets/car/Test1.vehicle.json",
+          "inputProfileId": "default_vehicle",
+          "preferredInputDevice": "Any",
+          "preferredInputDeviceId": "",
+          "chassisObjectIds": ["mesh_136"],
+          "wheelBindings": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_136",
+      "parentId": "gameobject_11",
+      "name": "Formula 1 mesh_0",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 90, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/formula 1/Formula 1 mesh.fbx",
+          "meshIndex": 0,
+          "importedMaterialName": "Mat",
+          "diffuseTexturePath": "",
+          "pivotOffset": [-0.683868, 53.4748, -0.00106049]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "formula_1_mesh_mat",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Box",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0, 0, 0],
+          "size": [449.5, 96.35, 180]
+        }
+      ]
+    },
+    {
+      "id": "mesh_137",
+      "parentId": "gameobject_11",
+      "name": "Formula 1 mesh_1",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [2.98023e-08, 24.1158, 43.7285],
+          "rotationEuler": [0, 89.9802, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/formula 1/Formula 1 mesh.fbx",
+          "meshIndex": 1,
+          "importedMaterialName": "Mirrors",
+          "diffuseTexturePath": "",
+          "pivotOffset": [-44.3293, 77.2059, -0.0010643]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "formula_1_mesh_mirrors",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
         }
       ]
     },
@@ -165,11 +289,11 @@
     {
       "id": "gameobject_1",
       "parentId": "",
-      "name": "Vehicle base",
+      "name": "Nascar",
       "tag": "Untagged",
       "type": "GameObject",
       "physicsLayer": 2,
-      "enabled": true,
+      "enabled": false,
       "componentOrder": ["Transform", "MeshRenderer", "VehicleSound", "Vehicle"],
       "components": [
         {
@@ -6759,8 +6883,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.0363967, 2.08319, 3.90497],
-          "rotationEuler": [0, 0, 0],
+          "position": [-0.964983, 2.08319, 3.90497],
+          "rotationEuler": [0, -0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -7284,6 +7408,6 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_8"],
+  "hierarchyClosed": ["gameobject_10", "gameobject_1635", "gameobject_8"],
   "inspectorComponentsClosed": []
 }

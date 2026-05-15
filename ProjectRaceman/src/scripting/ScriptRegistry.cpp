@@ -1,9 +1,12 @@
 #include "ScriptRegistry.h"
 
 #include <cstdlib>
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
@@ -41,6 +44,38 @@ std::filesystem::path EngineRootPath() {
     return std::filesystem::current_path();
 }
 
+std::filesystem::path ProjectRootPath() {
+#if defined(_WIN32)
+    char* overrideRoot = nullptr;
+    size_t length = 0;
+    if (_dupenv_s(&overrideRoot, &length, "RACEMAN_PROJECT_ROOT") == 0 && overrideRoot != nullptr) {
+        std::string value = overrideRoot;
+        free(overrideRoot);
+        if (!value.empty()) {
+            return std::filesystem::absolute(value).lexically_normal();
+        }
+    }
+#else
+    if (const char* overrideRoot = std::getenv("RACEMAN_PROJECT_ROOT")) {
+        if (overrideRoot[0] != '\0') {
+            return std::filesystem::absolute(overrideRoot).lexically_normal();
+        }
+    }
+#endif
+
+    const std::filesystem::path engineRoot = EngineRootPath();
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator(engineRoot, ec)) {
+        if (!entry.is_directory()) {
+            continue;
+        }
+        if (std::filesystem::exists(entry.path() / "project.raceman.json")) {
+            return entry.path().lexically_normal();
+        }
+    }
+    return (engineRoot / "Project").lexically_normal();
+}
+
 std::string QuoteCommandPath(const std::filesystem::path& path) {
     std::string value = path.string();
     std::string quoted = "\"";
@@ -69,6 +104,64 @@ std::filesystem::path ScriptDllPath() {
         return packagedDll;
     }
     return EngineRootPath() / "bin" / CurrentConfiguration() / "ProjectScripts.dll";
+}
+
+bool FileIsNewerThan(const std::filesystem::path& input, std::filesystem::file_time_type outputTime) {
+    std::error_code ec;
+    const std::filesystem::file_time_type inputTime = std::filesystem::last_write_time(input, ec);
+    return !ec && inputTime > outputTime;
+}
+
+std::vector<std::filesystem::path> GatherScriptBuildInputs() {
+    const std::filesystem::path engineRoot = EngineRootPath();
+    const std::filesystem::path projectRoot = ProjectRootPath();
+    std::vector<std::filesystem::path> inputs{
+        engineRoot / "ProjectScripts.vcxproj",
+        engineRoot / "ProjectScripts.vcxproj.filters",
+        engineRoot / "src" / "scripting" / "ScriptDllRegistry.cpp",
+        engineRoot / "src" / "scripting" / "ObjectScript.h",
+        engineRoot / "src" / "scripting" / "ScriptRegistry.h",
+        engineRoot / "bin" / CurrentConfiguration() / "ProjectRaceman.lib"
+    };
+
+    const std::filesystem::path scriptsRoot = projectRoot / "assets" / "scripts";
+    std::error_code ec;
+    if (std::filesystem::exists(scriptsRoot, ec)) {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(scriptsRoot, ec)) {
+            if (!entry.is_regular_file()) {
+                continue;
+            }
+            std::string extension = entry.path().extension().string();
+            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char ch) {
+                return static_cast<char>(std::tolower(ch));
+            });
+            if (extension == ".cpp" || extension == ".h" || extension == ".hpp") {
+                inputs.push_back(entry.path());
+            }
+        }
+    }
+    return inputs;
+}
+
+bool ScriptAssemblyIsUpToDate() {
+    const std::filesystem::path dllPath = ScriptDllPath();
+    std::error_code ec;
+    if (!std::filesystem::exists(dllPath, ec)) {
+        return false;
+    }
+
+    const std::filesystem::file_time_type dllTime = std::filesystem::last_write_time(dllPath, ec);
+    if (ec) {
+        return false;
+    }
+
+    for (const std::filesystem::path& input : GatherScriptBuildInputs()) {
+        if (std::filesystem::exists(input, ec) && FileIsNewerThan(input, dllTime)) {
+            return false;
+        }
+        ec.clear();
+    }
+    return true;
 }
 
 bool PlayerLoggingEnabled() {
@@ -210,6 +303,11 @@ bool BuildScriptAssembly(std::string* outError) {
             *outError = "Script build helper not found: " + script.string();
         }
         return false;
+    }
+
+    if (ScriptAssemblyIsUpToDate()) {
+        std::cout << "ProjectScripts.dll is up to date; skipping script build." << std::endl;
+        return true;
     }
 
     std::ostringstream command;
