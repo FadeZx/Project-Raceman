@@ -9,6 +9,6 @@ struct BuildResult {
     std::string message;
 };
 
-BuildResult BuildStandaloneGame(const std::string& outputDirectory);
+BuildResult BuildStandaloneGame(const std::string& outputDirectory, const std::string& projectRoot);
 
 } // namespace raceman

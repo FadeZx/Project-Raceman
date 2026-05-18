@@ -4,20 +4,24 @@
 #include <filesystem>
 #include <sstream>
 
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 namespace fs = std::filesystem;
 
 namespace raceman {
 namespace {
 
-fs::path FindRepoRoot() {
-    fs::path current = fs::current_path();
+fs::path FindBuildRootFrom(fs::path current) {
     for (int i = 0; i < 8; ++i) {
-        if (fs::exists(current / "tools" / "build-game.ps1") &&
-            fs::exists(current / "ProjectRaceman" / "Project Raceman.sln")) {
+        if (fs::exists(current / "tools" / "build-game.ps1")) {
             return current;
         }
-        if (fs::exists(current / "Project Raceman.sln") &&
-            fs::exists(current.parent_path() / "tools" / "build-game.ps1")) {
+        if (fs::exists(current.parent_path() / "tools" / "build-game.ps1")) {
             return current.parent_path();
         }
         if (!current.has_parent_path() || current.parent_path() == current) {
@@ -25,6 +29,31 @@ fs::path FindRepoRoot() {
         }
         current = current.parent_path();
     }
+    return fs::current_path();
+}
+
+fs::path ExecutableDirectory() {
+#if defined(_WIN32)
+    char buffer[MAX_PATH] = {0};
+    const DWORD length = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
+    if (length > 0 && length < MAX_PATH) {
+        return fs::path(buffer).parent_path();
+    }
+#endif
+    return fs::current_path();
+}
+
+fs::path FindBuildRoot() {
+    const fs::path fromCurrent = FindBuildRootFrom(fs::current_path());
+    if (fs::exists(fromCurrent / "tools" / "build-game.ps1")) {
+        return fromCurrent;
+    }
+
+    const fs::path fromExe = FindBuildRootFrom(ExecutableDirectory());
+    if (fs::exists(fromExe / "tools" / "build-game.ps1")) {
+        return fromExe;
+    }
+
     return fs::current_path();
 }
 
@@ -44,13 +73,21 @@ std::string QuoteCommandPath(const fs::path& path) {
 
 } // namespace
 
-BuildResult BuildStandaloneGame(const std::string& outputDirectory) {
+BuildResult BuildStandaloneGame(const std::string& outputDirectory, const std::string& projectRoot) {
     if (outputDirectory.empty()) {
         return {false, "Build cancelled: no output folder selected."};
     }
+    if (projectRoot.empty()) {
+        return {false, "Build cancelled: no project is open."};
+    }
 
-    const fs::path repoRoot = FindRepoRoot();
-    const fs::path scriptPath = repoRoot / "tools" / "build-game.ps1";
+    const fs::path projectPath = fs::absolute(fs::path(projectRoot)).lexically_normal();
+    if (!fs::exists(projectPath / "project.raceman.json")) {
+        return {false, "Build cancelled: project.raceman.json not found in " + projectPath.string()};
+    }
+
+    const fs::path buildRoot = FindBuildRoot();
+    const fs::path scriptPath = buildRoot / "tools" / "build-game.ps1";
     if (!fs::exists(scriptPath)) {
         return {false, "Build helper not found: " + scriptPath.string()};
     }
@@ -59,6 +96,7 @@ BuildResult BuildStandaloneGame(const std::string& outputDirectory) {
     command << "powershell -NoProfile -ExecutionPolicy Bypass -File "
             << QuoteCommandPath(scriptPath)
             << " -OutputPath " << QuoteCommandPath(fs::path(outputDirectory))
+            << " -ProjectPath " << QuoteCommandPath(projectPath)
             << " -Configuration Release"
             << " -Platform x64";
 

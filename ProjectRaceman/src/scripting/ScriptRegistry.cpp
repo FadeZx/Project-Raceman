@@ -30,10 +30,25 @@ std::vector<ScriptDescriptor> g_scripts;
 HMODULE g_scriptModule = nullptr;
 #endif
 
-std::filesystem::path EngineRootPath() {
-    std::filesystem::path current = std::filesystem::current_path();
+std::filesystem::path ExecutableDirectory() {
+#if defined(_WIN32)
+    char buffer[MAX_PATH] = {0};
+    const DWORD length = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
+    if (length > 0 && length < MAX_PATH) {
+        return std::filesystem::path(buffer).parent_path();
+    }
+#endif
+    return std::filesystem::current_path();
+}
+
+bool LooksLikeEngineRoot(const std::filesystem::path& path) {
+    return std::filesystem::exists(path / "Project Raceman.vcxproj")
+        || (std::filesystem::exists(path / "ProjectRaceman.exe") && std::filesystem::exists(path / "tools" / "build-scripts.ps1"));
+}
+
+std::filesystem::path FindEngineRootFrom(std::filesystem::path current) {
     for (int i = 0; i < 5; ++i) {
-        if (std::filesystem::exists(current / "Project Raceman.vcxproj")) {
+        if (LooksLikeEngineRoot(current)) {
             return current;
         }
         if (!current.has_parent_path() || current.parent_path() == current) {
@@ -41,6 +56,20 @@ std::filesystem::path EngineRootPath() {
         }
         current = current.parent_path();
     }
+    return std::filesystem::current_path();
+}
+
+std::filesystem::path EngineRootPath() {
+    const std::filesystem::path fromCurrent = FindEngineRootFrom(std::filesystem::current_path());
+    if (LooksLikeEngineRoot(fromCurrent)) {
+        return fromCurrent;
+    }
+
+    const std::filesystem::path fromExe = FindEngineRootFrom(ExecutableDirectory());
+    if (LooksLikeEngineRoot(fromExe)) {
+        return fromExe;
+    }
+
     return std::filesystem::current_path();
 }
 
@@ -297,7 +326,10 @@ bool BuildScriptAssembly(std::string* outError) {
     return false;
 #else
     const std::filesystem::path engineRoot = EngineRootPath();
-    const std::filesystem::path script = engineRoot.parent_path() / "tools" / "build-scripts.ps1";
+    std::filesystem::path script = engineRoot / "tools" / "build-scripts.ps1";
+    if (!std::filesystem::exists(script)) {
+        script = engineRoot.parent_path() / "tools" / "build-scripts.ps1";
+    }
     if (!std::filesystem::exists(script)) {
         if (outError) {
             *outError = "Script build helper not found: " + script.string();

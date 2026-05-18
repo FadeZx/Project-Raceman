@@ -6,8 +6,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$projectRoot = Join-Path $repoRoot "ProjectRaceman"
+$buildRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$sourceProjectRoot = Join-Path $buildRoot "ProjectRaceman"
+$projectRoot = if (Test-Path (Join-Path $sourceProjectRoot "ProjectScripts.vcxproj")) { $sourceProjectRoot } else { $buildRoot }
 $scriptProjectPath = Join-Path $projectRoot "ProjectScripts.vcxproj"
 
 function Find-MSBuild {
@@ -39,4 +40,10 @@ Write-Host "Building ProjectScripts $Configuration|$Platform..."
 & $msbuild $scriptProjectPath /m "/p:Configuration=$Configuration" "/p:Platform=$Platform"
 if ($LASTEXITCODE -ne 0) {
     throw "ProjectScripts build failed with exit code $LASTEXITCODE."
+}
+
+$builtDll = Join-Path $projectRoot "bin\$Configuration\ProjectScripts.dll"
+$packagedDll = Join-Path $projectRoot "ProjectScripts.dll"
+if ((Test-Path $builtDll) -and ($projectRoot -eq $buildRoot)) {
+    Copy-Item -Force -LiteralPath $builtDll -Destination $packagedDll
 }

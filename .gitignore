@@ -34,3 +34,22 @@
 *.ipch
 *.vsidx
 
+# IDE / local build output
+.vs/
+.dist/
+Build/
+ProjectRaceman/.vs/
+ProjectRaceman/bin/
+ProjectRaceman/bin-int/
+ProjectRaceman/Project/.collision-cache/
+ProjectRaceman/**/*.ilk
+ProjectRaceman/**/*.pdb
+ProjectRaceman/**/*.idb
+
+# Machine-local editor state
+ProjectRaceman/imgui.ini
+ProjectRaceman/config/recent_projects.json
+ProjectRaceman/config/editor_state.json
+ProjectRaceman/config/imgui.ini
+ProjectRaceman/config/menu.json
+

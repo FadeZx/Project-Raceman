@@ -86,6 +86,10 @@ void SceneEditor::SetProjectRoot(std::string path) {
     }
 }
 
+std::string SceneEditor::GetProjectRoot() const {
+    return FindProjectRoot().string();
+}
+
 const PhysicsBuildProgress* SceneEditor::GetPhysicsBuildProgress() const {
     if (playModeLoad_.progress && !playModeLoad_.progress->isDone.load()) {
         return playModeLoad_.progress.get();

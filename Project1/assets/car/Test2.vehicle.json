@@ -1,41 +1,41 @@
 {
-  "name": "Test1",
+  "name": "Test2",
   "chassis": {
-    "mass": 1071.000,
-    "yawInertia": 2200.000,
-    "rollInertia": 978.000,
-    "pitchInertia": 970.000,
-    "centerOfMassOffset": [0.000, 1.660, -0.200]
+    "mass": 1200.000,
+    "yawInertia": 5000.000,
+    "rollInertia": 1100.000,
+    "pitchInertia": 1400.000,
+    "centerOfMassOffset": [0.000, 0.000, -0.200]
   },
   "frontSuspension": {
-    "restLength": 0.380,
-    "springRate": 37400.000,
-    "bumpStopRate": 86880.000,
-    "compressionDamping": 5290.000,
-    "reboundDamping": 4370.000,
-    "antiRollStiffness": 20250.000
+    "restLength": 0.350,
+    "springRate": 35000.000,
+    "bumpStopRate": 90000.000,
+    "compressionDamping": 2500.000,
+    "reboundDamping": 2000.000,
+    "antiRollStiffness": 5000.000
   },
   "rearSuspension": {
     "restLength": 0.350,
-    "springRate": 36810.000,
-    "bumpStopRate": 86790.000,
-    "compressionDamping": 3740.000,
-    "reboundDamping": 3720.000,
-    "antiRollStiffness": 17210.000
+    "springRate": 35000.000,
+    "bumpStopRate": 90000.000,
+    "compressionDamping": 2500.000,
+    "reboundDamping": 2000.000,
+    "antiRollStiffness": 5000.000
   },
   "differential": {
-    "torqueSplit": 1.000,
+    "torqueSplit": 0.500,
     "lockingCoefficient": 0.150,
     "limitedSlip": true
   },
   "engine": {
     "idleRPM": 900.000,
-    "redlineRPM": 15770.000,
-    "stallRPM": 13560.000,
-    "inertia": 0.630,
+    "redlineRPM": 7500.000,
+    "stallRPM": 600.000,
+    "inertia": 0.250,
     "torqueCurve": [
-      {"rpm": 1000.000, "torque": 200.000},
-      {"rpm": 6500.000, "torque": 220.000}
+      {"rpm": 1360.000, "torque": 200.000},
+      {"rpm": 7200.000, "torque": 220.000}
     ]
   },
   "transmission": {
@@ -53,13 +53,13 @@
       "width": 0.240,
       "mass": 15.000,
       "inertia": 1.000,
-      "maxSteerAngle": 0.750,
+      "maxSteerAngle": 0.550,
       "camber": 0.000,
       "toe": 0.000,
-      "gripFactor": 2.780,
-      "longitudinalStiffness": 14360.000,
-      "lateralStiffness": 11170.000,
-      "maxBrakingTorque": 5510.000,
+      "gripFactor": 1.000,
+      "longitudinalStiffness": 10000.000,
+      "lateralStiffness": 8000.000,
+      "maxBrakingTorque": 3000.000,
       "driven": true,
       "hasBrake": true
     },
@@ -73,10 +73,10 @@
       "maxSteerAngle": 0.550,
       "camber": 0.000,
       "toe": 0.000,
-      "gripFactor": 2.290,
-      "longitudinalStiffness": 12690.000,
-      "lateralStiffness": 10370.000,
-      "maxBrakingTorque": 5550.000,
+      "gripFactor": 1.000,
+      "longitudinalStiffness": 10000.000,
+      "lateralStiffness": 8000.000,
+      "maxBrakingTorque": 3000.000,
       "driven": true,
       "hasBrake": true
     },
@@ -90,10 +90,10 @@
       "maxSteerAngle": 0.000,
       "camber": 0.000,
       "toe": 0.000,
-      "gripFactor": 2.240,
-      "longitudinalStiffness": 12470.000,
-      "lateralStiffness": 10800.000,
-      "maxBrakingTorque": 5570.000,
+      "gripFactor": 2.000,
+      "longitudinalStiffness": 10000.000,
+      "lateralStiffness": 8000.000,
+      "maxBrakingTorque": 3200.000,
       "driven": true,
       "hasBrake": true
     },
@@ -107,10 +107,10 @@
       "maxSteerAngle": 0.000,
       "camber": 0.000,
       "toe": 0.000,
-      "gripFactor": 3.020,
-      "longitudinalStiffness": 12630.000,
-      "lateralStiffness": 11050.000,
-      "maxBrakingTorque": 6220.000,
+      "gripFactor": 2.000,
+      "longitudinalStiffness": 10000.000,
+      "lateralStiffness": 8000.000,
+      "maxBrakingTorque": 3200.000,
       "driven": true,
       "hasBrake": true
     }

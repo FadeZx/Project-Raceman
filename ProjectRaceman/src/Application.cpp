@@ -724,11 +724,12 @@ void Application::Update(float deltaTime) {
                         sceneEditor_->SaveProject();
                         sceneEditor_->SyncScripts();
                     }
+                    const std::string projectRoot = sceneEditor_ ? sceneEditor_->GetProjectRoot() : std::string{};
                     auto status = std::make_shared<StandaloneBuildStatus>();
                     status->outputFolder = outputFolder;
                     standaloneBuildStatus_ = status;
-                    standaloneBuildThread_ = std::make_unique<std::thread>([status]() {
-                        const BuildResult result = BuildStandaloneGame(status->outputFolder);
+                    standaloneBuildThread_ = std::make_unique<std::thread>([status, projectRoot]() {
+                        const BuildResult result = BuildStandaloneGame(status->outputFolder, projectRoot);
                         std::lock_guard<std::mutex> lock(status->resultMutex);
                         status->success = result.success;
                         status->message = result.message;

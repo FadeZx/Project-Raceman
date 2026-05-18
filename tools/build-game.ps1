@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$OutputPath,
+    [string]$ProjectPath = "",
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
     [string]$Platform = "x64"
@@ -8,10 +9,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$projectRoot = Join-Path $repoRoot "ProjectRaceman"
-$solutionPath = Join-Path $projectRoot "Project Raceman.sln"
-$binDir = Join-Path $projectRoot "bin\$Configuration"
+$buildRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$sourceProjectRoot = Join-Path $buildRoot "ProjectRaceman"
+$solutionPath = Join-Path $sourceProjectRoot "Project Raceman.sln"
+$sourceMode = Test-Path $solutionPath
+$engineRoot = if ($sourceMode) { $sourceProjectRoot } else { $buildRoot }
+$binDir = if ($sourceMode) { Join-Path $sourceProjectRoot "bin\$Configuration" } else { $engineRoot }
 $outputRoot = [System.IO.Path]::GetFullPath($OutputPath)
 
 function Find-MSBuild {
@@ -88,15 +91,15 @@ function Copy-DirectoryClean {
     }
 }
 
-if (-not (Test-Path $solutionPath)) {
-    throw "Solution not found: $solutionPath"
-}
-
-$msbuild = Find-MSBuild
-Write-Host "Building Project Raceman $Configuration|$Platform..."
-& $msbuild $solutionPath /m "/p:Configuration=$Configuration" "/p:Platform=$Platform"
-if ($LASTEXITCODE -ne 0) {
-    throw "MSBuild failed with exit code $LASTEXITCODE."
+if ($sourceMode) {
+    $msbuild = Find-MSBuild
+    Write-Host "Building Project Raceman $Configuration|$Platform..."
+    & $msbuild $solutionPath /m "/p:Configuration=$Configuration" "/p:Platform=$Platform"
+    if ($LASTEXITCODE -ne 0) {
+        throw "MSBuild failed with exit code $LASTEXITCODE."
+    }
+} else {
+    Write-Host "Using packaged engine from $engineRoot"
 }
 
 New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
@@ -107,18 +110,18 @@ $null = Copy-RequiredFile -Candidates @(Join-Path $binDir "ProjectScripts.dll") 
 $dllCandidates = @{
     "assimp-vc143-mt.dll" = @(
         (Join-Path $binDir "assimp-vc143-mt.dll"),
-        (Join-Path $projectRoot "assimp-vc143-mt.dll"),
-        (Join-Path $repoRoot "dlls\assimp-vc143-mt.dll")
+        (Join-Path $engineRoot "assimp-vc143-mt.dll"),
+        (Join-Path $buildRoot "dlls\assimp-vc143-mt.dll")
     )
     "irrKlang.dll" = @(
         (Join-Path $binDir "irrKlang.dll"),
-        (Join-Path $projectRoot "irrKlang.dll"),
-        (Join-Path $repoRoot "dlls\irrKlang.dll")
+        (Join-Path $engineRoot "irrKlang.dll"),
+        (Join-Path $buildRoot "dlls\irrKlang.dll")
     )
     "ikpMP3.dll" = @(
         (Join-Path $binDir "ikpMP3.dll"),
-        (Join-Path $projectRoot "ikpMP3.dll"),
-        (Join-Path $repoRoot "dlls\ikpMP3.dll")
+        (Join-Path $engineRoot "ikpMP3.dll"),
+        (Join-Path $buildRoot "dlls\ikpMP3.dll")
     )
 }
 
@@ -126,37 +129,36 @@ foreach ($name in $dllCandidates.Keys) {
     $null = Copy-RequiredFile -Candidates $dllCandidates[$name] -DestinationDirectory $outputRoot
 }
 
-# Discover the game project directory.
-# Priority 1: path stored in the launcher registry (config/recent_projects.json).
 $gameProjectDir = $null
-$registryFile = Join-Path $projectRoot "config\recent_projects.json"
-if (Test-Path $registryFile) {
-    $json = Get-Content -Raw -LiteralPath $registryFile
-    if ($json -match '"path"\s*:\s*"((?:[^"\\]|\\.)*)"') {
-        $candidate = $Matches[1] -replace '\\\\', '\'
-        if ((Test-Path $candidate) -and (Test-Path (Join-Path $candidate "project.raceman.json"))) {
-            $gameProjectDir = $candidate
-        }
+
+if (-not [string]::IsNullOrWhiteSpace($ProjectPath)) {
+    $candidate = [System.IO.Path]::GetFullPath($ProjectPath)
+    if (-not (Test-Path $candidate)) {
+        throw "Project path does not exist: $candidate"
     }
-}
-# Priority 2: scan sub-folders of ProjectRaceman.
-if (-not $gameProjectDir) {
-    Get-ChildItem -LiteralPath $projectRoot -Directory | ForEach-Object {
-        if ((-not $gameProjectDir) -and (Test-Path (Join-Path $_.FullName "project.raceman.json"))) {
-            $gameProjectDir = $_.FullName
-        }
+    if (-not (Test-Path (Join-Path $candidate "project.raceman.json"))) {
+        throw "Project path is not a Raceman project: $candidate"
     }
+    $gameProjectDir = $candidate
 }
-# Priority 3: scan sibling directories of ProjectRaceman.
+
+# Fallback discovery is kept for command-line use only. Editor builds pass -ProjectPath.
 if (-not $gameProjectDir) {
-    Get-ChildItem -LiteralPath $repoRoot -Directory | Where-Object { $_.Name -ne "ProjectRaceman" } | ForEach-Object {
+    Get-ChildItem -LiteralPath $engineRoot -Directory | ForEach-Object {
         if ((-not $gameProjectDir) -and (Test-Path (Join-Path $_.FullName "project.raceman.json"))) {
             $gameProjectDir = $_.FullName
         }
     }
 }
 if (-not $gameProjectDir) {
-    throw "No game project found. Open a project in the editor first, or place project.raceman.json in a sub-folder of $repoRoot"
+    Get-ChildItem -LiteralPath $buildRoot -Directory | Where-Object { $_.Name -ne "ProjectRaceman" } | ForEach-Object {
+        if ((-not $gameProjectDir) -and (Test-Path (Join-Path $_.FullName "project.raceman.json"))) {
+            $gameProjectDir = $_.FullName
+        }
+    }
+}
+if (-not $gameProjectDir) {
+    throw "No game project found. Pass -ProjectPath or place project.raceman.json in a sub-folder of $buildRoot"
 }
 $projectFolderName = Split-Path -Leaf $gameProjectDir
 $exeSrc  = Join-Path $outputRoot "ProjectRaceman.exe"
@@ -179,7 +181,7 @@ robocopy $gameProjectDir $projDest /E /COPY:DAT /NFL /NDL /NJH /NJS
 if ($LASTEXITCODE -ge 8) {
     throw "robocopy failed copying project directory (exit code $LASTEXITCODE)."
 }
-Copy-DirectoryClean -Source (Join-Path $projectRoot "src\shaders") -Destination (Join-Path $outputRoot "src\shaders")
+Copy-DirectoryClean -Source (Join-Path $engineRoot "src\shaders") -Destination (Join-Path $outputRoot "src\shaders")
 
 Set-Content -LiteralPath (Join-Path $outputRoot "player.raceman") -Value "player=1"
 # Drop a debug.raceman file so the in-game debug console is active by default.
@@ -191,7 +193,7 @@ $buildInfo = @(
     "ProjectName=$projectFolderName",
     "Configuration=$Configuration",
     "Platform=$Platform",
-    "Source=$projectRoot",
+    "Source=$engineRoot",
     "BuiltAt=$((Get-Date).ToString('o'))"
 )
 Set-Content -LiteralPath (Join-Path $outputRoot "build-info.txt") -Value $buildInfo

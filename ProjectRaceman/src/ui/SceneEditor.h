@@ -418,6 +418,7 @@ public:
     void UpdateRuntime(float deltaTime);
     void StopRuntime();
     void SetProjectRoot(std::string path);
+    std::string GetProjectRoot() const;
 
     // Quick action: add a plane via external UI (Menu)
     void AddMeshPlane();

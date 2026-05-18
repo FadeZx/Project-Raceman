@@ -4,7 +4,9 @@
 #include <imgui/imgui.h>
 #include <stb_image.h>
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <filesystem>
@@ -185,17 +187,51 @@ time_t ExtractJsonInt(const std::string& src, const std::string& key) {
     return static_cast<time_t>(std::stoll(digits));
 }
 
-} // namespace
+std::string AppDataRegistryPath() {
+#if defined(_WIN32)
+    PWSTR roamingPath = nullptr;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_CREATE, nullptr, &roamingPath)) && roamingPath != nullptr) {
+        const int size = WideCharToMultiByte(CP_UTF8, 0, roamingPath, -1, nullptr, 0, nullptr, nullptr);
+        std::string result;
+        if (size > 0) {
+            result.resize(static_cast<size_t>(size - 1));
+            WideCharToMultiByte(CP_UTF8, 0, roamingPath, -1, result.data(), size, nullptr, nullptr);
+        }
+        CoTaskMemFree(roamingPath);
+        if (!result.empty()) {
+            return (fs::path(result) / "ProjectRaceman" / "recent_projects.json").string();
+        }
+    }
 
-// ---- Registry ----
-
-std::string ProjectLauncher::RegistryPath() {
-    return "config/recent_projects.json";
+    char* appData = nullptr;
+    size_t length = 0;
+    if (_dupenv_s(&appData, &length, "APPDATA") == 0 && appData != nullptr) {
+        std::string result = (fs::path(appData) / "ProjectRaceman" / "recent_projects.json").string();
+        std::free(appData);
+        return result;
+    }
+#else
+    if (const char* xdgConfigHome = std::getenv("XDG_CONFIG_HOME")) {
+        if (xdgConfigHome[0] != '\0') {
+            return (fs::path(xdgConfigHome) / "ProjectRaceman" / "recent_projects.json").string();
+        }
+    }
+    if (const char* home = std::getenv("HOME")) {
+        if (home[0] != '\0') {
+            return (fs::path(home) / ".config" / "ProjectRaceman" / "recent_projects.json").string();
+        }
+    }
+#endif
+    return (fs::path("config") / "recent_projects.json").string();
 }
 
-std::vector<RecentProject> ProjectLauncher::LoadRegistry() {
+std::string LegacyRegistryPath() {
+    return (fs::path("config") / "recent_projects.json").string();
+}
+
+std::vector<RecentProject> LoadRegistryFile(const std::string& path) {
     std::vector<RecentProject> result;
-    std::ifstream f(RegistryPath());
+    std::ifstream f(path);
     if (!f.good()) return result;
     const std::string content((std::istreambuf_iterator<char>(f)),
                                std::istreambuf_iterator<char>());
@@ -217,6 +253,28 @@ std::vector<RecentProject> ProjectLauncher::LoadRegistry() {
         p.lastOpened = ExtractJsonInt(obj, "ts");
         if (!p.path.empty()) result.push_back(std::move(p));
         cursor = objEnd + 1;
+    }
+    return result;
+}
+
+} // namespace
+
+// ---- Registry ----
+
+std::string ProjectLauncher::RegistryPath() {
+    return AppDataRegistryPath();
+}
+
+std::vector<RecentProject> ProjectLauncher::LoadRegistry() {
+    std::vector<RecentProject> result = LoadRegistryFile(RegistryPath());
+    if (result.empty()) {
+        const std::string legacyPath = LegacyRegistryPath();
+        if (legacyPath != RegistryPath()) {
+            result = LoadRegistryFile(legacyPath);
+            if (!result.empty()) {
+                SaveRegistry(result);
+            }
+        }
     }
     return result;
 }
