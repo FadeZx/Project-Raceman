@@ -39,5 +39,12 @@
     <ClCompile Include="..\Project1\assets\scripts\CharacterControllerTest.cpp" />
     <ClCompile Include="..\Project1\assets\scripts\TestPlayerMovement.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Project Raceman.vcxproj">
+      <Project>{4F0F8FA4-7D81-4F6C-96E8-4FDE949AC19E}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

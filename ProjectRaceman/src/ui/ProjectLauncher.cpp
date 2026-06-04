@@ -1,5 +1,7 @@
 #include "ProjectLauncher.h"
 
+#include "NativeDialogs.h"
+
 #include <glad/glad.h>
 #include <imgui/imgui.h>
 #include <stb_image.h>
@@ -19,7 +21,6 @@
 #endif
 #include <windows.h>
 #include <shlobj.h>
-#include <shobjidl.h>
 #endif
 
 namespace fs = std::filesystem;
@@ -62,45 +63,6 @@ unsigned int LoadLogoTexture() {
     glBindTexture(GL_TEXTURE_2D, 0);
     stbi_image_free(data);
     return textureId;
-}
-
-std::string PickFolder(const wchar_t* title) {
-#if defined(_WIN32)
-    const HRESULT coInit = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-    const bool doUninit = SUCCEEDED(coInit);
-    IFileDialog* dlg = nullptr;
-    if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
-                                IID_PPV_ARGS(&dlg))) || !dlg) {
-        if (doUninit) CoUninitialize();
-        return {};
-    }
-    DWORD opts = 0;
-    if (SUCCEEDED(dlg->GetOptions(&opts)))
-        dlg->SetOptions(opts | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
-    dlg->SetTitle(title);
-    std::string result;
-    if (SUCCEEDED(dlg->Show(nullptr))) {
-        IShellItem* item = nullptr;
-        if (SUCCEEDED(dlg->GetResult(&item)) && item) {
-            PWSTR wide = nullptr;
-            if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &wide)) && wide) {
-                const int size = WideCharToMultiByte(CP_UTF8, 0, wide, -1, nullptr, 0, nullptr, nullptr);
-                if (size > 0) {
-                    result.resize(static_cast<size_t>(size - 1));
-                    WideCharToMultiByte(CP_UTF8, 0, wide, -1, result.data(), size, nullptr, nullptr);
-                }
-                CoTaskMemFree(wide);
-            }
-            item->Release();
-        }
-    }
-    dlg->Release();
-    if (doUninit) CoUninitialize();
-    return result;
-#else
-    (void)title;
-    return {};
-#endif
 }
 
 std::string FormatRelativeTime(time_t then) {
@@ -334,7 +296,7 @@ void ProjectLauncher::StartPicker(bool forNew) {
         ? L"Choose parent folder for new project"
         : L"Choose existing project folder";
     pickerThread_ = std::make_unique<std::thread>([state, title]() {
-        const std::string folder = PickFolder(title);
+        const std::string folder = PickFolderDialog(title);
         std::lock_guard<std::mutex> lock(state->mu);
         state->result = folder;
         state->isDone.store(true);

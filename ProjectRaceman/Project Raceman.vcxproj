@@ -143,9 +143,11 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="src\ui\DebugUI.h" />
     <ClInclude Include="editor-assets\third_party\imgui\backends\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="src\ui\MenuController.h" />
+    <ClInclude Include="src\ui\NativeDialogs.h" />
     <ClInclude Include="src\ui\ObjImport.h" />
     <ClInclude Include="src\ui\SceneEditor.h" />
     <ClInclude Include="src\ui\SceneEditorInternal.h" />
+    <ClInclude Include="src\ui\SceneEditorTypes.h" />
     <ClInclude Include="editor-assets\third_party\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="editor-assets\third_party\imnodes\imnodes.h" />
   </ItemGroup>
@@ -180,6 +182,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="editor-assets\third_party\imgui\imgui_widgets.cpp" />
     <ClCompile Include="editor-assets\third_party\ImGuizmo\ImGuizmo.cpp" />
     <ClCompile Include="src\ui\MenuController.cpp" />
+    <ClCompile Include="src\ui\NativeDialogs.cpp" />
     <ClCompile Include="src\ui\ProjectLauncher.cpp" />
     <ClCompile Include="src\ui\ObjImport.cpp" />
     <ClCompile Include="src\ui\SceneEditor.cpp" />

@@ -91,10 +91,16 @@
     <ClInclude Include="src\ui\MenuController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\ui\NativeDialogs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\ui\SceneEditor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ui\SceneEditorInternal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\SceneEditorTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="assets\mesh\plane.h">
@@ -196,6 +202,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ui\MenuController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\NativeDialogs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ui\ProjectLauncher.cpp">

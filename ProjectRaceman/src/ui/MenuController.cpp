@@ -2,6 +2,7 @@
 
 #include "../rendering/Renderer.h"
 #include "Console.h"
+#include "NativeDialogs.h"
 
 #include <imgui/imgui.h>
 #include <filesystem>
@@ -9,15 +10,6 @@
 #include <cctype>
 #include <cstdio>
 #include <fstream>
-
-#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#include <shlobj.h>
-#include <shobjidl.h>
-#endif
 
 namespace fs = std::filesystem;
 
@@ -54,56 +46,6 @@ std::string SceneDisplayName(const std::string& scenePath) {
         filename += ".scene";
     }
     return filename;
-}
-
-std::string PickBuildOutputFolder() {
-#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
-    const HRESULT coInit = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-    const bool shouldUninitialize = SUCCEEDED(coInit);
-
-    IFileDialog* dialog = nullptr;
-    HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog));
-    if (FAILED(hr) || dialog == nullptr) {
-        if (shouldUninitialize) {
-            CoUninitialize();
-        }
-        return {};
-    }
-
-    DWORD options = 0;
-    if (SUCCEEDED(dialog->GetOptions(&options))) {
-        dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
-    }
-    dialog->SetTitle(L"Choose standalone build output folder");
-
-    std::string result;
-    hr = dialog->Show(nullptr);
-    if (SUCCEEDED(hr)) {
-        IShellItem* item = nullptr;
-        hr = dialog->GetResult(&item);
-        if (SUCCEEDED(hr) && item != nullptr) {
-            PWSTR widePath = nullptr;
-            hr = item->GetDisplayName(SIGDN_FILESYSPATH, &widePath);
-            if (SUCCEEDED(hr) && widePath != nullptr) {
-                const int size = WideCharToMultiByte(CP_UTF8, 0, widePath, -1, nullptr, 0, nullptr, nullptr);
-                if (size > 0) {
-                    result.resize(static_cast<size_t>(size - 1));
-                    WideCharToMultiByte(CP_UTF8, 0, widePath, -1, result.data(), size, nullptr, nullptr);
-                }
-                CoTaskMemFree(widePath);
-            }
-            item->Release();
-        }
-    }
-
-    dialog->Release();
-    if (shouldUninitialize) {
-        CoUninitialize();
-    }
-    return result;
-#else
-    return {};
-#endif
 }
 } // namespace
 
@@ -316,7 +258,7 @@ void MenuController::RenderMainMenu(const std::function<void()>& onAddMeshPlane,
                 auto state = std::make_shared<FolderPickerState>();
                 folderPickerState_ = state;
                 folderPickerThread_ = std::make_unique<std::thread>([state]() {
-                    const std::string folder = PickBuildOutputFolder();
+                    const std::string folder = PickFolderDialog(L"Choose standalone build output folder");
                     std::lock_guard<std::mutex> lock(state->resultMutex);
                     state->result = folder;
                     state->isDone.store(true);
