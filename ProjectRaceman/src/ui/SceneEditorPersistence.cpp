@@ -527,6 +527,16 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"profilePath\": \"" << JsonEscape(o.vehicleSound.profilePath) << "\"\n";
             out << "        }";
         }
+        if (o.hasTrackGenerator) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"TrackGenerator\",\n";
+            out << "          \"enabled\": " << (o.trackGenerator.enabled ? "true" : "false") << ",\n";
+            out << "          \"trackSourcePath\": \"" << JsonEscape(o.trackGenerator.trackSourcePath) << "\",\n";
+            out << "          \"roadObjectId\": \"" << JsonEscape(o.trackGenerator.roadObjectId) << "\",\n";
+            out << "          \"shoulderObjectId\": \"" << JsonEscape(o.trackGenerator.shoulderObjectId) << "\"\n";
+            out << "        }";
+        }
         out << "\n";
         out << "      ]\n";
         out << "    }" << (i + 1 < objects_.size() ? ",\n" : "\n");
@@ -834,6 +844,16 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
             out << "          \"type\": \"VehicleSound\",\n";
             out << "          \"enabled\": " << (o.vehicleSound.enabled ? "true" : "false") << ",\n";
             out << "          \"profilePath\": \"" << JsonEscape(o.vehicleSound.profilePath) << "\"\n";
+            out << "        }";
+        }
+        if (o.hasTrackGenerator) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"TrackGenerator\",\n";
+            out << "          \"enabled\": " << (o.trackGenerator.enabled ? "true" : "false") << ",\n";
+            out << "          \"trackSourcePath\": \"" << JsonEscape(o.trackGenerator.trackSourcePath) << "\",\n";
+            out << "          \"roadObjectId\": \"" << JsonEscape(o.trackGenerator.roadObjectId) << "\",\n";
+            out << "          \"shoulderObjectId\": \"" << JsonEscape(o.trackGenerator.shoulderObjectId) << "\"\n";
             out << "        }";
         }
         out << "\n      ]\n    }";
@@ -1518,6 +1538,12 @@ void SceneEditor::Load(const std::string& path) {
                         so.hasVehicleSound = true;
                         ReadBool(component, "enabled", so.vehicleSound.enabled);
                         ReadString(component, "profilePath", so.vehicleSound.profilePath);
+                    } else if (componentType == "TrackGenerator") {
+                        so.hasTrackGenerator = true;
+                        ReadBool(component, "enabled", so.trackGenerator.enabled);
+                        ReadString(component, "trackSourcePath", so.trackGenerator.trackSourcePath);
+                        ReadString(component, "roadObjectId", so.trackGenerator.roadObjectId);
+                        ReadString(component, "shoulderObjectId", so.trackGenerator.shoulderObjectId);
                     }
                 }
             }
@@ -1570,7 +1596,8 @@ void SceneEditor::Load(const std::string& path) {
 
             if (!so.hasMeshFilter && !so.hasMeshRenderer && !so.hasScriptComponent && !so.hasRigidbody &&
                 !so.hasVehicle && !so.hasCharacterController && !so.hasBoxCollider && !so.hasSphereCollider &&
-                !so.hasCapsuleCollider && !so.hasPlaneCollider && !so.hasMeshCollider && !so.hasCamera && !so.hasCinemachine && !so.hasLight) {
+                !so.hasCapsuleCollider && !so.hasPlaneCollider && !so.hasMeshCollider && !so.hasCamera && !so.hasCinemachine && !so.hasLight &&
+                !so.hasAudioListener && !so.hasAudioSource && !so.hasVehicleSound && !so.hasTrackGenerator) {
                 so.hasMeshFilter = true;
                 so.hasMeshRenderer = true;
                 so.meshFilter.meshType = "Plane";
@@ -2047,6 +2074,12 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                         so.hasVehicleSound = true;
                         ReadBool(component, "enabled", so.vehicleSound.enabled);
                         ReadString(component, "profilePath", so.vehicleSound.profilePath);
+                    } else if (componentType == "TrackGenerator") {
+                        so.hasTrackGenerator = true;
+                        ReadBool(component, "enabled", so.trackGenerator.enabled);
+                        ReadString(component, "trackSourcePath", so.trackGenerator.trackSourcePath);
+                        ReadString(component, "roadObjectId", so.trackGenerator.roadObjectId);
+                        ReadString(component, "shoulderObjectId", so.trackGenerator.shoulderObjectId);
                     }
                 }
             }

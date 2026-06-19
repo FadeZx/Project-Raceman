@@ -1,0 +1,32 @@
+{
+  "name": "New_Track",
+  "closed": true,
+  "roadWidth": 10,
+  "shoulderWidth": 2,
+  "segmentResolution": 2,
+  "presetType": "oval",
+  "bakedMeshPath": "assets/tracks/New_Track/New_Track_road.obj",
+  "bakedShoulderMeshPath": "assets/tracks/New_Track/New_Track_shoulder.obj",
+  "materialId": "Road",
+  "shoulderMaterialId": "RoadShoulder",
+  "controlPoints": [
+    [2.45699, 0, 5.25877],
+    [-1.0581, 0, 30.5098],
+    [-30.0308, 0, 39.9371],
+    [-41.0072, 0, 34.3366],
+    [-48.3356, 0, 17.4162],
+    [-46.1848, 0, -0.542404],
+    [-35.5975, 0, -30.0935],
+    [-20.1539, 0, -52.9778],
+    [10.7232, 0, -79.7437],
+    [69.8948, 0, -159.699],
+    [123.265, 0, -265.331],
+    [182.835, 0, -262.188],
+    [132.126, 0, -117.721],
+    [105.987, 0, -59.1],
+    [56.1898, 0, -13.3981],
+    [22.6208, 0, -8.40867],
+    [9.38193, 0, -25.0063],
+    [0.125004, 0, -17.777]
+  ]
+}

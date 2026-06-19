@@ -12,10 +12,12 @@
 #include <stb_image.h>
 
 #include <cmath>
+#include <cctype>
 #include <cstdlib>
 #include <iostream>
 #include <unordered_set>
 #include <array>
+#include <iomanip>
 #ifndef GLM_ENABLE_EXPERIMENTAL
 #define GLM_ENABLE_EXPERIMENTAL
 #endif
@@ -774,7 +776,10 @@ std::string BuildScriptProjectFiltersSource(const std::vector<ScriptSourceInfo>&
 SceneEditor::SceneEditor() {
     std::cout << "[Player] SceneEditor: initializing defaults..." << std::endl;
     // Default dirty callback just marks the scene dirty; SetOnDirty() chains on top.
-    onDirty_ = [this]() { sceneDirty_ = true; };
+    onDirty_ = [this]() {
+        sceneDirty_ = true;
+        gameViewportRenderDirty_ = true;
+    };
     InputManager defaultInputManager;
     defaultInputManager.EnsureDefaultProfiles();
     defaultInputManager.EnsureDefaultWheelSettingsProfiles();
@@ -959,13 +964,16 @@ void SceneEditor::RenderUI(float deltaTime) {
     TickPlayModeLoading();          // check if async physics build is done; finalize on main thread
     RenderPlayModeLoadingPopup();   // show modal progress UI while building (before dockspace so ID stack is clean)
 
-    UpdateScripts(deltaTime);
-    UpdateVehiclePhysics(deltaTime);
-    UpdatePhysics(deltaTime);
-    UpdateVehicles(deltaTime);
-    UpdateCinemachine(deltaTime);
-    UpdateAudio(deltaTime);
-    PreviewCinemachineInEditor();
+    if (scriptsRunning_) {
+        UpdateScripts(deltaTime);
+        UpdateVehiclePhysics(deltaTime);
+        UpdatePhysics(deltaTime);
+        UpdateVehicles(deltaTime);
+        UpdateCinemachine(deltaTime);
+        UpdateAudio(deltaTime);
+    } else {
+        PreviewCinemachineInEditor();
+    }
 
     RenderDockspaceHost();
     RenderScenePanel();
@@ -975,6 +983,7 @@ void SceneEditor::RenderUI(float deltaTime) {
     RenderShaderGraphEditorWindow();
     RenderVehicleConfigEditorWindow();
     RenderVehicleSoundEditorWindow();
+    RenderTrackGeneratorWindow();
 }
 
 float SceneEditor::GetViewportAspect() const {
@@ -1066,6 +1075,50 @@ void SceneEditor::RenderViewportPanel() {
     const ImGuiWindowFlags viewportWindowFlags = ImGuiWindowFlags_NoCollapse
         | ImGuiWindowFlags_NoScrollbar
         | ImGuiWindowFlags_NoScrollWithMouse;
+    auto gameAspectValue = [&]() -> float {
+        switch (gameViewportAspectIndex_) {
+        case 1: return 16.0f / 9.0f;
+        case 2: return 16.0f / 10.0f;
+        case 3: return 4.0f / 3.0f;
+        case 4: return 1.0f;
+        case 5: return 9.0f / 16.0f;
+        default: return 0.0f;
+        }
+    };
+    auto gameZoomScale = [&]() -> float {
+        switch (gameViewportZoomIndex_) {
+        case 1: return 0.50f;
+        case 2: return 0.75f;
+        case 3: return 1.00f;
+        case 4: return 1.25f;
+        case 5: return 1.50f;
+        case 6: return 2.00f;
+        default: return 0.0f;
+        }
+    };
+    auto renderGameViewToolbar = [&]() {
+        const char* aspectOptions[] = {"Free", "16:9", "16:10", "4:3", "1:1", "9:16"};
+        const char* zoomOptions[] = {"Fit", "50%", "75%", "100%", "125%", "150%", "200%"};
+        bool toolbarChanged = false;
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
+        ImGui::TextDisabled("Aspect");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(92.0f);
+        toolbarChanged |= ImGui::Combo("##GameViewAspect", &gameViewportAspectIndex_, aspectOptions, IM_ARRAYSIZE(aspectOptions));
+        ImGui::SameLine();
+        ImGui::TextDisabled("Zoom");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(82.0f);
+        toolbarChanged |= ImGui::Combo("##GameViewZoom", &gameViewportZoomIndex_, zoomOptions, IM_ARRAYSIZE(zoomOptions));
+        ImGui::PopStyleVar();
+        if (toolbarChanged) {
+            gameViewportRenderDirty_ = true;
+        }
+        if (toolbarChanged || (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))) {
+            activeViewport_ = SceneEditorActiveViewport::Game;
+        }
+        ImGui::Separator();
+    };
     auto renderViewportSurface = [&](const char* childName,
                                      SceneEditorActiveViewport viewportType,
                                      unsigned int textureId,
@@ -1076,33 +1129,65 @@ void SceneEditor::RenderViewportPanel() {
         if (ImGui::BeginChild(childName, ImVec2(0.0f, 0.0f), false, childFlags)) {
             const ImVec2 contentMin = ImGui::GetCursorScreenPos();
             const ImVec2 contentAvail = ImGui::GetContentRegionAvail();
-            outPos = {contentMin.x, contentMin.y};
-            outSize = {contentAvail.x, contentAvail.y};
+            ImVec2 imageMin = contentMin;
+            ImVec2 imageSize = contentAvail;
+            if (viewportType == SceneEditorActiveViewport::Game) {
+                const float aspect = gameAspectValue();
+                if (aspect > 0.0f && contentAvail.x > 1.0f && contentAvail.y > 1.0f) {
+                    imageSize.x = contentAvail.x;
+                    imageSize.y = imageSize.x / aspect;
+                    if (imageSize.y > contentAvail.y) {
+                        imageSize.y = contentAvail.y;
+                        imageSize.x = imageSize.y * aspect;
+                    }
+                }
+                const float zoom = gameZoomScale();
+                if (zoom > 0.0f) {
+                    imageSize.x *= zoom;
+                    imageSize.y *= zoom;
+                }
+                imageMin.x = contentMin.x + (contentAvail.x - imageSize.x) * 0.5f;
+                imageMin.y = contentMin.y + (contentAvail.y - imageSize.y) * 0.5f;
+            }
+            outPos = {imageMin.x, imageMin.y};
+            outSize = {imageSize.x, imageSize.y};
+            if (viewportType == SceneEditorActiveViewport::Game &&
+                (std::fabs(imageSize.x - lastRenderedGameViewportSize_.x) > 0.5f ||
+                 std::fabs(imageSize.y - lastRenderedGameViewportSize_.y) > 0.5f)) {
+                gameViewportRenderDirty_ = true;
+            }
             outHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)
-                && ImRect(contentMin, ImVec2(contentMin.x + contentAvail.x, contentMin.y + contentAvail.y)).Contains(ImGui::GetIO().MousePos);
+                && ImRect(imageMin, ImVec2(imageMin.x + imageSize.x, imageMin.y + imageSize.y)).Contains(ImGui::GetIO().MousePos);
 
             ImDrawList* drawList = ImGui::GetWindowDrawList();
             const ImVec2 contentMax{contentMin.x + contentAvail.x, contentMin.y + contentAvail.y};
+            const ImVec2 imageMax{imageMin.x + imageSize.x, imageMin.y + imageSize.y};
+            if (viewportType == SceneEditorActiveViewport::Game) {
+                drawList->AddRectFilled(contentMin, contentMax, IM_COL32(12, 14, 18, 255));
+                ImGui::SetCursorScreenPos(imageMin);
+            }
             if (textureId != 0) {
                 ImGui::Image(static_cast<ImTextureID>(textureId),
-                    contentAvail,
+                    imageSize,
                     ImVec2(0.0f, 1.0f),
                     ImVec2(1.0f, 0.0f));
             } else {
-                drawList->AddRectFilled(contentMin, contentMax, IM_COL32(24, 28, 34, 255));
-                ImGui::Dummy(contentAvail);
+                drawList->AddRectFilled(imageMin, imageMax, IM_COL32(24, 28, 34, 255));
+                ImGui::SetCursorScreenPos(imageMin);
+                ImGui::Dummy(imageSize);
             }
-            drawList->AddRect(contentMin, contentMax, IM_COL32(70, 90, 120, 180));
+            drawList->AddRect(imageMin, imageMax, IM_COL32(70, 90, 120, 180));
 
             if (viewportType == SceneEditorActiveViewport::Game) {
                 glm::mat4 view;
                 glm::mat4 proj;
-                const float aspect = contentAvail.y > 0.5f ? contentAvail.x / contentAvail.y : 1.0f;
+                const float aspect = imageSize.y > 0.5f ? imageSize.x / imageSize.y : 1.0f;
                 if (!TryGetGameCamera(view, proj, aspect)) {
                     const char* noCameraText = "No Camera";
                     const ImVec2 noCameraSize = ImGui::CalcTextSize(noCameraText);
-                    drawList->AddText(ImVec2((contentMin.x + contentMax.x) * 0.5f - noCameraSize.x * 0.5f, (contentMin.y + contentMax.y) * 0.5f - 8.0f), IM_COL32(255, 200, 96, 255), noCameraText);
+                    drawList->AddText(ImVec2((imageMin.x + imageMax.x) * 0.5f - noCameraSize.x * 0.5f, (imageMin.y + imageMax.y) * 0.5f - 8.0f), IM_COL32(255, 200, 96, 255), noCameraText);
                 }
+                ImGui::SetCursorScreenPos(contentMin);
                 ImGui::Dummy(contentAvail);
             }
 
@@ -1120,6 +1205,7 @@ void SceneEditor::RenderViewportPanel() {
     bool sceneWindowOpen = ImGui::Begin("Scene View", nullptr, viewportWindowFlags);
     if (sceneWindowOpen) {
         renderViewportSurface("SceneViewportSurface", SceneEditorActiveViewport::Scene, sceneViewportTextureId_, sceneViewportPos_, sceneViewportSize_, sceneViewportHovered_);
+        HandleTrackDrawingInput();
         // Accept scene asset drops from the project browser onto the viewport.
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
@@ -1153,6 +1239,7 @@ void SceneEditor::RenderViewportPanel() {
 
     bool gameWindowOpen = ImGui::Begin("Game View", nullptr, viewportWindowFlags);
     if (gameWindowOpen) {
+        renderGameViewToolbar();
         renderViewportSurface("GameViewportSurface", SceneEditorActiveViewport::Game, gameViewportTextureId_, gameViewportPos_, gameViewportSize_, gameViewportHovered_);
     } else {
         gameViewportSize_ = glm::vec2(0.0f);
@@ -1653,6 +1740,25 @@ void SceneEditor::AddPlane() {
     AddBuiltInPrimitiveObject("Plane");
 }
 
+void SceneEditor::AddTrackGeneratorObject() {
+    PushUndoState();
+    SceneObject object;
+    object.id = MakeId("track_generator");
+    object.name = "Track Generator";
+    object.type = "GameObject";
+    object.hasMeshFilter = false;
+    object.hasMeshRenderer = false;
+    object.hasScriptComponent = false;
+    object.hasTrackGenerator = true;
+    object.trackGenerator = TrackGeneratorComponent{};
+    object.inspectorComponentOrder = DefaultInspectorComponentOrder();
+    objects_.push_back(std::move(object));
+    Select(static_cast<int>(objects_.size()) - 1);
+    OpenTrackGenerator("");
+    if (onDirty_) onDirty_();
+    if (console_) console_->AddLog("Added Track Generator object.");
+}
+
 void SceneEditor::AddBuiltInPrimitiveObject(const std::string& meshType) {
     try {
         PushUndoState();
@@ -1680,6 +1786,678 @@ void SceneEditor::AddBuiltInPrimitiveObject(const std::string& meshType) {
         if (console_) {
             console_->AddWarning("Failed to add built-in primitive object.");
         }
+    }
+}
+
+namespace {
+
+std::string SanitizeTrackAssetName(const std::string& value) {
+    std::string out;
+    out.reserve(value.size());
+    for (char c : value) {
+        if (std::isalnum(static_cast<unsigned char>(c))) {
+            out.push_back(c);
+        } else if (c == '_' || c == '-' || c == ' ') {
+            out.push_back('_');
+        }
+    }
+    while (!out.empty() && out.front() == '_') out.erase(out.begin());
+    while (!out.empty() && out.back() == '_') out.pop_back();
+    return out.empty() ? std::string("track") : out;
+}
+
+bool ProjectMouseToXZPlane(const glm::mat4& view,
+                           const glm::mat4& proj,
+                           const glm::vec2& viewportPos,
+                           const glm::vec2& viewportSize,
+                           const ImVec2& mouse,
+                           glm::vec3& outPoint) {
+    if (viewportSize.x <= 1.0f || viewportSize.y <= 1.0f) {
+        return false;
+    }
+    const float localX = mouse.x - viewportPos.x;
+    const float localY = mouse.y - viewportPos.y;
+    if (localX < 0.0f || localY < 0.0f || localX > viewportSize.x || localY > viewportSize.y) {
+        return false;
+    }
+    const float ndcX = (2.0f * localX) / viewportSize.x - 1.0f;
+    const float ndcY = 1.0f - (2.0f * localY) / viewportSize.y;
+    const glm::mat4 invViewProj = glm::inverse(proj * view);
+    glm::vec4 nearPoint = invViewProj * glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
+    glm::vec4 farPoint = invViewProj * glm::vec4(ndcX, ndcY, 1.0f, 1.0f);
+    if (std::abs(nearPoint.w) < 0.0001f || std::abs(farPoint.w) < 0.0001f) {
+        return false;
+    }
+    nearPoint /= nearPoint.w;
+    farPoint /= farPoint.w;
+    const glm::vec3 origin = glm::vec3(nearPoint);
+    const glm::vec3 direction = glm::normalize(glm::vec3(farPoint - nearPoint));
+    if (std::abs(direction.y) < 0.0001f) {
+        return false;
+    }
+    const float t = -origin.y / direction.y;
+    if (t < 0.0f) {
+        return false;
+    }
+    outPoint = origin + direction * t;
+    outPoint.y = 0.0f;
+    return true;
+}
+
+bool ProjectWorldToSceneScreen(const glm::mat4& view,
+                               const glm::mat4& proj,
+                               const glm::vec2& viewportPos,
+                               const glm::vec2& viewportSize,
+                               const glm::vec3& point,
+                               ImVec2& out) {
+    const glm::vec4 clip = proj * view * glm::vec4(point, 1.0f);
+    if (std::abs(clip.w) < 0.0001f) {
+        return false;
+    }
+    const glm::vec3 ndc = glm::vec3(clip) / clip.w;
+    out.x = viewportPos.x + (ndc.x * 0.5f + 0.5f) * viewportSize.x;
+    out.y = viewportPos.y + (0.5f - ndc.y * 0.5f) * viewportSize.y;
+    return ndc.z >= -1.0f && ndc.z <= 1.0f;
+}
+
+} // namespace
+
+void SceneEditor::OpenTrackGenerator(const std::string& trackPath) {
+    showTrackGenerator_ = true;
+    selectedTrackPointIndex_ = -1;
+    draggingTrackPoint_ = false;
+    trackGeneratorStatus_.clear();
+
+    const std::string normalizedPath = NormalizeSlashes(trackPath);
+    if (normalizedPath.empty()) {
+        inspectedTrackPath_.clear();
+        trackGeneratorMode_ = TrackGeneratorMode::Preset;
+        trackSource_ = TrackSource{};
+        trackSource_.closed = true;
+        trackSource_.controlPoints = BuildTrackPresetPoints(trackSource_.presetType,
+                                                            trackPresetLength_,
+                                                            trackPresetWidth_,
+                                                            trackPresetRadius_,
+                                                            trackPresetPointCount_);
+        return;
+    }
+
+    TrackSource loaded;
+    std::string error;
+    if (LoadTrackSource(ProjectAssetPathToAbsolute(normalizedPath).string(), loaded, &error)) {
+        inspectedTrackPath_ = normalizedPath;
+        trackSource_ = std::move(loaded);
+        selectedProjectFile_ = normalizedPath;
+        selectedProjectDirectory_ = ParentProjectDirectory(normalizedPath);
+        trackGeneratorStatus_ = "Loaded " + normalizedPath;
+    } else {
+        inspectedTrackPath_ = normalizedPath;
+        trackSource_ = TrackSource{};
+        trackSource_.name = fs::path(normalizedPath).stem().string();
+        trackGeneratorStatus_ = "Failed to load track: " + error;
+    }
+}
+
+void SceneEditor::RenderTrackGeneratorWindow() {
+    if (!showTrackGenerator_) {
+        return;
+    }
+
+    if (!ImGui::Begin("Track Generator", &showTrackGenerator_, ImGuiWindowFlags_NoCollapse)) {
+        ImGui::End();
+        return;
+    }
+
+    auto markTrackBakeDirty = [&]() {
+        trackBakeDirty_ = true;
+        trackBakeDirtyTime_ = ImGui::GetTime();
+    };
+    auto renderMaterialSelector = [&](const char* label, const char* id, std::string& materialId) -> bool {
+        bool changed = false;
+        if (materialId.empty()) {
+            materialId = "pbr_default";
+        }
+        ImGui::SetNextItemWidth(260.0f);
+        if (ImGui::BeginCombo(id, materialId.c_str())) {
+            if (ImGui::Selectable("pbr_default", materialId == "pbr_default")) {
+                materialId = "pbr_default";
+                changed = true;
+            }
+            for (const std::string& file : projectFiles_) {
+                if (!IsMaterialAssetPath(file)) {
+                    continue;
+                }
+                const std::string idValue = MaterialIdFromAssetPath(file);
+                const bool selected = materialId == idValue;
+                if (ImGui::Selectable(idValue.c_str(), selected)) {
+                    materialId = idValue;
+                    changed = true;
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::SameLine();
+        ImGui::TextUnformatted(label);
+        return changed;
+    };
+
+    char nameBuffer[128]{};
+    std::snprintf(nameBuffer, sizeof(nameBuffer), "%s", trackSource_.name.c_str());
+    ImGui::SetNextItemWidth(220.0f);
+    if (ImGui::InputText("Track Name", nameBuffer, sizeof(nameBuffer))) {
+        trackSource_.name = nameBuffer;
+    }
+    ImGui::SameLine();
+    const char* modePreview = trackGeneratorMode_ == TrackGeneratorMode::Draw ? "Draw" : "Preset";
+    ImGui::SetNextItemWidth(120.0f);
+    if (ImGui::BeginCombo("Mode", modePreview)) {
+        if (ImGui::Selectable("Preset", trackGeneratorMode_ == TrackGeneratorMode::Preset)) {
+            trackGeneratorMode_ = TrackGeneratorMode::Preset;
+        }
+        if (ImGui::Selectable("Draw", trackGeneratorMode_ == TrackGeneratorMode::Draw)) {
+            trackGeneratorMode_ = TrackGeneratorMode::Draw;
+            trackDrawAddTool_ = false;
+        }
+        ImGui::EndCombo();
+    }
+
+    bool settingsChanged = false;
+    settingsChanged |= ImGui::Checkbox("Closed Track", &trackSource_.closed);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(110.0f);
+    settingsChanged |= ImGui::DragFloat("Road Width", &trackSource_.roadWidth, 0.25f, 1.0f, 100.0f, "%.1f m");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(110.0f);
+    settingsChanged |= ImGui::DragFloat("Shoulder", &trackSource_.shoulderWidth, 0.25f, 0.0f, 50.0f, "%.1f m");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(110.0f);
+    settingsChanged |= ImGui::DragFloat("Resolution", &trackSource_.segmentResolution, 0.1f, 0.25f, 20.0f, "%.1f m");
+    settingsChanged |= renderMaterialSelector("Road Material", "##TrackRoadMaterial", trackSource_.materialId);
+    settingsChanged |= renderMaterialSelector("Shoulder Material", "##TrackShoulderMaterial", trackSource_.shoulderMaterialId);
+    settingsChanged |= ImGui::Checkbox("Realtime Bake", &trackRealtimeBake_);
+    if (settingsChanged) {
+        markTrackBakeDirty();
+    }
+    if (!inspectedTrackPath_.empty()) {
+        ImGui::TextDisabled("Source: %s", inspectedTrackPath_.c_str());
+    }
+    if (!trackSource_.bakedMeshPath.empty()) {
+        ImGui::TextDisabled("Road Mesh: %s", trackSource_.bakedMeshPath.c_str());
+    }
+    if (!trackSource_.bakedShoulderMeshPath.empty()) {
+        ImGui::TextDisabled("Shoulder Mesh: %s", trackSource_.bakedShoulderMeshPath.c_str());
+    }
+
+    ImGui::Separator();
+    if (trackGeneratorMode_ == TrackGeneratorMode::Preset) {
+        const char* presetLabels[] = {"Oval", "Rounded Rectangle", "S-Curve Road"};
+        int presetIndex = trackSource_.presetType == TrackPresetType::RoundedRectangle ? 1
+                        : trackSource_.presetType == TrackPresetType::SCurve ? 2 : 0;
+        ImGui::SetNextItemWidth(190.0f);
+        if (ImGui::Combo("Preset", &presetIndex, presetLabels, IM_ARRAYSIZE(presetLabels))) {
+            trackSource_.presetType = presetIndex == 1 ? TrackPresetType::RoundedRectangle
+                                      : presetIndex == 2 ? TrackPresetType::SCurve
+                                                         : TrackPresetType::Oval;
+        }
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::DragFloat("Length", &trackPresetLength_, 1.0f, 20.0f, 1000.0f, "%.0f m");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::DragFloat("Width", &trackPresetWidth_, 1.0f, 10.0f, 1000.0f, "%.0f m");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::DragFloat("Radius", &trackPresetRadius_, 0.5f, 1.0f, 250.0f, "%.1f m");
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::DragInt("Point Count", &trackPresetPointCount_, 1.0f, 4, 128);
+        if (ImGui::Button("Apply Preset")) {
+            trackSource_.closed = trackSource_.presetType != TrackPresetType::SCurve;
+            trackSource_.controlPoints = BuildTrackPresetPoints(trackSource_.presetType,
+                                                                trackPresetLength_,
+                                                                trackPresetWidth_,
+                                                                trackPresetRadius_,
+                                                                trackPresetPointCount_);
+            selectedTrackPointIndex_ = -1;
+            trackGeneratorStatus_ = "Preset points generated.";
+            markTrackBakeDirty();
+        }
+    } else {
+        if (ImGui::Selectable("Draw##TrackDrawTool", trackDrawAddTool_, 0, ImVec2(64.0f, 0.0f))) {
+            trackDrawAddTool_ = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Selectable("Hand##TrackHandTool", !trackDrawAddTool_, 0, ImVec2(64.0f, 0.0f))) {
+            trackDrawAddTool_ = false;
+        }
+        ImGui::TextDisabled(trackDrawAddTool_
+            ? "Draw tool: left click Scene View to add points. Click the first point from the end to close."
+            : "Hand tool: select and drag existing points.");
+        ImGui::TextDisabled("Delete removes, Esc deselects, B bakes, arrows select. Insert adds the preview point.");
+        if (trackDrawPreviewValid_) {
+            ImGui::TextDisabled("Preview point: X %.2f  Z %.2f", trackDrawPreviewPoint_.x, trackDrawPreviewPoint_.z);
+        } else {
+            ImGui::TextDisabled("Preview point: move mouse over Scene View");
+        }
+    }
+
+    ImGui::SeparatorText("Control Points");
+    if (ImGui::SmallButton("Add Point")) {
+        trackSource_.controlPoints.push_back(glm::vec3{0.0f});
+        selectedTrackPointIndex_ = static_cast<int>(trackSource_.controlPoints.size()) - 1;
+        markTrackBakeDirty();
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Clear")) {
+        trackSource_.controlPoints.clear();
+        selectedTrackPointIndex_ = -1;
+        markTrackBakeDirty();
+    }
+
+    const float tableHeight = (std::min)(260.0f, 34.0f + static_cast<float>(trackSource_.controlPoints.size()) * 26.0f);
+    if (ImGui::BeginTable("TrackControlPoints", 5, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, tableHeight))) {
+        ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 36.0f);
+        ImGui::TableSetupColumn("X");
+        ImGui::TableSetupColumn("Y", ImGuiTableColumnFlags_WidthFixed, 72.0f);
+        ImGui::TableSetupColumn("Z");
+        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 58.0f);
+        ImGui::TableHeadersRow();
+        for (int i = 0; i < static_cast<int>(trackSource_.controlPoints.size()); ++i) {
+            glm::vec3& point = trackSource_.controlPoints[static_cast<std::size_t>(i)];
+            ImGui::PushID(i);
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            if (ImGui::Selectable(std::to_string(i).c_str(), selectedTrackPointIndex_ == i, ImGuiSelectableFlags_SpanAllColumns)) {
+                selectedTrackPointIndex_ = i;
+            }
+            ImGui::TableSetColumnIndex(1);
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            if (ImGui::DragFloat("##x", &point.x, 0.25f, -10000.0f, 10000.0f, "%.2f")) {
+                markTrackBakeDirty();
+            }
+            ImGui::TableSetColumnIndex(2);
+            point.y = 0.0f;
+            ImGui::TextDisabled("0.00");
+            ImGui::TableSetColumnIndex(3);
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            if (ImGui::DragFloat("##z", &point.z, 0.25f, -10000.0f, 10000.0f, "%.2f")) {
+                markTrackBakeDirty();
+            }
+            ImGui::TableSetColumnIndex(4);
+            if (ImGui::SmallButton("Remove")) {
+                trackSource_.controlPoints.erase(trackSource_.controlPoints.begin() + i);
+                if (selectedTrackPointIndex_ >= static_cast<int>(trackSource_.controlPoints.size())) {
+                    selectedTrackPointIndex_ = static_cast<int>(trackSource_.controlPoints.size()) - 1;
+                }
+                markTrackBakeDirty();
+                ImGui::PopID();
+                break;
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+
+    ImGui::Separator();
+    if (ImGui::Button("Bake Track To Scene")) {
+        BakeTrackToScene();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Save Source")) {
+        std::string error;
+        std::string sourcePath = inspectedTrackPath_;
+        if (sourcePath.empty()) {
+            const std::string base = SanitizeTrackAssetName(trackSource_.name);
+            sourcePath = "assets/tracks/" + base + "/" + base + ".track.json";
+        }
+        if (SaveTrackSource(ProjectAssetPathToAbsolute(sourcePath).string(), trackSource_, &error)) {
+            inspectedTrackPath_ = NormalizeSlashes(sourcePath);
+            selectedProjectFile_ = inspectedTrackPath_;
+            selectedProjectDirectory_ = ParentProjectDirectory(inspectedTrackPath_);
+            RefreshProjectFiles();
+            trackGeneratorStatus_ = "Saved " + inspectedTrackPath_;
+        } else {
+            trackGeneratorStatus_ = "Save failed: " + error;
+        }
+    }
+    if (!trackGeneratorStatus_.empty()) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", trackGeneratorStatus_.c_str());
+    }
+    if (trackRealtimeBake_ && trackBakeDirty_ && ImGui::GetTime() - trackBakeDirtyTime_ > 0.35) {
+        BakeTrackToScene(true);
+        trackBakeDirty_ = false;
+    }
+
+    ImGui::End();
+}
+
+bool SceneEditor::BakeTrackToScene(bool realtime) {
+    TrackMeshData roadMesh;
+    TrackMeshData shoulderMesh;
+    std::string error;
+    if (!BuildTrackRoadMesh(trackSource_, roadMesh, &error)) {
+        trackGeneratorStatus_ = "Bake failed: " + error;
+        if (console_ && !realtime) console_->AddError(trackGeneratorStatus_);
+        return false;
+    }
+    const bool hasShoulder = trackSource_.shoulderWidth > 0.001f;
+    if (hasShoulder && !BuildTrackShoulderMesh(trackSource_, shoulderMesh, &error)) {
+        trackGeneratorStatus_ = "Shoulder bake failed: " + error;
+        if (console_ && !realtime) console_->AddError(trackGeneratorStatus_);
+        return false;
+    }
+
+    const std::string base = SanitizeTrackAssetName(trackSource_.name);
+    trackSource_.name = base;
+    const fs::path assetsRoot = FindAssetsRoot();
+    const fs::path folder = assetsRoot / "tracks" / base;
+    const fs::path sourceAbs = folder / (base + ".track.json");
+    const fs::path roadObjAbs = folder / (base + "_road.obj");
+    const fs::path shoulderObjAbs = folder / (base + "_shoulder.obj");
+    const std::string sourceProjectPath = ToProjectAssetPath(sourceAbs, assetsRoot);
+    const std::string roadObjProjectPath = ToProjectAssetPath(roadObjAbs, assetsRoot);
+    const std::string shoulderObjProjectPath = ToProjectAssetPath(shoulderObjAbs, assetsRoot);
+    trackSource_.bakedMeshPath = roadObjProjectPath;
+    trackSource_.bakedShoulderMeshPath = hasShoulder ? shoulderObjProjectPath : "";
+    if (trackSource_.materialId.empty()) {
+        trackSource_.materialId = "pbr_default";
+    }
+    if (trackSource_.shoulderMaterialId.empty()) {
+        trackSource_.shoulderMaterialId = trackSource_.materialId;
+    }
+
+    if (!SaveTrackSource(sourceAbs.string(), trackSource_, &error)) {
+        trackGeneratorStatus_ = "Source save failed: " + error;
+        if (console_ && !realtime) console_->AddError(trackGeneratorStatus_);
+        return false;
+    }
+    if (!BakeTrackObj(roadObjAbs.string(), roadMesh, &error)) {
+        trackGeneratorStatus_ = "Road OBJ bake failed: " + error;
+        if (console_ && !realtime) console_->AddError(trackGeneratorStatus_);
+        return false;
+    }
+    if (hasShoulder && !BakeTrackObj(shoulderObjAbs.string(), shoulderMesh, &error)) {
+        trackGeneratorStatus_ = "Shoulder OBJ bake failed: " + error;
+        if (console_ && !realtime) console_->AddError(trackGeneratorStatus_);
+        return false;
+    }
+
+    bool pushedBakeUndo = false;
+    auto pushBakeUndo = [&]() {
+        if (!realtime && !pushedBakeUndo) {
+            PushUndoState();
+            pushedBakeUndo = true;
+        }
+    };
+
+    int ownerIndex = -1;
+    if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size()) && objects_[selectedIndex_].hasTrackGenerator) {
+        ownerIndex = selectedIndex_;
+    } else {
+        for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+            if (!objects_[i].hasTrackGenerator) {
+                continue;
+            }
+            const std::string sourcePath = NormalizeSlashes(objects_[i].trackGenerator.trackSourcePath);
+            if ((!inspectedTrackPath_.empty() && sourcePath == NormalizeSlashes(inspectedTrackPath_)) ||
+                (!sourceProjectPath.empty() && sourcePath == NormalizeSlashes(sourceProjectPath)) ||
+                sourcePath.empty()) {
+                ownerIndex = i;
+                break;
+            }
+        }
+    }
+    if (ownerIndex < 0) {
+        pushBakeUndo();
+        SceneObject owner;
+        owner.id = MakeId("track_generator");
+        owner.name = trackSource_.name + " Generator";
+        owner.type = "GameObject";
+        owner.hasMeshFilter = false;
+        owner.hasMeshRenderer = false;
+        owner.hasScriptComponent = false;
+        owner.hasTrackGenerator = true;
+        owner.trackGenerator = TrackGeneratorComponent{};
+        owner.trackGenerator.trackSourcePath = NormalizeSlashes(sourceProjectPath);
+        owner.inspectorComponentOrder = DefaultInspectorComponentOrder();
+        objects_.push_back(std::move(owner));
+        ownerIndex = static_cast<int>(objects_.size()) - 1;
+    }
+    const std::string ownerId = ownerIndex >= 0 ? objects_[ownerIndex].id : std::string{};
+
+    auto upsertTrackMeshObject = [&](const std::string& objProjectPath,
+                                     const std::string& objectName,
+                                     const std::string& materialId,
+                                     const std::string& preferredObjectId) -> int {
+        std::string resolvedPath;
+        std::shared_ptr<::Model> model;
+        std::vector<ImportedMeshInfo> infos;
+        if (!TryLoadMeshAsset(objProjectPath, resolvedPath, model, infos) || infos.empty()) {
+            return -1;
+        }
+
+        int targetIndex = -1;
+        if (!preferredObjectId.empty()) {
+            targetIndex = FindObjectIndexById(preferredObjectId);
+        }
+        for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+            if (targetIndex >= 0) {
+                break;
+            }
+            if (objects_[i].hasMeshFilter && NormalizeSlashes(objects_[i].meshFilter.sourcePath) == NormalizeSlashes(objProjectPath)) {
+                targetIndex = i;
+                break;
+            }
+        }
+
+        if (targetIndex < 0) {
+            SceneObject object;
+            object.id = MakeId("track");
+            object.name = objectName;
+            object.type = "GameObject";
+            object.parentId = ownerId;
+            object.hasScriptComponent = false;
+            object.hasMeshFilter = true;
+            object.hasMeshRenderer = true;
+            object.hasMeshCollider = true;
+            object.meshRenderer.materialId = materialId;
+            object.meshCollider.mode = MeshColliderMode::TriangleMesh;
+            object.inspectorComponentOrder = DefaultInspectorComponentOrder();
+            ApplyMeshInfoToSceneObject(object, infos.front(), model);
+            object.meshFilter.sourcePath = objProjectPath;
+            objects_.push_back(std::move(object));
+            targetIndex = static_cast<int>(objects_.size()) - 1;
+        } else {
+            SceneObject& object = objects_[targetIndex];
+            object.name = objectName;
+            object.parentId = ownerId;
+            object.hasMeshFilter = true;
+            object.hasMeshRenderer = true;
+            object.hasMeshCollider = true;
+            object.meshRenderer.materialId = materialId;
+            object.meshCollider.mode = MeshColliderMode::TriangleMesh;
+            ApplyMeshInfoToSceneObject(object, infos.front(), model);
+            object.meshFilter.sourcePath = objProjectPath;
+            SyncInspectorComponentOrder(object);
+        }
+        return targetIndex;
+    };
+
+    if (!realtime) {
+        pushBakeUndo();
+    }
+    const std::string preferredRoadId = ownerIndex >= 0 ? objects_[ownerIndex].trackGenerator.roadObjectId : std::string{};
+    const std::string preferredShoulderId = ownerIndex >= 0 ? objects_[ownerIndex].trackGenerator.shoulderObjectId : std::string{};
+    const int roadIndex = upsertTrackMeshObject(roadObjProjectPath, trackSource_.name + " Road", trackSource_.materialId, preferredRoadId);
+    const int shoulderIndex = hasShoulder
+        ? upsertTrackMeshObject(shoulderObjProjectPath, trackSource_.name + " Shoulder", trackSource_.shoulderMaterialId, preferredShoulderId)
+        : -1;
+    if (roadIndex < 0 || (hasShoulder && shoulderIndex < 0)) {
+        trackGeneratorStatus_ = "Baked OBJ, but failed to load generated mesh into scene.";
+        if (console_ && !realtime) console_->AddError(trackGeneratorStatus_);
+        RefreshProjectFiles();
+        return false;
+    }
+
+    if (ownerIndex >= 0 && ownerIndex < static_cast<int>(objects_.size())) {
+        SceneObject& owner = objects_[ownerIndex];
+        owner.trackGenerator.trackSourcePath = NormalizeSlashes(sourceProjectPath);
+        owner.trackGenerator.roadObjectId = roadIndex >= 0 ? objects_[roadIndex].id : std::string{};
+        owner.trackGenerator.shoulderObjectId = shoulderIndex >= 0 ? objects_[shoulderIndex].id : std::string{};
+    }
+    if (!realtime) {
+        Select(ownerIndex >= 0 ? ownerIndex : roadIndex);
+    }
+    inspectedTrackPath_ = NormalizeSlashes(sourceProjectPath);
+    selectedProjectFile_ = inspectedTrackPath_;
+    selectedProjectDirectory_ = ParentProjectDirectory(inspectedTrackPath_);
+    RefreshProjectFiles();
+    if (onDirty_) onDirty_();
+    trackGeneratorStatus_ = realtime ? "Realtime baked." : "Baked track: " + roadObjProjectPath;
+    if (console_ && !realtime) console_->AddLog(trackGeneratorStatus_);
+    return true;
+}
+
+void SceneEditor::HandleTrackDrawingInput() {
+    if (!showTrackGenerator_ || trackGeneratorMode_ != TrackGeneratorMode::Draw ||
+        !hasEditorCameraMatrices_ ||
+        sceneViewportSize_.x <= 1.0f || sceneViewportSize_.y <= 1.0f) {
+        return;
+    }
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    const ImVec2 clipMin(sceneViewportPos_.x, sceneViewportPos_.y);
+    const ImVec2 clipMax(sceneViewportPos_.x + sceneViewportSize_.x, sceneViewportPos_.y + sceneViewportSize_.y);
+    drawList->PushClipRect(clipMin, clipMax, true);
+    std::vector<ImVec2> screens(trackSource_.controlPoints.size());
+    std::vector<bool> visible(trackSource_.controlPoints.size(), false);
+    for (int i = 0; i < static_cast<int>(trackSource_.controlPoints.size()); ++i) {
+        ImVec2 screen;
+        if (ProjectWorldToSceneScreen(editorCameraView_, editorCameraProj_, sceneViewportPos_, sceneViewportSize_, trackSource_.controlPoints[static_cast<std::size_t>(i)], screen)) {
+            screens[static_cast<std::size_t>(i)] = screen;
+            visible[static_cast<std::size_t>(i)] = true;
+        }
+    }
+    const ImU32 lineColor = ImGui::ColorConvertFloat4ToU32(ImVec4(0.20f, 0.70f, 1.0f, 1.0f));
+    const ImU32 selectedColor = ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 0.62f, 0.18f, 1.0f));
+    const ImU32 previewColor = ImGui::ColorConvertFloat4ToU32(ImVec4(0.42f, 0.92f, 0.62f, 0.95f));
+    for (int i = 0; i + 1 < static_cast<int>(screens.size()); ++i) {
+        if (visible[static_cast<std::size_t>(i)] && visible[static_cast<std::size_t>(i + 1)]) {
+            drawList->AddLine(screens[static_cast<std::size_t>(i)], screens[static_cast<std::size_t>(i + 1)], lineColor, 2.0f);
+        }
+    }
+    if (trackSource_.closed && screens.size() > 2 && visible.front() && visible.back()) {
+        drawList->AddLine(screens.back(), screens.front(), lineColor, 2.0f);
+    }
+    for (int i = 0; i < static_cast<int>(screens.size()); ++i) {
+        if (!visible[static_cast<std::size_t>(i)]) continue;
+        const bool selected = i == selectedTrackPointIndex_;
+        drawList->AddCircleFilled(screens[static_cast<std::size_t>(i)], selected ? 6.0f : 4.5f, selected ? selectedColor : lineColor);
+    }
+
+    ImGuiIO& io = ImGui::GetIO();
+    const ImVec2 mouse = io.MousePos;
+    glm::vec3 previewPoint{0.0f};
+    const bool hasPreviewPoint = ProjectMouseToXZPlane(editorCameraView_, editorCameraProj_, sceneViewportPos_, sceneViewportSize_, mouse, previewPoint);
+    trackDrawPreviewValid_ = hasPreviewPoint;
+    trackDrawPreviewPoint_ = previewPoint;
+    ImVec2 previewScreen;
+    if (hasPreviewPoint && ProjectWorldToSceneScreen(editorCameraView_, editorCameraProj_, sceneViewportPos_, sceneViewportSize_, previewPoint, previewScreen)) {
+        drawList->AddCircle(previewScreen, 5.0f, previewColor, 18, 2.0f);
+        int anchorIndex = trackDrawAddTool_
+            ? (selectedTrackPointIndex_ >= 0 ? selectedTrackPointIndex_ : static_cast<int>(trackSource_.controlPoints.size()) - 1)
+            : -1;
+        if (trackDrawAddTool_ && anchorIndex >= 0 && anchorIndex < static_cast<int>(screens.size()) && visible[static_cast<std::size_t>(anchorIndex)]) {
+            drawList->AddLine(screens[static_cast<std::size_t>(anchorIndex)], previewScreen, previewColor, 1.5f);
+        }
+    }
+    drawList->PopClipRect();
+
+    int hoveredPoint = -1;
+    float bestDistSq = 100.0f;
+    for (int i = 0; i < static_cast<int>(screens.size()); ++i) {
+        if (!visible[static_cast<std::size_t>(i)]) continue;
+        const float dx = mouse.x - screens[static_cast<std::size_t>(i)].x;
+        const float dy = mouse.y - screens[static_cast<std::size_t>(i)].y;
+        const float distSq = dx * dx + dy * dy;
+        if (distSq < bestDistSq) {
+            bestDistSq = distSq;
+            hoveredPoint = i;
+        }
+    }
+
+    if (!sceneViewportHovered_) {
+        return;
+    }
+
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        if (hoveredPoint >= 0) {
+            const int lastIndex = static_cast<int>(trackSource_.controlPoints.size()) - 1;
+            if (trackDrawAddTool_ && !trackSource_.closed && hoveredPoint == 0 && lastIndex >= 2 && selectedTrackPointIndex_ == lastIndex) {
+                trackSource_.closed = true;
+                selectedTrackPointIndex_ = 0;
+                draggingTrackPoint_ = false;
+                trackBakeDirty_ = true;
+                trackBakeDirtyTime_ = ImGui::GetTime();
+            } else {
+                selectedTrackPointIndex_ = hoveredPoint;
+                draggingTrackPoint_ = true;
+            }
+        } else {
+            if (trackDrawAddTool_ && hasPreviewPoint) {
+                trackSource_.controlPoints.push_back(previewPoint);
+                selectedTrackPointIndex_ = static_cast<int>(trackSource_.controlPoints.size()) - 1;
+                trackSource_.closed = false;
+                draggingTrackPoint_ = false;
+                trackBakeDirty_ = true;
+                trackBakeDirtyTime_ = ImGui::GetTime();
+            }
+        }
+    }
+    if (draggingTrackPoint_ && selectedTrackPointIndex_ >= 0 &&
+        selectedTrackPointIndex_ < static_cast<int>(trackSource_.controlPoints.size()) &&
+        ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        glm::vec3 point;
+        if (ProjectMouseToXZPlane(editorCameraView_, editorCameraProj_, sceneViewportPos_, sceneViewportSize_, mouse, point)) {
+            trackSource_.controlPoints[static_cast<std::size_t>(selectedTrackPointIndex_)] = point;
+            trackBakeDirty_ = true;
+            trackBakeDirtyTime_ = ImGui::GetTime();
+        }
+    }
+    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        draggingTrackPoint_ = false;
+    }
+    if (selectedTrackPointIndex_ >= 0 && ImGui::IsKeyPressed(ImGuiKey_Delete)) {
+        trackSource_.controlPoints.erase(trackSource_.controlPoints.begin() + selectedTrackPointIndex_);
+        selectedTrackPointIndex_ = (std::min)(selectedTrackPointIndex_, static_cast<int>(trackSource_.controlPoints.size()) - 1);
+        draggingTrackPoint_ = false;
+        trackBakeDirty_ = true;
+        trackBakeDirtyTime_ = ImGui::GetTime();
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+        selectedTrackPointIndex_ = -1;
+        draggingTrackPoint_ = false;
+    }
+    if (!trackSource_.controlPoints.empty() && ImGui::IsKeyPressed(ImGuiKey_RightArrow)) {
+        selectedTrackPointIndex_ = (selectedTrackPointIndex_ + 1) % static_cast<int>(trackSource_.controlPoints.size());
+    }
+    if (!trackSource_.controlPoints.empty() && ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) {
+        selectedTrackPointIndex_ = selectedTrackPointIndex_ <= 0
+            ? static_cast<int>(trackSource_.controlPoints.size()) - 1
+            : selectedTrackPointIndex_ - 1;
+    }
+    if (hasPreviewPoint && ImGui::IsKeyPressed(ImGuiKey_Insert)) {
+        trackSource_.controlPoints.push_back(previewPoint);
+        selectedTrackPointIndex_ = static_cast<int>(trackSource_.controlPoints.size()) - 1;
+        trackSource_.closed = false;
+        trackBakeDirty_ = true;
+        trackBakeDirtyTime_ = ImGui::GetTime();
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_B)) {
+        BakeTrackToScene(false);
+        trackBakeDirty_ = false;
     }
 }
 

@@ -1,0 +1,28 @@
+{
+  "objects": [
+    {
+      "id": "plane_1",
+      "name": "pbr_default",
+      "type": "Plane",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [38.5, 0.6, 57]
+      },
+      "color": [0, 0.396078, 0.239216, 1],
+      "materialId": "pbr_default"
+    },
+    {
+      "id": "mesh_1",
+      "name": "Chevrolet-nascar-FLWheel",
+      "type": "Mesh",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "color": [0.321569, 0.960784, 0.764706, 1],
+      "materialId": "pbr_default"
+    }
+  ]
+}

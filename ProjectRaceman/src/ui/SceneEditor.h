@@ -23,6 +23,7 @@
 #include "../scripting/ObjectScript.h"
 #include "../audio/VehicleSoundProfile.h"
 #include "../rendering/SkyboxController.h"
+#include "TrackGenerator.h"
 
 namespace irrklang { class ISound; }
 
@@ -74,6 +75,13 @@ public:
     bool ContainsGameViewportPoint(float x, float y) const;
     bool ShouldRouteInputToGame() const { return activeViewport_ == SceneEditorActiveViewport::Game; }
     bool IsSceneViewportActiveForEditorControls() const { return activeViewport_ == SceneEditorActiveViewport::Scene; }
+    bool ShouldRenderGameViewportInEditMode() const {
+        return gameViewportRenderDirty_ && gameViewportSize_.x > 1.0f && gameViewportSize_.y > 1.0f;
+    }
+    void MarkGameViewportRendered() {
+        gameViewportRenderDirty_ = false;
+        lastRenderedGameViewportSize_ = gameViewportSize_;
+    }
     void SetEditorCameraNavigating(bool navigating) { editorCameraNavigating_ = navigating; }
     void SetSceneViewportTexture(unsigned int textureId) { sceneViewportTextureId_ = textureId; }
     void SetGameViewportTexture(unsigned int textureId) { gameViewportTextureId_ = textureId; }
@@ -87,6 +95,7 @@ public:
     void SetOnDirty(std::function<void()> cb) {
         onDirty_ = [this, inner = std::move(cb)]() {
             sceneDirty_ = true;
+            gameViewportRenderDirty_ = true;
             if (inner) inner();
         };
     }
@@ -205,6 +214,7 @@ private:
     void AddPlane();
     void AddBuiltInPrimitiveObject(const std::string& meshType);
     void AddEmptyObject();
+    void AddTrackGeneratorObject();
     void AddCameraObject();
     void AddLightObject(LightType type);
     void DeleteSelectedObject();
@@ -232,6 +242,10 @@ private:
     void OpenShaderGraphEditor(const std::string& graphPath);
     void OpenVehicleConfigEditor(const std::string& configPath);
     void OpenVehicleSoundEditor(const std::string& profilePath);
+    void OpenTrackGenerator(const std::string& trackPath);
+    void RenderTrackGeneratorWindow();
+    void HandleTrackDrawingInput();
+    bool BakeTrackToScene(bool realtime = false);
     void BeginObjectRename(int index);
     void BeginProjectFileRename(const std::string& path);
     void CommitProjectFileRename();
@@ -503,6 +517,8 @@ private:
     glm::vec2 sceneViewportSize_{0.0f, 0.0f};
     glm::vec2 gameViewportPos_{0.0f, 0.0f};
     glm::vec2 gameViewportSize_{0.0f, 0.0f};
+    int gameViewportAspectIndex_{0};
+    int gameViewportZoomIndex_{0};
     unsigned int sceneViewportTextureId_{0};
     unsigned int gameViewportTextureId_{0};
     bool viewportHovered_{false};
@@ -511,6 +527,8 @@ private:
     bool sceneViewportFocused_{false};
     bool gameViewportHovered_{false};
     bool gameViewportFocused_{false};
+    bool gameViewportRenderDirty_{true};
+    glm::vec2 lastRenderedGameViewportSize_{0.0f, 0.0f};
     bool editorCameraNavigating_{false};
     glm::mat4 editorCameraView_{1.0f};
     glm::mat4 editorCameraProj_{1.0f};
@@ -534,6 +552,23 @@ private:
     };
     std::vector<VehicleSoundHistoryState> vehicleSoundUndoStack_;
     std::vector<VehicleSoundHistoryState> vehicleSoundRedoStack_;
+    bool showTrackGenerator_{false};
+    TrackGeneratorMode trackGeneratorMode_{TrackGeneratorMode::Preset};
+    TrackSource trackSource_{};
+    std::string inspectedTrackPath_;
+    std::string trackGeneratorStatus_;
+    int selectedTrackPointIndex_{-1};
+    bool draggingTrackPoint_{false};
+    bool trackDrawAddTool_{false};
+    bool trackDrawPreviewValid_{false};
+    glm::vec3 trackDrawPreviewPoint_{0.0f};
+    bool trackRealtimeBake_{true};
+    bool trackBakeDirty_{false};
+    double trackBakeDirtyTime_{0.0};
+    float trackPresetLength_{120.0f};
+    float trackPresetWidth_{70.0f};
+    float trackPresetRadius_{18.0f};
+    int trackPresetPointCount_{16};
     struct MaterialHistoryState {
         std::string materialId;
         Material material;

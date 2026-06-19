@@ -16,6 +16,7 @@ const char* ProjectCreateAssetTypeTitle(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::Material) return "Create Material";
     if (type == ProjectCreateAssetType::VehicleProfile) return "Create Vehicle Profile";
     if (type == ProjectCreateAssetType::VehicleSoundProfile) return "Create Vehicle Sound Profile";
+    if (type == ProjectCreateAssetType::Track) return "Create Track";
     if (type == ProjectCreateAssetType::Script) return "Create C++ Script";
     if (type == ProjectCreateAssetType::ShaderGraph) return "Create Shader Graph";
     return "Create Asset";
@@ -27,6 +28,7 @@ const char* ProjectCreateAssetTypeDefaultName(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::Material) return "NewMaterial";
     if (type == ProjectCreateAssetType::VehicleProfile) return "NewVehicleProfile";
     if (type == ProjectCreateAssetType::VehicleSoundProfile) return "NewVehicleSoundProfile";
+    if (type == ProjectCreateAssetType::Track) return "NewTrack";
     if (type == ProjectCreateAssetType::Script) return "NewScript";
     if (type == ProjectCreateAssetType::ShaderGraph) return "NewShaderGraph";
     return "NewAsset";
@@ -308,6 +310,7 @@ std::string AssetIconForProjectFile(const std::string& path) {
     if (IsShaderGraphAssetPath(path))  return "asset-shader-graph.png";
     if (IsVehicleConfigAssetPath(path))return "asset-vehicle.png";
     if (IsVehicleSoundAssetPath(path)) return "asset-vehicle-sound.png";
+    if (IsTrackAssetPath(path))        return "asset-track.png";
     if (IsMeshAssetPath(path))         return "asset-mesh.png";
     if (IsPrefabAssetPath(path))       return "asset-prefab.png";
     if (IsAudioAssetPath(path))        return "asset-audio.png";
@@ -678,6 +681,7 @@ void SceneEditor::RenderProjectPanel() {
                     const bool isScene = IsSceneAssetPath(file);
                     const bool isPrefab = IsPrefabAssetPath(file);
                     const bool isShaderGraph = IsShaderGraphAssetPath(file);
+                    const bool isTrack = IsTrackAssetPath(file);
                     std::string filename = ProjectAssetDisplayFilename(file);
 
                     ImGui::PushID(file.c_str());
@@ -695,6 +699,8 @@ void SceneEditor::RenderProjectPanel() {
                                     OpenMaterialEditor(MaterialIdFromAssetPath(file));
                                 } else if (isShaderGraph) {
                                     OpenShaderGraphEditor(file);
+                                } else if (isTrack) {
+                                    OpenTrackGenerator(file);
                                 } else if (isPrefab) {
                                     if (InstantiatePrefab(file)) {
                                         if (console_) console_->AddLog("Instantiated prefab: " + file);
@@ -729,6 +735,19 @@ void SceneEditor::RenderProjectPanel() {
                             } else if (isMaterial) {
                                 if (ImGui::MenuItem("Edit")) {
                                     OpenMaterialEditor(MaterialIdFromAssetPath(file));
+                                }
+                                if (ImGui::MenuItem("Open in Default App")) {
+                                    if (OpenProjectAssetInDefaultEditor(file)) {
+                                        if (console_) {
+                                            console_->AddLog("Opened project file: " + file);
+                                        }
+                                    } else if (console_) {
+                                        console_->AddError("Failed to open project file: " + file);
+                                    }
+                                }
+                            } else if (isTrack) {
+                                if (ImGui::MenuItem("Edit")) {
+                                    OpenTrackGenerator(file);
                                 }
                                 if (ImGui::MenuItem("Open in Default App")) {
                                     if (OpenProjectAssetInDefaultEditor(file)) {
@@ -950,6 +969,11 @@ void SceneEditor::RenderProjectPanel() {
                             std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
                             showCreateProjectAssetPopup_ = true;
                         }
+                        if (ImGui::MenuItem("Track")) {
+                            createProjectAssetType_ = ProjectCreateAssetType::Track;
+                            std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
+                            showCreateProjectAssetPopup_ = true;
+                        }
                         if (ImGui::MenuItem("C++ Script")) {
                             createProjectAssetType_ = ProjectCreateAssetType::Script;
                             std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
@@ -1115,6 +1139,25 @@ void SceneEditor::RenderProjectPanel() {
                             created = CreateVehicleSoundAsset(createProjectAssetNameBuffer_, &createdSoundProfilePath);
                             if (created) {
                                 selectedProjectFile_ = createdSoundProfilePath;
+                            }
+                        } else if (createProjectAssetType_ == ProjectCreateAssetType::Track) {
+                            const std::string baseName = SanitizeAssetBaseName(createProjectAssetNameBuffer_);
+                            fs::path target = ProjectAssetPathToAbsolute(selectedProjectDirectory_) / (baseName + ".track.json");
+                            int suffix = 1;
+                            while (fs::exists(target)) {
+                                target = ProjectAssetPathToAbsolute(selectedProjectDirectory_) / (baseName + "_" + std::to_string(suffix++) + ".track.json");
+                            }
+                            TrackSource source;
+                            source.name = fs::path(target).stem().stem().string();
+                            source.closed = false;
+                            source.controlPoints = BuildTrackPresetPoints(source.presetType, 120.0f, 70.0f, 18.0f, 16);
+                            std::string error;
+                            created = SaveTrackSource(target.string(), source, &error);
+                            if (created) {
+                                selectedProjectFile_ = ToProjectAssetPath(target, FindAssetsRoot());
+                                OpenTrackGenerator(selectedProjectFile_);
+                            } else if (console_) {
+                                console_->AddError("Failed to create track: " + error);
                             }
                         } else if (createProjectAssetType_ == ProjectCreateAssetType::Script) {
                             created = CreateScriptAsset(createProjectAssetNameBuffer_, false);
@@ -1998,6 +2041,12 @@ void SceneEditor::BeginProjectFileRename(const std::string& path) {
         if (EndsWith(ToLowerCopy(editableName), displaySuffix)) {
             editableName.resize(editableName.size() - displaySuffix.size());
         }
+    } else if (IsTrackAssetPath(path)) {
+        editableName = ProjectAssetDisplayFilename(path);
+        const std::string displaySuffix = ".track";
+        if (EndsWith(ToLowerCopy(editableName), displaySuffix)) {
+            editableName.resize(editableName.size() - displaySuffix.size());
+        }
     } else if (IsMaterialAssetPath(path)) {
         editableName = MaterialIdFromAssetPath(path);
     }
@@ -2024,6 +2073,17 @@ void SceneEditor::CommitProjectFileRename() {
         } else {
             if (EndsWith(ToLowerCopy(newFilename), sceneSuffix)) {
                 newFilename.resize(newFilename.size() - sceneSuffix.size());
+            }
+            newFilename += storageSuffix;
+        }
+    } else if (IsTrackAssetPath(oldProjectPath)) {
+        const std::string displaySuffix = ".track";
+        const std::string storageSuffix = ".track.json";
+        if (EndsWith(ToLowerCopy(newFilename), storageSuffix)) {
+            // Keep explicit full names working.
+        } else {
+            if (EndsWith(ToLowerCopy(newFilename), displaySuffix)) {
+                newFilename.resize(newFilename.size() - displaySuffix.size());
             }
             newFilename += storageSuffix;
         }

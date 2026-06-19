@@ -174,7 +174,8 @@ inline std::vector<SceneInspectorComponentType> DefaultInspectorComponentOrder()
         SceneInspectorComponentType::Light,
         SceneInspectorComponentType::AudioListener,
         SceneInspectorComponentType::AudioSource,
-        SceneInspectorComponentType::VehicleSound
+        SceneInspectorComponentType::VehicleSound,
+        SceneInspectorComponentType::TrackGenerator
     };
 }
 
@@ -208,6 +209,8 @@ inline bool HasInspectorComponent(const SceneObject& object, SceneInspectorCompo
         return object.hasAudioSource;
     case SceneInspectorComponentType::VehicleSound:
         return object.hasVehicleSound;
+    case SceneInspectorComponentType::TrackGenerator:
+        return object.hasTrackGenerator;
     }
     return false;
 }
@@ -362,6 +365,10 @@ inline bool IsVehicleSoundAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".vehiclesound.json");
 }
 
+inline bool IsTrackAssetPath(const std::string& path) {
+    return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".track.json");
+}
+
 inline bool IsShaderGraphAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".shadergraph.json");
 }
@@ -441,6 +448,15 @@ inline std::string ProjectAssetDisplayFilename(const std::string& path) {
         if (EndsWith(ToLowerCopy(filename), suffix)) {
             filename.resize(filename.size() - suffix.size());
             filename += ".vehiclesound";
+        }
+        return filename;
+    }
+    if (IsTrackAssetPath(path)) {
+        std::string filename = fs::path(path).filename().string();
+        const std::string suffix = ".track.json";
+        if (EndsWith(ToLowerCopy(filename), suffix)) {
+            filename.resize(filename.size() - suffix.size());
+            filename += ".track";
         }
         return filename;
     }
@@ -1268,6 +1284,7 @@ inline const char* InspectorComponentTypeToString(SceneInspectorComponentType ty
     case SceneInspectorComponentType::AudioListener: return "AudioListener";
     case SceneInspectorComponentType::AudioSource: return "AudioSource";
     case SceneInspectorComponentType::VehicleSound: return "VehicleSound";
+    case SceneInspectorComponentType::TrackGenerator: return "TrackGenerator";
     }
     return "Transform";
 }
@@ -1287,6 +1304,7 @@ inline bool InspectorComponentTypeFromString(const std::string& value, SceneInsp
     if (value == "AudioListener") { outType = SceneInspectorComponentType::AudioListener; return true; }
     if (value == "AudioSource") { outType = SceneInspectorComponentType::AudioSource; return true; }
     if (value == "VehicleSound") { outType = SceneInspectorComponentType::VehicleSound; return true; }
+    if (value == "TrackGenerator") { outType = SceneInspectorComponentType::TrackGenerator; return true; }
     return false;
 }
 

@@ -944,7 +944,13 @@ void Application::Render() {
 
     if (sceneEditor_) {
         renderScenePass(sceneEditor_->GetSceneRenderViewport(cfg.width, cfg.height));
-        renderGamePass(sceneEditor_->GetGameRenderViewport(cfg.width, cfg.height));
+        const bool renderGameViewport = sceneEditor_->IsRunMode()
+            || sceneEditor_->ShouldRouteInputToGame()
+            || sceneEditor_->ShouldRenderGameViewportInEditMode();
+        if (renderGameViewport) {
+            renderGamePass(sceneEditor_->GetGameRenderViewport(cfg.width, cfg.height));
+            sceneEditor_->MarkGameViewportRendered();
+        }
     } else {
         renderScenePass(RendererViewport{0, 0, cfg.width, cfg.height});
     }

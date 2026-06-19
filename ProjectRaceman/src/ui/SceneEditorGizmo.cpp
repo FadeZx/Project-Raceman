@@ -556,6 +556,10 @@ struct PickCandidate {
     float tAabb;
 };
 
+bool IsPlanePickFallbackObject(const SceneObject& object) {
+    return object.hasMeshFilter && object.meshFilter.meshType == "Plane";
+}
+
 // Möller–Trumbore ray-triangle intersection.
 bool IntersectRayTriangle(
     const glm::vec3& orig, const glm::vec3& dir,
@@ -620,6 +624,8 @@ void SceneEditor::SelectProjectFile(const std::string& path) {
         vehicleConfigUndoStack_.clear();
         vehicleConfigRedoStack_.clear();
         vehicleConfigEditActive_ = false;
+    } else if (IsTrackAssetPath(selectedProjectFile_)) {
+        OpenTrackGenerator(selectedProjectFile_);
     }
     // For neutral file types (audio clips, images, meshes, scripts, etc.)
     // do NOT change editor state — the user may be selecting a file to
@@ -721,13 +727,17 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
               [](const PickCandidate& a, const PickCandidate& b) { return a.tAabb < b.tAabb; });
 
     // --- Phase 2: narrow phase — mesh triangle test ---
-    int   bestIndex = -1;
-    float bestT     = (std::numeric_limits<float>::max)();
+    int   bestTriangleIndex = -1;
+    float bestTriangleT     = (std::numeric_limits<float>::max)();
+    int   bestFallbackIndex = -1;
+    float bestFallbackT     = (std::numeric_limits<float>::max)();
+    int   bestPlaneFallbackIndex = -1;
+    float bestPlaneFallbackT     = (std::numeric_limits<float>::max)();
 
     for (const PickCandidate& cand : candidates) {
-        // Early-out: if a nearer candidate already scored a triangle hit, any
-        // candidate whose AABB starts beyond that hit can be skipped.
-        if (cand.tAabb >= bestT) break;
+        // Early-out only after an exact triangle hit. AABB fallback objects,
+        // especially large planes, should not block later exact mesh hits.
+        if (bestTriangleIndex >= 0 && cand.tAabb >= bestTriangleT) break;
 
         const SceneObject& obj = objects_[cand.index];
 
@@ -750,9 +760,9 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
                 const glm::vec3 wv1 = glm::vec3(meshMatrix * glm::vec4(pv[pi[tri * 3 + 1]], 1.0f));
                 const glm::vec3 wv2 = glm::vec3(meshMatrix * glm::vec4(pv[pi[tri * 3 + 2]], 1.0f));
                 float tTri = 0.0f;
-                if (IntersectRayTriangle(rayOrigin, rayDirection, wv0, wv1, wv2, tTri) && tTri < bestT) {
-                    bestT     = tTri;
-                    bestIndex = cand.index;
+                if (IntersectRayTriangle(rayOrigin, rayDirection, wv0, wv1, wv2, tTri) && tTri < bestTriangleT) {
+                    bestTriangleT     = tTri;
+                    bestTriangleIndex = cand.index;
                 }
             }
             narrowTested = true;
@@ -760,10 +770,22 @@ void SceneEditor::TrySelectObjectAtMouse(Renderer& renderer) {
 
         // Fallback for primitives (Plane, primitive meshes without modelRef):
         // accept the AABB hit as the pick result.
-        if (!narrowTested && cand.tAabb < bestT) {
-            bestT     = cand.tAabb;
-            bestIndex = cand.index;
+        if (!narrowTested) {
+            if (IsPlanePickFallbackObject(obj)) {
+                if (cand.tAabb < bestPlaneFallbackT) {
+                    bestPlaneFallbackT = cand.tAabb;
+                    bestPlaneFallbackIndex = cand.index;
+                }
+            } else if (cand.tAabb < bestFallbackT) {
+                bestFallbackT = cand.tAabb;
+                bestFallbackIndex = cand.index;
+            }
         }
+    }
+
+    int bestIndex = bestTriangleIndex;
+    if (bestIndex < 0) {
+        bestIndex = bestFallbackIndex >= 0 ? bestFallbackIndex : bestPlaneFallbackIndex;
     }
 
     if (bestIndex >= 0) {

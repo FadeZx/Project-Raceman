@@ -148,6 +148,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="src\ui\SceneEditor.h" />
     <ClInclude Include="src\ui\SceneEditorInternal.h" />
     <ClInclude Include="src\ui\SceneEditorTypes.h" />
+    <ClInclude Include="src\ui\TrackGenerator.h" />
     <ClInclude Include="editor-assets\third_party\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="editor-assets\third_party\imnodes\imnodes.h" />
   </ItemGroup>
@@ -193,6 +194,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\ui\SceneEditorInspector.cpp" />
     <ClCompile Include="src\ui\SceneEditorProject.cpp" />
     <ClCompile Include="src\ui\SceneEditorShaderGraph.cpp" />
+    <ClCompile Include="src\ui\TrackGenerator.cpp" />
     <ClCompile Include="editor-assets\third_party\imnodes\imnodes.cpp" />
   </ItemGroup>
   <ItemGroup>

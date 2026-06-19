@@ -174,6 +174,9 @@ void SceneEditor::RenderScenePanel() {
                 if (ImGui::MenuItem("Camera")) {
                     AddCameraObject();
                 }
+                if (ImGui::MenuItem("Track Generator")) {
+                    AddTrackGeneratorObject();
+                }
                 if (ImGui::BeginMenu("Light")) {
                     if (ImGui::MenuItem("Directional Light")) {
                         AddLightObject(LightType::Directional);
@@ -436,7 +439,7 @@ void SceneEditor::RenderScenePanel() {
                             pendingHierarchySelectToggle_ = ImGui::GetIO().KeyCtrl;
                             pendingHierarchySelectRange_ = ImGui::GetIO().KeyShift;
                             pendingHierarchyRangeAnchor_ = selectedIndex_;
-                            pendingHierarchyFocusObject_ = !pendingHierarchySelectToggle_ && !pendingHierarchySelectRange_;
+                            pendingHierarchyFocusObject_ = false;
                             pendingHierarchySelectionDragged_ = false;
                         }
                     }

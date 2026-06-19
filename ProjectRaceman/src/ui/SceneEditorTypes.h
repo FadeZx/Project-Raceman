@@ -37,6 +37,7 @@ enum class ProjectCreateAssetType {
     Material,
     VehicleProfile,
     VehicleSoundProfile,
+    Track,
     Script,
     ShaderGraph
 };
@@ -57,7 +58,8 @@ enum class SceneComponentType {
     Light,
     AudioListener,
     AudioSource,
-    VehicleSound
+    VehicleSound,
+    TrackGenerator
 };
 
 enum class SceneInspectorComponentType {
@@ -74,7 +76,8 @@ enum class SceneInspectorComponentType {
     Light,
     AudioListener,
     AudioSource,
-    VehicleSound
+    VehicleSound,
+    TrackGenerator
 };
 
 enum class RigidbodyBodyType {
@@ -312,6 +315,13 @@ struct VehicleSoundComponent {
     std::string profilePath;
 };
 
+struct TrackGeneratorComponent {
+    bool enabled{true};
+    std::string trackSourcePath;
+    std::string roadObjectId;
+    std::string shoulderObjectId;
+};
+
 struct SceneObject {
     std::string id;
     std::string parentId;
@@ -339,6 +349,7 @@ struct SceneObject {
     bool hasAudioListener{false};
     bool hasAudioSource{false};
     bool hasVehicleSound{false};
+    bool hasTrackGenerator{false};
     MeshFilterComponent meshFilter;
     MeshRendererComponent meshRenderer;
     ScriptComponent scriptComponent;
@@ -356,6 +367,7 @@ struct SceneObject {
     AudioListenerComponent audioListener;
     AudioSourceComponent audioSource;
     VehicleSoundComponent vehicleSound;
+    TrackGeneratorComponent trackGenerator;
 };
 
 struct SceneMeshContributorStats {

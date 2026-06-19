@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
 
 #ifndef GLM_ENABLE_EXPERIMENTAL
 #define GLM_ENABLE_EXPERIMENTAL
@@ -370,8 +371,28 @@ bool TryLoadVehicleConfigForPath(const std::string& projectPath, raceman::physic
     if (projectPath.empty()) {
         return false;
     }
+    struct CachedVehicleConfig {
+        raceman::physics::VehicleConfig config;
+        fs::file_time_type modifiedTime{};
+        bool valid{false};
+    };
+    static std::unordered_map<std::string, CachedVehicleConfig> cache;
+
     try {
-        outConfig = raceman::physics::VehicleConfigLoader::loadFromFile(ProjectAssetPathToAbsolute(projectPath).string());
+        const fs::path absolutePath = ProjectAssetPathToAbsolute(projectPath);
+        std::error_code ec;
+        const fs::file_time_type modifiedTime = fs::last_write_time(absolutePath, ec);
+        if (ec) {
+            return false;
+        }
+
+        CachedVehicleConfig& cached = cache[absolutePath.string()];
+        if (!cached.valid || cached.modifiedTime != modifiedTime) {
+            cached.config = raceman::physics::VehicleConfigLoader::loadFromFile(absolutePath.string());
+            cached.modifiedTime = modifiedTime;
+            cached.valid = true;
+        }
+        outConfig = cached.config;
         return true;
     } catch (...) {
         return false;
@@ -396,6 +417,39 @@ void SyncVehicleWheelBindings(VehicleComponent& vehicle, const raceman::physics:
     vehicle.wheelBindings = std::move(syncedBindings);
 }
 
+ImVec4 ScaleColor(const ImVec4& color, float scale) {
+    return ImVec4(
+        (std::min)(1.0f, color.x * scale),
+        (std::min)(1.0f, color.y * scale),
+        (std::min)(1.0f, color.z * scale),
+        color.w);
+}
+
+ImVec4 ComponentHeaderAccent(const char* label) {
+    if (std::strcmp(label, "Rigidbody") == 0) {
+        return ImVec4(0.30f, 0.40f, 0.26f, 1.0f);
+    }
+    if (std::strcmp(label, "Vehicle") == 0 || std::strcmp(label, "Vehicle Sound") == 0) {
+        return ImVec4(0.16f, 0.34f, 0.52f, 1.0f);
+    }
+    if (std::strcmp(label, "Collider") == 0 || std::strcmp(label, "Character Controller") == 0) {
+        return ImVec4(0.34f, 0.28f, 0.48f, 1.0f);
+    }
+    if (std::strcmp(label, "Camera") == 0 || std::strcmp(label, "Cinemachine Camera") == 0) {
+        return ImVec4(0.22f, 0.40f, 0.46f, 1.0f);
+    }
+    if (std::strcmp(label, "Light") == 0) {
+        return ImVec4(0.52f, 0.40f, 0.14f, 1.0f);
+    }
+    if (std::strcmp(label, "Audio Listener") == 0 || std::strcmp(label, "Audio Source") == 0) {
+        return ImVec4(0.38f, 0.28f, 0.44f, 1.0f);
+    }
+    if (std::strcmp(label, "Mesh Filter") == 0 || std::strcmp(label, "Mesh Renderer") == 0) {
+        return ImVec4(0.20f, 0.34f, 0.50f, 1.0f);
+    }
+    return ImVec4(0.16f, 0.32f, 0.50f, 1.0f);
+}
+
 bool RenderRemovableComponentHeader(const char* label,
                                     const char* id,
                                     unsigned int textureId,
@@ -408,21 +462,42 @@ bool RenderRemovableComponentHeader(const char* label,
                                     bool* outHeaderActive = nullptr,
                                     bool* outHeaderToggledOpen = nullptr) {
     ImGui::PushID(id);
-    RenderComponentIcon(textureId);
+    const ImVec4 accent = ComponentHeaderAccent(label);
+    ImGuiStorage* storage = ImGui::GetStateStorage();
+    const ImGuiID openId = ImGui::GetID("##componentOpen");
+    bool open = storage->GetBool(openId, true);
     enabledChanged = false;
-    if (enabled != nullptr) {
-        enabledChanged = ImGui::Checkbox("##componentEnabled", enabled);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Enable Component");
-        }
-        ImGui::SameLine();
-    }
-    const bool open = ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
-    if (outHeaderActive != nullptr) {
-        *outHeaderActive = ImGui::IsItemHovered() || ImGui::IsItemFocused();
-    }
-    if (outHeaderToggledOpen != nullptr) {
-        *outHeaderToggledOpen = ImGui::IsItemToggledOpen();
+
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float rowHeight = (std::max)(24.0f, ImGui::GetFrameHeight());
+    const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+    const float rowWidth = ImGui::GetContentRegionAvail().x;
+    const ImVec2 rowSize(rowWidth, rowHeight);
+    const ImVec2 rowMax(rowMin.x + rowSize.x, rowMin.y + rowSize.y);
+    const float removeButtonWidth = ImGui::CalcTextSize("Remove").x + style.FramePadding.x * 2.0f;
+    const ImVec2 removeMin(rowMax.x - removeButtonWidth - 4.0f, rowMin.y + 2.0f);
+    const ImVec2 removeMax(rowMax.x - 4.0f, rowMax.y - 2.0f);
+    const ImVec2 checkMin(rowMin.x + 30.0f, rowMin.y + (rowHeight - 14.0f) * 0.5f);
+    const ImVec2 checkMax(checkMin.x + 14.0f, checkMin.y + 14.0f);
+    const ImVec2 iconMin(rowMin.x + 52.0f, rowMin.y + (rowHeight - 18.0f) * 0.5f);
+    const ImVec2 iconMax(iconMin.x + 18.0f, iconMin.y + 18.0f);
+    const ImVec2 textPos(rowMin.x + (textureId != 0 ? 76.0f : 54.0f), rowMin.y + (rowHeight - ImGui::GetTextLineHeight()) * 0.5f);
+    const ImVec2 mousePos = ImGui::GetIO().MousePos;
+    auto containsPoint = [](const ImVec2& min, const ImVec2& max, const ImVec2& point) {
+        return point.x >= min.x && point.y >= min.y && point.x < max.x && point.y < max.y;
+    };
+    const bool mouseOnCheckbox = enabled != nullptr && containsPoint(checkMin, checkMax, mousePos);
+    const bool mouseOnRemove = containsPoint(removeMin, removeMax, mousePos);
+
+    ImGui::SetNextItemAllowOverlap();
+    const bool rowPressed = ImGui::InvisibleButton("##componentHeaderRow", rowSize);
+    const bool rowHovered = ImGui::IsItemHovered();
+    const bool rowFocused = ImGui::IsItemFocused();
+    bool toggledOpen = false;
+    if (rowPressed && !mouseOnCheckbox && !mouseOnRemove) {
+        open = !open;
+        storage->SetBool(openId, open);
+        toggledOpen = true;
     }
     if (componentType != nullptr) {
         if (ImGui::BeginDragDropSource()) {
@@ -446,20 +521,66 @@ bool RenderRemovableComponentHeader(const char* label,
             ImGui::EndDragDropTarget();
         }
     }
-    const float removeButtonWidth = ImGui::CalcTextSize("Remove").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - removeButtonWidth);
-    ImGui::SetNextItemAllowOverlap();
-    removeRequested = ImGui::Button("Remove");
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    const ImVec4 bg = rowHovered ? ScaleColor(accent, 0.92f) : ScaleColor(accent, 0.74f);
+    drawList->AddRectFilled(rowMin, rowMax, ImGui::GetColorU32(bg), 2.0f);
+    drawList->AddRect(rowMin, rowMax, ImGui::GetColorU32(ScaleColor(accent, 1.15f)), 2.0f);
+    const ImU32 textColor = ImGui::GetColorU32(ImGuiCol_Text);
+    const float arrowX = rowMin.x + 12.0f;
+    const float arrowY = rowMin.y + rowHeight * 0.5f;
+    if (open) {
+        drawList->AddTriangleFilled(
+            ImVec2(arrowX - 4.0f, arrowY - 2.0f),
+            ImVec2(arrowX + 4.0f, arrowY - 2.0f),
+            ImVec2(arrowX, arrowY + 4.0f),
+            textColor);
+    } else {
+        drawList->AddTriangleFilled(
+            ImVec2(arrowX - 2.0f, arrowY - 5.0f),
+            ImVec2(arrowX - 2.0f, arrowY + 5.0f),
+            ImVec2(arrowX + 4.0f, arrowY),
+            textColor);
+    }
+
+    if (enabled != nullptr) {
+        const ImVec2 restorePos = ImGui::GetCursorScreenPos();
+        ImGui::SetCursorScreenPos(checkMin);
+        ImGui::SetNextItemAllowOverlap();
+        if (ImGui::InvisibleButton("##componentEnabled", ImVec2(14.0f, 14.0f))) {
+            *enabled = !*enabled;
+            enabledChanged = true;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enable Component");
+        }
+        ImGui::SetCursorScreenPos(restorePos);
+        drawList->AddRectFilled(checkMin, checkMax, IM_COL32(12, 18, 24, 255), 2.0f);
+        drawList->AddRect(checkMin, checkMax, IM_COL32(120, 160, 210, 210), 2.0f);
+        if (*enabled) {
+            drawList->AddLine(ImVec2(checkMin.x + 3.0f, checkMin.y + 7.0f), ImVec2(checkMin.x + 6.0f, checkMin.y + 10.0f), IM_COL32(100, 190, 255, 255), 2.0f);
+            drawList->AddLine(ImVec2(checkMin.x + 6.0f, checkMin.y + 10.0f), ImVec2(checkMin.x + 11.0f, checkMin.y + 3.0f), IM_COL32(100, 190, 255, 255), 2.0f);
+        }
+    }
+    if (textureId != 0) {
+        drawList->AddImage(static_cast<ImTextureID>(textureId), iconMin, iconMax);
+    }
+    drawList->AddText(textPos, textColor, label);
+    if (outHeaderActive != nullptr) {
+        *outHeaderActive = rowHovered || rowFocused;
+    }
+    if (outHeaderToggledOpen != nullptr) {
+        *outHeaderToggledOpen = toggledOpen;
+    }
+    {
+        const ImVec2 restorePos = ImGui::GetCursorScreenPos();
+        ImGui::SetCursorScreenPos(removeMin);
+        ImGui::SetNextItemAllowOverlap();
+        removeRequested = ImGui::Button("Remove", ImVec2(removeButtonWidth, removeMax.y - removeMin.y));
+        ImGui::SetCursorScreenPos(restorePos);
+    }
     ImGui::PopID();
     return open;
-}
-
-ImVec4 ScaleColor(const ImVec4& color, float scale) {
-    return ImVec4(
-        (std::min)(1.0f, color.x * scale),
-        (std::min)(1.0f, color.y * scale),
-        (std::min)(1.0f, color.z * scale),
-        color.w);
 }
 
 bool BeginInspectorSubsection(const char* label,
@@ -948,6 +1069,15 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                 }
+                if (!obj.hasTrackGenerator) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Track Generator")) {
+                        PushUndoState();
+                        obj.hasTrackGenerator = true;
+                        obj.trackGenerator = TrackGeneratorComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
                 if (!anyAvailable) {
                     ImGui::TextDisabled("All supported components are already added.");
                 }
@@ -973,6 +1103,7 @@ void SceneEditor::RenderInspectorPanel() {
                 case SceneInspectorComponentType::AudioListener: typeName = "AudioListener"; break;
                 case SceneInspectorComponentType::AudioSource: typeName = "AudioSource"; break;
                 case SceneInspectorComponentType::VehicleSound: typeName = "VehicleSound"; break;
+                case SceneInspectorComponentType::TrackGenerator: typeName = "TrackGenerator"; break;
                 }
                 return obj.id + "|" + typeName;
             };
@@ -1374,7 +1505,7 @@ void SceneEditor::RenderInspectorPanel() {
                 if (onDirty_) onDirty_();
             }
             if (obj.hasRigidbody && rigidbodyOpen) {
-                const ImVec4 rigidbodyAccent{0.30f, 0.40f, 0.26f, 1.0f};
+                const ImVec4 rigidbodyAccent = ComponentHeaderAccent("Rigidbody");
                 if (BeginInspectorSubsection("Body", "RigidbodyBodySection", rigidbodyAccent)) {
                     int bodyTypeIndex = obj.rigidbody.bodyType == RigidbodyBodyType::Static
                         ? 0
@@ -1517,7 +1648,7 @@ void SceneEditor::RenderInspectorPanel() {
                 if (onDirty_) onDirty_();
             }
             if (obj.hasVehicle && vehicleOpen) {
-                const ImVec4 vehicleAccent{0.16f, 0.34f, 0.52f, 1.0f};
+                const ImVec4 vehicleAccent = ComponentHeaderAccent("Vehicle");
                 if (BeginInspectorSubsection("Config", "VehicleConfigSection", vehicleAccent)) {
                 std::string configDisplayName = "(none)";
                 if (!obj.vehicle.configPath.empty()) {
@@ -2707,6 +2838,61 @@ void SceneEditor::RenderInspectorPanel() {
                 }
                 ImGui::EndDisabled();
                 ImGui::TextDisabled("Profile");
+            }
+            }
+
+            // ---- Track Generator ----
+            if (currentComponentToRender == SceneInspectorComponentType::TrackGenerator) {
+            bool removeTrackGenerator = false;
+            bool trackGeneratorOpen = false;
+            bool trackGeneratorEnabledChanged = false;
+            bool trackGeneratorHeaderActive = false;
+            bool trackGeneratorHeaderToggledOpen = false;
+            const bool trackGeneratorEnabledBefore = obj.trackGenerator.enabled;
+            if (obj.hasTrackGenerator) {
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::TrackGenerator;
+                const std::string trackGeneratorComponentKey = prepareComponentOpenState(SceneInspectorComponentType::TrackGenerator);
+                trackGeneratorOpen = RenderRemovableComponentHeader("Track Generator", "TrackGeneratorHeader", GetComponentIconTexture("asset-track.png"), &obj.trackGenerator.enabled, trackGeneratorEnabledChanged, removeTrackGenerator, &componentType, &reorderDraggedType, &reorderTargetType, &trackGeneratorHeaderActive, &trackGeneratorHeaderToggledOpen);
+                finishComponentHeaderState(trackGeneratorComponentKey, SceneInspectorComponentType::TrackGenerator, trackGeneratorHeaderActive, trackGeneratorHeaderToggledOpen, trackGeneratorOpen);
+            }
+            if (removeTrackGenerator) {
+                PushUndoState();
+                obj.hasTrackGenerator = false;
+                obj.trackGenerator = TrackGeneratorComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasTrackGenerator && trackGeneratorEnabledChanged) {
+                const bool after = obj.trackGenerator.enabled;
+                obj.trackGenerator.enabled = trackGeneratorEnabledBefore;
+                PushUndoState();
+                obj.trackGenerator.enabled = after;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasTrackGenerator && trackGeneratorOpen) {
+                char sourceBuf[512]{};
+                std::snprintf(sourceBuf, sizeof(sourceBuf), "%s", obj.trackGenerator.trackSourcePath.c_str());
+                ImGui::SetNextItemWidth(-1.0f);
+                ImGui::InputText("Source##TrackGeneratorSource", sourceBuf, sizeof(sourceBuf), ImGuiInputTextFlags_ReadOnly);
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                        const char* dragPath = static_cast<const char*>(payload->Data);
+                        if (dragPath && IsTrackAssetPath(dragPath)) {
+                            PushUndoState();
+                            obj.trackGenerator.trackSourcePath = dragPath;
+                            if (onDirty_) onDirty_();
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+                if (ImGui::Button("Open Generator", ImVec2(-1.0f, 0.0f))) {
+                    OpenTrackGenerator(obj.trackGenerator.trackSourcePath);
+                }
+                if (ImGui::Button("Use Current Generator Source", ImVec2(-1.0f, 0.0f))) {
+                    PushUndoState();
+                    obj.trackGenerator.trackSourcePath = inspectedTrackPath_;
+                    if (onDirty_) onDirty_();
+                }
+                ImGui::TextDisabled("Road Object: %s", obj.trackGenerator.roadObjectId.empty() ? "none" : obj.trackGenerator.roadObjectId.c_str());
+                ImGui::TextDisabled("Shoulder Object: %s", obj.trackGenerator.shoulderObjectId.empty() ? "none" : obj.trackGenerator.shoulderObjectId.c_str());
             }
             }
             } // end for (currentComponentToRender)
@@ -4649,10 +4835,18 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         }
     }
     std::vector<std::pair<std::string, std::string>> graphShaders;
+    std::unordered_map<std::string, bool> seenGraphShaderIds;
     std::string editableShaderGraphPath;
     for (const std::string& file : projectFiles_) {
         if (IsShaderGraphAssetPath(file)) {
             const std::string graphShaderId = ShaderRegistry::MakeGraphShaderId(file);
+            if (seenGraphShaderIds.find(graphShaderId) != seenGraphShaderIds.end()) {
+                if (graphShaderId == shaderId && editableShaderGraphPath.empty()) {
+                    editableShaderGraphPath = file;
+                }
+                continue;
+            }
+            seenGraphShaderIds[graphShaderId] = true;
             std::string graphName = ProjectAssetDisplayFilename(file);
             const std::string suffix = ".shadergraph.json";
             if (graphName.size() >= suffix.size() &&
