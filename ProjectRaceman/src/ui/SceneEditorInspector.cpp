@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 
@@ -451,6 +452,41 @@ bool RenderRemovableComponentHeader(const char* label,
     removeRequested = ImGui::Button("Remove");
     ImGui::PopID();
     return open;
+}
+
+ImVec4 ScaleColor(const ImVec4& color, float scale) {
+    return ImVec4(
+        (std::min)(1.0f, color.x * scale),
+        (std::min)(1.0f, color.y * scale),
+        (std::min)(1.0f, color.z * scale),
+        color.w);
+}
+
+bool BeginInspectorSubsection(const char* label,
+                              const char* id,
+                              const ImVec4& accent,
+                              ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen) {
+    ImGui::Spacing();
+    ImGui::Indent(14.0f);
+    ImGui::PushStyleColor(ImGuiCol_Header, ScaleColor(accent, 0.74f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ScaleColor(accent, 0.92f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ScaleColor(accent, 1.08f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 3.0f));
+    const std::string headerId = std::string(label) + "##" + id;
+    const bool open = ImGui::CollapsingHeader(headerId.c_str(), flags);
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(3);
+    if (open) {
+        ImGui::Indent(12.0f);
+    } else {
+        ImGui::Unindent(14.0f);
+    }
+    return open;
+}
+
+void EndInspectorSubsection() {
+    ImGui::Unindent(12.0f);
+    ImGui::Unindent(14.0f);
 }
 
 void RenderComponentClipboardButtons(bool canPaste, bool& copyRequested, bool& pasteRequested) {
@@ -1338,7 +1374,8 @@ void SceneEditor::RenderInspectorPanel() {
                 if (onDirty_) onDirty_();
             }
             if (obj.hasRigidbody && rigidbodyOpen) {
-                if (ImGui::CollapsingHeader("Body", ImGuiTreeNodeFlags_DefaultOpen)) {
+                const ImVec4 rigidbodyAccent{0.30f, 0.40f, 0.26f, 1.0f};
+                if (BeginInspectorSubsection("Body", "RigidbodyBodySection", rigidbodyAccent)) {
                     int bodyTypeIndex = obj.rigidbody.bodyType == RigidbodyBodyType::Static
                         ? 0
                         : (obj.rigidbody.bodyType == RigidbodyBodyType::Kinematic ? 1 : 2);
@@ -1387,9 +1424,10 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                     endInspectorContinuousEdit();
+                    EndInspectorSubsection();
                 }
 
-                if (ImGui::CollapsingHeader("Material")) {
+                if (BeginInspectorSubsection("Material", "RigidbodyMaterialSection", rigidbodyAccent, ImGuiTreeNodeFlags_None)) {
                     float friction = obj.rigidbody.friction;
                     if (ImGui::DragFloat("Friction", &friction, 0.01f, 0.0f, 10.0f)) {
                         beginInspectorContinuousEdit();
@@ -1405,9 +1443,10 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                     endInspectorContinuousEdit();
+                    EndInspectorSubsection();
                 }
 
-                if (ImGui::CollapsingHeader("Velocity")) {
+                if (BeginInspectorSubsection("Velocity", "RigidbodyVelocitySection", rigidbodyAccent, ImGuiTreeNodeFlags_None)) {
                     glm::vec3 velocity = obj.rigidbody.velocity;
                     if (RenderInspectorDragFloat3("Velocity", "##rigidbodyVelocity", &velocity.x, 0.1f)) {
                         beginInspectorContinuousEdit();
@@ -1423,9 +1462,10 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                     endInspectorContinuousEdit();
+                    EndInspectorSubsection();
                 }
 
-                if (ImGui::CollapsingHeader("Constraints")) {
+                if (BeginInspectorSubsection("Constraints", "RigidbodyConstraintsSection", rigidbodyAccent, ImGuiTreeNodeFlags_None)) {
                     bool freezePositionX = obj.rigidbody.freezePositionX;
                     bool freezePositionY = obj.rigidbody.freezePositionY;
                     bool freezePositionZ = obj.rigidbody.freezePositionZ;
@@ -1446,6 +1486,7 @@ void SceneEditor::RenderInspectorPanel() {
                         obj.rigidbody.freezeRotationZ = freezeRotationZ;
                         if (onDirty_) onDirty_();
                     }
+                    EndInspectorSubsection();
                 }
             }
             }
@@ -1476,18 +1517,25 @@ void SceneEditor::RenderInspectorPanel() {
                 if (onDirty_) onDirty_();
             }
             if (obj.hasVehicle && vehicleOpen) {
-                if (ImGui::CollapsingHeader("Config", ImGuiTreeNodeFlags_DefaultOpen)) {
+                const ImVec4 vehicleAccent{0.16f, 0.34f, 0.52f, 1.0f};
+                if (BeginInspectorSubsection("Config", "VehicleConfigSection", vehicleAccent)) {
                 std::string configDisplayName = "(none)";
                 if (!obj.vehicle.configPath.empty()) {
                     configDisplayName = ProjectAssetDisplayFilename(obj.vehicle.configPath);
                 }
                 ImGui::TextDisabled("Asset:");
                 ImGui::SameLine();
-                const float vehicleConfigButtonWidth = (std::max)(1.0f, ImGui::GetContentRegionAvail().x);
+                const bool hasVehicleConfigAsset = !obj.vehicle.configPath.empty();
+                const float editProfileButtonWidth = hasVehicleConfigAsset
+                    ? (ImGui::CalcTextSize("Edit Profile").x + ImGui::GetStyle().FramePadding.x * 2.0f)
+                    : 0.0f;
+                const float configRowSpacing = hasVehicleConfigAsset ? ImGui::GetStyle().ItemSpacing.x : 0.0f;
+                const float vehicleConfigButtonWidth = (std::max)(1.0f, ImGui::GetContentRegionAvail().x - editProfileButtonWidth - configRowSpacing);
                 if (ImGui::Button((configDisplayName + "##selectVehicleConfig").c_str(), ImVec2(vehicleConfigButtonWidth, 0.0f))) {
                     assetPickerMode_ = ProjectAssetPickerMode::AssignVehicleConfig;
                 }
-                if (!obj.vehicle.configPath.empty()) {
+                if (hasVehicleConfigAsset) {
+                    ImGui::SameLine();
                     if (ImGui::Button("Edit Profile##vehicleConfigEdit")) {
                         OpenVehicleConfigEditor(obj.vehicle.configPath);
                     }
@@ -1501,9 +1549,10 @@ void SceneEditor::RenderInspectorPanel() {
                     }
                     ImGui::EndDragDropTarget();
                 }
+                EndInspectorSubsection();
                 } // Config header
 
-                if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (BeginInspectorSubsection("Settings", "VehicleSettingsSection", vehicleAccent)) {
                 const bool canTiltBefore = obj.vehicle.canTilt;
                 if (ImGui::Checkbox("Can Tilt", &obj.vehicle.canTilt)) {
                     const bool canTiltAfter = obj.vehicle.canTilt;
@@ -1513,9 +1562,10 @@ void SceneEditor::RenderInspectorPanel() {
                     if (onDirty_) onDirty_();
                 }
                 ImGui::TextDisabled("When disabled, vehicle cannot roll or pitch.");
+                EndInspectorSubsection();
                 } // Settings header
 
-                if (ImGui::CollapsingHeader("Input", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (BeginInspectorSubsection("Input", "VehicleInputSection", vehicleAccent)) {
                 const std::string activeProfileId = obj.vehicle.inputProfileId.empty() ? std::string("default_vehicle") : obj.vehicle.inputProfileId;
                 std::string profilePreview = activeProfileId;
                 const auto profileIt = std::find_if(inputProfiles_.begin(), inputProfiles_.end(), [&](const InputProfile& profile) {
@@ -1580,9 +1630,10 @@ void SceneEditor::RenderInspectorPanel() {
                     }
                 }
                 ImGui::TextDisabled("Runtime uses the selected profile with the preferred device fallback rules.");
+                EndInspectorSubsection();
                 } // Input header
 
-                if (ImGui::CollapsingHeader("Chassis", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (BeginInspectorSubsection("Chassis", "VehicleChassisSection", vehicleAccent)) {
                 if (ImGui::Button("Add Chassis Part")) {
                     PushUndoState();
                     obj.vehicle.chassisObjectIds.push_back({});
@@ -1663,6 +1714,7 @@ void SceneEditor::RenderInspectorPanel() {
                     ImGui::PopID();
                 }
 
+                EndInspectorSubsection();
                 } // Chassis header
 
                 raceman::physics::VehicleConfig loadedConfig;
@@ -1673,7 +1725,7 @@ void SceneEditor::RenderInspectorPanel() {
                                 return runtimeVehicle.objectIndex == selectedIndex_ && runtimeVehicle.instance != nullptr;
                             });
                         if (runtimeVehicleIt != runtimeVehicles_.end()) {
-                            if (ImGui::CollapsingHeader("Runtime Debug")) {
+                            if (BeginInspectorSubsection("Runtime Debug", "VehicleRuntimeDebugSection", vehicleAccent, ImGuiTreeNodeFlags_None)) {
                             const raceman::physics::VehicleTelemetry& telemetry = runtimeVehicleIt->instance->getTelemetry();
                             const float speed = glm::length(glm::vec3(telemetry.linearVelocity.x, telemetry.linearVelocity.y, telemetry.linearVelocity.z));
                             ImGui::TextDisabled("Vehicle: %s  |  Wheels: %d", loadedConfig.name.c_str(), static_cast<int>(loadedConfig.wheels.size()));
@@ -1728,10 +1780,11 @@ void SceneEditor::RenderInspectorPanel() {
                                 }
                                 ImGui::EndTable();
                             }
+                            EndInspectorSubsection();
                             } // Runtime Debug header
                         }
                     }
-                    if (ImGui::CollapsingHeader("Wheels", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    if (BeginInspectorSubsection("Wheels", "VehicleWheelsSection", vehicleAccent)) {
                     ImGui::TextDisabled("Config: %s  |  Wheels: %d", loadedConfig.name.c_str(), static_cast<int>(loadedConfig.wheels.size()));
                     for (const raceman::physics::WheelConfig& wheel : loadedConfig.wheels) {
                         auto bindingIt = std::find_if(obj.vehicle.wheelBindings.begin(), obj.vehicle.wheelBindings.end(),
@@ -1812,9 +1865,10 @@ void SceneEditor::RenderInspectorPanel() {
                         bindingIt = std::find_if(obj.vehicle.wheelBindings.begin(), obj.vehicle.wheelBindings.end(),
                             [&](const VehicleWheelBinding& candidate) {
                                 return candidate.wheelName == wheel.name;
-                            });
+                        });
                         (void)bindingIt;
                     }
+                    EndInspectorSubsection();
                     } // Wheels header
                 } else if (!obj.vehicle.configPath.empty()) {
                     ImGui::TextDisabled("Vehicle config could not be loaded.");
@@ -3866,7 +3920,9 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
         auto beginCard = [&](const char* id, const char* title, const char* subtitle, const ImVec4& accent, float minHeight = 0.0f) {
             ImGui::PushID(id);
             ImGui::PushStyleColor(ImGuiCol_ChildBg, cardBg);
-            ImGui::BeginChild("##card", ImVec2(0.0f, minHeight), true);
+            const ImGuiChildFlags childFlags = ImGuiChildFlags_Borders
+                | (minHeight <= 0.0f ? ImGuiChildFlags_AutoResizeY : ImGuiChildFlags_None);
+            ImGui::BeginChild("##card", ImVec2(0.0f, minHeight), childFlags);
             ImGui::TextColored(accent, "%s", title);
             if (subtitle != nullptr && subtitle[0] != '\0') {
                 ImGui::SameLine();
@@ -3889,36 +3945,66 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
             applyDragFloatEdit("Anti-Roll Stiffness", (std::string("##") + idPrefix + "_antiRollStiffness").c_str(), suspension.antiRollStiffness, 10.0f, 0.0f, 1000000.0f);
             endCard();
         };
+        auto renderMetric = [&](const char* label, const char* value, const char* hint = nullptr) {
+            ImGui::BeginGroup();
+            ImGui::TextDisabled("%s", label);
+            ImGui::TextUnformatted(value);
+            if (hint != nullptr && hint[0] != '\0') {
+                ImGui::TextDisabled("%s", hint);
+            }
+            ImGui::EndGroup();
+        };
+        auto actionButton = [&](const char* label, const ImVec2& size, bool enabled) {
+            ImGui::BeginDisabled(!enabled);
+            const bool clicked = ImGui::Button(label, size);
+            ImGui::EndDisabled();
+            return clicked && enabled;
+        };
+        int drivenWheelCount = 0;
+        int brakeWheelCount = 0;
+        for (const auto& wheel : inspectedVehicleConfig_.wheels) {
+            drivenWheelCount += wheel.driven ? 1 : 0;
+            brakeWheelCount += wheel.hasBrake ? 1 : 0;
+        }
+        const std::string wheelCountText = std::to_string(inspectedVehicleConfig_.wheels.size());
+        const std::string massText = std::to_string(static_cast<int>(inspectedVehicleConfig_.chassis.mass + 0.5f)) + " kg";
+        const std::string redlineText = std::to_string(static_cast<int>(inspectedVehicleConfig_.engine.redlineRPM + 0.5f)) + " rpm";
+        const std::string gearCountText = std::to_string(inspectedVehicleConfig_.transmission.gearRatios.size());
+        const std::string drivenCountText = std::to_string(drivenWheelCount);
+        const std::string brakeCountText = std::to_string(brakeWheelCount);
 
-        beginCard("vehicleProfileHero", "Garage Tuning", "Race setup profile", accentPrimary, 108.0f);
-        ImGui::TextWrapped("%s", inspectedVehicleConfigPath_.c_str());
+        beginCard("vehicleProfileHero", inspectedVehicleConfig_.name.empty() ? "Vehicle Profile" : inspectedVehicleConfig_.name.c_str(), "Race setup profile", accentPrimary, 132.0f);
+        RenderInspectorWrappedValue("Asset:", inspectedVehicleConfigPath_);
         ImGui::Spacing();
-        if (ImGui::BeginTable("VehicleProfileHeroStats", 3, ImGuiTableFlags_SizingStretchSame)) {
+        if (ImGui::BeginTable("VehicleProfileHeroStats", 6, ImGuiTableFlags_SizingStretchSame)) {
             ImGui::TableNextColumn();
-            ImGui::TextDisabled("WHEELS");
-            ImGui::Text("%.0f", static_cast<float>(inspectedVehicleConfig_.wheels.size()));
+            renderMetric("WHEELS", wheelCountText.c_str());
             ImGui::TableNextColumn();
-            ImGui::TextDisabled("MASS");
-            ImGui::Text("%.0f kg", inspectedVehicleConfig_.chassis.mass);
+            renderMetric("DRIVEN", drivenCountText.c_str());
             ImGui::TableNextColumn();
-            ImGui::TextDisabled("REDLINE");
-            ImGui::Text("%.0f rpm", inspectedVehicleConfig_.engine.redlineRPM);
+            renderMetric("BRAKES", brakeCountText.c_str());
+            ImGui::TableNextColumn();
+            renderMetric("MASS", massText.c_str());
+            ImGui::TableNextColumn();
+            renderMetric("REDLINE", redlineText.c_str());
+            ImGui::TableNextColumn();
+            renderMetric("GEARS", gearCountText.c_str(), inspectedVehicleConfig_.transmission.mode == raceman::physics::TransmissionConfig::Mode::Manual ? "Manual" : "Auto");
             ImGui::EndTable();
         }
         ImGui::Spacing();
-        if (ImGui::Button("Save Profile##vehicleConfigAsset", ImVec2(150.0f, 0.0f))) {
+        if (actionButton("Save Profile##vehicleConfigAsset", ImVec2(150.0f, 0.0f), inspectedVehicleConfigLoaded_)) {
             SaveActiveAsset();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Undo##vehicleConfigAsset", ImVec2(90.0f, 0.0f))) {
+        if (actionButton("Undo##vehicleConfigAsset", ImVec2(90.0f, 0.0f), !vehicleConfigUndoStack_.empty())) {
             UndoVehicleConfig();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Redo##vehicleConfigAsset", ImVec2(90.0f, 0.0f))) {
+        if (actionButton("Redo##vehicleConfigAsset", ImVec2(90.0f, 0.0f), !vehicleConfigRedoStack_.empty())) {
             RedoVehicleConfig();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Reload##vehicleConfigAsset", ImVec2(120.0f, 0.0f))) {
+        if (actionButton("Reload##vehicleConfigAsset", ImVec2(120.0f, 0.0f), true)) {
             inspectedVehicleConfigLoaded_ = false;
             inspectedVehicleConfigError_.clear();
             vehicleConfigUndoStack_.clear();
@@ -3929,7 +4015,13 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
             ImGui::PopStyleVar(3);
             return;
         }
-        ImGui::TextDisabled("Shortcuts: Ctrl+S / Ctrl+Z / Ctrl+Y");
+        if (!vehicleConfigUndoStack_.empty() || !vehicleConfigRedoStack_.empty() || vehicleConfigEditActive_) {
+            ImGui::SameLine();
+            ImGui::TextColored(accentSecondary, "Edit history available");
+        } else {
+            ImGui::SameLine();
+            ImGui::TextDisabled("No edit history");
+        }
         endCard();
 
         if (!inspectedVehicleConfigLoaded_) {
@@ -3973,6 +4065,10 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
 
                 beginCard("vehicleProfileDifferentialCard", "Differential", "Axle split and lock response", accentPrimary);
                 applyDragFloatEdit("Torque Split", "##vehicleProfileDiffTorqueSplit", inspectedVehicleConfig_.differential.torqueSplit, 0.01f, 0.0f, 1.0f);
+                const float split = std::clamp(inspectedVehicleConfig_.differential.torqueSplit, 0.0f, 1.0f);
+                const std::string splitLabel = std::to_string(static_cast<int>((1.0f - split) * 100.0f + 0.5f))
+                    + "% rear / " + std::to_string(static_cast<int>(split * 100.0f + 0.5f)) + "% front";
+                ImGui::ProgressBar(split, ImVec2(-1.0f, 0.0f), splitLabel.c_str());
                 applyDragFloatEdit("Locking Coefficient", "##vehicleProfileDiffLockingCoefficient", inspectedVehicleConfig_.differential.lockingCoefficient, 0.01f, 0.0f, 1.0f);
                 applyCheckboxEdit("Limited Slip##vehicleProfileDiffLimitedSlip", inspectedVehicleConfig_.differential.limitedSlip);
                 endCard();
@@ -3994,10 +4090,14 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                         vehicleConfigEditActive_ = false;
                         inspectedVehicleConfig_.engine.torqueCurve.push_back({1000.0f, 100.0f});
                     }
+                    if (inspectedVehicleConfig_.engine.torqueCurve.empty()) {
+                        ImGui::TextDisabled("No torque points. Add at least one point to define engine output.");
+                    }
                     if (ImGui::BeginTable("VehicleTorqueCurveTable", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
                         ImGui::TableSetupColumn("RPM");
                         ImGui::TableSetupColumn("Torque");
-                        ImGui::TableSetupColumn("");
+                        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 32.0f);
+                        ImGui::TableHeadersRow();
                         for (int pointIndex = 0; pointIndex < static_cast<int>(inspectedVehicleConfig_.engine.torqueCurve.size()); ++pointIndex) {
                             raceman::physics::TorquePoint& point = inspectedVehicleConfig_.engine.torqueCurve[static_cast<std::size_t>(pointIndex)];
                             ImGui::PushID(pointIndex);
@@ -4050,10 +4150,14 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                         vehicleConfigEditActive_ = false;
                         inspectedVehicleConfig_.transmission.gearRatios.push_back(1.0f);
                     }
+                    if (inspectedVehicleConfig_.transmission.gearRatios.empty()) {
+                        ImGui::TextDisabled("No forward gears. Add a gear before using this profile.");
+                    }
                     if (ImGui::BeginTable("VehicleGearRatioTable", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
-                        ImGui::TableSetupColumn("Gear");
+                        ImGui::TableSetupColumn("Gear", ImGuiTableColumnFlags_WidthFixed, 54.0f);
                         ImGui::TableSetupColumn("Ratio");
-                        ImGui::TableSetupColumn("");
+                        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 32.0f);
+                        ImGui::TableHeadersRow();
                         for (int gearIndex = 0; gearIndex < static_cast<int>(inspectedVehicleConfig_.transmission.gearRatios.size()); ++gearIndex) {
                             ImGui::PushID(gearIndex);
                             ImGui::TableNextRow();
@@ -4086,10 +4190,32 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
             }
 
             if (ImGui::BeginTabItem("Wheels")) {
-                if (ImGui::Button("Add Wheel##vehicleProfileWheelAdd")) {
+                beginCard("vehicleProfileWheelSummary", "Wheel Layout", "Mounts, tire grip and brake roles", accentSecondary);
+                if (ImGui::BeginTable("VehicleWheelSummaryStats", 4, ImGuiTableFlags_SizingStretchSame)) {
+                    ImGui::TableNextColumn();
+                    renderMetric("TOTAL", wheelCountText.c_str());
+                    ImGui::TableNextColumn();
+                    renderMetric("DRIVEN", drivenCountText.c_str());
+                    ImGui::TableNextColumn();
+                    renderMetric("BRAKES", brakeCountText.c_str());
+                    ImGui::TableNextColumn();
+                    renderMetric("STEERABLE", std::to_string(static_cast<int>(std::count_if(
+                        inspectedVehicleConfig_.wheels.begin(),
+                        inspectedVehicleConfig_.wheels.end(),
+                        [](const raceman::physics::WheelConfig& wheel) { return wheel.maxSteerAngle != 0.0f; }))).c_str());
+                    ImGui::EndTable();
+                }
+                if (ImGui::Button("Add Wheel##vehicleProfileWheelAdd", ImVec2(130.0f, 0.0f))) {
                     PushVehicleConfigUndoState();
                     vehicleConfigEditActive_ = false;
                     inspectedVehicleConfig_.wheels.push_back({});
+                }
+                endCard();
+
+                if (inspectedVehicleConfig_.wheels.empty()) {
+                    beginCard("vehicleProfileNoWheels", "No Wheels", "Add a wheel to make this profile drivable", accentPrimary);
+                    ImGui::TextWrapped("Vehicle profiles need wheel entries with mount positions, tire values, brakes and driven flags.");
+                    endCard();
                 }
                 ImGui::Spacing();
                 for (int wheelIndex = 0; wheelIndex < static_cast<int>(inspectedVehicleConfig_.wheels.size()); ++wheelIndex) {
@@ -4101,6 +4227,12 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                     const std::string subtitle = std::string(frontAxle ? "Front axle" : "Rear axle")
                         + (wheel.driven ? " | Driven" : "")
                         + (wheel.hasBrake ? " | Brake" : "");
+                    const std::string header = title + "  -  " + subtitle + "##wheelHeader";
+                    ImGui::SetNextItemOpen(wheelIndex < 4, ImGuiCond_Once);
+                    if (!ImGui::CollapsingHeader(header.c_str())) {
+                        ImGui::PopID();
+                        continue;
+                    }
                     beginCard("vehicleProfileWheelCard", title.c_str(), subtitle.c_str(), wheelAccent);
                     auto renderWheelScalarPair = [&](const char* leftLabel,
                                                      const char* leftId,
@@ -4161,7 +4293,12 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                         ImGui::Dummy(ImVec2(0.0f, 0.0f));
                         ImGui::EndTable();
                     }
+                    ImGui::Separator();
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.42f, 0.10f, 0.08f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.58f, 0.14f, 0.10f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.70f, 0.18f, 0.12f, 1.0f));
                     if (ImGui::Button("Remove Wheel##vehicleProfileWheel")) {
+                        ImGui::PopStyleColor(3);
                         PushVehicleConfigUndoState();
                         vehicleConfigEditActive_ = false;
                         inspectedVehicleConfig_.wheels.erase(inspectedVehicleConfig_.wheels.begin() + wheelIndex);
@@ -4169,6 +4306,7 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                         ImGui::PopID();
                         break;
                     }
+                    ImGui::PopStyleColor(3);
                     endCard();
                     ImGui::PopID();
                 }

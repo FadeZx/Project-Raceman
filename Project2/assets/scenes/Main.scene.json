@@ -1,0 +1,109 @@
+{
+  "objects": [
+    {
+      "id": "mesh_1",
+      "parentId": "",
+      "name": "Plane",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [10, 1, 10]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Plane",
+          "sourcePath": "",
+          "meshIndex": 0,
+          "importedMaterialName": "",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Plane",
+          "enabled": true,
+          "isTrigger": false,
+          "normal": [0, 1, 0],
+          "offset": 0,
+          "infinite": true,
+          "halfExtent": 1000
+        }
+      ]
+    },
+    {
+      "id": "camera_2",
+      "parentId": "",
+      "name": "Camera",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Camera"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 2, 5],
+          "rotationEuler": [-15, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": true,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.1,
+          "farClip": 500,
+          "clearColor": [0.02, 0.02, 0.02, 1]
+        }
+      ]
+    },
+    {
+      "id": "light_3",
+      "parentId": "",
+      "name": "Directional Light",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Light"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [-45, 35, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "lightType": "Directional",
+          "color": [1, 1, 1],
+          "intensity": 1.5,
+          "range": 100,
+          "spotAngleDegrees": 30
+        }
+      ]
+    }
+  ],
+  "hierarchyClosed": [],
+  "inspectorComponentsClosed": []
+}

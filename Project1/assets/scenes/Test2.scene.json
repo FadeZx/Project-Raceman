@@ -7584,6 +7584,6 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_1635", "gameobject_7", "gameobject_8", "gameobject_11"],
+  "hierarchyClosed": ["gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_11", "gameobject_8"],
   "inspectorComponentsClosed": []
 }
