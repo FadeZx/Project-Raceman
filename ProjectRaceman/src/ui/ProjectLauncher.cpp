@@ -86,6 +86,63 @@ std::string FormatRelativeTime(time_t then) {
     return buf;
 }
 
+std::string ReplaceAll(std::string value, const std::string& from, const std::string& to) {
+    if (from.empty()) return value;
+    size_t pos = 0;
+    while ((pos = value.find(from, pos)) != std::string::npos) {
+        value.replace(pos, from.size(), to);
+        pos += to.size();
+    }
+    return value;
+}
+
+fs::path FindDefaultProjectTemplate() {
+    const fs::path engineRoot = FindEngineRoot();
+    const fs::path direct = engineRoot / "templates" / "default-project";
+    if (fs::exists(direct / "project.raceman.json")) {
+        return direct;
+    }
+
+    const fs::path sourceLayout = engineRoot.parent_path() / "ProjectRaceman" / "templates" / "default-project";
+    if (fs::exists(sourceLayout / "project.raceman.json")) {
+        return sourceLayout;
+    }
+
+    return direct;
+}
+
+void ReplaceProjectNamePlaceholders(const fs::path& projectPath, const std::string& projectName) {
+    const std::vector<std::string> textExtensions = {
+        ".json", ".txt", ".md", ".cpp", ".h", ".hpp", ".cs", ".raceman"
+    };
+
+    for (const fs::directory_entry& entry : fs::recursive_directory_iterator(projectPath)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+
+        const std::string extension = entry.path().extension().string();
+        if (std::find(textExtensions.begin(), textExtensions.end(), extension) == textExtensions.end()) {
+            continue;
+        }
+
+        std::ifstream in(entry.path(), std::ios::binary);
+        if (!in.good()) {
+            continue;
+        }
+        std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        in.close();
+
+        const std::string replaced = ReplaceAll(content, "__PROJECT_NAME__", projectName);
+        if (replaced == content) {
+            continue;
+        }
+
+        std::ofstream out(entry.path(), std::ios::binary | std::ios::trunc);
+        out << replaced;
+    }
+}
+
 // ---- Minimal JSON helpers for the registry ----
 
 std::string EscapeJson(const std::string& s) {
@@ -334,25 +391,32 @@ void ProjectLauncher::TryCreateNew(const std::string& parentFolder,
     if (name.empty())             { errorMsg_ = "Project name cannot be empty."; return; }
     if (!fs::exists(parentFolder)) { errorMsg_ = "Parent folder does not exist."; return; }
     const fs::path projectPath = fs::path(parentFolder) / name;
-    try {
-        fs::create_directories(projectPath / "assets" / "scenes");
-        fs::create_directories(projectPath / "assets" / "scripts");
-    } catch (const std::exception& ex) {
-        errorMsg_ = std::string("Failed to create folders: ") + ex.what();
+
+    if (fs::exists(projectPath) && !fs::is_empty(projectPath)) {
+        errorMsg_ = "Project folder already exists and is not empty.";
         return;
     }
+
+    const fs::path templatePath = FindDefaultProjectTemplate();
+    if (!fs::exists(templatePath / "project.raceman.json")) {
+        errorMsg_ = "Default project template not found: " + templatePath.string();
+        return;
+    }
+
+    try {
+        fs::create_directories(projectPath);
+        fs::copy(templatePath, projectPath,
+                 fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+        ReplaceProjectNamePlaceholders(projectPath, name);
+    } catch (const std::exception& ex) {
+        errorMsg_ = std::string("Failed to create project from template: ") + ex.what();
+        return;
+    }
+
     const fs::path projFile = projectPath / "project.raceman.json";
     if (!fs::exists(projFile)) {
-        std::ofstream pf(projFile);
-        if (pf) {
-            pf << "{\n"
-               << "  \"version\": 1,\n"
-               << "  \"projectName\": \"" << name << "\",\n"
-               << "  \"assetsRoot\": \"assets\",\n"
-               << "  \"defaultScene\": \"assets/scenes/Main.scene.json\",\n"
-               << "  \"lastScene\": \"assets/scenes/Main.scene.json\"\n"
-               << "}\n";
-        }
+        errorMsg_ = "Project template did not create project.raceman.json.";
+        return;
     }
     if (cb) cb(projectPath.string());
 }

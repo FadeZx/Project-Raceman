@@ -127,6 +127,7 @@ foreach ($name in $dllCandidates.Keys) {
 Copy-DirectoryClean -Source (Join-Path $projectRoot "src\shaders") -Destination (Join-Path $outputRoot "src\shaders")
 Copy-DirectoryClean -Source (Join-Path $projectRoot "src\scripting") -Destination (Join-Path $outputRoot "src\scripting")
 Copy-DirectoryClean -Source (Join-Path $projectRoot "editor-assets") -Destination (Join-Path $outputRoot "editor-assets")
+Copy-DirectoryClean -Source (Join-Path $projectRoot "templates") -Destination (Join-Path $outputRoot "templates")
 
 $toolsDest = Join-Path $outputRoot "tools"
 New-Item -ItemType Directory -Force -Path $toolsDest | Out-Null
