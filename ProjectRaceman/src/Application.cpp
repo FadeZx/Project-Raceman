@@ -332,7 +332,9 @@ Application::~Application() {
 
 void Application::Run() {
     while (running_) {
+        const double pollStart = glfwGetTime();
         PollEvents();
+        frameTimings_.pollMs = static_cast<float>((glfwGetTime() - pollStart) * 1000.0);
         if (inputManager_) {
             inputManager_->BeginFrame();
         }
@@ -388,8 +390,13 @@ void Application::Run() {
             fpsFrames_ = 0;
         }
 
+        const double updateStart = glfwGetTime();
         Update(deltaTime);
+        frameTimings_.updateMs = static_cast<float>((glfwGetTime() - updateStart) * 1000.0);
+
+        const double renderStart = glfwGetTime();
         Render();
+        frameTimings_.renderMs = static_cast<float>((glfwGetTime() - renderStart) * 1000.0);
         if (inputManager_) {
             inputManager_->EndFrame();
         }
@@ -681,9 +688,12 @@ void Application::Update(float deltaTime) {
                 glm::perspective(glm::radians(60.0f), sceneAspect, sceneCameraNearClip_, sceneCameraFarClip_));
             sceneEditor_->RenderUI(deltaTime);
         }
-        const SceneProfilerStats sceneStats = sceneEditor_ ? sceneEditor_->CollectProfilerStats() : SceneProfilerStats{};
+        const bool profilerVisible = debugUi_->IsProfilerVisible();
+        const SceneProfilerStats sceneStats = (profilerVisible && sceneEditor_)
+            ? sceneEditor_->CollectProfilerStats()
+            : SceneProfilerStats{};
         const PhysicsWorldStats* physicsStats = nullptr;
-        if (sceneEditor_ && sceneEditor_->GetPhysicsWorld()) {
+        if (profilerVisible && sceneEditor_ && sceneEditor_->GetPhysicsWorld()) {
             physicsStats = &sceneEditor_->GetPhysicsWorld()->GetStats();
         }
 
@@ -691,7 +701,7 @@ void Application::Update(float deltaTime) {
         menuController_->Render(*renderer_,
             vsyncEnabled_,
             [this](bool enabled){ SetVSync(enabled); },
-            debugUi_->IsProfilerVisible(),
+            profilerVisible,
             [this](bool visible){ debugUi_->SetProfilerVisible(visible); },
             [this](){
                 if (sceneEditor_) sceneEditor_->AddMeshPlane();
@@ -773,7 +783,14 @@ void Application::Update(float deltaTime) {
                 statsAnchor = sceneEditor_->GetGameViewportPos();
             }
         }
-        debugUi_->RenderAppMetrics(deltaTime, *renderer_, sceneEditor_ ? &sceneStats : nullptr, physicsStats, statsAnchor);
+        debugUi_->RenderAppMetrics(
+            deltaTime,
+            *renderer_,
+            sceneEditor_ ? &sceneStats : nullptr,
+            physicsStats,
+            &frameTimings_,
+            sceneEditor_ ? &sceneEditor_->GetFrameTimings() : nullptr,
+            statsAnchor);
 
         if (sceneEditor_) {
             sceneEditor_->SetShowCullingDebug(debugUi_->ShowCullingDebug());
@@ -826,6 +843,10 @@ void Application::Render() {
     const auto& cfg = renderer_->GetConfig();
     RendererSettings& rendererSettings = renderer_->GetSettings();
     const glm::vec3 previousClearColor = rendererSettings.clearColor;
+    frameTimings_.scenePassMs = 0.0f;
+    frameTimings_.gamePassMs = 0.0f;
+    frameTimings_.imguiRenderMs = 0.0f;
+    frameTimings_.swapMs = 0.0f;
     renderer_->ResetFrameStats();
 
     if (launcher_) {
@@ -833,8 +854,14 @@ void Application::Render() {
         glViewport(0, 0, cfg.width, cfg.height);
         glClearColor(0.08f, 0.08f, 0.10f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        if (config_.enableImGui) debugUi_->RenderDrawData();
+        if (config_.enableImGui) {
+            const double imguiStart = glfwGetTime();
+            debugUi_->RenderDrawData();
+            frameTimings_.imguiRenderMs = static_cast<float>((glfwGetTime() - imguiStart) * 1000.0);
+        }
+        const double swapStart = glfwGetTime();
         glfwSwapBuffers(window_);
+        frameTimings_.swapMs = static_cast<float>((glfwGetTime() - swapStart) * 1000.0);
         return;
     }
 
@@ -869,9 +896,13 @@ void Application::Render() {
         }
 
         if (config_.enableImGui) {
+            const double imguiStart = glfwGetTime();
             debugUi_->RenderDrawData();
+            frameTimings_.imguiRenderMs = static_cast<float>((glfwGetTime() - imguiStart) * 1000.0);
         }
+        const double swapStart = glfwGetTime();
         glfwSwapBuffers(window_);
+        frameTimings_.swapMs = static_cast<float>((glfwGetTime() - swapStart) * 1000.0);
         return;
     }
 
@@ -899,6 +930,7 @@ void Application::Render() {
 
         renderer_->SetViewport(viewport);
         renderer_->EnsureViewportRenderTarget(ViewportRenderTarget::Scene, viewport.width, viewport.height);
+        const double passStart = glfwGetTime();
         renderer_->BeginFrameToViewportTarget(ViewportRenderTarget::Scene, previousClearColor);
         renderer_->SetCamera(view, proj);
         if (skyboxController_) {
@@ -908,6 +940,7 @@ void Application::Render() {
             sceneEditor_->SubmitDraws(*renderer_, true);
         }
         renderer_->EndFrameToViewportTarget();
+        frameTimings_.scenePassMs += static_cast<float>((glfwGetTime() - passStart) * 1000.0);
     };
 
     auto renderGamePass = [&](const RendererViewport& viewport) {
@@ -929,6 +962,7 @@ void Application::Render() {
             ? glm::vec3(gameClearColor.r, gameClearColor.g, gameClearColor.b)
             : glm::vec3(0.02f, 0.02f, 0.02f);
         renderer_->EnsureViewportRenderTarget(ViewportRenderTarget::Game, viewport.width, viewport.height);
+        const double passStart = glfwGetTime();
         renderer_->BeginFrameToViewportTarget(ViewportRenderTarget::Game, passClearColor);
         if (usingGameCamera) {
             renderer_->SetCamera(view, proj);
@@ -940,10 +974,14 @@ void Application::Render() {
             }
         }
         renderer_->EndFrameToViewportTarget();
+        frameTimings_.gamePassMs += static_cast<float>((glfwGetTime() - passStart) * 1000.0);
     };
 
     if (sceneEditor_) {
-        renderScenePass(sceneEditor_->GetSceneRenderViewport(cfg.width, cfg.height));
+        const bool renderSceneViewport = !sceneEditor_->ShouldRouteInputToGame();
+        if (renderSceneViewport) {
+            renderScenePass(sceneEditor_->GetSceneRenderViewport(cfg.width, cfg.height));
+        }
         const bool renderGameViewport = sceneEditor_->IsRunMode()
             || sceneEditor_->ShouldRouteInputToGame()
             || sceneEditor_->ShouldRenderGameViewportInEditMode();
@@ -958,10 +996,14 @@ void Application::Render() {
     rendererSettings.clearColor = previousClearColor;
 
     if (config_.enableImGui) {
+        const double imguiStart = glfwGetTime();
         debugUi_->RenderDrawData();
+        frameTimings_.imguiRenderMs = static_cast<float>((glfwGetTime() - imguiStart) * 1000.0);
     }
 
+    const double swapStart = glfwGetTime();
     glfwSwapBuffers(window_);
+    frameTimings_.swapMs = static_cast<float>((glfwGetTime() - swapStart) * 1000.0);
 }
 
 } // namespace raceman

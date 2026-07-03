@@ -960,10 +960,22 @@ void SceneEditor::AddEmptyObject() {
 }
 
 void SceneEditor::RenderUI(float deltaTime) {
+    auto elapsedMs = [](double start) {
+        return static_cast<float>((glfwGetTime() - start) * 1000.0);
+    };
+
+    frameTimings_ = {};
+
+    double timingStart = glfwGetTime();
     HandleEditorShortcuts();
+    frameTimings_.shortcutsMs = elapsedMs(timingStart);
+
+    timingStart = glfwGetTime();
     TickPlayModeLoading();          // check if async physics build is done; finalize on main thread
     RenderPlayModeLoadingPopup();   // show modal progress UI while building (before dockspace so ID stack is clean)
+    frameTimings_.playModePopupMs = elapsedMs(timingStart);
 
+    timingStart = glfwGetTime();
     if (scriptsRunning_) {
         UpdateScripts(deltaTime);
         UpdateVehiclePhysics(deltaTime);
@@ -974,16 +986,34 @@ void SceneEditor::RenderUI(float deltaTime) {
     } else {
         PreviewCinemachineInEditor();
     }
+    frameTimings_.runtimeUpdatesMs = elapsedMs(timingStart);
 
+    timingStart = glfwGetTime();
     RenderDockspaceHost();
+    frameTimings_.dockspaceMs = elapsedMs(timingStart);
+
+    timingStart = glfwGetTime();
     RenderScenePanel();
+    frameTimings_.scenePanelMs = elapsedMs(timingStart);
+
+    timingStart = glfwGetTime();
     RenderInspectorPanel();
+    frameTimings_.inspectorMs = elapsedMs(timingStart);
+
+    timingStart = glfwGetTime();
     RenderProjectPanel();
+    frameTimings_.browserMs = elapsedMs(timingStart);
+
+    timingStart = glfwGetTime();
     RenderViewportPanel();
+    frameTimings_.viewportPanelMs = elapsedMs(timingStart);
+
+    timingStart = glfwGetTime();
     RenderShaderGraphEditorWindow();
     RenderVehicleConfigEditorWindow();
     RenderVehicleSoundEditorWindow();
     RenderTrackGeneratorWindow();
+    frameTimings_.auxiliaryWindowsMs = elapsedMs(timingStart);
 }
 
 float SceneEditor::GetViewportAspect() const {

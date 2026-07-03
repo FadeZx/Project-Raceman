@@ -426,13 +426,24 @@ void SceneEditor::RenderProjectPanel() {
                 ImGui::BeginChild("ProjectDirectories", ImVec2(directoryWidth, 0.0f), true);
                 ImGui::TextUnformatted("Directories");
                 ImGui::Separator();
-                auto renderDirectoryTree = [&](auto&& self, const std::string& directory) -> void {
-                    std::vector<std::string> childFolders;
-                    for (const std::string& candidate : projectDirectories_) {
-                        if (candidate != directory && IsDirectChildProjectPath(candidate, directory)) {
-                            childFolders.push_back(candidate);
-                        }
+
+                std::unordered_map<std::string, std::vector<std::string>> directoryChildren;
+                std::unordered_set<std::string> directorySet;
+                directoryChildren.reserve(projectDirectories_.size() + 1);
+                directorySet.reserve(projectDirectories_.size() + 1);
+                for (const std::string& directory : projectDirectories_) {
+                    directorySet.insert(directory);
+                }
+                for (const std::string& directory : projectDirectories_) {
+                    if (directory == "assets") {
+                        continue;
                     }
+                    directoryChildren[ParentProjectDirectory(directory)].push_back(directory);
+                }
+
+                auto renderDirectoryTree = [&](auto&& self, const std::string& directory) -> void {
+                    const auto childIt = directoryChildren.find(directory);
+                    const bool hasChildFolders = childIt != directoryChildren.end() && !childIt->second.empty();
 
                     ImGui::PushID(directory.c_str());
                     const bool selected = (directory == selectedProjectDirectory_);
@@ -443,7 +454,7 @@ void SceneEditor::RenderProjectPanel() {
                     if (directory == "assets") {
                         flags |= ImGuiTreeNodeFlags_DefaultOpen;
                     }
-                    if (childFolders.empty()) {
+                    if (!hasChildFolders) {
                         flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
                     }
                     const std::string directoryLabel = ProjectFolderDisplayName(directory);
@@ -466,8 +477,8 @@ void SceneEditor::RenderProjectPanel() {
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("%s", directory.c_str());
                     }
-                    if (open && !childFolders.empty()) {
-                        for (const std::string& child : childFolders) {
+                    if (open && hasChildFolders) {
+                        for (const std::string& child : childIt->second) {
                             self(self, child);
                         }
                         ImGui::TreePop();
@@ -476,7 +487,7 @@ void SceneEditor::RenderProjectPanel() {
                 };
                 renderDirectoryTree(renderDirectoryTree, "assets");
                 for (const std::string& directory : projectDirectories_) {
-                    if (directory != "assets" && std::find(projectDirectories_.begin(), projectDirectories_.end(), ParentProjectDirectory(directory)) == projectDirectories_.end()) {
+                    if (directory != "assets" && directorySet.find(ParentProjectDirectory(directory)) == directorySet.end()) {
                         renderDirectoryTree(renderDirectoryTree, directory);
                     }
                 }
@@ -529,6 +540,8 @@ void SceneEditor::RenderProjectPanel() {
                 const float iconSize = 46.0f;
                 const float spacing = ImGui::GetStyle().ItemSpacing.x;
                 const float availableWidth = ImGui::GetContentRegionAvail().x;
+                const float visibleTileMinY = ImGui::GetWindowPos().y;
+                const float visibleTileMaxY = visibleTileMinY + ImGui::GetWindowHeight();
                 int columnIndex = 0;
                 bool hasTiles = false;
                 bool breakTileLoop = false;
@@ -540,6 +553,18 @@ void SceneEditor::RenderProjectPanel() {
                                       bool isFolder) -> bool {
                     ImGui::PushID(id.c_str());
                     ImVec2 pos = ImGui::GetCursorScreenPos();
+                    const bool tileVisible = pos.y + tileHeight >= visibleTileMinY && pos.y <= visibleTileMaxY;
+                    if (!tileVisible && renamingProjectFile_ != id) {
+                        ImGui::Dummy(ImVec2(tileWidth, tileHeight));
+                        ImGui::PopID();
+                        if ((columnIndex + 1) * (tileWidth + spacing) + tileWidth <= availableWidth) {
+                            ImGui::SameLine();
+                            ++columnIndex;
+                        } else {
+                            columnIndex = 0;
+                        }
+                        return false;
+                    }
                     ImGui::InvisibleButton("##projectTile", ImVec2(tileWidth, tileHeight));
                     const bool hovered = ImGui::IsItemHovered();
                     const bool clicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
@@ -604,12 +629,11 @@ void SceneEditor::RenderProjectPanel() {
                     return clicked || doubleClicked;
                 };
 
-                std::vector<std::string> childFolders;
-                for (const std::string& directory : projectDirectories_) {
-                    if (directory != selectedProjectDirectory_ && IsDirectChildProjectPath(directory, selectedProjectDirectory_)) {
-                        childFolders.push_back(directory);
-                    }
-                }
+                const auto selectedDirectoryChildrenIt = directoryChildren.find(selectedProjectDirectory_);
+                const std::vector<std::string> emptyChildFolders;
+                const std::vector<std::string>& childFolders = selectedDirectoryChildrenIt != directoryChildren.end()
+                    ? selectedDirectoryChildrenIt->second
+                    : emptyChildFolders;
 
                 for (const std::string& directory : childFolders) {
                     hasTiles = true;

@@ -12,7 +12,18 @@ class PhysicsWorld;
 
 struct RendererFrameStats;
 struct SceneProfilerStats;
+struct SceneEditorFrameTimings;
 struct PhysicsWorldStats;
+
+struct AppFrameTimings {
+    float pollMs{0.0f};
+    float updateMs{0.0f};
+    float renderMs{0.0f};
+    float scenePassMs{0.0f};
+    float gamePassMs{0.0f};
+    float imguiRenderMs{0.0f};
+    float swapMs{0.0f};
+};
 
 class DebugUI {
 public:
@@ -31,6 +42,8 @@ public:
                           Renderer& renderer,
                           const SceneProfilerStats* sceneStats = nullptr,
                           const PhysicsWorldStats* physicsStats = nullptr,
+                          const AppFrameTimings* frameTimings = nullptr,
+                          const SceneEditorFrameTimings* editorTimings = nullptr,
                           glm::vec2 windowAnchor = glm::vec2(-1.0f));
 
     bool IsEnabled() const { return enabled_; }

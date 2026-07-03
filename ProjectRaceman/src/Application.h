@@ -8,6 +8,8 @@
 
 #include <glm/glm.hpp>
 
+#include "ui/DebugUI.h"
+
 
 
 struct GLFWwindow;
@@ -16,7 +18,6 @@ namespace raceman {
 
 class Renderer;
 class InputManager;
-class DebugUI;
 class MenuController;
 class Console;
 class SceneEditor;
@@ -90,6 +91,7 @@ private:
     bool playerDebugConsoleOpen_{false};
     float consoleSlideY_{4000.0f};  // animated Y; starts far below screen
     double lastFrameTime_{0.0};
+    AppFrameTimings frameTimings_{};
 
     // Render/physics debug toggles (edited via Project Settings)
     bool frustumCullingEnabled_{true};
@@ -99,7 +101,7 @@ private:
     double fpsAccum_{0.0};
     int fpsFrames_{0};
     std::string baseTitle_{};
-    bool vsyncEnabled_{true};
+    bool vsyncEnabled_{false};
     bool playerRuntimeStarted_{false};
 
     // Editor camera state

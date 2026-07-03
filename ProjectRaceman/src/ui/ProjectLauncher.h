@@ -57,6 +57,7 @@ private:
     std::string newParentPath_;
     bool showNewDialog_{false};
     std::string errorMsg_;
+    std::string selectedProjectPath_;
     unsigned int logoTexture_{0};
     bool logoTextureLoadAttempted_{false};
 };

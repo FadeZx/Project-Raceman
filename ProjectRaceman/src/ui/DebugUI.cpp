@@ -176,6 +176,8 @@ void DebugUI::RenderAppMetrics(float deltaTime,
                                Renderer& renderer,
                                const SceneProfilerStats* sceneStats,
                                const PhysicsWorldStats* physicsStats,
+                               const AppFrameTimings* frameTimings,
+                               const SceneEditorFrameTimings* editorTimings,
                                glm::vec2 windowAnchor) {
     if (!enabled_ || !showProfiler_) {
         return;
@@ -217,6 +219,32 @@ void DebugUI::RenderAppMetrics(float deltaTime,
             rollingFrameTimeMs_ = 0.0f;
         }
         ImGui::Separator();
+
+        if (frameTimings) {
+            ImGui::TextUnformatted("Frame Breakdown");
+            ImGui::Text("Poll: %.2f ms", frameTimings->pollMs);
+            ImGui::Text("Update/UI: %.2f ms", frameTimings->updateMs);
+            ImGui::Text("Render total: %.2f ms", frameTimings->renderMs);
+            ImGui::Text("Scene pass: %.2f ms", frameTimings->scenePassMs);
+            ImGui::Text("Game pass: %.2f ms", frameTimings->gamePassMs);
+            ImGui::Text("ImGui draw: %.2f ms", frameTimings->imguiRenderMs);
+            ImGui::Text("Swap buffers: %.2f ms", frameTimings->swapMs);
+            ImGui::Separator();
+        }
+
+        if (editorTimings) {
+            ImGui::TextUnformatted("Editor UI Breakdown");
+            ImGui::Text("Shortcuts: %.2f ms", editorTimings->shortcutsMs);
+            ImGui::Text("Play popup: %.2f ms", editorTimings->playModePopupMs);
+            ImGui::Text("Runtime updates: %.2f ms", editorTimings->runtimeUpdatesMs);
+            ImGui::Text("Dockspace: %.2f ms", editorTimings->dockspaceMs);
+            ImGui::Text("Scene panel: %.2f ms", editorTimings->scenePanelMs);
+            ImGui::Text("Inspector: %.2f ms", editorTimings->inspectorMs);
+            ImGui::Text("Browser: %.2f ms", editorTimings->browserMs);
+            ImGui::Text("Viewport UI: %.2f ms", editorTimings->viewportPanelMs);
+            ImGui::Text("Aux windows: %.2f ms", editorTimings->auxiliaryWindowsMs);
+            ImGui::Separator();
+        }
 
         ImGui::TextUnformatted("Rendering");
         ImGui::Text("Submitted meshes: %u", rendererStats.submittedMeshCount);

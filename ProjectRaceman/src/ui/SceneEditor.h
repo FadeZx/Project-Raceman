@@ -63,7 +63,7 @@ public:
     void SetInputManager(InputManager* inputManager);
     void SetAudioManager(AudioManager* audio) { audioManager_ = audio; }
     bool IsRunMode() const { return scriptsRunning_; }
-    bool IsGameViewActive() const { return true; }
+    bool IsGameViewActive() const { return activeViewport_ == SceneEditorActiveViewport::Game; }
     bool TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float aspect, glm::vec4* outClearColor = nullptr) const;
     float GetViewportAspect() const;
     RendererViewport GetRenderViewport(int framebufferWidth, int framebufferHeight) const;
@@ -132,6 +132,7 @@ public:
     void RenderProjectPhysicsSettings();
     void RenderProjectTagsAndLayersSettings();
     SceneProfilerStats CollectProfilerStats() const;
+    const SceneEditorFrameTimings& GetFrameTimings() const { return frameTimings_; }
     std::vector<std::string> GetSceneAssetPaths() const;
     const std::string& GetCurrentScenePath() const { return savePath_; }
     const std::string& GetProjectName() const { return projectName_; }
@@ -598,6 +599,7 @@ private:
     };
     PlayModeLoadState playModeLoad_;
     SceneProfilerStats profilerStats_{};
+    SceneEditorFrameTimings frameTimings_{};
 
     bool sceneDirty_{false};
     std::function<void()> onDirty_{};

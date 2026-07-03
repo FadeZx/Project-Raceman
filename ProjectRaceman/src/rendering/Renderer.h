@@ -2,8 +2,9 @@
 
 #include <glm/glm.hpp>
 
-#include <cstdint>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -170,6 +171,7 @@ private:
     unsigned int fullscreenQuad_{0};
     unsigned int lineVao_{0};
     unsigned int lineVbo_{0};
+    std::size_t lineVertexCapacity_{0};
     ViewportTarget sceneViewportTarget_{};
     ViewportTarget gameViewportTarget_{};
     std::vector<unsigned int> shadowMaps_;

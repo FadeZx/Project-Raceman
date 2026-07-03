@@ -551,10 +551,15 @@ void ProjectLauncher::Render(const OnProjectOpened& onProjectOpened) {
         // Row background
         const ImVec2 rowMin = ImGui::GetCursorScreenPos();
         const ImVec2 rowMax = ImVec2(rowMin.x + contentW - 4.0f, rowMin.y + rowH);
-        const bool hovered  = ImGui::IsMouseHoveringRect(rowMin, rowMax);
-        if (hovered) {
+        const bool hovered = ImGui::IsMouseHoveringRect(rowMin, rowMax);
+        const bool active = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        const bool selected = (selectedProjectPath_ == p.path);
+        if (selected || hovered) {
+            const ImU32 rowColor = selected
+                ? (hovered || active ? IM_COL32(46, 91, 150, 255) : IM_COL32(34, 67, 116, 255))
+                : (active ? IM_COL32(48, 51, 64, 255) : IM_COL32(40, 42, 52, 255));
             ImGui::GetWindowDrawList()->AddRectFilled(
-                rowMin, rowMax, IM_COL32(40, 42, 52, 255));
+                rowMin, rowMax, rowColor);
         }
 
         // Name + path click target
@@ -566,6 +571,7 @@ void ProjectLauncher::Render(const OnProjectOpened& onProjectOpened) {
         if (!exists) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.45f, 0.45f, 0.45f, 1.0f));
         if (ImGui::Selectable("##sel", false, ImGuiSelectableFlags_None, ImVec2(nameW, rowH))
                 && exists && onProjectOpened) {
+            selectedProjectPath_ = p.path;
             projects_[i].lastOpened = std::time(nullptr);
             SaveRegistry(projects_);
             onProjectOpened(p.path);

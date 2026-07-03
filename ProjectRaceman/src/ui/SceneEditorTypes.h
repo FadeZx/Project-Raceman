@@ -394,4 +394,16 @@ struct SceneProfilerStats {
     std::vector<SceneMeshContributorStats> meshContributors;
 };
 
+struct SceneEditorFrameTimings {
+    float shortcutsMs{0.0f};
+    float playModePopupMs{0.0f};
+    float runtimeUpdatesMs{0.0f};
+    float dockspaceMs{0.0f};
+    float scenePanelMs{0.0f};
+    float inspectorMs{0.0f};
+    float browserMs{0.0f};
+    float viewportPanelMs{0.0f};
+    float auxiliaryWindowsMs{0.0f};
+};
+
 } // namespace raceman

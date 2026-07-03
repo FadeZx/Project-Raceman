@@ -453,7 +453,6 @@ void Renderer::Flush() {
             glGenBuffers(1, &lineVbo_);
             glBindVertexArray(lineVao_);
             glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 2, nullptr, GL_DYNAMIC_DRAW);
             glEnableVertexAttribArray(0);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
             glBindVertexArray(0);
@@ -470,6 +469,15 @@ void Renderer::Flush() {
         lineShader->setFloat("uRoughness", 1.0f);
         lineShader->setBool("uUseDiffuseTexture", false);
         glBindVertexArray(lineVao_);
+
+        auto sameLineStyle = [](const DebugLineCommand& a, const DebugLineCommand& b) {
+            return a.depthMode == b.depthMode
+                && a.width == b.width
+                && a.color.x == b.color.x
+                && a.color.y == b.color.y
+                && a.color.z == b.color.z
+                && a.color.w == b.color.w;
+        };
 
         auto drawLineBatch = [&](DebugLineDepthMode mode, bool overlayPass) {
             if (mode == DebugLineDepthMode::AlwaysOnTop || overlayPass) {
@@ -488,20 +496,50 @@ void Renderer::Flush() {
                 glDisable(GL_BLEND);
             }
 
-            for (const auto& cmd : lineDrawList_) {
-                if (cmd.depthMode != mode) {
+            std::vector<glm::vec3> vertices;
+            vertices.reserve(lineDrawList_.size() * 2);
+            for (std::size_t i = 0; i < lineDrawList_.size();) {
+                const DebugLineCommand& first = lineDrawList_[i];
+                if (first.depthMode != mode) {
+                    ++i;
                     continue;
                 }
-                const glm::vec3 vertices[2] = {cmd.start, cmd.end};
-                glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
-                glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-                glLineWidth(cmd.width);
-                glm::vec4 color = cmd.color;
+
+                vertices.clear();
+                glm::vec4 color = first.color;
                 if (overlayPass) {
                     color.a *= 0.25f;
                 }
+                const float width = first.width;
+
+                std::size_t j = i;
+                for (; j < lineDrawList_.size(); ++j) {
+                    const DebugLineCommand& cmd = lineDrawList_[j];
+                    if (!sameLineStyle(cmd, first)) {
+                        break;
+                    }
+                    vertices.push_back(cmd.start);
+                    vertices.push_back(cmd.end);
+                }
+
+                if (vertices.empty()) {
+                    i = j;
+                    continue;
+                }
+
+                glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
+                const std::size_t vertexCount = vertices.size();
+                const std::size_t requiredBytes = vertexCount * sizeof(glm::vec3);
+                if (vertexCount > lineVertexCapacity_) {
+                    glBufferData(GL_ARRAY_BUFFER, requiredBytes, vertices.data(), GL_DYNAMIC_DRAW);
+                    lineVertexCapacity_ = vertexCount;
+                } else {
+                    glBufferSubData(GL_ARRAY_BUFFER, 0, requiredBytes, vertices.data());
+                }
+                glLineWidth(width);
                 lineShader->setVec4("uColor", color);
-                glDrawArrays(GL_LINES, 0, 2);
+                glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(vertexCount));
+                i = j;
             }
         };
 
