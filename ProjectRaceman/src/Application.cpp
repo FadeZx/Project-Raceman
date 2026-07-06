@@ -203,6 +203,7 @@ void Application::InitializeEditor(const std::string& projectPath) {
         sceneEditor_.reset();
     }
     launcher_.reset();
+    FitEditorWindowToScreen();
 
 #if defined(_WIN32)
     _putenv_s("RACEMAN_PROJECT_ROOT", projectPath.c_str());
@@ -244,6 +245,30 @@ void Application::InitializeEditor(const std::string& projectPath) {
         skyboxController_->SetFaces(savedFaces);
         skyboxController_->Reload();
     }
+}
+
+void Application::FitEditorWindowToScreen() {
+    if (window_ == nullptr || config_.playerMode) {
+        return;
+    }
+
+#if defined(_WIN32)
+    HWND hwnd = glfwGetWin32Window(window_);
+    if (hwnd != nullptr) {
+        ShowWindow(hwnd, SW_MAXIMIZE);
+    }
+#else
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    if (monitor == nullptr) {
+        return;
+    }
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    if (mode == nullptr) {
+        return;
+    }
+    glfwSetWindowPos(window_, 0, 0);
+    glfwSetWindowSize(window_, mode->width, mode->height);
+#endif
 }
 
 void Application::RenderPlayerDebugOverlay(float deltaTime) {
@@ -551,10 +576,13 @@ void Application::Update(float deltaTime) {
             rmbHeld_ = true;
             cameraFocusActive_ = false;
             firstMouse_ = true;
+            rmbCaptureMouseX_ = mouseX;
+            rmbCaptureMouseY_ = mouseY;
             glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         } else if ((!allowEditorCamera || rmb == GLFW_RELEASE) && rmbHeld_) {
             rmbHeld_ = false;
             glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            glfwSetCursorPos(window_, rmbCaptureMouseX_, rmbCaptureMouseY_);
         }
         if (sceneEditor_) {
             sceneEditor_->SetEditorCameraNavigating(rmbHeld_);
@@ -617,6 +645,15 @@ void Application::Update(float deltaTime) {
     }
 
     if (config_.enableImGui) {
+        if (ImGui::GetCurrentContext() != nullptr) {
+            ImGuiIO& io = ImGui::GetIO();
+            if (rmbHeld_) {
+                io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+                io.ClearInputMouse();
+            } else {
+                io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+            }
+        }
         debugUi_->BeginFrame();
 
         if (playerDebugMode_) {

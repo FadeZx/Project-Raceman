@@ -165,7 +165,23 @@ std::filesystem::path BuildDiskCachePath(const std::string& cacheKey,
     return GetShapeCacheDir() / filename;
 }
 
-JPH::ShapeRefC TryLoadShapeFromDisk(const std::filesystem::path& path) {
+std::filesystem::path BuildDiskCacheMetaPath(const std::filesystem::path& shapePath) {
+    std::filesystem::path metaPath = shapePath;
+    metaPath += ".meta";
+    return metaPath;
+}
+
+std::uint64_t TryLoadShapeTriangleCountFromDisk(const std::filesystem::path& shapePath) {
+    std::ifstream f(BuildDiskCacheMetaPath(shapePath));
+    std::uint64_t triangleCount = 0;
+    if (f >> triangleCount) {
+        return triangleCount;
+    }
+    return 0;
+}
+
+JPH::ShapeRefC TryLoadShapeFromDisk(const std::filesystem::path& path,
+                                    std::uint64_t* outTriangleCount = nullptr) {
     std::ifstream f(path, std::ios::binary);
     if (!f.is_open()) {
         std::fprintf(stdout, "[CollisionCache] MISS  %s\n", path.string().c_str());
@@ -181,10 +197,15 @@ JPH::ShapeRefC TryLoadShapeFromDisk(const std::filesystem::path& path) {
     }
     std::fprintf(stdout, "[CollisionCache] HIT    %s\n", path.string().c_str());
     std::fflush(stdout);
+    if (outTriangleCount) {
+        *outTriangleCount = TryLoadShapeTriangleCountFromDisk(path);
+    }
     return result.Get();
 }
 
-void SaveShapeToDisk(const std::filesystem::path& path, const JPH::ShapeRefC& shape) {
+void SaveShapeToDisk(const std::filesystem::path& path,
+                     const JPH::ShapeRefC& shape,
+                     std::uint64_t triangleCount) {
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
     if (ec) {
@@ -201,6 +222,10 @@ void SaveShapeToDisk(const std::filesystem::path& path, const JPH::ShapeRefC& sh
     }
     JPH::StreamOutWrapper stream(f);
     shape->SaveBinaryState(stream);
+    std::ofstream meta(BuildDiskCacheMetaPath(path), std::ios::trunc);
+    if (meta.is_open()) {
+        meta << triangleCount << '\n';
+    }
     std::fprintf(stdout, "[CollisionCache] SAVED  %s\n", path.string().c_str());
     std::fflush(stdout);
 }
@@ -437,9 +462,7 @@ std::filesystem::path FindProjectAssetAbsolutePath(const std::string& assetPath)
 }
 
 JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_t* outTriangleCount = nullptr) {
-    ImportedCollisionMesh collisionMesh;
-    std::uint64_t triangleCount = 0;
-    if (!GetCachedCollisionMesh(collider, collisionMesh, &triangleCount)) {
+    if (collider.meshAssetPath.empty()) {
         return {};
     }
 
@@ -456,24 +479,35 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
     // mesh's last-write-time, so it is automatically invalidated when the mesh
     // is modified on disk.
     const std::filesystem::path resolvedPath = FindProjectAssetAbsolutePath(collider.meshAssetPath);
+    if (!std::filesystem::exists(resolvedPath)) {
+        return {};
+    }
+
     std::error_code ec;
     const std::filesystem::file_time_type mtime = std::filesystem::last_write_time(resolvedPath, ec);
     const std::string meshFilenameStr = std::filesystem::path(collider.meshAssetPath).filename().string();
     if (!ec) {
         const std::filesystem::path diskCachePath = BuildDiskCachePath(cacheKey, mtime);
         if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Cache check: " + meshFilenameStr);
-        if (JPH::ShapeRefC loaded = TryLoadShapeFromDisk(diskCachePath)) {
+        std::uint64_t cachedTriangleCount = 0;
+        if (JPH::ShapeRefC loaded = TryLoadShapeFromDisk(diskCachePath, &cachedTriangleCount)) {
             if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Loaded: " + meshFilenameStr);
             shapeCache.shape = std::move(loaded);
-            shapeCache.triangleCount = triangleCount;
+            shapeCache.triangleCount = cachedTriangleCount;
             shapeCache.valid = true;
             if (outTriangleCount) {
-                *outTriangleCount = triangleCount;
+                *outTriangleCount = cachedTriangleCount;
             }
             return shapeCache.shape;
         }
     }
     if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Cooking: " + meshFilenameStr);
+
+    ImportedCollisionMesh collisionMesh;
+    std::uint64_t triangleCount = 0;
+    if (!GetCachedCollisionMesh(collider, collisionMesh, &triangleCount)) {
+        return {};
+    }
 
     const glm::vec3 pivotOffset = collider.meshPivotOffset;
     const bool hasPivot = (pivotOffset.x != 0.0f || pivotOffset.y != 0.0f || pivotOffset.z != 0.0f);
@@ -510,7 +544,7 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
         shapeCache.triangleCount = triangleCount;
         shapeCache.valid = true;
         if (!ec) {
-            SaveShapeToDisk(BuildDiskCachePath(cacheKey, mtime), shapeCache.shape);
+            SaveShapeToDisk(BuildDiskCachePath(cacheKey, mtime), shapeCache.shape, triangleCount);
         }
         if (outTriangleCount) {
             *outTriangleCount = triangleCount;
@@ -585,7 +619,7 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
     shapeCache.triangleCount = triangleCount;
     shapeCache.valid = true;
     if (!ec) {
-        SaveShapeToDisk(BuildDiskCachePath(cacheKey, mtime), shapeCache.shape);
+        SaveShapeToDisk(BuildDiskCachePath(cacheKey, mtime), shapeCache.shape, triangleCount);
     }
     if (outTriangleCount) {
         *outTriangleCount = triangleCount;

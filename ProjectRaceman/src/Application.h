@@ -59,6 +59,7 @@ private:
     void Render();
     void FocusEditorCameraOn(const glm::vec3& target, float radius);
     void InitializeEditor(const std::string& projectPath);
+    void FitEditorWindowToScreen();
     void RenderPlayerDebugOverlay(float deltaTime);
 
     ApplicationConfig config_{};
@@ -117,6 +118,7 @@ private:
     bool rmbHeld_{false};
     bool firstMouse_{true};
     double lastMouseX_{0.0}, lastMouseY_{0.0};
+    double rmbCaptureMouseX_{0.0}, rmbCaptureMouseY_{0.0};
     bool cameraFocusActive_{false};
     glm::vec3 cameraFocusStart_{0.0f};
     glm::vec3 cameraFocusTarget_{0.0f};
