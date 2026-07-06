@@ -1102,26 +1102,27 @@ void SceneEditor::RenderPlayModeLoadingPopup() {
     // Keep the modal open as long as building is in progress.
     const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(460.0f, 140.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(460.0f, 124.0f), ImGuiCond_Always);
     ImGui::OpenPopup("###PlayModeLoading");
 
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 4.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.105f, 0.118f, 0.138f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram));
     if (ImGui::BeginPopupModal("Building Scene...###PlayModeLoading", nullptr,
-        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
 
-        ImGui::Spacing();
         if (playModeLoad_.phase == PlayModeLoadState::Phase::BuildingScripts) {
             const double elapsed = std::chrono::duration<double>(
                 std::chrono::high_resolution_clock::now() - playModeLoad_.buildStart).count();
             const float pulse = static_cast<float>(std::fmod(elapsed * 0.45, 1.0));
 
             ImGui::TextUnformatted("Building script DLL...");
-            ImGui::Spacing();
             ImGui::ProgressBar(pulse, ImVec2(-1.0f, 0.0f), "ProjectScripts.dll");
-            ImGui::Spacing();
             ImGui::TextDisabled("Compiling C++ scripts with MSBuild.");
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
             ImGui::BeginDisabled();
             ImGui::Button("Cancel", ImVec2(100.0f, 0.0f));
             ImGui::EndDisabled();
@@ -1133,7 +1134,6 @@ void SceneEditor::RenderPlayModeLoadingPopup() {
                 const float fraction = (total > 0) ? static_cast<float>(done) / static_cast<float>(total) : 0.0f;
 
                 ImGui::TextUnformatted("Baking collision geometry...");
-                ImGui::Spacing();
 
                 char label[32];
                 std::snprintf(label, sizeof(label), "%d / %d", done, (std::max)(total, 1));
@@ -1141,13 +1141,8 @@ void SceneEditor::RenderPlayModeLoadingPopup() {
 
                 const std::string task = prog->GetTask();
                 if (!task.empty()) {
-                    ImGui::Spacing();
                     ImGui::TextDisabled("%s", task.c_str());
                 }
-
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Spacing();
 
                 if (ImGui::Button("Cancel", ImVec2(100.0f, 0.0f))) {
                     prog->cancelRequested.store(true);
@@ -1157,6 +1152,8 @@ void SceneEditor::RenderPlayModeLoadingPopup() {
 
         ImGui::EndPopup();
     }
+    ImGui::PopStyleColor(2);
+    ImGui::PopStyleVar(4);
 }
 
 void SceneEditor::RebuildVehicleRuntime() {

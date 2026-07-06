@@ -374,8 +374,10 @@ void Renderer::Flush() {
             glEnable(GL_BLEND);
             glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
             glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
         } else {
             glDisable(GL_BLEND);
+            glDepthMask(GL_TRUE);
         }
 
         // MVP = proj * view * model

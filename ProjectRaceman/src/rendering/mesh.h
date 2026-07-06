@@ -35,6 +35,8 @@ struct Texture {
     unsigned int id;
     string type;
     string path;
+    vector<unsigned char> embeddedData;
+    string embeddedExtension;
 };
 
 class Mesh {
@@ -44,16 +46,22 @@ public:
     vector<unsigned int> indices;
     vector<Texture>      textures;
     string materialName;
+    string materialAlphaMode;
+    float materialAlphaCutoff{0.0f};
+    float materialOpacity{1.0f};
     string name;
     unsigned int VAO;
 
     // constructor
-    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures, string materialName = "", string name = "")
+    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures, string materialName = "", string name = "", string materialAlphaMode = "", float materialAlphaCutoff = 0.0f, float materialOpacity = 1.0f)
     {
         this->vertices = vertices;
         this->indices = indices;
         this->textures = textures;
         this->materialName = materialName;
+        this->materialAlphaMode = materialAlphaMode;
+        this->materialAlphaCutoff = materialAlphaCutoff;
+        this->materialOpacity = materialOpacity;
         this->name = name;
 
         // now that we have all the required data, set the vertex buffers and its attribute pointers.

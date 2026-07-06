@@ -126,6 +126,7 @@ std::vector<ShaderDefinition::Property> PbrProperties() {
         MakeColor4Property("albedoColor", "Albedo Color", "uColor", 1.0f, 1.0f, 1.0f, 1.0f),
         MakeFloatProperty("metallic", "Metallic", "uMetallic", 0.0f, 0.0f, 1.0f),
         MakeFloatProperty("roughness", "Roughness", "uRoughness", 0.5f, 0.0f, 1.0f),
+        MakeFloatProperty("alphaCutoff", "Alpha Cutoff", "uAlphaCutoff", 0.0f, 0.0f, 1.0f),
         MakeColor3Property("emissiveColor", "Emissive Color", "uEmissiveColor", 0.0f, 0.0f, 0.0f),
         MakeVec2Property("uvTiling", "UV Tiling", "uUvTiling", 1.0f, 1.0f, 0.01f, 10.0f),
         MakeVec2Property("uvOffset", "UV Offset", "uUvOffset", 0.0f, 0.0f, -10.0f, 10.0f),
@@ -152,6 +153,7 @@ std::vector<ShaderDefinition::Property> EmissiveProperties() {
 std::vector<ShaderDefinition::Property> UnlitProperties() {
     return {
         MakeColor4Property("albedoColor", "Albedo Color", "uColor", 1.0f, 1.0f, 1.0f, 1.0f),
+        MakeFloatProperty("alphaCutoff", "Alpha Cutoff", "uAlphaCutoff", 0.0f, 0.0f, 1.0f),
         MakeVec2Property("uvTiling", "UV Tiling", "uUvTiling", 1.0f, 1.0f, 0.01f, 10.0f),
         MakeVec2Property("uvOffset", "UV Offset", "uUvOffset", 0.0f, 0.0f, -10.0f, 10.0f),
         MakeTextureProperty("albedoTexture", "Albedo", "uMaterialAlbedoTexture", "uUseMaterialAlbedoTexture"),

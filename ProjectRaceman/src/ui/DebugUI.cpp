@@ -20,6 +20,116 @@ namespace raceman {
 namespace {
 
 static constexpr const char* kEditorStatePath = "config/editor_state.json";
+static constexpr const char* kEditorFontPath = "editor-assets/third_party/JoltPhysics-master/Assets/Fonts/Roboto-Regular.ttf";
+
+void ConfigureEditorTypography() {
+    ImGuiIO& io = ImGui::GetIO();
+    io.FontGlobalScale = 1.0f;
+
+    if (std::filesystem::exists(kEditorFontPath)) {
+        ImFontConfig fontConfig;
+        fontConfig.SizePixels = 14.0f;
+        fontConfig.PixelSnapH = true;
+        fontConfig.OversampleH = 2;
+        fontConfig.OversampleV = 2;
+        ImFont* font = io.Fonts->AddFontFromFileTTF(kEditorFontPath, 14.0f, &fontConfig, io.Fonts->GetGlyphRangesDefault());
+        if (font != nullptr) {
+            io.FontDefault = font;
+            return;
+        }
+    }
+
+    io.FontDefault = io.Fonts->AddFontDefault();
+}
+
+void ApplyEditorTheme() {
+    ImGui::StyleColorsDark();
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowPadding = ImVec2(7.0f, 6.0f);
+    style.FramePadding = ImVec2(6.0f, 3.0f);
+    style.CellPadding = ImVec2(5.0f, 3.0f);
+    style.ItemSpacing = ImVec2(6.0f, 4.0f);
+    style.ItemInnerSpacing = ImVec2(5.0f, 3.0f);
+    style.TouchExtraPadding = ImVec2(0.0f, 0.0f);
+    style.IndentSpacing = 14.0f;
+    style.ScrollbarSize = 12.0f;
+    style.GrabMinSize = 8.0f;
+
+    style.WindowRounding = 5.0f;
+    style.ChildRounding = 4.0f;
+    style.FrameRounding = 4.0f;
+    style.PopupRounding = 4.0f;
+    style.ScrollbarRounding = 6.0f;
+    style.GrabRounding = 3.0f;
+    style.TabRounding = 4.0f;
+
+    style.WindowBorderSize = 1.0f;
+    style.ChildBorderSize = 1.0f;
+    style.PopupBorderSize = 1.0f;
+    style.FrameBorderSize = 0.0f;
+    style.TabBorderSize = 0.0f;
+    style.TabBarBorderSize = 1.0f;
+
+    ImVec4* colors = style.Colors;
+    colors[ImGuiCol_Text] = ImVec4(0.90f, 0.93f, 0.96f, 1.00f);
+    colors[ImGuiCol_TextDisabled] = ImVec4(0.56f, 0.61f, 0.67f, 1.00f);
+    colors[ImGuiCol_WindowBg] = ImVec4(0.075f, 0.085f, 0.100f, 1.00f);
+    colors[ImGuiCol_ChildBg] = ImVec4(0.090f, 0.102f, 0.120f, 1.00f);
+    colors[ImGuiCol_PopupBg] = ImVec4(0.105f, 0.118f, 0.138f, 0.98f);
+    colors[ImGuiCol_Border] = ImVec4(0.215f, 0.240f, 0.275f, 1.00f);
+    colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+
+    colors[ImGuiCol_FrameBg] = ImVec4(0.125f, 0.140f, 0.165f, 1.00f);
+    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.170f, 0.195f, 0.230f, 1.00f);
+    colors[ImGuiCol_FrameBgActive] = ImVec4(0.095f, 0.300f, 0.430f, 1.00f);
+    colors[ImGuiCol_TitleBg] = ImVec4(0.060f, 0.070f, 0.085f, 1.00f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.085f, 0.105f, 0.125f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.060f, 0.070f, 0.085f, 1.00f);
+    colors[ImGuiCol_MenuBarBg] = ImVec4(0.060f, 0.070f, 0.085f, 1.00f);
+
+    colors[ImGuiCol_ScrollbarBg] = ImVec4(0.060f, 0.070f, 0.085f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.230f, 0.255f, 0.300f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.300f, 0.340f, 0.390f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.120f, 0.480f, 0.680f, 1.00f);
+    colors[ImGuiCol_CheckMark] = ImVec4(0.200f, 0.720f, 0.900f, 1.00f);
+    colors[ImGuiCol_SliderGrab] = ImVec4(0.160f, 0.620f, 0.820f, 1.00f);
+    colors[ImGuiCol_SliderGrabActive] = ImVec4(0.260f, 0.760f, 0.960f, 1.00f);
+
+    colors[ImGuiCol_Button] = ImVec4(0.145f, 0.170f, 0.205f, 1.00f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.180f, 0.285f, 0.345f, 1.00f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.095f, 0.390f, 0.560f, 1.00f);
+    colors[ImGuiCol_Header] = ImVec4(0.125f, 0.175f, 0.215f, 1.00f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.145f, 0.320f, 0.420f, 1.00f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.090f, 0.430f, 0.600f, 1.00f);
+    colors[ImGuiCol_Separator] = ImVec4(0.215f, 0.240f, 0.275f, 1.00f);
+    colors[ImGuiCol_SeparatorHovered] = ImVec4(0.180f, 0.540f, 0.710f, 1.00f);
+    colors[ImGuiCol_SeparatorActive] = ImVec4(0.220f, 0.680f, 0.880f, 1.00f);
+    colors[ImGuiCol_ResizeGrip] = ImVec4(0.140f, 0.420f, 0.560f, 0.35f);
+    colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.180f, 0.560f, 0.740f, 0.75f);
+    colors[ImGuiCol_ResizeGripActive] = ImVec4(0.240f, 0.740f, 0.940f, 1.00f);
+
+    colors[ImGuiCol_Tab] = ImVec4(0.105f, 0.122f, 0.145f, 1.00f);
+    colors[ImGuiCol_TabHovered] = ImVec4(0.155f, 0.330f, 0.430f, 1.00f);
+    colors[ImGuiCol_TabSelected] = ImVec4(0.130f, 0.185f, 0.230f, 1.00f);
+    colors[ImGuiCol_TabSelectedOverline] = ImVec4(0.200f, 0.720f, 0.900f, 1.00f);
+    colors[ImGuiCol_TabDimmed] = ImVec4(0.080f, 0.092f, 0.110f, 1.00f);
+    colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.105f, 0.125f, 0.150f, 1.00f);
+    colors[ImGuiCol_TabDimmedSelectedOverline] = ImVec4(0.130f, 0.420f, 0.560f, 1.00f);
+    colors[ImGuiCol_DockingPreview] = ImVec4(0.160f, 0.640f, 0.860f, 0.70f);
+    colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.050f, 0.058f, 0.070f, 1.00f);
+
+    colors[ImGuiCol_TableHeaderBg] = ImVec4(0.105f, 0.125f, 0.150f, 1.00f);
+    colors[ImGuiCol_TableBorderStrong] = ImVec4(0.270f, 0.300f, 0.340f, 1.00f);
+    colors[ImGuiCol_TableBorderLight] = ImVec4(0.190f, 0.215f, 0.250f, 1.00f);
+    colors[ImGuiCol_TableRowBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.00f);
+    colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.000f, 1.000f, 1.000f, 0.035f);
+
+    colors[ImGuiCol_TextSelectedBg] = ImVec4(0.130f, 0.520f, 0.720f, 0.40f);
+    colors[ImGuiCol_DragDropTarget] = ImVec4(0.240f, 0.780f, 0.980f, 0.90f);
+    colors[ImGuiCol_NavHighlight] = ImVec4(0.200f, 0.720f, 0.900f, 0.80f);
+    colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.55f);
+}
 
 void SaveEditorState(bool showProfiler) {
     std::filesystem::create_directories("config");
@@ -113,7 +223,8 @@ void DebugUI::Initialize(GLFWwindow* window) {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGui::StyleColorsDark();
+    ApplyEditorTheme();
+    ConfigureEditorTypography();
 
     showProfiler_ = LoadEditorStateShowProfiler(showProfiler_);
 

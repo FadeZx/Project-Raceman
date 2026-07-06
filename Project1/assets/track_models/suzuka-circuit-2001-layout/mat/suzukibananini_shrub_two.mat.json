@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "SHRUB_TWO",
+  "shader": "transparent",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0,
+  "roughness": 1,
+  "emissiveColor": [0, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "assets/track_models/suzuka-circuit-2001-layout/textures/suzukibananini_gsblade_albedo.png",
+    "normal": "",
+    "metallic": "",
+    "roughness": "",
+    "ao": ""
+  },
+  "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 }
+  }
+}

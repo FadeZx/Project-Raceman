@@ -10,6 +10,9 @@ uniform float uMetallic;
 uniform float uRoughness;
 uniform sampler2D uDiffuseTexture;
 uniform bool uUseDiffuseTexture;
+uniform sampler2D uMaterialAlbedoTexture;
+uniform bool uUseMaterialAlbedoTexture;
+uniform float uAlphaCutoff;
 uniform bool uUnlit;
 uniform vec3 uCameraPosition;
 
@@ -28,8 +31,11 @@ uniform int uLightCount;
 uniform Light uLights[8];
 
 void main() {
-    vec4 base = uUseDiffuseTexture ? texture(uDiffuseTexture, vUV) : vec4(1.0);
+    vec4 base = uUseMaterialAlbedoTexture ? texture(uMaterialAlbedoTexture, vUV) : (uUseDiffuseTexture ? texture(uDiffuseTexture, vUV) : vec4(1.0));
     vec4 albedo = base * uColor;
+    if (uAlphaCutoff > 0.0 && albedo.a < uAlphaCutoff) {
+        discard;
+    }
     if (uUnlit) {
         FragColor = albedo;
         return;

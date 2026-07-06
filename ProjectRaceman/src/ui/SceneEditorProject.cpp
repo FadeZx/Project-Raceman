@@ -1,4 +1,5 @@
 #include "SceneEditorInternal.h"
+#include "NativeDialogs.h"
 #include "../physics/SimpleJson.h"
 #include "../rendering/ShaderRegistry.h"
 #include <GLFW/glfw3.h>
@@ -392,24 +393,1166 @@ std::string ResolveImportedTextureAssetPath(const std::string& meshAssetPath, co
     return ToProjectAssetPath(textureAbsolutePath, assetsRoot);
 }
 
-std::string EnsureImportedMaterialAsset(MaterialManager& materialManager,
-                                        const std::string& meshAssetPath,
-                                        const std::string& packageBaseName,
-                                        const ImportedMeshInfo& info) {
+std::string ImportedTextureExtension(const std::string& texturePath, const std::string& embeddedExtension, const std::string& fallback) {
+    std::string ext;
+    try {
+        ext = fs::path(texturePath).extension().string();
+        if (!ext.empty() && ext.front() == '.') {
+            ext.erase(ext.begin());
+        }
+    } catch (...) {
+        ext.clear();
+    }
+    if (ext.empty()) {
+        ext = embeddedExtension.empty() ? fallback : embeddedExtension;
+    }
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    if (ext == "jpeg") {
+        ext = "jpg";
+    }
+    return ext.empty() ? fallback : ext;
+}
+
+std::string FindFallbackImportedTextureAssetPath(const std::string& meshAssetPath,
+                                                 const ImportedMeshInfo& info,
+                                                 const std::string& slotName) {
+    static const std::vector<std::string> imageExtensions = {".png", ".jpg", ".jpeg", ".tga", ".bmp", ".dds"};
+    const std::string modelStem = SanitizeImportedMaterialId(fs::path(meshAssetPath).stem().string());
+    const std::string materialStem = SanitizeImportedMaterialId(info.materialName);
+    const std::string meshIndexText = std::to_string(info.meshIndex);
+    const std::string paddedMeshIndexText = info.meshIndex < 1000
+        ? (std::string(3 - (std::min)(3, static_cast<int>(meshIndexText.size())), '0') + meshIndexText)
+        : meshIndexText;
+    std::vector<std::string> slotAliases;
+    if (slotName == "albedo") {
+        slotAliases = {"albedo", "diffuse", "diff", "basecolor", "base_color", "color"};
+    } else if (slotName == "normal") {
+        slotAliases = {"normal", "norm", "nrm"};
+    } else if (slotName == "metallic") {
+        slotAliases = {"metallic", "metal", "metalness"};
+    } else if (slotName == "roughness") {
+        slotAliases = {"roughness", "rough"};
+    } else if (slotName == "ao") {
+        slotAliases = {"ao", "occlusion", "ambientocclusion"};
+    } else {
+        slotAliases = {slotName};
+    }
+
+    auto normalizeKey = [](const std::string& value) {
+        std::string key = ToLowerCopy(value);
+        key.erase(std::remove_if(key.begin(), key.end(), [](unsigned char ch) {
+            return ch == '_' || ch == '-' || ch == ' ' || ch == '.';
+        }), key.end());
+        return key;
+    };
+
+    const std::string normalizedMaterial = normalizeKey(materialStem);
+    const std::string normalizedModel = normalizeKey(modelStem);
+    const std::string normalizedMeshIndex = normalizeKey(meshIndexText);
+    const std::string normalizedPaddedMeshIndex = normalizeKey(paddedMeshIndexText);
+
+    std::vector<fs::path> searchRoots;
+    try {
+        const fs::path meshAbsolutePath = ProjectAssetPathToAbsolute(meshAssetPath);
+        const fs::path meshDir = meshAbsolutePath.parent_path();
+        searchRoots.push_back(meshDir);
+        searchRoots.push_back(meshDir / "textures");
+        searchRoots.push_back(meshDir.parent_path() / "textures");
+        searchRoots.push_back(meshDir.parent_path());
+    } catch (...) {
+        return {};
+    }
+
+    std::vector<fs::path> bestMatches;
+    for (const fs::path& root : searchRoots) {
+        if (root.empty() || !fs::exists(root) || !fs::is_directory(root)) {
+            continue;
+        }
+        try {
+            for (const auto& entry : fs::recursive_directory_iterator(root)) {
+                if (!entry.is_regular_file()) {
+                    continue;
+                }
+                const std::string ext = ToLowerCopy(entry.path().extension().string());
+                if (std::find(imageExtensions.begin(), imageExtensions.end(), ext) == imageExtensions.end()) {
+                    continue;
+                }
+                const std::string stem = normalizeKey(entry.path().stem().string());
+                bool slotMatch = slotName == "albedo";
+                for (const std::string& alias : slotAliases) {
+                    if (stem.find(normalizeKey(alias)) != std::string::npos) {
+                        slotMatch = true;
+                        break;
+                    }
+                }
+                if (!slotMatch) {
+                    continue;
+                }
+                const bool meshIndexMatch =
+                    (!normalizedModel.empty() && stem.find(normalizedModel + normalizedMeshIndex) != std::string::npos) ||
+                    (!normalizedModel.empty() && stem.find(normalizedModel + normalizedPaddedMeshIndex) != std::string::npos) ||
+                    stem.find(normalizedMeshIndex + normalizeKey(slotName)) != std::string::npos ||
+                    stem.find(normalizedPaddedMeshIndex + normalizeKey(slotName)) != std::string::npos;
+                const bool materialMatch = !normalizedMaterial.empty() && stem.find(normalizedMaterial) != std::string::npos;
+                if (meshIndexMatch || materialMatch) {
+                    bestMatches.push_back(entry.path());
+                }
+            }
+        } catch (...) {
+        }
+    }
+
+    if (bestMatches.empty()) {
+        return {};
+    }
+    std::sort(bestMatches.begin(), bestMatches.end(), [](const fs::path& a, const fs::path& b) {
+        return ToLowerCopy(a.string()) < ToLowerCopy(b.string());
+    });
+    try {
+        return ToProjectAssetPath(bestMatches.front(), FindAssetsRoot());
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string ResolveOrFallbackImportedTextureAssetPath(const std::string& meshAssetPath,
+                                                      const ImportedMeshInfo& info,
+                                                      const std::string& texturePath,
+                                                      const std::string& slotName) {
+    std::string resolved = ResolveImportedTextureAssetPath(meshAssetPath, texturePath);
+    if (!resolved.empty()) {
+        return resolved;
+    }
+    return FindFallbackImportedTextureAssetPath(meshAssetPath, info, slotName);
+}
+
+std::string ExtractOrResolveImportedTextureAssetPath(const std::string& meshAssetPath,
+                                                     const ImportedMeshInfo& info,
+                                                     const std::string& texturePath,
+                                                     const std::vector<unsigned char>& embeddedData,
+                                                     const std::string& embeddedExtension,
+                                                     const fs::path& targetFolder,
+                                                     const std::string& materialId,
+                                                     const std::string& slotName) {
+    if (texturePath.empty() && embeddedData.empty()) {
+        return FindFallbackImportedTextureAssetPath(meshAssetPath, info, slotName);
+    }
+
+    if (!embeddedData.empty()) {
+        if (targetFolder.empty()) {
+            return {};
+        }
+        const std::string extension = ImportedTextureExtension(texturePath, embeddedExtension, "png");
+        if (extension == "rgba") {
+            return {};
+        }
+        const fs::path outputPath = (targetFolder / (materialId + "_" + slotName + "." + extension)).lexically_normal();
+        try {
+            fs::create_directories(outputPath.parent_path());
+            std::ofstream out(outputPath, std::ios::binary | std::ios::trunc);
+            if (!out.good()) {
+                return {};
+            }
+            out.write(reinterpret_cast<const char*>(embeddedData.data()), static_cast<std::streamsize>(embeddedData.size()));
+            out.close();
+            return ToProjectAssetPath(outputPath, FindAssetsRoot());
+        } catch (...) {
+            return {};
+        }
+    }
+
+    std::string resolvedProjectPath = ResolveImportedTextureAssetPath(meshAssetPath, texturePath);
+    if (!resolvedProjectPath.empty()) {
+        return resolvedProjectPath;
+    }
+    if (targetFolder.empty()) {
+        return {};
+    }
+
+    try {
+        const fs::path assetsRoot = FindAssetsRoot();
+        const fs::path meshAbsolutePath = ProjectAssetPathToAbsolute(meshAssetPath);
+        fs::path textureAbsolutePath = fs::path(NormalizeSlashes(texturePath));
+        if (!textureAbsolutePath.is_absolute()) {
+            textureAbsolutePath = (meshAbsolutePath.parent_path() / textureAbsolutePath).lexically_normal();
+        }
+        if (!fs::exists(textureAbsolutePath) || !fs::is_regular_file(textureAbsolutePath)) {
+            return {};
+        }
+        const std::string extension = ImportedTextureExtension(textureAbsolutePath.string(), embeddedExtension, "png");
+        const fs::path outputPath = (targetFolder / (materialId + "_" + slotName + "." + extension)).lexically_normal();
+        fs::create_directories(outputPath.parent_path());
+        fs::copy_file(textureAbsolutePath, outputPath, fs::copy_options::overwrite_existing);
+        return ToProjectAssetPath(outputPath, assetsRoot);
+    } catch (...) {
+        return {};
+    }
+}
+
+struct ModelMaterialMapping {
+    int meshIndex{0};
+    std::string meshName;
+    std::string importedMaterialName;
+    std::string materialId;
+};
+
+struct ModelImportSettings {
+    int version{1};
+    int pivotMode{0};
+    bool importMaterials{true};
+    int materialLocation{0};
+    int materialRemapNaming{0};
+    int materialRemapSearch{0};
+    std::vector<ModelMaterialMapping> materials;
+};
+
+std::string DefaultImportedMaterialId(const std::string& meshAssetPath,
+                                      const std::string& packageBaseName,
+                                      const ImportedMeshInfo& info) {
     const std::string baseId = SanitizeImportedMaterialId(packageBaseName);
     const std::string materialPart = SanitizeImportedMaterialId(
         info.materialName.empty() ? fs::path(meshAssetPath).stem().string() : info.materialName);
-    const std::string materialId = baseId + "_" + materialPart;
+    return baseId + "_" + materialPart;
+}
 
+void ConfigureImportedMaterialRenderMode(Material& material, const ImportedMeshInfo& info) {
+    const std::string alphaMode = ToLowerCopy(info.materialAlphaMode);
+    const bool blend = alphaMode == "blend" || info.materialOpacity < 0.999f;
+    const bool mask = alphaMode == "mask";
+
+    material.shader = blend ? "transparent" : "pbr";
+    if (blend) {
+        material.albedoColor[3] = (std::max)(0.0f, (std::min)(1.0f, info.materialOpacity));
+    }
+
+    if (mask) {
+        MaterialPropertyValue cutoff;
+        cutoff.type = MaterialPropertyType::Float;
+        cutoff.values[0] = info.materialAlphaCutoff > 0.0f ? info.materialAlphaCutoff : 0.5f;
+        material.properties["alphaCutoff"] = cutoff;
+    }
+}
+
+std::string CreateOrUpdateImportedMaterialAsset(MaterialManager& materialManager,
+                                                const std::string& meshAssetPath,
+                                                const std::string& packageBaseName,
+                                                const ImportedMeshInfo& info,
+                                                bool overwriteExisting) {
+    const std::string materialId = DefaultImportedMaterialId(meshAssetPath, packageBaseName, info);
+    if (!overwriteExisting && materialManager.Exists(materialId)) {
+        return materialId;
+    }
     Material material;
     material.name = info.materialName.empty() ? materialId : info.materialName;
     material.shader = "pbr";
-    material.texAlbedo = ResolveImportedTextureAssetPath(meshAssetPath, info.diffuseTexturePath);
+    material.texAlbedo = ResolveOrFallbackImportedTextureAssetPath(meshAssetPath, info, info.diffuseTexturePath, "albedo");
+    material.texNormal = ResolveOrFallbackImportedTextureAssetPath(meshAssetPath, info, info.normalTexturePath, "normal");
+    material.texMetallic = ResolveOrFallbackImportedTextureAssetPath(meshAssetPath, info, info.metallicTexturePath, "metallic");
+    material.texRoughness = ResolveOrFallbackImportedTextureAssetPath(meshAssetPath, info, info.roughnessTexturePath, "roughness");
+    material.texAo = ResolveOrFallbackImportedTextureAssetPath(meshAssetPath, info, info.aoTexturePath, "ao");
+    ConfigureImportedMaterialRenderMode(material, info);
     materialManager.Save(materialId, material);
     return materialId;
 }
 
+bool SaveImportedMaterialAssetToFolder(const std::string& materialId,
+                                       const Material& material,
+                                       const fs::path& folderAbsolutePath,
+                                       bool overwriteExisting) {
+    if (materialId.empty() || folderAbsolutePath.empty()) {
+        return false;
+    }
+
+    const fs::path materialPath = (folderAbsolutePath / (materialId + ".mat.json")).lexically_normal();
+    if (!overwriteExisting && fs::exists(materialPath)) {
+        return true;
+    }
+
+    try {
+        fs::create_directories(materialPath.parent_path());
+    } catch (...) {
+        return false;
+    }
+
+    std::ofstream out(materialPath, std::ios::trunc);
+    if (!out.good()) {
+        return false;
+    }
+
+    const std::string shaderId = ShaderRegistry::NormalizeShaderId(material.shader.empty() ? std::string("pbr") : material.shader);
+    const std::string savedShader = (ShaderRegistry::IsKnownShader(shaderId) || ShaderRegistry::IsGraphShaderId(shaderId)) ? shaderId : std::string("pbr");
+    out << "{\n";
+    out << "  \"version\": 1,\n";
+    out << "  \"name\": \"" << JsonEscape(material.name.empty() ? materialId : material.name) << "\",\n";
+    out << "  \"shader\": \"" << JsonEscape(savedShader) << "\",\n";
+    out << "  \"albedoColor\": [" << material.albedoColor[0] << ", " << material.albedoColor[1] << ", " << material.albedoColor[2] << ", " << material.albedoColor[3] << "],\n";
+    out << "  \"metallic\": " << material.metallic << ",\n";
+    out << "  \"roughness\": " << material.roughness << ",\n";
+    out << "  \"emissiveColor\": [" << material.emissiveColor[0] << ", " << material.emissiveColor[1] << ", " << material.emissiveColor[2] << "],\n";
+    out << "  \"uvTiling\": [" << material.uvTiling[0] << ", " << material.uvTiling[1] << "],\n";
+    out << "  \"uvOffset\": [" << material.uvOffset[0] << ", " << material.uvOffset[1] << "],\n";
+    out << "  \"textures\": {\n";
+    out << "    \"albedo\": \"" << JsonEscape(material.texAlbedo) << "\",\n";
+    out << "    \"normal\": \"" << JsonEscape(material.texNormal) << "\",\n";
+    out << "    \"metallic\": \"" << JsonEscape(material.texMetallic) << "\",\n";
+    out << "    \"roughness\": \"" << JsonEscape(material.texRoughness) << "\",\n";
+    out << "    \"ao\": \"" << JsonEscape(material.texAo) << "\"\n";
+    out << "  },\n";
+    out << "  \"properties\": {\n";
+    std::size_t propertyIndex = 0;
+    for (const auto& entry : material.properties) {
+        const MaterialPropertyValue& property = entry.second;
+        out << "    \"" << JsonEscape(entry.first) << "\": { \"type\": \"";
+        switch (property.type) {
+        case MaterialPropertyType::Float: out << "float"; break;
+        case MaterialPropertyType::Vec2: out << "vec2"; break;
+        case MaterialPropertyType::Vec3: out << "vec3"; break;
+        case MaterialPropertyType::Vec4: out << "vec4"; break;
+        case MaterialPropertyType::Bool: out << "bool"; break;
+        case MaterialPropertyType::Texture2D: out << "texture2D"; break;
+        }
+        out << "\", \"value\": ";
+        if (property.type == MaterialPropertyType::Bool) {
+            out << (property.boolValue ? "true" : "false");
+        } else if (property.type == MaterialPropertyType::Texture2D) {
+            out << "\"" << JsonEscape(property.texturePath) << "\"";
+        } else if (property.type == MaterialPropertyType::Float) {
+            out << property.values[0];
+        } else {
+            const int count = property.type == MaterialPropertyType::Vec2 ? 2 : (property.type == MaterialPropertyType::Vec3 ? 3 : 4);
+            out << "[";
+            for (int i = 0; i < count; ++i) {
+                if (i > 0) out << ", ";
+                out << property.values[static_cast<std::size_t>(i)];
+            }
+            out << "]";
+        }
+        out << " }";
+        if (++propertyIndex < material.properties.size()) {
+            out << ",";
+        }
+        out << "\n";
+    }
+    out << "  }\n";
+    out << "}\n";
+    return true;
+}
+
+std::string CreateOrUpdateImportedMaterialAssetAtFolder(const std::string& meshAssetPath,
+                                                        const std::string& packageBaseName,
+                                                        const ImportedMeshInfo& info,
+                                                        const fs::path& folderAbsolutePath,
+                                                        bool overwriteExisting) {
+    const std::string materialId = DefaultImportedMaterialId(meshAssetPath, packageBaseName, info);
+    Material material;
+    material.name = info.materialName.empty() ? materialId : info.materialName;
+    material.shader = "pbr";
+    material.texAlbedo = ExtractOrResolveImportedTextureAssetPath(meshAssetPath, info, info.diffuseTexturePath, info.diffuseTextureEmbeddedData, info.diffuseTextureEmbeddedExtension, folderAbsolutePath, materialId, "albedo");
+    material.texNormal = ExtractOrResolveImportedTextureAssetPath(meshAssetPath, info, info.normalTexturePath, info.normalTextureEmbeddedData, info.normalTextureEmbeddedExtension, folderAbsolutePath, materialId, "normal");
+    material.texMetallic = ExtractOrResolveImportedTextureAssetPath(meshAssetPath, info, info.metallicTexturePath, info.metallicTextureEmbeddedData, info.metallicTextureEmbeddedExtension, folderAbsolutePath, materialId, "metallic");
+    material.texRoughness = ExtractOrResolveImportedTextureAssetPath(meshAssetPath, info, info.roughnessTexturePath, info.roughnessTextureEmbeddedData, info.roughnessTextureEmbeddedExtension, folderAbsolutePath, materialId, "roughness");
+    material.texAo = ExtractOrResolveImportedTextureAssetPath(meshAssetPath, info, info.aoTexturePath, info.aoTextureEmbeddedData, info.aoTextureEmbeddedExtension, folderAbsolutePath, materialId, "ao");
+    ConfigureImportedMaterialRenderMode(material, info);
+    SaveImportedMaterialAssetToFolder(materialId, material, folderAbsolutePath, overwriteExisting);
+    return materialId;
+}
+
+fs::path ModelImportSettingsAbsolutePath(const std::string& meshAssetPath) {
+    return fs::path(ProjectAssetPathToAbsolute(meshAssetPath).string() + ".import.json").lexically_normal();
+}
+
+bool IsModelImportSettingsPath(const std::string& path) {
+    return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".import.json");
+}
+
+bool LoadModelImportSettings(const std::string& meshAssetPath, ModelImportSettings& settings) {
+    settings = ModelImportSettings{};
+    const fs::path settingsPath = ModelImportSettingsAbsolutePath(meshAssetPath);
+    if (!fs::exists(settingsPath)) {
+        return false;
+    }
+
+    std::ifstream in(settingsPath);
+    if (!in.good()) {
+        return false;
+    }
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    try {
+        using namespace raceman::physics::json;
+        const Value root = parse(buffer.str());
+        if (!root.is_object()) {
+            return false;
+        }
+        const auto& object = root.as_object();
+        if (auto it = object.find("version"); it != object.end() && it->second.is_number()) {
+            settings.version = static_cast<int>(it->second.as_number());
+        }
+        if (auto it = object.find("pivotMode"); it != object.end() && it->second.is_number()) {
+            settings.pivotMode = static_cast<int>(it->second.as_number());
+        }
+        if (auto it = object.find("importMaterials"); it != object.end() && it->second.is_bool()) {
+            settings.importMaterials = it->second.as_bool();
+        }
+        if (auto it = object.find("materialLocation"); it != object.end() && it->second.is_number()) {
+            settings.materialLocation = static_cast<int>(it->second.as_number());
+        }
+        if (auto it = object.find("materialRemapNaming"); it != object.end() && it->second.is_number()) {
+            settings.materialRemapNaming = static_cast<int>(it->second.as_number());
+        }
+        if (auto it = object.find("materialRemapSearch"); it != object.end() && it->second.is_number()) {
+            settings.materialRemapSearch = static_cast<int>(it->second.as_number());
+        }
+        if (auto it = object.find("materials"); it != object.end() && it->second.is_array()) {
+            for (const Value& value : it->second.as_array()) {
+                if (!value.is_object()) {
+                    continue;
+                }
+                const auto& materialObject = value.as_object();
+                ModelMaterialMapping mapping;
+                if (auto mi = materialObject.find("meshIndex"); mi != materialObject.end() && mi->second.is_number()) {
+                    mapping.meshIndex = static_cast<int>(mi->second.as_number());
+                }
+                if (auto name = materialObject.find("meshName"); name != materialObject.end() && name->second.is_string()) {
+                    mapping.meshName = name->second.as_string();
+                }
+                if (auto imported = materialObject.find("importedMaterialName"); imported != materialObject.end() && imported->second.is_string()) {
+                    mapping.importedMaterialName = imported->second.as_string();
+                }
+                if (auto mat = materialObject.find("materialId"); mat != materialObject.end() && mat->second.is_string()) {
+                    mapping.materialId = mat->second.as_string();
+                }
+                settings.materials.push_back(std::move(mapping));
+            }
+        }
+        return true;
+    } catch (...) {
+        settings = ModelImportSettings{};
+        return false;
+    }
+}
+
+bool SaveModelImportSettings(const std::string& meshAssetPath, const ModelImportSettings& settings) {
+    const fs::path settingsPath = ModelImportSettingsAbsolutePath(meshAssetPath);
+    try {
+        fs::create_directories(settingsPath.parent_path());
+    } catch (...) {
+        return false;
+    }
+
+    std::ofstream out(settingsPath, std::ios::trunc);
+    if (!out.good()) {
+        return false;
+    }
+    out << "{\n";
+    out << "  \"version\": 1,\n";
+    out << "  \"pivotMode\": " << settings.pivotMode << ",\n";
+    out << "  \"importMaterials\": " << (settings.importMaterials ? "true" : "false") << ",\n";
+    out << "  \"materialLocation\": " << settings.materialLocation << ",\n";
+    out << "  \"materialRemapNaming\": " << settings.materialRemapNaming << ",\n";
+    out << "  \"materialRemapSearch\": " << settings.materialRemapSearch << ",\n";
+    out << "  \"materials\": [\n";
+    for (std::size_t i = 0; i < settings.materials.size(); ++i) {
+        const ModelMaterialMapping& mapping = settings.materials[i];
+        out << "    {\n";
+        out << "      \"meshIndex\": " << mapping.meshIndex << ",\n";
+        out << "      \"meshName\": \"" << JsonEscape(mapping.meshName) << "\",\n";
+        out << "      \"importedMaterialName\": \"" << JsonEscape(mapping.importedMaterialName) << "\",\n";
+        out << "      \"materialId\": \"" << JsonEscape(mapping.materialId) << "\"\n";
+        out << "    }" << (i + 1 < settings.materials.size() ? "," : "") << "\n";
+    }
+    out << "  ]\n";
+    out << "}\n";
+    return true;
+}
+
+void MoveModelImportSettingsFile(const std::string& oldMeshPath, const std::string& newMeshPath) {
+    if (!IsMeshAssetPath(oldMeshPath) || !IsMeshAssetPath(newMeshPath)) {
+        return;
+    }
+    const fs::path oldSettings = ModelImportSettingsAbsolutePath(oldMeshPath);
+    const fs::path newSettings = ModelImportSettingsAbsolutePath(newMeshPath);
+    if (!fs::exists(oldSettings)) {
+        return;
+    }
+    try {
+        fs::create_directories(newSettings.parent_path());
+        if (fs::exists(newSettings)) {
+            fs::remove(newSettings);
+        }
+        fs::rename(oldSettings, newSettings);
+    } catch (...) {
+    }
+}
+
+void CopyModelImportSettingsFile(const std::string& sourceMeshPath, const std::string& destMeshPath) {
+    if (!IsMeshAssetPath(sourceMeshPath) || !IsMeshAssetPath(destMeshPath)) {
+        return;
+    }
+    const fs::path sourceSettings = ModelImportSettingsAbsolutePath(sourceMeshPath);
+    const fs::path destSettings = ModelImportSettingsAbsolutePath(destMeshPath);
+    if (!fs::exists(sourceSettings)) {
+        return;
+    }
+    try {
+        fs::create_directories(destSettings.parent_path());
+        fs::copy_file(sourceSettings, destSettings, fs::copy_options::overwrite_existing);
+    } catch (...) {
+    }
+}
+
+void DeleteModelImportSettingsFile(const std::string& meshPath) {
+    if (!IsMeshAssetPath(meshPath)) {
+        return;
+    }
+    const fs::path settingsPath = ModelImportSettingsAbsolutePath(meshPath);
+    try {
+        if (fs::exists(settingsPath)) {
+            fs::remove(settingsPath);
+        }
+    } catch (...) {
+    }
+}
+
+ModelMaterialMapping* FindModelMaterialMapping(ModelImportSettings& settings, int meshIndex) {
+    for (ModelMaterialMapping& mapping : settings.materials) {
+        if (mapping.meshIndex == meshIndex) {
+            return &mapping;
+        }
+    }
+    return nullptr;
+}
+
+const ModelMaterialMapping* FindModelMaterialMapping(const ModelImportSettings& settings, int meshIndex) {
+    for (const ModelMaterialMapping& mapping : settings.materials) {
+        if (mapping.meshIndex == meshIndex) {
+            return &mapping;
+        }
+    }
+    return nullptr;
+}
+
+ModelMaterialMapping& EnsureModelMaterialMapping(ModelImportSettings& settings,
+                                                 const std::string& meshAssetPath,
+                                                 const std::string& packageBaseName,
+                                                 const ImportedMeshInfo& info) {
+    const int meshIndex = static_cast<int>(info.meshIndex);
+    if (ModelMaterialMapping* existing = FindModelMaterialMapping(settings, meshIndex)) {
+        existing->meshName = info.meshName;
+        existing->importedMaterialName = info.materialName;
+        if (existing->materialId.empty()) {
+            existing->materialId = DefaultImportedMaterialId(meshAssetPath, packageBaseName, info);
+        }
+        return *existing;
+    }
+
+    ModelMaterialMapping mapping;
+    mapping.meshIndex = meshIndex;
+    mapping.meshName = info.meshName;
+    mapping.importedMaterialName = info.materialName;
+    mapping.materialId = DefaultImportedMaterialId(meshAssetPath, packageBaseName, info);
+    settings.materials.push_back(std::move(mapping));
+    return settings.materials.back();
+}
+
+void ReconcileModelImportSettings(ModelImportSettings& settings,
+                                  const std::string& meshAssetPath,
+                                  const std::string& packageBaseName,
+                                  const std::vector<ImportedMeshInfo>& infos) {
+    std::vector<ModelMaterialMapping> reconciled;
+    reconciled.reserve(infos.size());
+    for (const ImportedMeshInfo& info : infos) {
+        const int meshIndex = static_cast<int>(info.meshIndex);
+        ModelMaterialMapping mapping;
+        if (const ModelMaterialMapping* existing = FindModelMaterialMapping(settings, meshIndex)) {
+            mapping = *existing;
+        } else {
+            mapping.materialId = DefaultImportedMaterialId(meshAssetPath, packageBaseName, info);
+        }
+        mapping.meshIndex = meshIndex;
+        mapping.meshName = info.meshName;
+        mapping.importedMaterialName = info.materialName;
+        if (mapping.materialId.empty()) {
+            mapping.materialId = DefaultImportedMaterialId(meshAssetPath, packageBaseName, info);
+        }
+        reconciled.push_back(std::move(mapping));
+    }
+    settings.materials = std::move(reconciled);
+}
+
+std::string NormalizedImportMatchKey(const std::string& value) {
+    std::string key = ToLowerCopy(fs::path(NormalizeSlashes(value)).stem().string());
+    key.erase(std::remove_if(key.begin(), key.end(), [](unsigned char ch) {
+        return ch == '_' || ch == '-' || ch == ' ' || ch == '.';
+    }), key.end());
+    return key;
+}
+
+std::string ImportedSlotMatchKey(const ImportedMeshInfo& info, int namingMode) {
+    if (namingMode == 0) {
+        std::string key = NormalizedImportMatchKey(info.diffuseTexturePath);
+        if (!key.empty()) {
+            return key;
+        }
+    }
+    std::string key = NormalizedImportMatchKey(info.materialName);
+    if (!key.empty()) {
+        return key;
+    }
+    return NormalizedImportMatchKey(info.meshName);
+}
+
+int ImportedMaterialMatchScore(const Material& material,
+                               const std::string& materialId,
+                               const ImportedMeshInfo& info,
+                               int namingMode) {
+    const std::string target = ImportedSlotMatchKey(info, namingMode);
+    if (target.empty()) {
+        return 0;
+    }
+
+    std::vector<std::string> candidates;
+    candidates.push_back(NormalizedImportMatchKey(materialId));
+    candidates.push_back(NormalizedImportMatchKey(material.name));
+    candidates.push_back(NormalizedImportMatchKey(material.texAlbedo));
+    candidates.push_back(NormalizedImportMatchKey(material.texNormal));
+
+    int bestScore = 0;
+    for (const std::string& candidate : candidates) {
+        if (candidate.empty()) {
+            continue;
+        }
+        if (candidate == target) {
+            bestScore = bestScore > 100 ? bestScore : 100;
+        } else if (candidate.find(target) != std::string::npos || target.find(candidate) != std::string::npos) {
+            bestScore = bestScore > 70 ? bestScore : 70;
+        }
+    }
+    return bestScore;
+}
+
+std::string FindBestExistingMaterialForImportedSlot(MaterialManager& materialManager,
+                                                    const ImportedMeshInfo& info,
+                                                    int namingMode) {
+    std::vector<std::string> materialIds = materialManager.ListMaterialIds();
+    std::sort(materialIds.begin(), materialIds.end(), [](const std::string& a, const std::string& b) {
+        return ToLowerCopy(a) < ToLowerCopy(b);
+    });
+
+    std::string bestId;
+    int bestScore = 0;
+    for (const std::string& materialId : materialIds) {
+        const Material* material = materialManager.Get(materialId);
+        if (material == nullptr) {
+            continue;
+        }
+        const int score = ImportedMaterialMatchScore(*material, materialId, info, namingMode);
+        if (score > bestScore) {
+            bestScore = score;
+            bestId = materialId;
+        }
+    }
+    return bestScore >= 70 ? bestId : std::string{};
+}
+
 } // namespace
+
+bool SceneEditor::RefreshModelAssetInspectorCache(bool forceReload) {
+    const std::string selectedPath = NormalizeSlashes(selectedProjectFile_);
+    if (!forceReload && modelAssetInspectorCache_.selectedPath == selectedPath) {
+        return modelAssetInspectorCache_.loaded && modelAssetInspectorCache_.error.empty();
+    }
+
+    modelAssetInspectorCache_ = ModelAssetInspectorCache{};
+    modelAssetInspectorCache_.selectedPath = selectedPath;
+    if (!IsMeshAssetPath(selectedPath)) {
+        modelAssetInspectorCache_.error = "No model asset selected.";
+        return false;
+    }
+
+    if (!TryLoadMeshAsset(selectedPath,
+                          modelAssetInspectorCache_.importPath,
+                          modelAssetInspectorCache_.model,
+                          modelAssetInspectorCache_.infos)) {
+        modelAssetInspectorCache_.error = "Failed to load model asset.";
+        return false;
+    }
+
+    modelAssetInspectorCache_.loaded = true;
+    return true;
+}
+
+void SceneEditor::RenderModelAssetInspector() {
+    if (!IsMeshAssetPath(selectedProjectFile_)) {
+        ImGui::TextDisabled("No model asset selected.");
+        return;
+    }
+
+    if (!RefreshModelAssetInspectorCache(false)) {
+        ImGui::TextUnformatted("Model");
+        ImGui::Separator();
+        const std::string& error = modelAssetInspectorCache_.error.empty()
+            ? std::string("Failed to load model asset.")
+            : modelAssetInspectorCache_.error;
+        ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.35f, 1.0f), "%s", error.c_str());
+        ImGui::TextWrapped("%s", selectedProjectFile_.c_str());
+        if (ImGui::Button("Retry")) {
+            RefreshModelAssetInspectorCache(true);
+        }
+        return;
+    }
+
+    const std::string& importPath = modelAssetInspectorCache_.importPath;
+    const std::shared_ptr<::Model>& model = modelAssetInspectorCache_.model;
+    const std::vector<ImportedMeshInfo>& infos = modelAssetInspectorCache_.infos;
+
+    std::string baseName;
+    try {
+        baseName = fs::path(importPath).stem().string();
+    } catch (...) {
+        baseName = "Model";
+    }
+
+    ModelImportSettings settings;
+    LoadModelImportSettings(importPath, settings);
+    ReconcileModelImportSettings(settings, importPath, baseName, infos);
+
+    auto chooseMaterialExtractFolder = [&]() -> fs::path {
+        const std::string folder = PickFolderDialog(L"Select Material Extract Folder");
+        if (folder.empty()) {
+            return {};
+        }
+        fs::path folderPath = fs::path(NormalizeSlashes(folder)).lexically_normal();
+        try {
+            const fs::path assetsRoot = FindAssetsRoot();
+            if (!IsUnderPath(folderPath, assetsRoot)) {
+                if (console_) {
+                    console_->AddError("Choose a folder inside the project's assets folder.");
+                }
+                return {};
+            }
+        } catch (...) {
+            return {};
+        }
+        return folderPath;
+    };
+
+    auto extractMaterials = [&](bool overwriteExisting, const fs::path& targetFolder) {
+        bool changed = false;
+        for (const ImportedMeshInfo& info : infos) {
+            ModelMaterialMapping& mapping = EnsureModelMaterialMapping(settings, importPath, baseName, info);
+            const bool missing = mapping.materialId.empty() || !materialManager_.Exists(mapping.materialId);
+            if (overwriteExisting || missing) {
+                if (!targetFolder.empty()) {
+                    mapping.materialId = CreateOrUpdateImportedMaterialAssetAtFolder(importPath, baseName, info, targetFolder, overwriteExisting);
+                } else {
+                    mapping.materialId = CreateOrUpdateImportedMaterialAsset(materialManager_, importPath, baseName, info, overwriteExisting);
+                }
+                changed = true;
+            }
+        }
+        if (SaveModelImportSettings(importPath, settings)) {
+            changed = true;
+        }
+        if (changed) {
+            materialManager_.LoadAll();
+            RefreshProjectFiles();
+            if (console_) {
+                console_->AddLog(std::string(overwriteExisting ? "Re-extracted" : "Extracted") + " model materials: " + importPath);
+            }
+        }
+    };
+
+    auto extractTextures = [&](const fs::path& targetFolder) {
+        if (targetFolder.empty()) {
+            return;
+        }
+        int extractedCount = 0;
+        for (const ImportedMeshInfo& info : infos) {
+            ModelMaterialMapping& mapping = EnsureModelMaterialMapping(settings, importPath, baseName, info);
+            if (mapping.materialId.empty()) {
+                mapping.materialId = DefaultImportedMaterialId(importPath, baseName, info);
+            }
+            auto extractSlot = [&](const std::string& texturePath,
+                                   const std::vector<unsigned char>& embeddedData,
+                                   const std::string& embeddedExtension,
+                                   const std::string& slotName) {
+                const std::string projectPath = ExtractOrResolveImportedTextureAssetPath(importPath, info, texturePath, embeddedData, embeddedExtension, targetFolder, mapping.materialId, slotName);
+                if (!projectPath.empty()) {
+                    ++extractedCount;
+                }
+            };
+            extractSlot(info.diffuseTexturePath, info.diffuseTextureEmbeddedData, info.diffuseTextureEmbeddedExtension, "albedo");
+            extractSlot(info.normalTexturePath, info.normalTextureEmbeddedData, info.normalTextureEmbeddedExtension, "normal");
+            extractSlot(info.metallicTexturePath, info.metallicTextureEmbeddedData, info.metallicTextureEmbeddedExtension, "metallic");
+            extractSlot(info.roughnessTexturePath, info.roughnessTextureEmbeddedData, info.roughnessTextureEmbeddedExtension, "roughness");
+            extractSlot(info.aoTexturePath, info.aoTextureEmbeddedData, info.aoTextureEmbeddedExtension, "ao");
+        }
+        RefreshProjectFiles();
+        if (console_) {
+            console_->AddLog("Extracted or resolved " + std::to_string(extractedCount) + " imported texture slot" + (extractedCount == 1 ? "" : "s") + ".");
+        }
+    };
+
+    auto applyMaterialsToScene = [&]() {
+        int changedCount = 0;
+        bool undoPushed = false;
+        const std::string normalizedImportPath = NormalizeSlashes(importPath);
+        for (SceneObject& object : objects_) {
+            if (!object.hasMeshFilter || !object.hasMeshRenderer) {
+                continue;
+            }
+            if (NormalizeSlashes(object.meshFilter.sourcePath) != normalizedImportPath) {
+                continue;
+            }
+            const ModelMaterialMapping* mapping = FindModelMaterialMapping(settings, object.meshFilter.meshIndex);
+            if (mapping == nullptr || mapping->materialId.empty() || object.meshRenderer.materialId == mapping->materialId) {
+                continue;
+            }
+            if (!undoPushed) {
+                PushUndoState();
+                undoPushed = true;
+            }
+            object.meshRenderer.materialId = mapping->materialId;
+            ++changedCount;
+        }
+        if (changedCount > 0) {
+            if (onDirty_) onDirty_();
+        }
+        if (console_) {
+            console_->AddLog("Applied model material mappings to " + std::to_string(changedCount) + " scene object" + (changedCount == 1 ? "" : "s") + ".");
+        }
+    };
+
+    auto reimportSceneInstances = [&]() {
+        if (!RefreshModelAssetInspectorCache(true)) {
+            if (console_) {
+                console_->AddError("Failed to reimport model: " + selectedProjectFile_);
+            }
+            return;
+        }
+        const std::string refreshedImportPath = modelAssetInspectorCache_.importPath;
+        const std::shared_ptr<::Model> refreshedModel = modelAssetInspectorCache_.model;
+        const std::vector<ImportedMeshInfo> refreshedInfos = modelAssetInspectorCache_.infos;
+        int changedCount = 0;
+        bool undoPushed = false;
+        const std::string normalizedImportPath = NormalizeSlashes(refreshedImportPath);
+        for (SceneObject& object : objects_) {
+            if (!object.hasMeshFilter || NormalizeSlashes(object.meshFilter.sourcePath) != normalizedImportPath) {
+                continue;
+            }
+            const int meshIndex = object.meshFilter.meshIndex;
+            if (meshIndex < 0 || meshIndex >= static_cast<int>(refreshedInfos.size())) {
+                continue;
+            }
+            if (!undoPushed) {
+                PushUndoState();
+                undoPushed = true;
+            }
+            ApplyMeshInfoToSceneObject(object, refreshedInfos[static_cast<std::size_t>(meshIndex)], refreshedModel);
+            object.meshFilter.sourcePath = refreshedImportPath;
+            if (object.hasMeshRenderer) {
+                if (const ModelMaterialMapping* mapping = FindModelMaterialMapping(settings, meshIndex)) {
+                    if (!mapping->materialId.empty()) {
+                        object.meshRenderer.materialId = mapping->materialId;
+                    }
+                }
+            }
+            ++changedCount;
+        }
+        SaveModelImportSettings(importPath, settings);
+        if (changedCount > 0 && onDirty_) {
+            onDirty_();
+        }
+        if (console_) {
+            console_->AddLog("Reimported model data for " + std::to_string(changedCount) + " scene object" + (changedCount == 1 ? "" : "s") + ".");
+        }
+    };
+
+    auto searchAndRemapMaterials = [&]() {
+        materialManager_.LoadAll();
+        int remappedCount = 0;
+        for (const ImportedMeshInfo& info : infos) {
+            ModelMaterialMapping& mapping = EnsureModelMaterialMapping(settings, importPath, baseName, info);
+            const std::string matchedMaterialId = FindBestExistingMaterialForImportedSlot(materialManager_, info, settings.materialRemapNaming);
+            if (!matchedMaterialId.empty() && mapping.materialId != matchedMaterialId) {
+                mapping.materialId = matchedMaterialId;
+                ++remappedCount;
+            }
+        }
+        SaveModelImportSettings(importPath, settings);
+        if (console_) {
+            console_->AddLog("Model material remap matched " + std::to_string(remappedCount) + " slot" + (remappedCount == 1 ? "" : "s") + ".");
+        }
+    };
+
+    std::vector<std::string> materialIds = materialManager_.ListMaterialIds();
+    std::sort(materialIds.begin(), materialIds.end(), [](const std::string& a, const std::string& b) {
+        return ToLowerCopy(a) < ToLowerCopy(b);
+    });
+
+    auto appendTextureSummarySlot = [](std::string& summary, const char* slotLabel, const std::string& path) {
+        if (path.empty()) {
+            return;
+        }
+        if (!summary.empty()) {
+            summary += " | ";
+        }
+        summary += slotLabel;
+        summary += ": ";
+        summary += NormalizeSlashes(path);
+    };
+
+    auto appendImportedTextureSummarySlot = [](std::string& summary,
+                                               const char* slotLabel,
+                                               const std::string& path,
+                                               const std::vector<unsigned char>& embeddedData) {
+        if (path.empty() && embeddedData.empty()) {
+            return;
+        }
+        if (!summary.empty()) {
+            summary += " | ";
+        }
+        summary += slotLabel;
+        summary += ": ";
+        summary += path.empty() ? "(embedded)" : NormalizeSlashes(path);
+    };
+
+    auto materialTextureSummary = [&](const std::string& materialId) {
+        std::string summary;
+        if (const Material* material = materialManager_.Get(materialId)) {
+            appendTextureSummarySlot(summary, "A", material->texAlbedo);
+            appendTextureSummarySlot(summary, "N", material->texNormal);
+            appendTextureSummarySlot(summary, "M", material->texMetallic);
+            appendTextureSummarySlot(summary, "R", material->texRoughness);
+            appendTextureSummarySlot(summary, "AO", material->texAo);
+            for (const auto& propertyEntry : material->properties) {
+                const MaterialPropertyValue& property = propertyEntry.second;
+                if (property.type == MaterialPropertyType::Texture2D && !property.texturePath.empty()) {
+                    appendTextureSummarySlot(summary, propertyEntry.first.c_str(), property.texturePath);
+                }
+            }
+        }
+        return summary;
+    };
+
+    auto importedTextureSummary = [&](const ImportedMeshInfo& info) {
+        std::string summary;
+        appendImportedTextureSummarySlot(summary, "A", info.diffuseTexturePath, info.diffuseTextureEmbeddedData);
+        appendImportedTextureSummarySlot(summary, "N", info.normalTexturePath, info.normalTextureEmbeddedData);
+        appendImportedTextureSummarySlot(summary, "M", info.metallicTexturePath, info.metallicTextureEmbeddedData);
+        appendImportedTextureSummarySlot(summary, "R", info.roughnessTexturePath, info.roughnessTextureEmbeddedData);
+        appendImportedTextureSummarySlot(summary, "AO", info.aoTexturePath, info.aoTextureEmbeddedData);
+        return summary;
+    };
+
+    auto displayTextureSummary = [&](const ImportedMeshInfo& info, const std::string& materialId) {
+        std::string summary = materialTextureSummary(materialId);
+        if (summary.empty()) {
+            summary = importedTextureSummary(info);
+        }
+        return summary.empty() ? std::string("(none)") : summary;
+    };
+
+    ImGui::TextUnformatted((fs::path(importPath).filename().string() + " Import Settings").c_str());
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Open")) {
+        OpenProjectAssetInDefaultEditor(importPath);
+    }
+    ImGui::Separator();
+
+    if (ImGui::BeginTabBar("ModelImportSettingsTabs")) {
+        if (ImGui::BeginTabItem("Model")) {
+            ImGui::TextDisabled("Source");
+            ImGui::TextWrapped("%s", importPath.c_str());
+            ImGui::TextDisabled("Format: %s", fs::path(importPath).extension().string().c_str());
+            ImGui::TextDisabled("Meshes: %d", static_cast<int>(infos.size()));
+
+            ImGui::Spacing();
+            ImGui::TextUnformatted("Pivot");
+            const char* pivotModes[] = {"Preserve Source Pivot", "Center Each Mesh"};
+            ImGui::SetNextItemWidth(-1.0f);
+            if (ImGui::Combo("##ModelPivotMode", &settings.pivotMode, pivotModes, IM_ARRAYSIZE(pivotModes))) {
+                SaveModelImportSettings(importPath, settings);
+            }
+
+            ImGui::Spacing();
+            if (ImGui::Button("Reimport Model")) {
+                reimportSceneInstances();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Apply To Scene")) {
+                applyMaterialsToScene();
+            }
+
+            ImGui::Spacing();
+            if (ImGui::BeginTable("ModelMeshInfoTable", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed, 46.0f);
+                ImGui::TableSetupColumn("Mesh");
+                ImGui::TableSetupColumn("Imported Material");
+                ImGui::TableSetupColumn("Textures");
+                ImGui::TableSetupColumn("Triangles", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+                ImGui::TableHeadersRow();
+                for (const ImportedMeshInfo& info : infos) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%u", info.meshIndex);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::TextUnformatted(info.meshName.empty() ? "(unnamed)" : info.meshName.c_str());
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::TextUnformatted(info.materialName.empty() ? "(none)" : info.materialName.c_str());
+                    ImGui::TableSetColumnIndex(3);
+                    const ModelMaterialMapping& mapping = EnsureModelMaterialMapping(settings, importPath, baseName, info);
+                    const std::string meshTextureSummary = displayTextureSummary(info, mapping.materialId);
+                    ImGui::TextUnformatted(meshTextureSummary.c_str());
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::Text("%u", info.indexCount / 3);
+                }
+                ImGui::EndTable();
+            }
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Materials")) {
+            bool importMaterials = settings.importMaterials;
+            if (ImGui::Checkbox("Import Materials", &importMaterials)) {
+                settings.importMaterials = importMaterials;
+                SaveModelImportSettings(importPath, settings);
+            }
+
+            const char* materialLocations[] = {"Use Embedded Materials", "Use External Materials"};
+            ImGui::BeginDisabled(!settings.importMaterials);
+            ImGui::SetNextItemWidth(-1.0f);
+            if (ImGui::Combo("Location", &settings.materialLocation, materialLocations, IM_ARRAYSIZE(materialLocations))) {
+                SaveModelImportSettings(importPath, settings);
+            }
+
+            if (ImGui::Button("Extract Textures")) {
+                const fs::path targetFolder = chooseMaterialExtractFolder();
+                if (!targetFolder.empty()) {
+                    extractTextures(targetFolder);
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Extract Materials")) {
+                const fs::path targetFolder = chooseMaterialExtractFolder();
+                if (!targetFolder.empty()) {
+                    extractMaterials(false, targetFolder);
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Re-extract")) {
+                const fs::path targetFolder = chooseMaterialExtractFolder();
+                if (!targetFolder.empty()) {
+                    extractMaterials(true, targetFolder);
+                }
+            }
+            ImGui::EndDisabled();
+
+            ImGui::Spacing();
+            ImGui::TextWrapped("Material assignments can be remapped below. Search and Remap pairs imported slots to existing Raceman materials by texture or material name.");
+
+            if (ImGui::CollapsingHeader("On Demand Remap", ImGuiTreeNodeFlags_DefaultOpen)) {
+                const char* namingModes[] = {"By Base Texture Name", "By Material Name"};
+                const char* searchModes[] = {"Recursive-Up", "Everywhere in Assets"};
+                ImGui::SetNextItemWidth(-1.0f);
+                if (ImGui::Combo("Naming", &settings.materialRemapNaming, namingModes, IM_ARRAYSIZE(namingModes))) {
+                    SaveModelImportSettings(importPath, settings);
+                }
+                ImGui::SetNextItemWidth(-1.0f);
+                if (ImGui::Combo("Search", &settings.materialRemapSearch, searchModes, IM_ARRAYSIZE(searchModes))) {
+                    SaveModelImportSettings(importPath, settings);
+                }
+                if (ImGui::Button("Search and Remap")) {
+                    searchAndRemapMaterials();
+                }
+            }
+
+            ImGui::Spacing();
+            if (ImGui::BeginTable("ModelMaterialMappingsTable", 6, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Slot", ImGuiTableColumnFlags_WidthFixed, 44.0f);
+                ImGui::TableSetupColumn("Imported");
+                ImGui::TableSetupColumn("Texture");
+                ImGui::TableSetupColumn("Raceman Material");
+                ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 84.0f);
+                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 118.0f);
+                ImGui::TableHeadersRow();
+                for (const ImportedMeshInfo& info : infos) {
+                    ModelMaterialMapping& mapping = EnsureModelMaterialMapping(settings, importPath, baseName, info);
+                    const bool materialExists = !mapping.materialId.empty() && materialManager_.Exists(mapping.materialId);
+                    const std::string textureLabel = displayTextureSummary(info, mapping.materialId);
+                    ImGui::PushID(static_cast<int>(info.meshIndex));
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%u", info.meshIndex);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::TextUnformatted(info.materialName.empty() ? "(none)" : info.materialName.c_str());
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::TextUnformatted(textureLabel.c_str());
+                    ImGui::TableSetColumnIndex(3);
+                    const char* preview = mapping.materialId.empty() ? "None (Material)" : mapping.materialId.c_str();
+                    ImGui::SetNextItemWidth(-1.0f);
+                    if (ImGui::BeginCombo("##ModelMaterialCombo", preview)) {
+                        if (ImGui::Selectable("None (Material)", mapping.materialId.empty())) {
+                            mapping.materialId.clear();
+                            SaveModelImportSettings(importPath, settings);
+                        }
+                        for (const std::string& materialId : materialIds) {
+                            const bool selected = mapping.materialId == materialId;
+                            if (ImGui::Selectable(materialId.c_str(), selected)) {
+                                mapping.materialId = materialId;
+                                SaveModelImportSettings(importPath, settings);
+                            }
+                            if (selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                    ImGui::TableSetColumnIndex(4);
+                    if (materialExists) {
+                        ImGui::TextColored(ImVec4(0.48f, 0.82f, 0.58f, 1.0f), "Ready");
+                    } else if (mapping.materialId.empty()) {
+                        ImGui::TextDisabled("None");
+                    } else {
+                        ImGui::TextColored(ImVec4(1.0f, 0.62f, 0.25f, 1.0f), "Missing");
+                    }
+                    ImGui::TableSetColumnIndex(5);
+                    ImGui::BeginDisabled(!materialExists);
+                    if (ImGui::SmallButton("Edit")) {
+                        OpenMaterialEditor(mapping.materialId);
+                    }
+                    ImGui::EndDisabled();
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("Extract")) {
+                        const fs::path targetFolder = chooseMaterialExtractFolder();
+                        if (!targetFolder.empty()) {
+                            mapping.materialId = CreateOrUpdateImportedMaterialAssetAtFolder(importPath, baseName, info, targetFolder, false);
+                            SaveModelImportSettings(importPath, settings);
+                            materialManager_.LoadAll();
+                            RefreshProjectFiles();
+                        }
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::Spacing();
+            if (ImGui::Button("Revert")) {
+                LoadModelImportSettings(importPath, settings);
+                ReconcileModelImportSettings(settings, importPath, baseName, infos);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Apply")) {
+                SaveModelImportSettings(importPath, settings);
+                applyMaterialsToScene();
+            }
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+}
 
 void SceneEditor::RenderProjectPanel() {
     if (ImGui::Begin("Browser", nullptr, ImGuiWindowFlags_NoCollapse)) {
@@ -1902,8 +3045,15 @@ void SceneEditor::ImportObj(const std::string& path) {
     if (path.empty()) {
         return;
     }
-    pendingImportMeshPath_ = path;
-    showImportMeshOptionsPopup_ = true;
+    ModelImportSettings importSettings;
+    std::string importPath = NormalizeSlashes(path);
+    try {
+        importPath = ToProjectAssetPath(ProjectAssetPathToAbsolute(path), FindAssetsRoot());
+    } catch (...) {
+        importPath = NormalizeSlashes(path);
+    }
+    LoadModelImportSettings(importPath, importSettings);
+    ImportObjWithOptions(path, importSettings.pivotMode);
 }
 
 void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
@@ -1918,6 +3068,11 @@ void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
         }
         std::string baseName;
         try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Mesh"; }
+        materialManager_.LoadAll();
+        ModelImportSettings importSettings;
+        LoadModelImportSettings(importPath, importSettings);
+        importSettings.pivotMode = pivotMode;
+        ReconcileModelImportSettings(importSettings, importPath, baseName, infos);
         PushUndoState();
         const bool centerPivot = pivotMode == 1;
         std::string packageRootId;
@@ -1968,7 +3123,11 @@ void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
                 o.meshFilter.pivotOffset = meshCenter;
             }
             ApplyMeshInfoToSceneObject(o, info, model);
-            o.meshRenderer.materialId = EnsureImportedMaterialAsset(materialManager_, importPath, baseName, info);
+            ModelMaterialMapping& mapping = EnsureModelMaterialMapping(importSettings, importPath, baseName, info);
+            if (!materialManager_.Exists(mapping.materialId)) {
+                mapping.materialId = CreateOrUpdateImportedMaterialAsset(materialManager_, importPath, baseName, info, false);
+            }
+            o.meshRenderer.materialId = mapping.materialId;
             objects_.push_back(std::move(o));
             if (firstImportedIndex < 0) {
                 firstImportedIndex = static_cast<int>(objects_.size()) - 1;
@@ -1976,6 +3135,7 @@ void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
         }
 
         if (firstImportedIndex >= 0) {
+            SaveModelImportSettings(importPath, importSettings);
             materialManager_.LoadAll();
             Select(firstImportedIndex);
             if (console_) {
@@ -2011,7 +3171,16 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
         ApplyMeshInfoToSceneObject(obj, infos.front(), model);
         std::string baseName;
         try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Mesh"; }
-        obj.meshRenderer.materialId = EnsureImportedMaterialAsset(materialManager_, importPath, baseName, infos.front());
+        materialManager_.LoadAll();
+        ModelImportSettings importSettings;
+        LoadModelImportSettings(importPath, importSettings);
+        ReconcileModelImportSettings(importSettings, importPath, baseName, infos);
+        ModelMaterialMapping& mapping = EnsureModelMaterialMapping(importSettings, importPath, baseName, infos.front());
+        if (!materialManager_.Exists(mapping.materialId)) {
+            mapping.materialId = CreateOrUpdateImportedMaterialAsset(materialManager_, importPath, baseName, infos.front(), false);
+        }
+        obj.meshRenderer.materialId = mapping.materialId;
+        SaveModelImportSettings(importPath, importSettings);
         materialManager_.LoadAll();
 
         if (console_) {
@@ -2153,6 +3322,7 @@ void SceneEditor::CommitProjectFileRename() {
         }
 
         fs::rename(oldAbsolutePath, newAbsolutePath);
+        MoveModelImportSettingsFile(oldProjectPath, newProjectPath);
 
         if (oldWasDirectory) {
             const std::string oldPrefix = oldProjectPath + "/";
@@ -2251,6 +3421,7 @@ void SceneEditor::DeleteProjectFile(const std::string& path) {
         }
 
         fs::remove(absolutePath);
+        DeleteModelImportSettingsFile(projectPath);
 
         if (isSceneAsset) {
             UpdateProjectSceneReference(projectPath, "");
@@ -2464,11 +3635,12 @@ bool SceneEditor::MoveProjectFile(const std::string& path, const std::string& ta
 
         fs::create_directories(targetAbsoluteDirectory);
         fs::rename(oldAbsolutePath, newAbsolutePath);
+        const std::string newProjectPath = ToProjectAssetPath(newAbsolutePath, assetsRoot);
+        MoveModelImportSettingsFile(oldProjectPath, newProjectPath);
         if (movedScript && fs::exists(oldScriptSiblingPath) && IsUnderPath(newScriptSiblingPath, assetsRoot)) {
             fs::rename(oldScriptSiblingPath, newScriptSiblingPath);
         }
 
-        const std::string newProjectPath = ToProjectAssetPath(newAbsolutePath, assetsRoot);
         const std::string oldScriptSourceProjectPath = movedScript
             ? ToProjectAssetPath(oldExtension == ".cpp" ? oldAbsolutePath : oldScriptSiblingPath, assetsRoot)
             : std::string{};
@@ -2587,6 +3759,7 @@ bool SceneEditor::CopyProjectFileTo(const std::string& sourcePath, const std::st
         fs::copy_file(srcAbsolute, destAbsolute);
 
         const std::string destProjectPath = ToProjectAssetPath(destAbsolute, assetsRoot);
+        CopyModelImportSettingsFile(srcProjectPath, destProjectPath);
         selectedProjectDirectory_ = targetProjectDir;
         selectedProjectFile_ = destProjectPath;
         RefreshProjectFiles();
@@ -2620,6 +3793,9 @@ void SceneEditor::RefreshProjectFiles() {
             }
 
             const std::string path = ToProjectAssetPath(entry.path(), assetsRoot);
+            if (IsModelImportSettingsPath(path)) {
+                continue;
+            }
             projectFiles_.push_back(path);
         }
         std::sort(projectDirectories_.begin(), projectDirectories_.end(), [](const std::string& a, const std::string& b) {

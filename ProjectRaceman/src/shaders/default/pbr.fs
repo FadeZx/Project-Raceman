@@ -10,6 +10,8 @@ uniform float uMetallic;
 uniform float uRoughness;
 uniform sampler2D uDiffuseTexture;
 uniform bool uUseDiffuseTexture;
+uniform sampler2D uMaterialAlbedoTexture;
+uniform bool uUseMaterialAlbedoTexture;
 uniform sampler2D uMaterialNormalTexture;
 uniform sampler2D uMaterialMetallicTexture;
 uniform sampler2D uMaterialRoughnessTexture;
@@ -18,6 +20,7 @@ uniform bool uUseMaterialNormalTexture;
 uniform bool uUseMaterialMetallicTexture;
 uniform bool uUseMaterialRoughnessTexture;
 uniform bool uUseMaterialAoTexture;
+uniform float uAlphaCutoff;
 uniform vec3 uCameraPosition;
 
 struct Light {
@@ -74,8 +77,11 @@ vec3 ApplyLighting(vec3 albedo, vec3 normal, float metallic, float roughness) {
 }
 
 void main() {
-    vec4 base = uUseDiffuseTexture ? texture(uDiffuseTexture, vUV) : vec4(1.0);
+    vec4 base = uUseMaterialAlbedoTexture ? texture(uMaterialAlbedoTexture, vUV) : (uUseDiffuseTexture ? texture(uDiffuseTexture, vUV) : vec4(1.0));
     vec4 albedo = base * uColor;
+    if (uAlphaCutoff > 0.0 && albedo.a < uAlphaCutoff) {
+        discard;
+    }
     vec3 normal = normalize(vWorldNormal);
     if (uUseMaterialNormalTexture) {
         normal = normalize(texture(uMaterialNormalTexture, vUV).rgb * 2.0 - 1.0);

@@ -1014,6 +1014,8 @@ void SceneEditor::RenderUI(float deltaTime) {
     RenderVehicleSoundEditorWindow();
     RenderTrackGeneratorWindow();
     frameTimings_.auxiliaryWindowsMs = elapsedMs(timingStart);
+
+    RenderStatusBar(deltaTime);
 }
 
 float SceneEditor::GetViewportAspect() const {
@@ -1115,20 +1117,8 @@ void SceneEditor::RenderViewportPanel() {
         default: return 0.0f;
         }
     };
-    auto gameZoomScale = [&]() -> float {
-        switch (gameViewportZoomIndex_) {
-        case 1: return 0.50f;
-        case 2: return 0.75f;
-        case 3: return 1.00f;
-        case 4: return 1.25f;
-        case 5: return 1.50f;
-        case 6: return 2.00f;
-        default: return 0.0f;
-        }
-    };
     auto renderGameViewToolbar = [&]() {
         const char* aspectOptions[] = {"Free", "16:9", "16:10", "4:3", "1:1", "9:16"};
-        const char* zoomOptions[] = {"Fit", "50%", "75%", "100%", "125%", "150%", "200%"};
         bool toolbarChanged = false;
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
         ImGui::TextDisabled("Aspect");
@@ -1138,8 +1128,21 @@ void SceneEditor::RenderViewportPanel() {
         ImGui::SameLine();
         ImGui::TextDisabled("Zoom");
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(82.0f);
-        toolbarChanged |= ImGui::Combo("##GameViewZoom", &gameViewportZoomIndex_, zoomOptions, IM_ARRAYSIZE(zoomOptions));
+        ImGui::SetNextItemWidth(142.0f);
+        toolbarChanged |= ImGui::SliderFloat("##GameViewZoom", &gameViewportZoomScale_, 0.50f, 2.00f, "%.2fx", ImGuiSliderFlags_AlwaysClamp);
+        if (getProfilerVisible_ && setProfilerVisible_) {
+            const bool profilerOn = getProfilerVisible_();
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_Button,
+                profilerOn ? ImVec4(0.22f, 0.45f, 0.88f, 0.92f)
+                           : ImVec4(0.13f, 0.15f, 0.19f, 0.82f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.52f, 0.95f, 0.95f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.18f, 0.38f, 0.80f, 1.00f));
+            if (ImGui::Button("Stats##GameViewToolbar")) {
+                setProfilerVisible_(!profilerOn);
+            }
+            ImGui::PopStyleColor(3);
+        }
         ImGui::PopStyleVar();
         if (toolbarChanged) {
             gameViewportRenderDirty_ = true;
@@ -1171,11 +1174,9 @@ void SceneEditor::RenderViewportPanel() {
                         imageSize.x = imageSize.y * aspect;
                     }
                 }
-                const float zoom = gameZoomScale();
-                if (zoom > 0.0f) {
-                    imageSize.x *= zoom;
-                    imageSize.y *= zoom;
-                }
+                const float zoom = (std::max)(0.50f, (std::min)(2.00f, gameViewportZoomScale_));
+                imageSize.x *= zoom;
+                imageSize.y *= zoom;
                 imageMin.x = contentMin.x + (contentAvail.x - imageSize.x) * 0.5f;
                 imageMin.y = contentMin.y + (contentAvail.y - imageSize.y) * 0.5f;
             }
@@ -1188,6 +1189,29 @@ void SceneEditor::RenderViewportPanel() {
             }
             outHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)
                 && ImRect(imageMin, ImVec2(imageMin.x + imageSize.x, imageMin.y + imageSize.y)).Contains(ImGui::GetIO().MousePos);
+
+            const float mouseWheel = ImGui::GetIO().MouseWheel;
+            if (outHovered && mouseWheel != 0.0f) {
+                if (viewportType == SceneEditorActiveViewport::Game) {
+                    gameViewportZoomScale_ = (std::max)(0.50f, (std::min)(2.00f, gameViewportZoomScale_ + mouseWheel * 0.10f));
+                    gameViewportRenderDirty_ = true;
+                    activeViewport_ = SceneEditorActiveViewport::Game;
+                } else if (viewportType == SceneEditorActiveViewport::Scene && hasEditorCameraMatrices_ && onEditorCameraViewChanged_) {
+                    const glm::mat4 cameraWorld = glm::inverse(editorCameraView_);
+                    const glm::vec3 position(cameraWorld[3]);
+                    glm::vec3 forward = -glm::vec3(cameraWorld[2]);
+                    const float length = glm::length(forward);
+                    if (length > 0.0001f) {
+                        forward /= length;
+                        const float speed = ImGui::GetIO().KeyShift ? 4.0f : (ImGui::GetIO().KeyCtrl ? 0.5f : 1.5f);
+                        const glm::vec3 newPosition = position + forward * (mouseWheel * speed);
+                        glm::mat4 movedCameraWorld = cameraWorld;
+                        movedCameraWorld[3] = glm::vec4(newPosition, 1.0f);
+                        onEditorCameraViewChanged_(glm::inverse(movedCameraWorld));
+                        activeViewport_ = SceneEditorActiveViewport::Scene;
+                    }
+                }
+            }
 
             ImDrawList* drawList = ImGui::GetWindowDrawList();
             const ImVec2 contentMax{contentMin.x + contentAvail.x, contentMin.y + contentAvail.y};
@@ -1277,39 +1301,6 @@ void SceneEditor::RenderViewportPanel() {
     ImGui::End();
 
     // ── Stats toggle button ────────────────────────────────────────────────
-    // Floats in the top-right corner of the Game View, like Unity's "Stats"
-    if (gameViewportSize_.x > 1.0f && gameViewportSize_.y > 1.0f &&
-        getProfilerVisible_ && setProfilerVisible_) {
-        const bool profilerOn = getProfilerVisible_();
-        const float btnW = 52.0f, btnH = 22.0f;
-        const ImVec2 btnPos(
-            gameViewportPos_.x + gameViewportSize_.x - btnW - 4.0f,
-            gameViewportPos_.y + 4.0f);
-        ImGui::SetNextWindowPos(btnPos, ImGuiCond_Always);
-        ImGui::SetNextWindowBgAlpha(0.0f);
-        ImGui::SetNextWindowSize(ImVec2(btnW + 6.0f, btnH + 6.0f), ImGuiCond_Always);
-        const ImGuiWindowFlags sbFlags =
-            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar |
-            ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings |
-            ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav |
-            ImGuiWindowFlags_NoMove;
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(3.0f, 3.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(0.0f, 0.0f));
-        if (ImGui::Begin("##GameStatsBtn", nullptr, sbFlags)) {
-            ImGui::PushStyleColor(ImGuiCol_Button,
-                profilerOn ? ImVec4(0.22f, 0.45f, 0.88f, 0.92f)
-                           : ImVec4(0.13f, 0.15f, 0.19f, 0.82f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.52f, 0.95f, 0.95f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.18f, 0.38f, 0.80f, 1.00f));
-            if (ImGui::Button("Stats##gsb", ImVec2(btnW, btnH))) {
-                setProfilerVisible_(!profilerOn);
-            }
-            ImGui::PopStyleColor(3);
-        }
-        ImGui::End();
-        ImGui::PopStyleVar(2);
-    }
-
     const bool hasSceneViewport = sceneViewportSize_.x > 1.0f && sceneViewportSize_.y > 1.0f;
     const bool hasGameViewport = gameViewportSize_.x > 1.0f && gameViewportSize_.y > 1.0f;
     if (hasSceneViewport && hasGameViewport) {
@@ -1345,9 +1336,10 @@ void SceneEditor::RenderViewportPanel() {
 }
 
 void SceneEditor::RenderDockspaceHost() {
+    constexpr float statusBarHeight = 24.0f;
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
-    ImGui::SetNextWindowSize(viewport->WorkSize, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, (std::max)(1.0f, viewport->WorkSize.y - statusBarHeight)), ImGuiCond_Always);
     ImGui::SetNextWindowViewport(viewport->ID);
 
     const ImGuiWindowFlags hostFlags = ImGuiWindowFlags_NoDocking
@@ -1382,7 +1374,7 @@ void SceneEditor::RenderDockspaceHost() {
             if (!hasSavedDockLayout) {
                 ImGui::DockBuilderRemoveNode(dockspaceId);
                 ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
-                ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
+                ImGui::DockBuilderSetNodeSize(dockspaceId, ImVec2(viewport->WorkSize.x, (std::max)(1.0f, viewport->WorkSize.y - statusBarHeight)));
 
                 ImGuiID centerId = dockspaceId;
                 ImGuiID leftId = ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Left, 0.18f, nullptr, &centerId);
@@ -1400,6 +1392,79 @@ void SceneEditor::RenderDockspaceHost() {
         }
     }
     ImGui::End();
+    ImGui::PopStyleVar(3);
+}
+
+void SceneEditor::RenderStatusBar(float deltaTime) {
+    constexpr float statusBarHeight = 24.0f;
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const ImVec2 pos(viewport->WorkPos.x, viewport->WorkPos.y + viewport->WorkSize.y - statusBarHeight);
+    const ImVec2 size(viewport->WorkSize.x, statusBarHeight);
+
+    std::string sceneName = fs::path(savePath_).filename().string();
+    if (sceneName.empty()) {
+        sceneName = "Untitled Scene";
+    }
+
+    const PhysicsBuildProgress* progress = GetPhysicsBuildProgress();
+    if (progress != nullptr) {
+        const std::string task = progress->GetTask();
+        if (task.find("Loaded:") == 0) {
+            lastPhysicsCacheStatus_ = "Loaded from cache";
+        } else if (task.find("Cooking:") == 0) {
+            lastPhysicsCacheStatus_ = "Cooking";
+        } else if (task.find("Cache check:") == 0) {
+            lastPhysicsCacheStatus_ = "Checking cache";
+        } else if (playModeLoad_.phase == PlayModeLoadState::Phase::BuildingPhysics) {
+            lastPhysicsCacheStatus_ = "Cooking";
+        }
+    } else if (!scriptsRunning_ && playModeLoad_.phase == PlayModeLoadState::Phase::Idle) {
+        lastPhysicsCacheStatus_ = "Ready";
+    } else if (lastPhysicsCacheStatus_ == "Cooking" || lastPhysicsCacheStatus_ == "Checking cache") {
+        lastPhysicsCacheStatus_ = "Ready";
+    }
+
+    const float fps = ImGui::GetIO().Framerate > 0.0f ? ImGui::GetIO().Framerate : (deltaTime > 0.0f ? 1.0f / deltaTime : 0.0f);
+    const float frameMs = deltaTime * 1000.0f;
+    const int selectedCount = static_cast<int>(selectedIndices_.size());
+
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration
+        | ImGuiWindowFlags_NoDocking
+        | ImGuiWindowFlags_NoMove
+        | ImGuiWindowFlags_NoResize
+        | ImGuiWindowFlags_NoSavedSettings
+        | ImGuiWindowFlags_NoScrollbar
+        | ImGuiWindowFlags_NoScrollWithMouse
+        | ImGuiWindowFlags_NoNav;
+
+    ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+    ImGui::SetNextWindowViewport(viewport->ID);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 3.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.060f, 0.070f, 0.085f, 1.00f));
+    if (ImGui::Begin("##EditorStatusBar", nullptr, flags)) {
+        ImGui::TextUnformatted(sceneName.c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(sceneDirty_ ? ImVec4(1.0f, 0.70f, 0.25f, 1.0f) : ImVec4(0.48f, 0.82f, 0.58f, 1.0f),
+            "%s", sceneDirty_ ? "Unsaved" : "Saved");
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::Text("Selected: %d", selectedCount);
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::Text("Physics cache: %s", lastPhysicsCacheStatus_.c_str());
+
+        const char* perfFormat = "FPS %.0f  %.2f ms";
+        const float perfWidth = ImGui::CalcTextSize("FPS 999  99.99 ms").x;
+        ImGui::SameLine((std::max)(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x, ImGui::GetWindowContentRegionMax().x - perfWidth));
+        ImGui::Text(perfFormat, fps, frameMs);
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
     ImGui::PopStyleVar(3);
 }
 
@@ -3222,6 +3287,9 @@ void SceneEditor::UndoMaterial() {
         return;
     }
     *current = state.material;
+    if (!materialManager_.Save(inspectedMaterialId_, *current) && console_) {
+        console_->AddError("Failed to auto-save material undo: " + inspectedMaterialId_);
+    }
     materialEditActive_ = false;
 }
 
@@ -4438,6 +4506,9 @@ void SceneEditor::RedoMaterial() {
         return;
     }
     *current = state.material;
+    if (!materialManager_.Save(inspectedMaterialId_, *current) && console_) {
+        console_->AddError("Failed to auto-save material redo: " + inspectedMaterialId_);
+    }
     materialEditActive_ = false;
 }
 

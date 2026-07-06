@@ -1,0 +1,1966 @@
+{
+  "version": 1,
+  "pivotMode": 0,
+  "importMaterials": true,
+  "materialLocation": 0,
+  "materialRemapNaming": 1,
+  "materialRemapSearch": 1,
+  "materials": [
+    {
+      "meshIndex": 0,
+      "meshName": "suzuka_2001-0",
+      "importedMaterialName": "092",
+      "materialId": "suzukibananini_092"
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "suzuka_2001-1",
+      "importedMaterialName": "garageback",
+      "materialId": "suzukibananini_garageback"
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "suzuka_2001-2",
+      "importedMaterialName": "WALL1",
+      "materialId": "suzukibananini_wall1"
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "suzuka_2001-3",
+      "importedMaterialName": "CRANE_02",
+      "materialId": "suzukibananini_crane_02"
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "suzuka_2001-4",
+      "importedMaterialName": "094",
+      "materialId": "suzukibananini_094"
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "suzuka_2001-5",
+      "importedMaterialName": "093",
+      "materialId": "suzukibananini_093"
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "suzuka_2001-6",
+      "importedMaterialName": "TW01",
+      "materialId": "suzukibananini_tw01"
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "suzuka_2001-7",
+      "importedMaterialName": "TWALL",
+      "materialId": "suzukibananini_twall"
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "suzuka_2001-8",
+      "importedMaterialName": "GRDR_TOP",
+      "materialId": "suzukibananini_grdr_top"
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "suzuka_2001-9",
+      "importedMaterialName": "GRDR",
+      "materialId": "suzukibananini_grdr"
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "suzuka_2001-10",
+      "importedMaterialName": "GRASSJIN",
+      "materialId": "suzukibananini_grassjin"
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "suzuka_2001-11",
+      "importedMaterialName": "RMBLA",
+      "materialId": "suzukibananini_rmbla"
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "suzuka_2001-12",
+      "importedMaterialName": "344",
+      "materialId": "suzukibananini_344"
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "suzuka_2001-13",
+      "importedMaterialName": "304",
+      "materialId": "suzukibananini_304"
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "suzuka_2001-14",
+      "importedMaterialName": "306",
+      "materialId": "suzukibananini_306"
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "suzuka_2001-15",
+      "importedMaterialName": "303",
+      "materialId": "suzukibananini_303"
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "suzuka_2001-16",
+      "importedMaterialName": "296",
+      "materialId": "suzukibananini_296"
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "suzuka_2001-17",
+      "importedMaterialName": "299",
+      "materialId": "suzukibananini_299"
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "suzuka_2001-18",
+      "importedMaterialName": "234",
+      "materialId": "suzukibananini_234"
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "suzuka_2001-19",
+      "importedMaterialName": "314",
+      "materialId": "suzukibananini_314"
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "suzuka_2001-20",
+      "importedMaterialName": "313",
+      "materialId": "suzukibananini_313"
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "suzuka_2001-21",
+      "importedMaterialName": "312",
+      "materialId": "suzukibananini_312"
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "suzuka_2001-22",
+      "importedMaterialName": "311",
+      "materialId": "suzukibananini_311"
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "suzuka_2001-23",
+      "importedMaterialName": "050",
+      "materialId": "suzukibananini_050"
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "suzuka_2001-24",
+      "importedMaterialName": "049",
+      "materialId": "suzukibananini_049"
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "suzuka_2001-25",
+      "importedMaterialName": "358",
+      "materialId": "suzukibananini_358"
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "suzuka_2001-26",
+      "importedMaterialName": "357",
+      "materialId": "suzukibananini_357"
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "suzuka_2001-27",
+      "importedMaterialName": "354",
+      "materialId": "suzukibananini_354"
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "suzuka_2001-28",
+      "importedMaterialName": "TrafficLight_1",
+      "materialId": "suzukibananini_trafficlight_1"
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "suzuka_2001-29",
+      "importedMaterialName": "SKID02",
+      "materialId": "suzukibananini_skid02"
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "suzuka_2001-30",
+      "importedMaterialName": "DIANTA03",
+      "materialId": "suzukibananini_dianta03"
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "suzuka_2001-31",
+      "importedMaterialName": "083",
+      "materialId": "suzukibananini_083"
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "suzuka_2001-32",
+      "importedMaterialName": "082",
+      "materialId": "suzukibananini_082"
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "suzuka_2001-33",
+      "importedMaterialName": "081",
+      "materialId": "suzukibananini_081"
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "suzuka_2001-34",
+      "importedMaterialName": "225",
+      "materialId": "suzukibananini_225"
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "suzuka_2001-35",
+      "importedMaterialName": "226",
+      "materialId": "suzukibananini_226"
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "suzuka_2001-36",
+      "importedMaterialName": "074",
+      "materialId": "suzukibananini_074"
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "suzuka_2001-37",
+      "importedMaterialName": "GSBLADE",
+      "materialId": "suzukibananini_gsblade"
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "suzuka_2001-38",
+      "importedMaterialName": "079",
+      "materialId": "suzukibananini_079"
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "suzuka_2001-39",
+      "importedMaterialName": "RDLTC",
+      "materialId": "suzukibananini_rdltc"
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "suzuka_2001-40",
+      "importedMaterialName": "309",
+      "materialId": "suzukibananini_309"
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "suzuka_2001-41",
+      "importedMaterialName": "305",
+      "materialId": "suzukibananini_305"
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "suzuka_2001-42",
+      "importedMaterialName": "garage_suzuka_logo",
+      "materialId": "suzukibananini_garage_suzuka_logo"
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "suzuka_2001-43",
+      "importedMaterialName": "WALL5",
+      "materialId": "suzukibananini_wall5"
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "suzuka_2001-44",
+      "importedMaterialName": "036",
+      "materialId": "suzukibananini_036"
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "suzuka_2001-45",
+      "importedMaterialName": "308",
+      "materialId": "suzukibananini_308"
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "suzuka_2001-46",
+      "importedMaterialName": "307",
+      "materialId": "suzukibananini_307"
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "suzuka_2001-47",
+      "importedMaterialName": "300",
+      "materialId": "suzukibananini_300"
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "suzuka_2001-48",
+      "importedMaterialName": "273",
+      "materialId": "suzukibananini_273"
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "suzuka_2001-49",
+      "importedMaterialName": "269",
+      "materialId": "suzukibananini_269"
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "suzuka_2001-50",
+      "importedMaterialName": "265",
+      "materialId": "suzukibananini_265"
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "suzuka_2001-51",
+      "importedMaterialName": "261",
+      "materialId": "suzukibananini_261"
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "suzuka_2001-52",
+      "importedMaterialName": "257",
+      "materialId": "suzukibananini_257"
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "suzuka_2001-53",
+      "importedMaterialName": "253",
+      "materialId": "suzukibananini_253"
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "suzuka_2001-54",
+      "importedMaterialName": "250",
+      "materialId": "suzukibananini_250"
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "suzuka_2001-55",
+      "importedMaterialName": "246",
+      "materialId": "suzukibananini_246"
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "suzuka_2001-56",
+      "importedMaterialName": "242",
+      "materialId": "suzukibananini_242"
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "suzuka_2001-57",
+      "importedMaterialName": "238",
+      "materialId": "suzukibananini_238"
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "suzuka_2001-58",
+      "importedMaterialName": "233",
+      "materialId": "suzukibananini_233"
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "suzuka_2001-59",
+      "importedMaterialName": "232",
+      "materialId": "suzukibananini_232"
+    },
+    {
+      "meshIndex": 60,
+      "meshName": "suzuka_2001-60",
+      "importedMaterialName": "START274",
+      "materialId": "suzukibananini_start274"
+    },
+    {
+      "meshIndex": 61,
+      "meshName": "suzuka_2001-61",
+      "importedMaterialName": "292",
+      "materialId": "suzukibananini_292"
+    },
+    {
+      "meshIndex": 62,
+      "meshName": "suzuka_2001-62",
+      "importedMaterialName": "291",
+      "materialId": "suzukibananini_291"
+    },
+    {
+      "meshIndex": 63,
+      "meshName": "suzuka_2001-63",
+      "importedMaterialName": "290",
+      "materialId": "suzukibananini_290"
+    },
+    {
+      "meshIndex": 64,
+      "meshName": "suzuka_2001-64",
+      "importedMaterialName": "289",
+      "materialId": "suzukibananini_289"
+    },
+    {
+      "meshIndex": 65,
+      "meshName": "suzuka_2001-65",
+      "importedMaterialName": "tvscreen",
+      "materialId": "suzukibananini_tvscreen"
+    },
+    {
+      "meshIndex": 66,
+      "meshName": "suzuka_2001-66",
+      "importedMaterialName": "332",
+      "materialId": "suzukibananini_332"
+    },
+    {
+      "meshIndex": 67,
+      "meshName": "suzuka_2001-67",
+      "importedMaterialName": "329",
+      "materialId": "suzukibananini_329"
+    },
+    {
+      "meshIndex": 68,
+      "meshName": "suzuka_2001-68",
+      "importedMaterialName": "325",
+      "materialId": "suzukibananini_325"
+    },
+    {
+      "meshIndex": 69,
+      "meshName": "suzuka_2001-69",
+      "importedMaterialName": "328",
+      "materialId": "suzukibananini_328"
+    },
+    {
+      "meshIndex": 70,
+      "meshName": "suzuka_2001-70",
+      "importedMaterialName": "330",
+      "materialId": "suzukibananini_330"
+    },
+    {
+      "meshIndex": 71,
+      "meshName": "suzuka_2001-71",
+      "importedMaterialName": "315",
+      "materialId": "suzukibananini_315"
+    },
+    {
+      "meshIndex": 72,
+      "meshName": "suzuka_2001-72",
+      "importedMaterialName": "341",
+      "materialId": "suzukibananini_341"
+    },
+    {
+      "meshIndex": 73,
+      "meshName": "suzuka_2001-73",
+      "importedMaterialName": "339",
+      "materialId": "suzukibananini_339"
+    },
+    {
+      "meshIndex": 74,
+      "meshName": "suzuka_2001-74",
+      "importedMaterialName": "342",
+      "materialId": "suzukibananini_342"
+    },
+    {
+      "meshIndex": 75,
+      "meshName": "suzuka_2001-75",
+      "importedMaterialName": "326",
+      "materialId": "suzukibananini_326"
+    },
+    {
+      "meshIndex": 76,
+      "meshName": "suzuka_2001-76",
+      "importedMaterialName": "352",
+      "materialId": "suzukibananini_352"
+    },
+    {
+      "meshIndex": 77,
+      "meshName": "suzuka_2001-77",
+      "importedMaterialName": "367",
+      "materialId": "suzukibananini_367"
+    },
+    {
+      "meshIndex": 78,
+      "meshName": "suzuka_2001-78",
+      "importedMaterialName": "GSTANDBASE",
+      "materialId": "suzukibananini_gstandbase"
+    },
+    {
+      "meshIndex": 79,
+      "meshName": "suzuka_2001-79",
+      "importedMaterialName": "335",
+      "materialId": "suzukibananini_335"
+    },
+    {
+      "meshIndex": 80,
+      "meshName": "suzuka_2001-80",
+      "importedMaterialName": "BRIDGE08",
+      "materialId": "suzukibananini_bridge08"
+    },
+    {
+      "meshIndex": 81,
+      "meshName": "suzuka_2001-81",
+      "importedMaterialName": "BRIDGE04",
+      "materialId": "suzukibananini_bridge04"
+    },
+    {
+      "meshIndex": 82,
+      "meshName": "suzuka_2001-82",
+      "importedMaterialName": "BRIDGE01",
+      "materialId": "suzukibananini_bridge01"
+    },
+    {
+      "meshIndex": 83,
+      "meshName": "suzuka_2001-83",
+      "importedMaterialName": "BRIDGE06",
+      "materialId": "suzukibananini_bridge06"
+    },
+    {
+      "meshIndex": 84,
+      "meshName": "suzuka_2001-84",
+      "importedMaterialName": "BRIDGE03",
+      "materialId": "suzukibananini_bridge03"
+    },
+    {
+      "meshIndex": 85,
+      "meshName": "suzuka_2001-85",
+      "importedMaterialName": "BRIDGE02",
+      "materialId": "suzukibananini_bridge02"
+    },
+    {
+      "meshIndex": 86,
+      "meshName": "suzuka_2001-86",
+      "importedMaterialName": "BRIDGE05",
+      "materialId": "suzukibananini_bridge05"
+    },
+    {
+      "meshIndex": 87,
+      "meshName": "suzuka_2001-87",
+      "importedMaterialName": "146",
+      "materialId": "suzukibananini_146"
+    },
+    {
+      "meshIndex": 88,
+      "meshName": "suzuka_2001-88",
+      "importedMaterialName": "148",
+      "materialId": "suzukibananini_148"
+    },
+    {
+      "meshIndex": 89,
+      "meshName": "suzuka_2001-89",
+      "importedMaterialName": "084",
+      "materialId": "suzukibananini_084"
+    },
+    {
+      "meshIndex": 90,
+      "meshName": "suzuka_2001-90",
+      "importedMaterialName": "POLE02",
+      "materialId": "suzukibananini_pole02"
+    },
+    {
+      "meshIndex": 91,
+      "meshName": "suzuka_2001-91",
+      "importedMaterialName": "POLE01",
+      "materialId": "suzukibananini_pole01"
+    },
+    {
+      "meshIndex": 92,
+      "meshName": "suzuka_2001-92",
+      "importedMaterialName": "067",
+      "materialId": "suzukibananini_067"
+    },
+    {
+      "meshIndex": 93,
+      "meshName": "suzuka_2001-93",
+      "importedMaterialName": "066",
+      "materialId": "suzukibananini_066"
+    },
+    {
+      "meshIndex": 94,
+      "meshName": "suzuka_2001-94",
+      "importedMaterialName": "051",
+      "materialId": "suzukibananini_051"
+    },
+    {
+      "meshIndex": 95,
+      "meshName": "suzuka_2001-95",
+      "importedMaterialName": "YLOPITLTA",
+      "materialId": "suzukibananini_ylopitlta"
+    },
+    {
+      "meshIndex": 96,
+      "meshName": "suzuka_2001-96",
+      "importedMaterialName": "RDPITLTA",
+      "materialId": "suzukibananini_rdpitlta"
+    },
+    {
+      "meshIndex": 97,
+      "meshName": "suzuka_2001-97",
+      "importedMaterialName": "BLACKCASE",
+      "materialId": "suzukibananini_blackcase"
+    },
+    {
+      "meshIndex": 98,
+      "meshName": "suzuka_2001-98",
+      "importedMaterialName": "PIT_LOGO_REAR",
+      "materialId": "suzukibananini_pit_logo_rear"
+    },
+    {
+      "meshIndex": 99,
+      "meshName": "suzuka_2001-99",
+      "importedMaterialName": "PIT_LOGOS",
+      "materialId": "suzukibananini_pit_logos"
+    },
+    {
+      "meshIndex": 100,
+      "meshName": "suzuka_2001-100",
+      "importedMaterialName": "GREY2",
+      "materialId": "suzukibananini_grey2"
+    },
+    {
+      "meshIndex": 101,
+      "meshName": "suzuka_2001-101",
+      "importedMaterialName": "GRLTA",
+      "materialId": "suzukibananini_grlta"
+    },
+    {
+      "meshIndex": 102,
+      "meshName": "suzuka_2001-102",
+      "importedMaterialName": "RDLTB",
+      "materialId": "suzukibananini_rdltb"
+    },
+    {
+      "meshIndex": 103,
+      "meshName": "suzuka_2001-103",
+      "importedMaterialName": "RDLTD",
+      "materialId": "suzukibananini_rdltd"
+    },
+    {
+      "meshIndex": 104,
+      "meshName": "suzuka_2001-104",
+      "importedMaterialName": "GURDRC",
+      "materialId": "suzukibananini_gurdrc"
+    },
+    {
+      "meshIndex": 105,
+      "meshName": "suzuka_2001-105",
+      "importedMaterialName": "digital_01",
+      "materialId": "suzukibananini_digital_01"
+    },
+    {
+      "meshIndex": 106,
+      "meshName": "suzuka_2001-106",
+      "importedMaterialName": "podium03_2001",
+      "materialId": "suzukibananini_podium03_2001"
+    },
+    {
+      "meshIndex": 107,
+      "meshName": "suzuka_2001-107",
+      "importedMaterialName": "PODIUM01",
+      "materialId": "suzukibananini_podium01"
+    },
+    {
+      "meshIndex": 108,
+      "meshName": "suzuka_2001-108",
+      "importedMaterialName": "PODIUM02",
+      "materialId": "suzukibananini_podium02"
+    },
+    {
+      "meshIndex": 109,
+      "meshName": "suzuka_2001-109",
+      "importedMaterialName": "CONCWTP",
+      "materialId": "suzukibananini_concwtp"
+    },
+    {
+      "meshIndex": 110,
+      "meshName": "suzuka_2001-110",
+      "importedMaterialName": "337",
+      "materialId": "suzukibananini_337"
+    },
+    {
+      "meshIndex": 111,
+      "meshName": "suzuka_2001-111",
+      "importedMaterialName": "368",
+      "materialId": "suzukibananini_368"
+    },
+    {
+      "meshIndex": 112,
+      "meshName": "suzuka_2001-112",
+      "importedMaterialName": "286",
+      "materialId": "suzukibananini_286"
+    },
+    {
+      "meshIndex": 113,
+      "meshName": "suzuka_2001-113",
+      "importedMaterialName": "284",
+      "materialId": "suzukibananini_284"
+    },
+    {
+      "meshIndex": 114,
+      "meshName": "suzuka_2001-114",
+      "importedMaterialName": "283",
+      "materialId": "suzukibananini_283"
+    },
+    {
+      "meshIndex": 115,
+      "meshName": "suzuka_2001-115",
+      "importedMaterialName": "285",
+      "materialId": "suzukibananini_285"
+    },
+    {
+      "meshIndex": 116,
+      "meshName": "suzuka_2001-116",
+      "importedMaterialName": "287",
+      "materialId": "suzukibananini_287"
+    },
+    {
+      "meshIndex": 117,
+      "meshName": "suzuka_2001-117",
+      "importedMaterialName": "logo_canon_blue",
+      "materialId": "suzukibananini_logo_canon_blue"
+    },
+    {
+      "meshIndex": 118,
+      "meshName": "suzuka_2001-118",
+      "importedMaterialName": "logo_canon_red",
+      "materialId": "suzukibananini_logo_canon_red"
+    },
+    {
+      "meshIndex": 119,
+      "meshName": "suzuka_2001-119",
+      "importedMaterialName": "355",
+      "materialId": "suzukibananini_355"
+    },
+    {
+      "meshIndex": 120,
+      "meshName": "suzuka_2001-120",
+      "importedMaterialName": "346",
+      "materialId": "suzukibananini_346"
+    },
+    {
+      "meshIndex": 121,
+      "meshName": "suzuka_2001-121",
+      "importedMaterialName": "342SDAW2",
+      "materialId": "suzukibananini_342sdaw2"
+    },
+    {
+      "meshIndex": 122,
+      "meshName": "suzuka_2001-122",
+      "importedMaterialName": "359",
+      "materialId": "suzukibananini_359"
+    },
+    {
+      "meshIndex": 123,
+      "meshName": "suzuka_2001-123",
+      "importedMaterialName": "104",
+      "materialId": "suzukibananini_104"
+    },
+    {
+      "meshIndex": 124,
+      "meshName": "suzuka_2001-124",
+      "importedMaterialName": "102",
+      "materialId": "suzukibananini_102"
+    },
+    {
+      "meshIndex": 125,
+      "meshName": "suzuka_2001-125",
+      "importedMaterialName": "ZHUANPAN08",
+      "materialId": "suzukibananini_zhuanpan08"
+    },
+    {
+      "meshIndex": 126,
+      "meshName": "suzuka_2001-126",
+      "importedMaterialName": "ZHUANPAN09",
+      "materialId": "suzukibananini_zhuanpan09"
+    },
+    {
+      "meshIndex": 127,
+      "meshName": "suzuka_2001-127",
+      "importedMaterialName": "GSTANDBARE",
+      "materialId": "suzukibananini_gstandbare"
+    },
+    {
+      "meshIndex": 128,
+      "meshName": "suzuka_2001-128",
+      "importedMaterialName": "324",
+      "materialId": "suzukibananini_324"
+    },
+    {
+      "meshIndex": 129,
+      "meshName": "suzuka_2001-129",
+      "importedMaterialName": "323",
+      "materialId": "suzukibananini_323"
+    },
+    {
+      "meshIndex": 130,
+      "meshName": "suzuka_2001-130",
+      "importedMaterialName": "321",
+      "materialId": "suzukibananini_321"
+    },
+    {
+      "meshIndex": 131,
+      "meshName": "suzuka_2001-131",
+      "importedMaterialName": "302",
+      "materialId": "suzukibananini_302"
+    },
+    {
+      "meshIndex": 132,
+      "meshName": "suzuka_2001-132",
+      "importedMaterialName": "322",
+      "materialId": "suzukibananini_322"
+    },
+    {
+      "meshIndex": 133,
+      "meshName": "suzuka_2001-133",
+      "importedMaterialName": "080",
+      "materialId": "suzukibananini_080"
+    },
+    {
+      "meshIndex": 134,
+      "meshName": "suzuka_2001-134",
+      "importedMaterialName": "DIANTA02",
+      "materialId": "suzukibananini_dianta02"
+    },
+    {
+      "meshIndex": 135,
+      "meshName": "suzuka_2001-135",
+      "importedMaterialName": "marshall",
+      "materialId": "suzukibananini_marshall"
+    },
+    {
+      "meshIndex": 136,
+      "meshName": "suzuka_2001-136",
+      "importedMaterialName": "logo_bridgestone2",
+      "materialId": "suzukibananini_logo_bridgestone2"
+    },
+    {
+      "meshIndex": 137,
+      "meshName": "suzuka_2001-137",
+      "importedMaterialName": "logo_mercedes",
+      "materialId": "suzukibananini_logo_mercedes"
+    },
+    {
+      "meshIndex": 138,
+      "meshName": "suzuka_2001-138",
+      "importedMaterialName": "logo_helx",
+      "materialId": "suzukibananini_logo_helx"
+    },
+    {
+      "meshIndex": 139,
+      "meshName": "suzuka_2001-139",
+      "importedMaterialName": "logo_allianz",
+      "materialId": "suzukibananini_logo_allianz"
+    },
+    {
+      "meshIndex": 140,
+      "meshName": "suzuka_2001-140",
+      "importedMaterialName": "logo_hsbc",
+      "materialId": "suzukibananini_logo_hsbc"
+    },
+    {
+      "meshIndex": 141,
+      "meshName": "suzuka_2001-141",
+      "importedMaterialName": "033",
+      "materialId": "suzukibananini_033"
+    },
+    {
+      "meshIndex": 142,
+      "meshName": "suzuka_2001-142",
+      "importedMaterialName": "logo_brother",
+      "materialId": "suzukibananini_logo_brother"
+    },
+    {
+      "meshIndex": 143,
+      "meshName": "suzuka_2001-143",
+      "importedMaterialName": "logo_ngk",
+      "materialId": "suzukibananini_logo_ngk"
+    },
+    {
+      "meshIndex": 144,
+      "meshName": "suzuka_2001-144",
+      "importedMaterialName": "logo_arai2",
+      "materialId": "suzukibananini_logo_arai2"
+    },
+    {
+      "meshIndex": 145,
+      "meshName": "suzuka_2001-145",
+      "importedMaterialName": "logo_fujitv2",
+      "materialId": "suzukibananini_logo_fujitv2"
+    },
+    {
+      "meshIndex": 146,
+      "meshName": "suzuka_2001-146",
+      "importedMaterialName": "logo_orange3",
+      "materialId": "suzukibananini_logo_orange3"
+    },
+    {
+      "meshIndex": 147,
+      "meshName": "suzuka_2001-147",
+      "importedMaterialName": "logo_fost_beer",
+      "materialId": "suzukibananini_logo_fost_beer"
+    },
+    {
+      "meshIndex": 148,
+      "meshName": "suzuka_2001-148",
+      "importedMaterialName": "294",
+      "materialId": "suzukibananini_294"
+    },
+    {
+      "meshIndex": 149,
+      "meshName": "suzuka_2001-149",
+      "importedMaterialName": "logomarl3",
+      "materialId": "suzukibananini_logomarl3"
+    },
+    {
+      "meshIndex": 150,
+      "meshName": "suzuka_2001-150",
+      "importedMaterialName": "logosiem",
+      "materialId": "suzukibananini_logosiem"
+    },
+    {
+      "meshIndex": 151,
+      "meshName": "suzuka_2001-151",
+      "importedMaterialName": "logo_arai",
+      "materialId": "suzukibananini_logo_arai"
+    },
+    {
+      "meshIndex": 152,
+      "meshName": "suzuka_2001-152",
+      "importedMaterialName": "logo_pioneer",
+      "materialId": "suzukibananini_logo_pioneer"
+    },
+    {
+      "meshIndex": 153,
+      "meshName": "suzuka_2001-153",
+      "importedMaterialName": "logo_nippo",
+      "materialId": "suzukibananini_logo_nippo"
+    },
+    {
+      "meshIndex": 154,
+      "meshName": "suzuka_2001-154",
+      "importedMaterialName": "logo_daikin",
+      "materialId": "suzukibananini_logo_daikin"
+    },
+    {
+      "meshIndex": 155,
+      "meshName": "suzuka_2001-155",
+      "importedMaterialName": "logo_magneti",
+      "materialId": "suzukibananini_logo_magneti"
+    },
+    {
+      "meshIndex": 156,
+      "meshName": "suzuka_2001-156",
+      "importedMaterialName": "003",
+      "materialId": "suzukibananini_003"
+    },
+    {
+      "meshIndex": 157,
+      "meshName": "suzuka_2001-157",
+      "importedMaterialName": "logoalpine",
+      "materialId": "suzukibananini_logoalpine"
+    },
+    {
+      "meshIndex": 158,
+      "meshName": "suzuka_2001-158",
+      "importedMaterialName": "logo_orange",
+      "materialId": "suzukibananini_logo_orange"
+    },
+    {
+      "meshIndex": 159,
+      "meshName": "suzuka_2001-159",
+      "importedMaterialName": "logo_tagh",
+      "materialId": "suzukibananini_logo_tagh"
+    },
+    {
+      "meshIndex": 160,
+      "meshName": "suzuka_2001-160",
+      "importedMaterialName": "logo_orange2",
+      "materialId": "suzukibananini_logo_orange2"
+    },
+    {
+      "meshIndex": 161,
+      "meshName": "suzuka_2001-161",
+      "importedMaterialName": "LAMP",
+      "materialId": "suzukibananini_lamp"
+    },
+    {
+      "meshIndex": 162,
+      "meshName": "suzuka_2001-162",
+      "importedMaterialName": "logo_toenec",
+      "materialId": "suzukibananini_logo_toenec"
+    },
+    {
+      "meshIndex": 163,
+      "meshName": "suzuka_2001-163",
+      "importedMaterialName": "logo_nissin",
+      "materialId": "suzukibananini_logo_nissin"
+    },
+    {
+      "meshIndex": 164,
+      "meshName": "suzuka_2001-164",
+      "importedMaterialName": "logos_t2",
+      "materialId": "suzukibananini_logos_t2"
+    },
+    {
+      "meshIndex": 165,
+      "meshName": "suzuka_2001-165",
+      "importedMaterialName": "logo_honda",
+      "materialId": "suzukibananini_logo_honda"
+    },
+    {
+      "meshIndex": 166,
+      "meshName": "suzuka_2001-166",
+      "importedMaterialName": "STANG01",
+      "materialId": "suzukibananini_stang01"
+    },
+    {
+      "meshIndex": 167,
+      "meshName": "suzuka_2001-167",
+      "importedMaterialName": "GARAGEWALL01",
+      "materialId": "suzukibananini_garagewall01"
+    },
+    {
+      "meshIndex": 168,
+      "meshName": "suzuka_2001-168",
+      "importedMaterialName": "CMWL14",
+      "materialId": "suzukibananini_cmwl14"
+    },
+    {
+      "meshIndex": 169,
+      "meshName": "suzuka_2001-169",
+      "importedMaterialName": "LIGHTIN",
+      "materialId": "suzukibananini_lightin"
+    },
+    {
+      "meshIndex": 170,
+      "meshName": "suzuka_2001-170",
+      "importedMaterialName": "LAMP_1",
+      "materialId": "suzukibananini_lamp_1"
+    },
+    {
+      "meshIndex": 171,
+      "meshName": "suzuka_2001-171",
+      "importedMaterialName": "aa-BLACK01",
+      "materialId": "suzukibananini_aa-black01"
+    },
+    {
+      "meshIndex": 172,
+      "meshName": "suzuka_2001-172",
+      "importedMaterialName": "HORN02",
+      "materialId": "suzukibananini_horn02"
+    },
+    {
+      "meshIndex": 173,
+      "meshName": "suzuka_2001-173",
+      "importedMaterialName": "CRANE_00",
+      "materialId": "suzukibananini_crane_00"
+    },
+    {
+      "meshIndex": 174,
+      "meshName": "suzuka_2001-174",
+      "importedMaterialName": "HOUSE_A01",
+      "materialId": "suzukibananini_house_a01"
+    },
+    {
+      "meshIndex": 175,
+      "meshName": "suzuka_2001-175",
+      "importedMaterialName": "logocanon2",
+      "materialId": "suzukibananini_logocanon2"
+    },
+    {
+      "meshIndex": 176,
+      "meshName": "suzuka_2001-176",
+      "importedMaterialName": "LOGO_BRDG_ING",
+      "materialId": "suzukibananini_logo_brdg_ing"
+    },
+    {
+      "meshIndex": 177,
+      "meshName": "suzuka_2001-177",
+      "importedMaterialName": "045",
+      "materialId": "suzukibananini_045"
+    },
+    {
+      "meshIndex": 178,
+      "meshName": "suzuka_2001-178",
+      "importedMaterialName": "logofuji_03",
+      "materialId": "suzukibananini_logofuji_03"
+    },
+    {
+      "meshIndex": 179,
+      "meshName": "suzuka_2001-179",
+      "importedMaterialName": "sign",
+      "materialId": "suzukibananini_sign"
+    },
+    {
+      "meshIndex": 180,
+      "meshName": "suzuka_2001-180",
+      "importedMaterialName": "BOX10",
+      "materialId": "suzukibananini_box10"
+    },
+    {
+      "meshIndex": 181,
+      "meshName": "suzuka_2001-181",
+      "importedMaterialName": "BOX09",
+      "materialId": "suzukibananini_box09"
+    },
+    {
+      "meshIndex": 182,
+      "meshName": "suzuka_2001-182",
+      "importedMaterialName": "BOX08",
+      "materialId": "suzukibananini_box08"
+    },
+    {
+      "meshIndex": 183,
+      "meshName": "suzuka_2001-183",
+      "importedMaterialName": "BOX07",
+      "materialId": "suzukibananini_box07"
+    },
+    {
+      "meshIndex": 184,
+      "meshName": "suzuka_2001-184",
+      "importedMaterialName": "BOX06",
+      "materialId": "suzukibananini_box06"
+    },
+    {
+      "meshIndex": 185,
+      "meshName": "suzuka_2001-185",
+      "importedMaterialName": "BOX05",
+      "materialId": "suzukibananini_box05"
+    },
+    {
+      "meshIndex": 186,
+      "meshName": "suzuka_2001-186",
+      "importedMaterialName": "BOX04",
+      "materialId": "suzukibananini_box04"
+    },
+    {
+      "meshIndex": 187,
+      "meshName": "suzuka_2001-187",
+      "importedMaterialName": "BOX03",
+      "materialId": "suzukibananini_box03"
+    },
+    {
+      "meshIndex": 188,
+      "meshName": "suzuka_2001-188",
+      "importedMaterialName": "BOX11",
+      "materialId": "suzukibananini_box11"
+    },
+    {
+      "meshIndex": 189,
+      "meshName": "suzuka_2001-189",
+      "importedMaterialName": "BOX02",
+      "materialId": "suzukibananini_box02"
+    },
+    {
+      "meshIndex": 190,
+      "meshName": "suzuka_2001-190",
+      "importedMaterialName": "BOX01",
+      "materialId": "suzukibananini_box01"
+    },
+    {
+      "meshIndex": 191,
+      "meshName": "suzuka_2001-191",
+      "importedMaterialName": "logo_fujitv",
+      "materialId": "suzukibananini_logo_fujitv"
+    },
+    {
+      "meshIndex": 192,
+      "meshName": "suzuka_2001-192",
+      "importedMaterialName": "319",
+      "materialId": "suzukibananini_319"
+    },
+    {
+      "meshIndex": 193,
+      "meshName": "suzuka_2001-193",
+      "importedMaterialName": "logo_ptz_v",
+      "materialId": "suzukibananini_logo_ptz_v"
+    },
+    {
+      "meshIndex": 194,
+      "meshName": "suzuka_2001-194",
+      "importedMaterialName": "logo_brdg_v",
+      "materialId": "suzukibananini_logo_brdg_v"
+    },
+    {
+      "meshIndex": 195,
+      "meshName": "suzuka_2001-195",
+      "importedMaterialName": "logofost",
+      "materialId": "suzukibananini_logofost"
+    },
+    {
+      "meshIndex": 196,
+      "meshName": "suzuka_2001-196",
+      "importedMaterialName": "024",
+      "materialId": "suzukibananini_024"
+    },
+    {
+      "meshIndex": 197,
+      "meshName": "suzuka_2001-197",
+      "importedMaterialName": "POLE03",
+      "materialId": "suzukibananini_pole03"
+    },
+    {
+      "meshIndex": 198,
+      "meshName": "suzuka_2001-198",
+      "importedMaterialName": "logo_t3",
+      "materialId": "suzukibananini_logo_t3"
+    },
+    {
+      "meshIndex": 199,
+      "meshName": "suzuka_2001-199",
+      "importedMaterialName": "logo_ssr",
+      "materialId": "suzukibananini_logo_ssr"
+    },
+    {
+      "meshIndex": 200,
+      "meshName": "suzuka_2001-200",
+      "importedMaterialName": "logo_yachiyo",
+      "materialId": "suzukibananini_logo_yachiyo"
+    },
+    {
+      "meshIndex": 201,
+      "meshName": "suzuka_2001-201",
+      "importedMaterialName": "logo_ngk3",
+      "materialId": "suzukibananini_logo_ngk3"
+    },
+    {
+      "meshIndex": 202,
+      "meshName": "suzuka_2001-202",
+      "importedMaterialName": "logo_shell",
+      "materialId": "suzukibananini_logo_shell"
+    },
+    {
+      "meshIndex": 203,
+      "meshName": "suzuka_2001-203",
+      "importedMaterialName": "logo_arai4",
+      "materialId": "suzukibananini_logo_arai4"
+    },
+    {
+      "meshIndex": 204,
+      "meshName": "suzuka_2001-204",
+      "importedMaterialName": "logo_million_card",
+      "materialId": "suzukibananini_logo_million_card"
+    },
+    {
+      "meshIndex": 205,
+      "meshName": "suzuka_2001-205",
+      "importedMaterialName": "028",
+      "materialId": "suzukibananini_028"
+    },
+    {
+      "meshIndex": 206,
+      "meshName": "suzuka_2001-206",
+      "importedMaterialName": "logo_keihin",
+      "materialId": "suzukibananini_logo_keihin"
+    },
+    {
+      "meshIndex": 207,
+      "meshName": "suzuka_2001-207",
+      "importedMaterialName": "006",
+      "materialId": "suzukibananini_006"
+    },
+    {
+      "meshIndex": 208,
+      "meshName": "suzuka_2001-208",
+      "importedMaterialName": "GRDR8",
+      "materialId": "suzukibananini_grdr8"
+    },
+    {
+      "meshIndex": 209,
+      "meshName": "suzuka_2001-209",
+      "importedMaterialName": "000",
+      "materialId": "suzukibananini_000"
+    },
+    {
+      "meshIndex": 210,
+      "meshName": "suzuka_2001-210",
+      "importedMaterialName": "RDLTA",
+      "materialId": "suzukibananini_rdlta"
+    },
+    {
+      "meshIndex": 211,
+      "meshName": "suzuka_2001-211",
+      "importedMaterialName": "280",
+      "materialId": "suzukibananini_280"
+    },
+    {
+      "meshIndex": 212,
+      "meshName": "suzuka_2001-212",
+      "importedMaterialName": "cameraman",
+      "materialId": "suzukibananini_cameraman"
+    },
+    {
+      "meshIndex": 213,
+      "meshName": "suzuka_2001-213",
+      "importedMaterialName": "TWALL1",
+      "materialId": "suzukibananini_twall1"
+    },
+    {
+      "meshIndex": 214,
+      "meshName": "suzuka_2001-214",
+      "importedMaterialName": "NODE.001",
+      "materialId": "suzukibananini_node001"
+    },
+    {
+      "meshIndex": 215,
+      "meshName": "suzuka_2001-215",
+      "importedMaterialName": "CWAL01",
+      "materialId": "suzukibananini_cwal01"
+    },
+    {
+      "meshIndex": 216,
+      "meshName": "suzuka_2001-216",
+      "importedMaterialName": "CWAL06",
+      "materialId": "suzukibananini_cwal06"
+    },
+    {
+      "meshIndex": 217,
+      "meshName": "suzuka_2001-217",
+      "importedMaterialName": "logo_fujitv1",
+      "materialId": "suzukibananini_logo_fujitv1"
+    },
+    {
+      "meshIndex": 218,
+      "meshName": "suzuka_2001-218",
+      "importedMaterialName": "logo_marlboro",
+      "materialId": "suzukibananini_logo_marlboro"
+    },
+    {
+      "meshIndex": 219,
+      "meshName": "suzuka_2001-219",
+      "importedMaterialName": "logo_mildseven",
+      "materialId": "suzukibananini_logo_mildseven"
+    },
+    {
+      "meshIndex": 220,
+      "meshName": "suzuka_2001-220",
+      "importedMaterialName": "CWAL02",
+      "materialId": "suzukibananini_cwal02"
+    },
+    {
+      "meshIndex": 221,
+      "meshName": "suzuka_2001-221",
+      "importedMaterialName": "logo_mobil1",
+      "materialId": "suzukibananini_logo_mobil1"
+    },
+    {
+      "meshIndex": 222,
+      "meshName": "suzuka_2001-222",
+      "importedMaterialName": "logo_bmw",
+      "materialId": "suzukibananini_logo_bmw"
+    },
+    {
+      "meshIndex": 223,
+      "meshName": "suzuka_2001-223",
+      "importedMaterialName": "logo_asahi_kasei",
+      "materialId": "suzukibananini_logo_asahi_kasei"
+    },
+    {
+      "meshIndex": 224,
+      "meshName": "suzuka_2001-224",
+      "importedMaterialName": "logo_canon",
+      "materialId": "suzukibananini_logo_canon"
+    },
+    {
+      "meshIndex": 225,
+      "meshName": "suzuka_2001-225",
+      "importedMaterialName": "logoshel",
+      "materialId": "suzukibananini_logoshel"
+    },
+    {
+      "meshIndex": 226,
+      "meshName": "suzuka_2001-226",
+      "importedMaterialName": "logo_ps2",
+      "materialId": "suzukibananini_logo_ps2"
+    },
+    {
+      "meshIndex": 227,
+      "meshName": "suzuka_2001-227",
+      "importedMaterialName": "logo_boss_coffee",
+      "materialId": "suzukibananini_logo_boss_coffee"
+    },
+    {
+      "meshIndex": 228,
+      "meshName": "suzuka_2001-228",
+      "importedMaterialName": "logo_mumm",
+      "materialId": "suzukibananini_logo_mumm"
+    },
+    {
+      "meshIndex": 229,
+      "meshName": "suzuka_2001-229",
+      "importedMaterialName": "LOGO_WHITE",
+      "materialId": "suzukibananini_logo_white"
+    },
+    {
+      "meshIndex": 230,
+      "meshName": "suzuka_2001-230",
+      "importedMaterialName": "CWAL03_1",
+      "materialId": "suzukibananini_cwal03_1"
+    },
+    {
+      "meshIndex": 231,
+      "meshName": "suzuka_2001-231",
+      "importedMaterialName": "logo_potenza",
+      "materialId": "suzukibananini_logo_potenza"
+    },
+    {
+      "meshIndex": 232,
+      "meshName": "suzuka_2001-232",
+      "importedMaterialName": "logobrdg_2",
+      "materialId": "suzukibananini_logobrdg_2"
+    },
+    {
+      "meshIndex": 233,
+      "meshName": "suzuka_2001-233",
+      "importedMaterialName": "ROAD_RK_GREEN04",
+      "materialId": "suzukibananini_road_rk_green04"
+    },
+    {
+      "meshIndex": 234,
+      "meshName": "suzuka_2001-234",
+      "importedMaterialName": "RMBLF",
+      "materialId": "suzukibananini_rmblf"
+    },
+    {
+      "meshIndex": 235,
+      "meshName": "suzuka_2001-235",
+      "importedMaterialName": "GRASS_RK_GREEN06",
+      "materialId": "suzukibananini_grass_rk_green06"
+    },
+    {
+      "meshIndex": 236,
+      "meshName": "suzuka_2001-236",
+      "importedMaterialName": "GRASS_RK_GREEN07",
+      "materialId": "suzukibananini_grass_rk_green07"
+    },
+    {
+      "meshIndex": 237,
+      "meshName": "suzuka_2001-237",
+      "importedMaterialName": "GRASS_RK_GREEN05",
+      "materialId": "suzukibananini_grass_rk_green05"
+    },
+    {
+      "meshIndex": 238,
+      "meshName": "suzuka_2001-238",
+      "importedMaterialName": "GRVL01",
+      "materialId": "suzukibananini_grvl01"
+    },
+    {
+      "meshIndex": 239,
+      "meshName": "suzuka_2001-239",
+      "importedMaterialName": "GRASS11",
+      "materialId": "suzukibananini_grass11"
+    },
+    {
+      "meshIndex": 240,
+      "meshName": "suzuka_2001-240",
+      "importedMaterialName": "GRASS_RK_GREEN03",
+      "materialId": "suzukibananini_grass_rk_green03"
+    },
+    {
+      "meshIndex": 241,
+      "meshName": "suzuka_2001-241",
+      "importedMaterialName": "GRASS01",
+      "materialId": "suzukibananini_grass01"
+    },
+    {
+      "meshIndex": 242,
+      "meshName": "suzuka_2001-242",
+      "importedMaterialName": "ROADD",
+      "materialId": "suzukibananini_roadd"
+    },
+    {
+      "meshIndex": 243,
+      "meshName": "suzuka_2001-243",
+      "importedMaterialName": "ROADX",
+      "materialId": "suzukibananini_roadx"
+    },
+    {
+      "meshIndex": 244,
+      "meshName": "suzuka_2001-244",
+      "importedMaterialName": "ROAD02",
+      "materialId": "suzukibananini_road02"
+    },
+    {
+      "meshIndex": 245,
+      "meshName": "suzuka_2001-245",
+      "importedMaterialName": "ROAD06",
+      "materialId": "suzukibananini_road06"
+    },
+    {
+      "meshIndex": 246,
+      "meshName": "suzuka_2001-246",
+      "importedMaterialName": "RDCP01",
+      "materialId": "suzukibananini_rdcp01"
+    },
+    {
+      "meshIndex": 247,
+      "meshName": "suzuka_2001-247",
+      "importedMaterialName": "ROAD05",
+      "materialId": "suzukibananini_road05"
+    },
+    {
+      "meshIndex": 248,
+      "meshName": "suzuka_2001-248",
+      "importedMaterialName": "PITROAD",
+      "materialId": "suzukibananini_pitroad"
+    },
+    {
+      "meshIndex": 249,
+      "meshName": "suzuka_2001-249",
+      "importedMaterialName": "ROAD07",
+      "materialId": "suzukibananini_road07"
+    },
+    {
+      "meshIndex": 250,
+      "meshName": "suzuka_2001-250",
+      "importedMaterialName": "ROAD01",
+      "materialId": "suzukibananini_road01"
+    },
+    {
+      "meshIndex": 251,
+      "meshName": "suzuka_2001-251",
+      "importedMaterialName": "flag_japan",
+      "materialId": "suzukibananini_flag_japan"
+    },
+    {
+      "meshIndex": 252,
+      "meshName": "suzuka_2001-252",
+      "importedMaterialName": "flag_fia",
+      "materialId": "suzukibananini_flag_fia"
+    },
+    {
+      "meshIndex": 253,
+      "meshName": "suzuka_2001-253",
+      "importedMaterialName": "flag_jaf",
+      "materialId": "suzukibananini_flag_jaf"
+    },
+    {
+      "meshIndex": 254,
+      "meshName": "suzuka_2001-254",
+      "importedMaterialName": "flag_f1",
+      "materialId": "suzukibananini_flag_f1"
+    },
+    {
+      "meshIndex": 255,
+      "meshName": "suzuka_2001-255",
+      "importedMaterialName": "flag_fujitv",
+      "materialId": "suzukibananini_flag_fujitv"
+    },
+    {
+      "meshIndex": 256,
+      "meshName": "suzuka_2001-256",
+      "importedMaterialName": "TREE09",
+      "materialId": "suzukibananini_tree09"
+    },
+    {
+      "meshIndex": 257,
+      "meshName": "suzuka_2001-257",
+      "importedMaterialName": "TREE04",
+      "materialId": "suzukibananini_tree04"
+    },
+    {
+      "meshIndex": 258,
+      "meshName": "suzuka_2001-258",
+      "importedMaterialName": "TREE03",
+      "materialId": "suzukibananini_tree03"
+    },
+    {
+      "meshIndex": 259,
+      "meshName": "suzuka_2001-259",
+      "importedMaterialName": "TREE02",
+      "materialId": "suzukibananini_tree02"
+    },
+    {
+      "meshIndex": 260,
+      "meshName": "suzuka_2001-260",
+      "importedMaterialName": "TREE01",
+      "materialId": "suzukibananini_tree01"
+    },
+    {
+      "meshIndex": 261,
+      "meshName": "suzuka_2001-261",
+      "importedMaterialName": "TREE06",
+      "materialId": "suzukibananini_tree06"
+    },
+    {
+      "meshIndex": 262,
+      "meshName": "suzuka_2001-262",
+      "importedMaterialName": "TREE05",
+      "materialId": "suzukibananini_tree05"
+    },
+    {
+      "meshIndex": 263,
+      "meshName": "suzuka_2001-263",
+      "importedMaterialName": "SHRUB_THREE",
+      "materialId": "suzukibananini_shrub_three"
+    },
+    {
+      "meshIndex": 264,
+      "meshName": "suzuka_2001-264",
+      "importedMaterialName": "SHRUB_ONE",
+      "materialId": "suzukibananini_shrub_one"
+    },
+    {
+      "meshIndex": 265,
+      "meshName": "suzuka_2001-265",
+      "importedMaterialName": "SHRUB_FINE",
+      "materialId": "suzukibananini_shrub_fine"
+    },
+    {
+      "meshIndex": 266,
+      "meshName": "suzuka_2001-266",
+      "importedMaterialName": "SHRUB_FOUR",
+      "materialId": "suzukibananini_shrub_four"
+    },
+    {
+      "meshIndex": 267,
+      "meshName": "suzuka_2001-267",
+      "importedMaterialName": "SHRUB_TWO",
+      "materialId": "suzukibananini_shrub_two"
+    },
+    {
+      "meshIndex": 268,
+      "meshName": "suzuka_2001-268",
+      "importedMaterialName": "TREE_SHADOW",
+      "materialId": "suzukibananini_tree_shadow"
+    },
+    {
+      "meshIndex": 269,
+      "meshName": "suzuka_2001-269",
+      "importedMaterialName": "POLE_LINE",
+      "materialId": "suzukibananini_pole_line"
+    },
+    {
+      "meshIndex": 270,
+      "meshName": "suzuka_2001-270",
+      "importedMaterialName": "towerdisplay2",
+      "materialId": "suzukibananini_towerdisplay2"
+    },
+    {
+      "meshIndex": 271,
+      "meshName": "suzuka_2001-271",
+      "importedMaterialName": "timedisplay1",
+      "materialId": "suzukibananini_timedisplay1"
+    },
+    {
+      "meshIndex": 272,
+      "meshName": "suzuka_2001-272",
+      "importedMaterialName": "towerdisplay",
+      "materialId": "suzukibananini_towerdisplay"
+    },
+    {
+      "meshIndex": 273,
+      "meshName": "suzuka_2001-273",
+      "importedMaterialName": "278",
+      "materialId": "suzukibananini_278"
+    },
+    {
+      "meshIndex": 274,
+      "meshName": "suzuka_2001-274",
+      "importedMaterialName": "276",
+      "materialId": "suzukibananini_276"
+    },
+    {
+      "meshIndex": 275,
+      "meshName": "suzuka_2001-275",
+      "importedMaterialName": "275",
+      "materialId": "suzukibananini_275"
+    },
+    {
+      "meshIndex": 276,
+      "meshName": "suzuka_2001-276",
+      "importedMaterialName": "230",
+      "materialId": "suzukibananini_230"
+    },
+    {
+      "meshIndex": 277,
+      "meshName": "suzuka_2001-277",
+      "importedMaterialName": "310",
+      "materialId": "suzukibananini_310"
+    },
+    {
+      "meshIndex": 278,
+      "meshName": "suzuka_2001-278",
+      "importedMaterialName": "DIANXIAN",
+      "materialId": "suzukibananini_dianxian"
+    },
+    {
+      "meshIndex": 279,
+      "meshName": "suzuka_2001-279",
+      "importedMaterialName": "331",
+      "materialId": "suzukibananini_331"
+    },
+    {
+      "meshIndex": 280,
+      "meshName": "suzuka_2001-280",
+      "importedMaterialName": "334",
+      "materialId": "suzukibananini_334"
+    },
+    {
+      "meshIndex": 281,
+      "meshName": "suzuka_2001-281",
+      "importedMaterialName": "340",
+      "materialId": "suzukibananini_340"
+    },
+    {
+      "meshIndex": 282,
+      "meshName": "suzuka_2001-282",
+      "importedMaterialName": "349",
+      "materialId": "suzukibananini_349"
+    },
+    {
+      "meshIndex": 283,
+      "meshName": "suzuka_2001-283",
+      "importedMaterialName": "343",
+      "materialId": "suzukibananini_343"
+    },
+    {
+      "meshIndex": 284,
+      "meshName": "suzuka_2001-284",
+      "importedMaterialName": "338",
+      "materialId": "suzukibananini_338"
+    },
+    {
+      "meshIndex": 285,
+      "meshName": "suzuka_2001-285",
+      "importedMaterialName": "362",
+      "materialId": "suzukibananini_362"
+    },
+    {
+      "meshIndex": 286,
+      "meshName": "suzuka_2001-286",
+      "importedMaterialName": "351",
+      "materialId": "suzukibananini_351"
+    },
+    {
+      "meshIndex": 287,
+      "meshName": "suzuka_2001-287",
+      "importedMaterialName": "365",
+      "materialId": "suzukibananini_365"
+    },
+    {
+      "meshIndex": 288,
+      "meshName": "suzuka_2001-288",
+      "importedMaterialName": "348",
+      "materialId": "suzukibananini_348"
+    },
+    {
+      "meshIndex": 289,
+      "meshName": "suzuka_2001-289",
+      "importedMaterialName": "147",
+      "materialId": "suzukibananini_147"
+    },
+    {
+      "meshIndex": 290,
+      "meshName": "suzuka_2001-290",
+      "importedMaterialName": "400",
+      "materialId": "suzukibananini_400"
+    },
+    {
+      "meshIndex": 291,
+      "meshName": "suzuka_2001-291",
+      "importedMaterialName": "399",
+      "materialId": "suzukibananini_399"
+    },
+    {
+      "meshIndex": 292,
+      "meshName": "suzuka_2001-292",
+      "importedMaterialName": "402",
+      "materialId": "suzukibananini_402"
+    },
+    {
+      "meshIndex": 293,
+      "meshName": "suzuka_2001-293",
+      "importedMaterialName": "401",
+      "materialId": "suzukibananini_401"
+    },
+    {
+      "meshIndex": 294,
+      "meshName": "suzuka_2001-294",
+      "importedMaterialName": "069",
+      "materialId": "suzukibananini_069"
+    },
+    {
+      "meshIndex": 295,
+      "meshName": "suzuka_2001-295",
+      "importedMaterialName": "065",
+      "materialId": "suzukibananini_065"
+    },
+    {
+      "meshIndex": 296,
+      "meshName": "suzuka_2001-296",
+      "importedMaterialName": "PITEXITLINE",
+      "materialId": "suzukibananini_pitexitline"
+    },
+    {
+      "meshIndex": 297,
+      "meshName": "suzuka_2001-297",
+      "importedMaterialName": "336",
+      "materialId": "suzukibananini_336"
+    },
+    {
+      "meshIndex": 298,
+      "meshName": "suzuka_2001-298",
+      "importedMaterialName": "350",
+      "materialId": "suzukibananini_350"
+    },
+    {
+      "meshIndex": 299,
+      "meshName": "suzuka_2001-299",
+      "importedMaterialName": "360",
+      "materialId": "suzukibananini_360"
+    },
+    {
+      "meshIndex": 300,
+      "meshName": "suzuka_2001-300",
+      "importedMaterialName": "353",
+      "materialId": "suzukibananini_353"
+    },
+    {
+      "meshIndex": 301,
+      "meshName": "suzuka_2001-301",
+      "importedMaterialName": "line4",
+      "materialId": "suzukibananini_line4"
+    },
+    {
+      "meshIndex": 302,
+      "meshName": "suzuka_2001-302",
+      "importedMaterialName": "282",
+      "materialId": "suzukibananini_282"
+    },
+    {
+      "meshIndex": 303,
+      "meshName": "suzuka_2001-303",
+      "importedMaterialName": "356",
+      "materialId": "suzukibananini_356"
+    },
+    {
+      "meshIndex": 304,
+      "meshName": "suzuka_2001-304",
+      "importedMaterialName": "378",
+      "materialId": "suzukibananini_378"
+    },
+    {
+      "meshIndex": 305,
+      "meshName": "suzuka_2001-305",
+      "importedMaterialName": "142",
+      "materialId": "suzukibananini_142"
+    },
+    {
+      "meshIndex": 306,
+      "meshName": "suzuka_2001-306",
+      "importedMaterialName": "141",
+      "materialId": "suzukibananini_141"
+    },
+    {
+      "meshIndex": 307,
+      "meshName": "suzuka_2001-307",
+      "importedMaterialName": "GAOYADIANTA01",
+      "materialId": "suzukibananini_gaoyadianta01"
+    },
+    {
+      "meshIndex": 308,
+      "meshName": "suzuka_2001-308",
+      "importedMaterialName": "logo_orange_grass",
+      "materialId": "suzukibananini_logo_orange_grass"
+    },
+    {
+      "meshIndex": 309,
+      "meshName": "suzuka_2001-309",
+      "importedMaterialName": "002",
+      "materialId": "suzukibananini_002"
+    },
+    {
+      "meshIndex": 310,
+      "meshName": "suzuka_2001-310",
+      "importedMaterialName": "lapdisplay",
+      "materialId": "suzukibananini_lapdisplay"
+    },
+    {
+      "meshIndex": 311,
+      "meshName": "suzuka_2001-311",
+      "importedMaterialName": "HORN01",
+      "materialId": "suzukibananini_horn01"
+    },
+    {
+      "meshIndex": 312,
+      "meshName": "suzuka_2001-312",
+      "importedMaterialName": "grid",
+      "materialId": "suzukibananini_grid"
+    },
+    {
+      "meshIndex": 313,
+      "meshName": "suzuka_2001-313",
+      "importedMaterialName": "TIESIWANG01",
+      "materialId": "suzukibananini_tiesiwang01"
+    },
+    {
+      "meshIndex": 314,
+      "meshName": "suzuka_2001-314",
+      "importedMaterialName": "clockdisplay",
+      "materialId": "suzukibananini_clockdisplay"
+    },
+    {
+      "meshIndex": 315,
+      "meshName": "suzuka_2001-315",
+      "importedMaterialName": "047",
+      "materialId": "suzukibananini_047"
+    },
+    {
+      "meshIndex": 316,
+      "meshName": "suzuka_2001-316",
+      "importedMaterialName": "046",
+      "materialId": "suzukibananini_046"
+    },
+    {
+      "meshIndex": 317,
+      "meshName": "suzuka_2001-317",
+      "importedMaterialName": "001",
+      "materialId": "suzukibananini_001"
+    },
+    {
+      "meshIndex": 318,
+      "meshName": "suzuka_2001-318",
+      "importedMaterialName": "ROAD03",
+      "materialId": "suzukibananini_road03"
+    },
+    {
+      "meshIndex": 319,
+      "meshName": "suzuka_2001-319",
+      "importedMaterialName": "ROAD04",
+      "materialId": "suzukibananini_road04"
+    },
+    {
+      "meshIndex": 320,
+      "meshName": "suzuka_2001_groove-0",
+      "importedMaterialName": "skidmark2",
+      "materialId": "suzukibananini_skidmark2"
+    },
+    {
+      "meshIndex": 321,
+      "meshName": "suzuka_2001_groove-1",
+      "importedMaterialName": "skidmark",
+      "materialId": "suzukibananini_skidmark"
+    },
+    {
+      "meshIndex": 322,
+      "meshName": "suzuka_2001_groove-2",
+      "importedMaterialName": "groove",
+      "materialId": "suzukibananini_groove"
+    },
+    {
+      "meshIndex": 323,
+      "meshName": "suzuka_ferriswheel-0",
+      "importedMaterialName": "ZHUANPAN06",
+      "materialId": "suzukibananini_zhuanpan06"
+    },
+    {
+      "meshIndex": 324,
+      "meshName": "suzuka_ferriswheel-1",
+      "importedMaterialName": "ZHUANPAN03",
+      "materialId": "suzukibananini_zhuanpan03"
+    },
+    {
+      "meshIndex": 325,
+      "meshName": "suzuka_ferriswheel-2",
+      "importedMaterialName": "ZHUANPAN00",
+      "materialId": "suzukibananini_zhuanpan00"
+    }
+  ]
+}

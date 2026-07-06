@@ -32,6 +32,9 @@ std::vector<ImportedMeshInfo> GetMeshInfos(const std::shared_ptr<::Model>& model
         info.meshIndex = static_cast<unsigned int>(i);
         info.meshName = m.name;
         info.materialName = m.materialName;
+        info.materialAlphaMode = m.materialAlphaMode;
+        info.materialAlphaCutoff = m.materialAlphaCutoff;
+        info.materialOpacity = m.materialOpacity;
         if (!m.vertices.empty()) {
             info.localBoundsMin = m.vertices.front().Position;
             info.localBoundsMax = m.vertices.front().Position;
@@ -44,11 +47,26 @@ std::vector<ImportedMeshInfo> GetMeshInfos(const std::shared_ptr<::Model>& model
                 info.localBoundsMax.z = (std::max)(info.localBoundsMax.z, vertex.Position.z);
             }
         }
+        auto assignTextureSlot = [&](const ::Texture& texture,
+                                     std::string& path,
+                                     std::vector<unsigned char>& embeddedData,
+                                     std::string& embeddedExtension) {
+            path = texture.path;
+            embeddedData = texture.embeddedData;
+            embeddedExtension = texture.embeddedExtension;
+        };
         for (const ::Texture& texture : m.textures) {
             if (texture.type == "texture_albedo") {
                 info.diffuseTextureId = texture.id;
-                info.diffuseTexturePath = texture.path;
-                break;
+                assignTextureSlot(texture, info.diffuseTexturePath, info.diffuseTextureEmbeddedData, info.diffuseTextureEmbeddedExtension);
+            } else if (texture.type == "texture_normal") {
+                assignTextureSlot(texture, info.normalTexturePath, info.normalTextureEmbeddedData, info.normalTextureEmbeddedExtension);
+            } else if (texture.type == "texture_metallic") {
+                assignTextureSlot(texture, info.metallicTexturePath, info.metallicTextureEmbeddedData, info.metallicTextureEmbeddedExtension);
+            } else if (texture.type == "texture_roughness") {
+                assignTextureSlot(texture, info.roughnessTexturePath, info.roughnessTextureEmbeddedData, info.roughnessTextureEmbeddedExtension);
+            } else if (texture.type == "texture_ao") {
+                assignTextureSlot(texture, info.aoTexturePath, info.aoTextureEmbeddedData, info.aoTextureEmbeddedExtension);
             }
         }
         // Store CPU vertex positions and indices for mouse-pick narrow phase.

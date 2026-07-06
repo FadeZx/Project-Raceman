@@ -591,6 +591,11 @@ void SceneEditor::SelectProjectFile(const std::string& path) {
     }
     inspectMaterial_ = false;
     inspectedMaterialId_.clear();
+    if (IsMeshAssetPath(selectedProjectFile_)) {
+        selectedIndex_ = -1;
+        selectedIndices_.clear();
+        inspectMaterial_ = false;
+    }
 
     if (IsVehicleConfigAssetPath(selectedProjectFile_)) {
         // Opening a vehicle config — reset its state and close the sound editor

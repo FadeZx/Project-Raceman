@@ -25,6 +25,7 @@
 using namespace std;
 
 unsigned int TextureFromFile(const char* path, const string& directory, bool gamma = false);
+unsigned int TextureFromMemory(const unsigned char* data, int dataSize, bool gamma = false);
 
 class Model
 {
@@ -192,6 +193,27 @@ private:
         if (material && material->Get(AI_MATKEY_NAME, matName) == AI_SUCCESS) {
             materialName = matName.C_Str();
         }
+        std::string materialAlphaMode;
+        float materialAlphaCutoff = 0.0f;
+        float materialOpacity = 1.0f;
+        if (material) {
+            float opacity = 1.0f;
+            if (material->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS) {
+                materialOpacity = opacity;
+            }
+            aiString alphaMode;
+            if (material->Get("$mat.gltf.alphaMode", 0, 0, alphaMode) == AI_SUCCESS) {
+                materialAlphaMode = alphaMode.C_Str();
+                std::transform(materialAlphaMode.begin(), materialAlphaMode.end(), materialAlphaMode.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+            }
+            float alphaCutoff = 0.0f;
+            if (material->Get("$mat.gltf.alphaCutoff", 0, 0, alphaCutoff) == AI_SUCCESS) {
+                materialAlphaCutoff = alphaCutoff;
+            }
+            if (materialAlphaMode.empty() && materialOpacity < 0.999f) {
+                materialAlphaMode = "blend";
+            }
+        }
         // we assume a convention for sampler names in the shaders. Each diffuse texture should be named
         // as 'texture_diffuseN' where N is a sequential number ranging from 1 to MAX_SAMPLER_NUMBER. 
         // Same applies to other texture as the following list summarizes:
@@ -212,29 +234,35 @@ private:
         //std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
         //textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
 
-        vector<Texture> albedoMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_albedo");
+        vector<Texture> albedoMaps = loadMaterialTextures(material, scene, aiTextureType_DIFFUSE, "texture_albedo");
         textures.insert(textures.end(), albedoMaps.begin(), albedoMaps.end());
 
-        vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
+        vector<Texture> normalMaps = loadMaterialTextures(material, scene, aiTextureType_NORMALS, "texture_normal");
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 
-        vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_metallic");
+        vector<Texture> metallicMaps = loadMaterialTextures(material, scene, aiTextureType_METALNESS, "texture_metallic");
+        if (metallicMaps.empty()) {
+            metallicMaps = loadMaterialTextures(material, scene, aiTextureType_SPECULAR, "texture_metallic");
+        }
         textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
 
-        vector<Texture> roughnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness");
+        vector<Texture> roughnessMaps = loadMaterialTextures(material, scene, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness");
         textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
 
-        vector<Texture> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, "texture_ao");
+        vector<Texture> aoMaps = loadMaterialTextures(material, scene, aiTextureType_AMBIENT_OCCLUSION, "texture_ao");
+        if (aoMaps.empty()) {
+            aoMaps = loadMaterialTextures(material, scene, aiTextureType_LIGHTMAP, "texture_ao");
+        }
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
 
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures, materialName, std::string(mesh->mName.C_Str()));
+        return Mesh(vertices, indices, textures, materialName, std::string(mesh->mName.C_Str()), materialAlphaMode, materialAlphaCutoff, materialOpacity);
 
     }
 
     // checks all material textures of a given type and loads the textures if they're not loaded yet.
     // the required info is returned as a Texture struct.
-    vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, string typeName) {
+    vector<Texture> loadMaterialTextures(aiMaterial* mat, const aiScene* scene, aiTextureType type, string typeName) {
         vector<Texture> textures;
         if (!mat) {
             return textures;
@@ -269,8 +297,33 @@ private:
             if (!skip) {
                 // If texture hasn't been loaded already, load it
                 Texture texture;
-                texture.id = TextureFromFile(texturePath.c_str(), this->directory);  // Assuming TextureFromFile is your custom function
+                if (scene != nullptr) {
+                    if (const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(texturePath.c_str())) {
+                        texture.embeddedExtension = embeddedTexture->achFormatHint[0] != '\0' ? std::string(embeddedTexture->achFormatHint) : std::string("png");
+                        if (embeddedTexture->mHeight == 0) {
+                            const int byteCount = static_cast<int>(embeddedTexture->mWidth);
+                            const unsigned char* bytes = reinterpret_cast<const unsigned char*>(embeddedTexture->pcData);
+                            texture.embeddedData.assign(bytes, bytes + byteCount);
+                            texture.id = TextureFromMemory(texture.embeddedData.data(), byteCount);
+                        } else {
+                            const int byteCount = static_cast<int>(embeddedTexture->mWidth * embeddedTexture->mHeight * sizeof(aiTexel));
+                            const unsigned char* bytes = reinterpret_cast<const unsigned char*>(embeddedTexture->pcData);
+                            texture.embeddedData.assign(bytes, bytes + byteCount);
+                            texture.embeddedExtension = "rgba";
+                            texture.id = 0;
+                        }
+                    }
+                }
+                if (texture.id == 0 && texture.embeddedData.empty()) {
+                    texture.id = TextureFromFile(texturePath.c_str(), this->directory);  // Assuming TextureFromFile is your custom function
+                }
                 if (texture.id == 0) {
+                    if (!texture.embeddedData.empty()) {
+                        texture.type = typeName;
+                        texture.path = texturePath;
+                        textures.push_back(texture);
+                        textures_loaded.push_back(texture);
+                    }
                     continue;
                 }
                 texture.type = typeName;
@@ -331,6 +384,54 @@ unsigned int TextureFromFile(const char* path, const string& directory, bool gam
     else
     {
         std::cout << "Texture failed to load at path: " << filename << std::endl;
+        glDeleteTextures(1, &textureID);
+        textureID = 0;
+        stbi_image_free(data);
+    }
+
+    return textureID;
+}
+
+unsigned int TextureFromMemory(const unsigned char* bytes, int dataSize, bool gamma)
+{
+    (void)gamma;
+    if (bytes == nullptr || dataSize <= 0) {
+        return 0;
+    }
+
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char* data = stbi_load_from_memory(bytes, dataSize, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format = GL_RGB;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+        else {
+            stbi_image_free(data);
+            glDeleteTextures(1, &textureID);
+            return 0;
+        }
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
         glDeleteTextures(1, &textureID);
         textureID = 0;
         stbi_image_free(data);

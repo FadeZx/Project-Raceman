@@ -98,7 +98,7 @@ std::vector<int> SortedSelectedIndices(const std::vector<int>& selectedIndices, 
 } // namespace
 
 void SceneEditor::RenderScenePanel() {
-    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse)) {
+    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_NoCollapse)) {
         scenePanelHovered_ = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
         scenePanelFocused_ = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
         hierarchyKeyboardTargetObjectId_.clear();
@@ -147,87 +147,143 @@ void SceneEditor::RenderScenePanel() {
             return ProjectAssetPathToAbsolute("assets").string();
         };
 
-        // Add button with dropdown (Scene panel)
-        if (ImGui::BeginMenuBar()) {
-            if (ImGui::BeginMenu("Add")) {
-                if (ImGui::MenuItem("Empty GameObject")) {
-                    AddEmptyObject();
+        auto addEmptyObjectAsChild = [&](int parentIndex) {
+            if (parentIndex < 0 || parentIndex >= static_cast<int>(objects_.size())) {
+                AddEmptyObject();
+                return;
+            }
+
+            PushUndoState();
+            SceneObject object;
+            object.id = MakeId("gameobject");
+            object.name = "GameObject";
+            object.type = "GameObject";
+            object.parentId = objects_[parentIndex].id;
+            object.hasMeshFilter = false;
+            object.hasMeshRenderer = false;
+            object.hasScriptComponent = false;
+
+            const std::string newObjectId = object.id;
+            const std::string parentId = object.parentId;
+            objects_.push_back(std::move(object));
+            hierarchyOpenStates_[parentId] = true;
+            Select(static_cast<int>(objects_.size()) - 1);
+            pendingHierarchyRevealObjectId_ = newObjectId;
+            renamingObjectIndex_ = -1;
+            inspectMaterial_ = false;
+            if (console_) {
+                console_->AddLog("Added child GameObject.");
+            }
+            if (onDirty_) onDirty_();
+        };
+
+        auto renderAddMenuItems = [&]() {
+            if (ImGui::MenuItem("Empty GameObject")) {
+                AddEmptyObject();
+            }
+            if (ImGui::BeginMenu("Mesh")) {
+                if (ImGui::MenuItem("Plane")) {
+                    AddPlane();
                 }
-                if (ImGui::BeginMenu("Mesh")) {
-                    if (ImGui::MenuItem("Plane")) {
-                        AddPlane();
-                    }
-                    if (ImGui::MenuItem("Cube")) {
-                        AddBuiltInPrimitiveObject("Cube");
-                    }
-                    if (ImGui::MenuItem("Sphere")) {
-                        AddBuiltInPrimitiveObject("Sphere");
-                    }
-                    if (ImGui::MenuItem("Cone")) {
-                        AddBuiltInPrimitiveObject("Cone");
-                    }
-                    if (ImGui::MenuItem("Capsule")) {
-                        AddBuiltInPrimitiveObject("Capsule");
-                    }
-                    ImGui::EndMenu();
+                if (ImGui::MenuItem("Cube")) {
+                    AddBuiltInPrimitiveObject("Cube");
                 }
-                if (ImGui::MenuItem("Camera")) {
-                    AddCameraObject();
+                if (ImGui::MenuItem("Sphere")) {
+                    AddBuiltInPrimitiveObject("Sphere");
                 }
-                if (ImGui::MenuItem("Track Generator")) {
-                    AddTrackGeneratorObject();
+                if (ImGui::MenuItem("Cone")) {
+                    AddBuiltInPrimitiveObject("Cone");
                 }
-                if (ImGui::BeginMenu("Light")) {
-                    if (ImGui::MenuItem("Directional Light")) {
-                        AddLightObject(LightType::Directional);
-                    }
-                    if (ImGui::MenuItem("Point Light")) {
-                        AddLightObject(LightType::Point);
-                    }
-                    if (ImGui::MenuItem("Spot Light")) {
-                        AddLightObject(LightType::Spot);
-                    }
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Model")) {
-                    if (ImGui::MenuItem("Import Mesh")) {
-#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
-                        std::string selected = OpenMeshFileDialogWin32(getObjStartDirectory());
-                        if (!selected.empty()) {
-                            ImportObj(selected);
-                        }
-#else
-                        objScanDir_ = NormalizeSlashes(selectedProjectDirectory_.empty() ? std::string("assets") : selectedProjectDirectory_);
-                        std::snprintf(importPath_, sizeof(importPath_), "%s", objScanDir_.c_str());
-                        ScanObjDir(objScanDir_);
-                        objSelectIndex_ = objFiles_.empty() ? -1 : 0;
-                        showImportObjPopup_ = true;
-#endif
-                    }
-                    ImGui::EndMenu();
+                if (ImGui::MenuItem("Capsule")) {
+                    AddBuiltInPrimitiveObject("Capsule");
                 }
                 ImGui::EndMenu();
             }
-            ImGui::EndMenuBar();
-        }
-        if (ImGui::Button(scriptsRunning_ && !scriptsPaused_ ? "||" : ">")) {
+            if (ImGui::MenuItem("Camera")) {
+                AddCameraObject();
+            }
+            if (ImGui::MenuItem("Track Generator")) {
+                AddTrackGeneratorObject();
+            }
+            if (ImGui::BeginMenu("Light")) {
+                if (ImGui::MenuItem("Directional Light")) {
+                    AddLightObject(LightType::Directional);
+                }
+                if (ImGui::MenuItem("Point Light")) {
+                    AddLightObject(LightType::Point);
+                }
+                if (ImGui::MenuItem("Spot Light")) {
+                    AddLightObject(LightType::Spot);
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Model")) {
+                if (ImGui::MenuItem("Import Mesh")) {
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+                    std::string selected = OpenMeshFileDialogWin32(getObjStartDirectory());
+                    if (!selected.empty()) {
+                        ImportObj(selected);
+                    }
+#else
+                    objScanDir_ = NormalizeSlashes(selectedProjectDirectory_.empty() ? std::string("assets") : selectedProjectDirectory_);
+                    std::snprintf(importPath_, sizeof(importPath_), "%s", objScanDir_.c_str());
+                    ScanObjDir(objScanDir_);
+                    objSelectIndex_ = objFiles_.empty() ? -1 : 0;
+                    showImportObjPopup_ = true;
+#endif
+                }
+                ImGui::EndMenu();
+            }
+        };
+
+        const bool isPlaying = scriptsRunning_ && !scriptsPaused_;
+        const char* playPauseIcon = !scriptsRunning_
+            ? "control-play.png"
+            : (scriptsPaused_ ? "control-resume.png" : "control-pause.png");
+        const unsigned int playPauseTexture = GetComponentIconTexture(playPauseIcon);
+        const unsigned int stopTexture = GetComponentIconTexture("control-stop.png");
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(7.0f, 4.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.08f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 1.0f, 1.0f, 0.14f));
+        const bool playPressed = playPauseTexture != 0
+            ? ImGui::ImageButton("##PlayPause", static_cast<ImTextureID>(playPauseTexture), ImVec2(18.0f, 18.0f), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f))
+            : ImGui::Button(!scriptsRunning_ ? "Play" : (scriptsPaused_ ? "Resume" : "Pause"), ImVec2(74.0f, 0.0f));
+        if (playPressed) {
             if (scriptsRunning_) {
                 SetScriptsPaused(!scriptsPaused_);
             } else {
                 SetScriptsRunning(true);
             }
         }
+        ImGui::PopStyleColor(3);
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("%s", scriptsRunning_ && !scriptsPaused_ ? "Pause" : "Play");
+            ImGui::SetTooltip("%s", !scriptsRunning_ ? "Start play mode" : (isPlaying ? "Pause play mode" : "Resume play mode"));
         }
         ImGui::SameLine();
         ImGui::BeginDisabled(!scriptsRunning_);
-        if (ImGui::Button("[]")) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.08f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 1.0f, 1.0f, 0.14f));
+        const bool stopPressed = stopTexture != 0
+            ? ImGui::ImageButton("##Stop", static_cast<ImTextureID>(stopTexture), ImVec2(18.0f, 18.0f), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f))
+            : ImGui::Button("Stop", ImVec2(62.0f, 0.0f));
+        if (stopPressed) {
             SetScriptsRunning(false);
         }
+        ImGui::PopStyleColor(3);
         ImGui::EndDisabled();
+        ImGui::PopStyleVar();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip("Stop");
+        }
+        ImGui::SameLine(0.0f, 7.0f);
+        if (ImGui::Button("Add", ImVec2(48.0f, 0.0f))) {
+            ImGui::OpenPopup("SceneAddPopup");
+        }
+        if (ImGui::BeginPopup("SceneAddPopup")) {
+            renderAddMenuItems();
+            ImGui::EndPopup();
         }
         ImGui::Separator();
         if (IsGameViewActive()) {
@@ -277,30 +333,6 @@ void SceneEditor::RenderScenePanel() {
             ImGui::EndPopup();
         }
 
-        if (showImportMeshOptionsPopup_) { ImGui::OpenPopup("Import Mesh Options"); showImportMeshOptionsPopup_ = false; }
-        if (ImGui::BeginPopupModal("Import Mesh Options", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextUnformatted("Pivot Handling");
-            ImGui::Separator();
-            ImGui::RadioButton("Shared origin (OBJ default)", &pendingImportMeshPivotMode_, 0);
-            ImGui::RadioButton("Center pivot per mesh", &pendingImportMeshPivotMode_, 1);
-            ImGui::Separator();
-            ImGui::TextDisabled("Shared origin keeps meshes aligned exactly as exported.");
-            ImGui::TextDisabled("Center pivot places each mesh at its bounding-box center.");
-            ImGui::Separator();
-            if (ImGui::Button("Import")) {
-                ImportObjWithOptions(pendingImportMeshPath_, pendingImportMeshPivotMode_);
-                pendingImportMeshPath_.clear();
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel")) {
-                pendingImportMeshPath_.clear();
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-
-        ImGui::TextDisabled("Drag onto an object to parent it. Drag onto the line under an object to reorder it.");
         bool hierarchyChanged = false;
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
@@ -348,7 +380,7 @@ void SceneEditor::RenderScenePanel() {
 
         if (ImGui::BeginChild("SceneHierarchyTree", ImVec2(0.0f, 0.0f), false)) {
             bool hierarchyDeleted = false;
-            std::function<void(int, std::unordered_set<std::string>&)> renderObjectRow = [&](int i, std::unordered_set<std::string>& renderPath) {
+            std::function<void(int, int, std::unordered_set<std::string>&)> renderObjectRow = [&](int i, int depth, std::unordered_set<std::string>& renderPath) {
                 if (hierarchyDeleted || hierarchyChanged) {
                     return;
                 }
@@ -369,6 +401,17 @@ void SceneEditor::RenderScenePanel() {
                 }
 
                 ImGui::PushID(i);
+                const ImVec2 rowBgMin = ImGui::GetCursorScreenPos();
+                const float rowBgWidth = (std::max)(1.0f, ImGui::GetContentRegionAvail().x);
+                if (depth > 0) {
+                    const float depthAlpha = (std::min)(0.11f, 0.045f + depth * 0.018f);
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
+                    drawList->AddRectFilled(
+                        rowBgMin,
+                        ImVec2(rowBgMin.x + rowBgWidth, rowBgMin.y + ImGui::GetFrameHeight()),
+                        IM_COL32(255, 255, 255, static_cast<int>(depthAlpha * 255.0f)),
+                        2.0f);
+                }
                 if (renamingObjectIndex_ == i) {
                     if (focusObjectRename_) {
                         ImGui::SetKeyboardFocusHere();
@@ -501,6 +544,10 @@ void SceneEditor::RenderScenePanel() {
                             }
                             hierarchyChanged = true;
                         }
+                        if (ImGui::MenuItem("Add Empty Child")) {
+                            addEmptyObjectAsChild(i);
+                            hierarchyChanged = true;
+                        }
                         ImGui::Separator();
                         if (ImGui::MenuItem("Rename", "F2")) {
                             BeginObjectRename(i);
@@ -541,7 +588,7 @@ void SceneEditor::RenderScenePanel() {
                     if (hasChildTree) {
                         if (!hierarchyChanged) {
                             for (int childIndex : children) {
-                                renderObjectRow(childIndex, renderPath);
+                                renderObjectRow(childIndex, depth + 1, renderPath);
                                 if (hierarchyChanged) {
                                     break;
                                 }
@@ -554,12 +601,13 @@ void SceneEditor::RenderScenePanel() {
                     const ImVec2 reorderPos = ImGui::GetCursorScreenPos();
                     ImGui::InvisibleButton("##reorderAfter", ImVec2((std::max)(1.0f, ImGui::GetContentRegionAvail().x), reorderHeight));
                     const bool reorderHovered = ImGui::IsItemHovered();
-                    ImDrawList* drawList = ImGui::GetWindowDrawList();
-                    const ImU32 reorderColor = ImGui::GetColorU32(reorderHovered ? ImGuiCol_DragDropTarget : ImGuiCol_Separator);
-                    drawList->AddLine(ImVec2(reorderPos.x, reorderPos.y + reorderHeight * 0.5f),
-                                      ImVec2(reorderPos.x + ImGui::GetContentRegionAvail().x, reorderPos.y + reorderHeight * 0.5f),
-                                      reorderColor,
-                                      reorderHovered ? 2.0f : 1.0f);
+                    if (reorderHovered) {
+                        ImDrawList* drawList = ImGui::GetWindowDrawList();
+                        drawList->AddLine(ImVec2(reorderPos.x, reorderPos.y + reorderHeight * 0.5f),
+                                          ImVec2(reorderPos.x + ImGui::GetContentRegionAvail().x, reorderPos.y + reorderHeight * 0.5f),
+                                          ImGui::GetColorU32(ImGuiCol_DragDropTarget),
+                                          2.0f);
+                    }
                     if (ImGui::BeginDragDropTarget()) {
                         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
                             if (payload->DataSize == sizeof(int)) {
@@ -602,7 +650,7 @@ void SceneEditor::RenderScenePanel() {
                     continue;
                 }
                 std::unordered_set<std::string> renderPath;
-                renderObjectRow(i, renderPath);
+                renderObjectRow(i, 0, renderPath);
             }
 
             const ImVec2 emptySpace = ImGui::GetContentRegionAvail();
@@ -652,6 +700,12 @@ void SceneEditor::RenderScenePanel() {
                         }
                     }
                     ImGui::EndDragDropTarget();
+                }
+                if (ImGui::BeginPopupContextItem("##HierarchyEmptyContext")) {
+                    ImGui::TextDisabled("Add to Scene");
+                    ImGui::Separator();
+                    renderAddMenuItems();
+                    ImGui::EndPopup();
                 }
             }
         }

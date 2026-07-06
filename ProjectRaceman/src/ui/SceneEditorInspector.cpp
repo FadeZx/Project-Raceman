@@ -493,6 +493,7 @@ bool RenderRemovableComponentHeader(const char* label,
     const bool rowPressed = ImGui::InvisibleButton("##componentHeaderRow", rowSize);
     const bool rowHovered = ImGui::IsItemHovered();
     const bool rowFocused = ImGui::IsItemFocused();
+    const bool rowActive = ImGui::IsItemActive();
     bool toggledOpen = false;
     if (rowPressed && !mouseOnCheckbox && !mouseOnRemove) {
         open = !open;
@@ -523,23 +524,30 @@ bool RenderRemovableComponentHeader(const char* label,
     }
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();
-    const ImVec4 bg = rowHovered ? ScaleColor(accent, 0.92f) : ScaleColor(accent, 0.74f);
+    const bool rowHighlighted = rowFocused || rowActive;
+    const ImVec4 bg = rowHighlighted ? ScaleColor(accent, 1.08f) : (rowHovered ? ScaleColor(accent, 0.92f) : ScaleColor(accent, 0.74f));
     drawList->AddRectFilled(rowMin, rowMax, ImGui::GetColorU32(bg), 2.0f);
-    drawList->AddRect(rowMin, rowMax, ImGui::GetColorU32(ScaleColor(accent, 1.15f)), 2.0f);
+    if (rowHighlighted) {
+        const ImU32 focusColor = IM_COL32(105, 190, 255, 255);
+        drawList->AddRect(rowMin, rowMax, focusColor, 2.0f, 0, 2.0f);
+        drawList->AddRect(ImVec2(rowMin.x + 1.0f, rowMin.y + 1.0f), ImVec2(rowMax.x - 1.0f, rowMax.y - 1.0f), IM_COL32(230, 248, 255, 170), 2.0f, 0, 1.0f);
+        drawList->AddRectFilled(ImVec2(rowMin.x, rowMin.y), ImVec2(rowMin.x + 4.0f, rowMax.y), focusColor, 2.0f);
+    }
     const ImU32 textColor = ImGui::GetColorU32(ImGuiCol_Text);
     const float arrowX = rowMin.x + 12.0f;
     const float arrowY = rowMin.y + rowHeight * 0.5f;
+    const float arrowHalf = 4.0f;
     if (open) {
         drawList->AddTriangleFilled(
-            ImVec2(arrowX - 4.0f, arrowY - 2.0f),
-            ImVec2(arrowX + 4.0f, arrowY - 2.0f),
-            ImVec2(arrowX, arrowY + 4.0f),
+            ImVec2(arrowX - arrowHalf, arrowY - arrowHalf * 0.55f),
+            ImVec2(arrowX + arrowHalf, arrowY - arrowHalf * 0.55f),
+            ImVec2(arrowX, arrowY + arrowHalf * 0.75f),
             textColor);
     } else {
         drawList->AddTriangleFilled(
-            ImVec2(arrowX - 2.0f, arrowY - 5.0f),
-            ImVec2(arrowX - 2.0f, arrowY + 5.0f),
-            ImVec2(arrowX + 4.0f, arrowY),
+            ImVec2(arrowX - arrowHalf * 0.55f, arrowY - arrowHalf),
+            ImVec2(arrowX - arrowHalf * 0.55f, arrowY + arrowHalf),
+            ImVec2(arrowX + arrowHalf * 0.75f, arrowY),
             textColor);
     }
 
@@ -567,7 +575,7 @@ bool RenderRemovableComponentHeader(const char* label,
     }
     drawList->AddText(textPos, textColor, label);
     if (outHeaderActive != nullptr) {
-        *outHeaderActive = rowHovered || rowFocused;
+        *outHeaderActive = rowHovered || rowFocused || rowActive;
     }
     if (outHeaderToggledOpen != nullptr) {
         *outHeaderToggledOpen = toggledOpen;
@@ -800,6 +808,8 @@ void SceneEditor::RenderInspectorPanel() {
         inspectorKeyboardTargetObjectId_.clear();
         if (inspectMaterial_) {
             RenderMaterialInspector();
+        } else if (selectedIndex_ < 0 && IsMeshAssetPath(selectedProjectFile_)) {
+            RenderModelAssetInspector();
         } else if (selectedIndices_.size() > 1) {
             RenderMultiSelectionInspector();
         } else if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())) {
@@ -3092,21 +3102,22 @@ void SceneEditor::RenderMultiSelectionInspector() {
         ImGui::EndTable();
     }
 
-    auto renderSharedEnabledHeader = [&](const char* label, const char* id, const std::string& icon, bool enabled, auto&& setter) {
-        ImGui::PushID(id);
-        RenderComponentIcon(GetComponentIconTexture(icon));
+    auto renderSharedEnabledHeader = [&](const char* label, const char* id, const std::string& icon, bool enabled, auto&& setter, auto&& remover) {
         bool changedEnabled = enabled;
-        if (ImGui::Checkbox("##multiComponentEnabled", &changedEnabled)) {
+        bool enabledChanged = false;
+        bool removeRequested = false;
+        const bool open = RenderRemovableComponentHeader(label, id, GetComponentIconTexture(icon), &changedEnabled, enabledChanged, removeRequested);
+        if (enabledChanged) {
             PushUndoState();
             forEachSelected([&](SceneObject& object) { setter(object, changedEnabled); });
             markDirty();
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Enable Component");
+        if (removeRequested) {
+            PushUndoState();
+            forEachSelected([&](SceneObject& object) { remover(object); });
+            markDirty();
+            return false;
         }
-        ImGui::SameLine();
-        const bool open = ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen);
-        ImGui::PopID();
         return open;
     };
 
@@ -3386,14 +3397,24 @@ void SceneEditor::RenderMultiSelectionInspector() {
     bool showedSharedComponent = false;
     if (allSelected([](const SceneObject& object) { return object.hasMeshFilter; })) {
         showedSharedComponent = true;
-        if (renderSharedEnabledHeader("Mesh Filter", "MultiMeshFilterHeader", "component-mesh-filter.png", active.meshFilter.enabled, [](SceneObject& object, bool value) { object.meshFilter.enabled = value; })) {
+        if (renderSharedEnabledHeader("Mesh Filter", "MultiMeshFilterHeader", "component-mesh-filter.png", active.meshFilter.enabled,
+            [](SceneObject& object, bool value) { object.meshFilter.enabled = value; },
+            [](SceneObject& object) {
+                object.hasMeshFilter = false;
+                object.meshFilter = MeshFilterComponent{};
+            })) {
             ImGui::TextDisabled("Mesh Filter is shared. Mesh replacement uses the active object for now.");
         }
     }
 
     if (allSelected([](const SceneObject& object) { return object.hasMeshRenderer; })) {
         showedSharedComponent = true;
-        if (renderSharedEnabledHeader("Mesh Renderer", "MultiMeshRendererHeader", "component-mesh-renderer.png", active.meshRenderer.enabled, [](SceneObject& object, bool value) { object.meshRenderer.enabled = value; })) {
+        if (renderSharedEnabledHeader("Mesh Renderer", "MultiMeshRendererHeader", "component-mesh-renderer.png", active.meshRenderer.enabled,
+            [](SceneObject& object, bool value) { object.meshRenderer.enabled = value; },
+            [](SceneObject& object) {
+                object.hasMeshRenderer = false;
+                object.meshRenderer = MeshRendererComponent{};
+            })) {
             const std::string materialId = active.meshRenderer.materialId.empty() ? std::string("pbr_default") : active.meshRenderer.materialId;
             std::string materialFilename = materialId + ".mat";
             for (const std::string& file : projectFiles_) {
@@ -3426,7 +3447,12 @@ void SceneEditor::RenderMultiSelectionInspector() {
 
     if (allSelected([](const SceneObject& object) { return object.hasRigidbody; })) {
         showedSharedComponent = true;
-        if (renderSharedEnabledHeader("Rigidbody", "MultiRigidbodyHeader", "component-rigidbody.png", active.rigidbody.enabled, [](SceneObject& object, bool value) { object.rigidbody.enabled = value; })) {
+        if (renderSharedEnabledHeader("Rigidbody", "MultiRigidbodyHeader", "component-rigidbody.png", active.rigidbody.enabled,
+            [](SceneObject& object, bool value) { object.rigidbody.enabled = value; },
+            [](SceneObject& object) {
+                object.hasRigidbody = false;
+                object.rigidbody = RigidbodyComponent{};
+            })) {
             if (ImGui::CollapsingHeader("Body", ImGuiTreeNodeFlags_DefaultOpen)) {
                 int bodyTypeIndex = active.rigidbody.bodyType == RigidbodyBodyType::Static
                     ? 0
@@ -3551,7 +3577,12 @@ void SceneEditor::RenderMultiSelectionInspector() {
 
     if (allSelected([](const SceneObject& object) { return object.hasVehicle; })) {
         showedSharedComponent = true;
-        if (renderSharedEnabledHeader("Vehicle", "MultiVehicleHeader", "component-vehicle.png", active.vehicle.enabled, [](SceneObject& object, bool value) { object.vehicle.enabled = value; })) {
+        if (renderSharedEnabledHeader("Vehicle", "MultiVehicleHeader", "component-vehicle.png", active.vehicle.enabled,
+            [](SceneObject& object, bool value) { object.vehicle.enabled = value; },
+            [](SceneObject& object) {
+                object.hasVehicle = false;
+                object.vehicle = VehicleComponent{};
+            })) {
             std::string configDisplayName = "(mixed)";
             if (!active.vehicle.configPath.empty()) {
                 configDisplayName = ProjectAssetDisplayFilename(active.vehicle.configPath);
@@ -3614,7 +3645,9 @@ void SceneEditor::RenderMultiSelectionInspector() {
                              activeColliderType == SceneColliderType::Capsule ? active.capsuleCollider.enabled :
                              activeColliderType == SceneColliderType::Plane ? active.planeCollider.enabled :
                              active.meshCollider.enabled;
-        if (renderSharedEnabledHeader("Collider", "MultiColliderHeader", SceneColliderTypeIcon(activeColliderType), enabled, applyColliderEnabled)) {
+        if (renderSharedEnabledHeader("Collider", "MultiColliderHeader", SceneColliderTypeIcon(activeColliderType), enabled,
+            applyColliderEnabled,
+            [](SceneObject& object) { SetActiveColliderType(object, SceneColliderType::None); })) {
             SceneColliderType newColliderType = activeColliderType;
             if (RenderColliderTypeCombo("Type##multiCollider", "multiColliderType", activeColliderType, false, sameColliderType ? nullptr : "Mixed", newColliderType) &&
                 newColliderType != activeColliderType) {
@@ -3774,7 +3807,12 @@ void SceneEditor::RenderMultiSelectionInspector() {
 
     if (allSelected([](const SceneObject& object) { return object.hasCamera; })) {
         showedSharedComponent = true;
-        if (renderSharedEnabledHeader("Camera", "MultiCameraHeader", "component-camera.png", active.camera.enabled, [](SceneObject& object, bool value) { object.camera.enabled = value; })) {
+        if (renderSharedEnabledHeader("Camera", "MultiCameraHeader", "component-camera.png", active.camera.enabled,
+            [](SceneObject& object, bool value) { object.camera.enabled = value; },
+            [](SceneObject& object) {
+                object.hasCamera = false;
+                object.camera = CameraComponent{};
+            })) {
             bool isMain = active.camera.isMain;
             if (ImGui::Checkbox("Main Camera##multiCamera", &isMain)) {
                 PushUndoState();
@@ -3820,7 +3858,12 @@ void SceneEditor::RenderMultiSelectionInspector() {
 
     if (allSelected([](const SceneObject& object) { return object.hasLight; })) {
         showedSharedComponent = true;
-        if (renderSharedEnabledHeader("Light", "MultiLightHeader", "component-light.png", active.light.enabled, [](SceneObject& object, bool value) { object.light.enabled = value; })) {
+        if (renderSharedEnabledHeader("Light", "MultiLightHeader", "component-light.png", active.light.enabled,
+            [](SceneObject& object, bool value) { object.light.enabled = value; },
+            [](SceneObject& object) {
+                object.hasLight = false;
+                object.light = LightComponent{};
+            })) {
             int lightTypeIndex = active.light.type == LightType::Directional ? 0 : (active.light.type == LightType::Spot ? 2 : 1);
             const char* lightTypes[] = {"Directional", "Point", "Spot"};
             if (ImGui::Combo("Type##multiLight", &lightTypeIndex, lightTypes, 3)) {
@@ -5085,23 +5128,15 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         PushMaterialUndoState(beforeEdit);
         materialEditActive_ = true;
     }
+    if (materialChanged && !materialManager_.Save(materialId, *material) && console_) {
+        console_->AddError("Failed to auto-save material: " + materialId);
+    }
     if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
         materialEditActive_ = false;
     }
 
-    ImGui::Separator();
-    if (ImGui::Button("Save Material (Ctrl+S)")) {
-        if (materialManager_.Save(materialId, *material)) {
-            materialManager_.LoadAll();
-            if (console_) {
-                console_->AddLog("Saved material: " + materialId);
-            }
-        } else if (console_) {
-            console_->AddError("Failed to save material: " + materialId);
-        }
-    }
     if (showBackButton) {
-        ImGui::SameLine();
+        ImGui::Separator();
         if (ImGui::Button("Back to Object")) {
             inspectMaterial_ = false;
         }

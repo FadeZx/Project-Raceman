@@ -24,6 +24,7 @@
 #include "../audio/VehicleSoundProfile.h"
 #include "../rendering/SkyboxController.h"
 #include "TrackGenerator.h"
+#include "ObjImport.h"
 
 namespace irrklang { class ISound; }
 
@@ -162,6 +163,9 @@ private:
     void RenderProjectPanel();
     void RenderViewportPanel();
     void RenderDockspaceHost();
+    void RenderStatusBar(float deltaTime);
+    void RenderModelAssetInspector();
+    bool RefreshModelAssetInspectorCache(bool forceReload);
     void RenderMaterialInspector();
     void RenderShaderGraphEditorWindow();
     void RenderVehicleConfigEditorWindow();
@@ -327,9 +331,6 @@ private:
     std::string objScanDir_{"assets/mesh"};
     std::vector<std::string> objFiles_;
     int objSelectIndex_{-1};
-    bool showImportMeshOptionsPopup_{false};
-    int pendingImportMeshPivotMode_{0};
-    std::string pendingImportMeshPath_;
 
     std::vector<std::string> projectDirectories_;
     std::vector<std::string> projectFiles_;
@@ -519,7 +520,7 @@ private:
     glm::vec2 gameViewportPos_{0.0f, 0.0f};
     glm::vec2 gameViewportSize_{0.0f, 0.0f};
     int gameViewportAspectIndex_{0};
-    int gameViewportZoomIndex_{0};
+    float gameViewportZoomScale_{1.0f};
     unsigned int sceneViewportTextureId_{0};
     unsigned int gameViewportTextureId_{0};
     bool viewportHovered_{false};
@@ -574,6 +575,15 @@ private:
         std::string materialId;
         Material material;
     };
+    struct ModelAssetInspectorCache {
+        std::string selectedPath;
+        std::string importPath;
+        std::string error;
+        std::shared_ptr<::Model> model;
+        std::vector<ImportedMeshInfo> infos;
+        bool loaded{false};
+    };
+    ModelAssetInspectorCache modelAssetInspectorCache_;
     std::vector<MaterialHistoryState> materialUndoStack_;
     std::vector<MaterialHistoryState> materialRedoStack_;
     bool materialEditActive_{false};
@@ -600,6 +610,7 @@ private:
     PlayModeLoadState playModeLoad_;
     SceneProfilerStats profilerStats_{};
     SceneEditorFrameTimings frameTimings_{};
+    std::string lastPhysicsCacheStatus_{"Ready"};
 
     bool sceneDirty_{false};
     std::function<void()> onDirty_{};
