@@ -151,6 +151,8 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="src\ui\TrackGenerator.h" />
     <ClInclude Include="editor-assets\third_party\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="editor-assets\third_party\imnodes\imnodes.h" />
+    <ClInclude Include="editor-assets\third_party\implot\implot.h" />
+    <ClInclude Include="editor-assets\third_party\implot\implot_internal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -196,6 +198,8 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\ui\SceneEditorShaderGraph.cpp" />
     <ClCompile Include="src\ui\TrackGenerator.cpp" />
     <ClCompile Include="editor-assets\third_party\imnodes\imnodes.cpp" />
+    <ClCompile Include="editor-assets\third_party\implot\implot.cpp" />
+    <ClCompile Include="editor-assets\third_party\implot\implot_items.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assimp-vc140-mt.dll" />

@@ -16,5 +16,6 @@
     "ao": ""
   },
   "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 }
   }
 }

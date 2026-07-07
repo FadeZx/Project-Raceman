@@ -132,6 +132,267 @@ InputBinding* FindBindingForAction(InputProfile& profile, InputDeviceType device
     return it != profile.bindings.end() ? &(*it) : nullptr;
 }
 
+float NormalizeKeyboardSensitivity(float value) {
+    if (value > 1.0f) {
+        return (std::clamp)(value / 30.0f, 0.0f, 1.0f);
+    }
+    return (std::clamp)(value, 0.0f, 1.0f);
+}
+
+float KeyboardSteeringSensitivityToRate(float value) {
+    return 1.0f + NormalizeKeyboardSensitivity(value) * 11.0f;
+}
+
+float KeyboardThrottleSensitivityToRate(float value) {
+    return 1.0f + NormalizeKeyboardSensitivity(value) * 9.0f;
+}
+
+float KeyboardBrakeSensitivityToRate(float value) {
+    return 1.0f + NormalizeKeyboardSensitivity(value) * 9.0f;
+}
+
+float MoveTowardsPreview(float current, float target, float maxDelta) {
+    if (current < target) {
+        return (std::min)(current + maxDelta, target);
+    }
+    return (std::max)(current - maxDelta, target);
+}
+
+float ResolveKeyboardAxisPreview(const InputManager* inputManager, const InputProfile& profile, std::string_view action) {
+    if (inputManager == nullptr) {
+        return 0.0f;
+    }
+
+    float bestMagnitude = 0.0f;
+    float resolved = 0.0f;
+    for (const InputBinding& binding : profile.bindings) {
+        if (binding.action != action || binding.deviceType != InputDeviceType::Keyboard) {
+            continue;
+        }
+
+        float value = 0.0f;
+        if (binding.source == InputBindingSource::Key) {
+            value = binding.key >= 0 && inputManager->IsKeyDown(binding.key) ? 1.0f : 0.0f;
+        } else if (binding.source == InputBindingSource::KeyPair) {
+            const float negative = binding.negativeKey >= 0 && inputManager->IsKeyDown(binding.negativeKey) ? -1.0f : 0.0f;
+            const float positive = binding.positiveKey >= 0 && inputManager->IsKeyDown(binding.positiveKey) ? 1.0f : 0.0f;
+            value = negative + positive;
+        }
+
+        if (binding.invert) {
+            value = -value;
+        }
+
+        const float magnitude = std::fabs(value);
+        if (magnitude > bestMagnitude) {
+            bestMagnitude = magnitude;
+            resolved = value;
+        }
+    }
+    return (std::clamp)(resolved, -1.0f, 1.0f);
+}
+
+float ResolveProfileAxisPreview(const InputManager* inputManager,
+                                const InputProfile& profile,
+                                std::string_view action,
+                                InputDevicePreference preference) {
+    if (inputManager == nullptr || profile.id.empty()) {
+        return 0.0f;
+    }
+    return (std::clamp)(inputManager->GetAxisForProfile(profile.id, action, preference), -1.0f, 1.0f);
+}
+
+struct LiveInputSample {
+    float value{0.0f};
+    int matchingBindings{0};
+    int matchingDevices{0};
+};
+
+float ApplyAxisTuningPreview(float rawValue, const InputBinding& binding) {
+    float value = rawValue;
+    const float minValue = binding.calibrationMin;
+    const float centerValue = binding.calibrationCenter;
+    const float maxValue = binding.calibrationMax;
+
+    if (centerValue > minValue && maxValue > centerValue) {
+        if (value >= centerValue) {
+            value = (value - centerValue) / (std::max)(0.0001f, maxValue - centerValue);
+        } else {
+            value = (value - centerValue) / (std::max)(0.0001f, centerValue - minValue);
+        }
+    }
+
+    value = (std::clamp)(value, -1.0f, 1.0f);
+    if (binding.invert) {
+        value = -value;
+    }
+
+    if (std::fabs(value) < binding.deadzone) {
+        return 0.0f;
+    }
+
+    const float normalized = (std::fabs(value) - binding.deadzone) / (std::max)(0.0001f, 1.0f - binding.deadzone);
+    const float curved = std::pow((std::max)(0.0f, normalized), (std::max)(0.01f, binding.responseExponent));
+    return value < 0.0f ? -curved : curved;
+}
+
+bool InputDeviceMatchesPreference(InputDeviceType bindingType, InputDevicePreference preference) {
+    switch (preference) {
+    case InputDevicePreference::Any: return true;
+    case InputDevicePreference::Keyboard: return bindingType == InputDeviceType::Keyboard;
+    case InputDevicePreference::Gamepad: return bindingType == InputDeviceType::Gamepad;
+    case InputDevicePreference::Wheel: return bindingType == InputDeviceType::Wheel;
+    case InputDevicePreference::Specific: return true;
+    }
+    return true;
+}
+
+float ResolveBindingAxisPreview(const InputManager* inputManager,
+                                const InputBinding& binding,
+                                const InputDeviceInfo* device) {
+    switch (binding.source) {
+    case InputBindingSource::Key:
+        return inputManager != nullptr && binding.key >= 0 && inputManager->IsKeyDown(binding.key) ? 1.0f : 0.0f;
+    case InputBindingSource::KeyPair: {
+        const float negative = inputManager != nullptr && binding.negativeKey >= 0 && inputManager->IsKeyDown(binding.negativeKey) ? -1.0f : 0.0f;
+        const float positive = inputManager != nullptr && binding.positiveKey >= 0 && inputManager->IsKeyDown(binding.positiveKey) ? 1.0f : 0.0f;
+        return (std::clamp)(negative + positive, -1.0f, 1.0f);
+    }
+    case InputBindingSource::Axis:
+        if (device == nullptr || binding.axis < 0 || binding.axis >= static_cast<int>(device->axes.size())) {
+            return 0.0f;
+        }
+        return ApplyAxisTuningPreview(device->axes[static_cast<std::size_t>(binding.axis)], binding);
+    case InputBindingSource::Button:
+        if (device == nullptr || binding.button < 0 || binding.button >= static_cast<int>(device->buttons.size())) {
+            return 0.0f;
+        }
+        return device->buttons[static_cast<std::size_t>(binding.button)] == GLFW_PRESS ? 1.0f : 0.0f;
+    case InputBindingSource::None:
+    default:
+        return 0.0f;
+    }
+}
+
+LiveInputSample ResolveLiveInputSample(const InputManager* inputManager,
+                                       const InputProfile& profile,
+                                       std::string_view action,
+                                       InputDevicePreference preference) {
+    LiveInputSample sample;
+    if (inputManager == nullptr) {
+        return sample;
+    }
+
+    float bestMagnitude = 0.0f;
+    for (const InputBinding& binding : profile.bindings) {
+        if (binding.action != action || !InputDeviceMatchesPreference(binding.deviceType, preference)) {
+            continue;
+        }
+        ++sample.matchingBindings;
+
+        if (binding.deviceType == InputDeviceType::Keyboard) {
+            ++sample.matchingDevices;
+            const float value = ResolveBindingAxisPreview(inputManager, binding, nullptr);
+            const float magnitude = std::fabs(value);
+            if (magnitude > bestMagnitude) {
+                bestMagnitude = magnitude;
+                sample.value = value;
+            }
+            continue;
+        }
+
+        for (const InputDeviceInfo& device : inputManager->GetConnectedDevices()) {
+            if (device.type != binding.deviceType) {
+                continue;
+            }
+            ++sample.matchingDevices;
+            const float value = ResolveBindingAxisPreview(inputManager, binding, &device);
+            const float magnitude = std::fabs(value);
+            if (magnitude > bestMagnitude) {
+                bestMagnitude = magnitude;
+                sample.value = value;
+            }
+        }
+    }
+
+    sample.value = (std::clamp)(sample.value, -1.0f, 1.0f);
+    return sample;
+}
+
+void RenderSteeringInputMeter(const char* id, float rawValue, float outputValue) {
+    const float width = (std::max)(ImGui::GetContentRegionAvail().x, 260.0f);
+    const ImVec2 size(width, 90.0f);
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    ImGui::InvisibleButton(id, size);
+
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImVec2 p1(p0.x + size.x, p0.y + size.y);
+    const ImU32 panel = IM_COL32(18, 22, 27, 255);
+    const ImU32 rail = IM_COL32(52, 59, 68, 255);
+    const ImU32 center = IM_COL32(145, 154, 168, 170);
+    const ImU32 rawColor = IM_COL32(80, 155, 255, 210);
+    const ImU32 outputColor = IM_COL32(255, 202, 80, 245);
+    draw->AddRectFilled(p0, p1, panel, 6.0f);
+    draw->AddRect(p0, p1, IM_COL32(84, 94, 108, 165), 6.0f);
+
+    const float left = p0.x + 22.0f;
+    const float right = p1.x - 22.0f;
+    const float centerX = (left + right) * 0.5f;
+    const float railY = p0.y + 48.0f;
+    draw->AddRectFilled(ImVec2(left, railY - 5.0f), ImVec2(right, railY + 5.0f), rail, 5.0f);
+    draw->AddLine(ImVec2(centerX, p0.y + 22.0f), ImVec2(centerX, p1.y - 18.0f), center, 2.0f);
+    for (int tick = -2; tick <= 2; ++tick) {
+        const float x = centerX + (right - left) * 0.5f * (static_cast<float>(tick) / 2.0f);
+        draw->AddLine(ImVec2(x, railY - 13.0f), ImVec2(x, railY + 13.0f), IM_COL32(97, 106, 119, 130), tick == 0 ? 2.0f : 1.0f);
+    }
+
+    const float rawX = centerX + (right - left) * 0.5f * (std::clamp)(rawValue, -1.0f, 1.0f);
+    const float outputX = centerX + (right - left) * 0.5f * (std::clamp)(outputValue, -1.0f, 1.0f);
+    draw->AddCircleFilled(ImVec2(rawX, railY), 7.0f, rawColor, 24);
+    draw->AddRectFilled(ImVec2((std::min)(centerX, outputX), railY + 14.0f),
+                        ImVec2((std::max)(centerX, outputX), railY + 22.0f),
+                        outputColor,
+                        4.0f);
+    draw->AddTriangleFilled(ImVec2(outputX, railY + 31.0f),
+                            ImVec2(outputX - 8.0f, railY + 43.0f),
+                            ImVec2(outputX + 8.0f, railY + 43.0f),
+                            outputColor);
+
+    char valueText[96]{};
+    std::snprintf(valueText, sizeof(valueText), "STEERING  raw %.2f  output %.2f", rawValue, outputValue);
+    draw->AddText(ImVec2(p0.x + 14.0f, p0.y + 10.0f), IM_COL32(218, 225, 235, 245), valueText);
+    draw->AddText(ImVec2(left, p1.y - 18.0f), IM_COL32(145, 154, 168, 210), "LEFT");
+    const char* rightText = "RIGHT";
+    draw->AddText(ImVec2(right - ImGui::CalcTextSize(rightText).x, p1.y - 18.0f), IM_COL32(145, 154, 168, 210), rightText);
+}
+
+void RenderPedalInputMeter(const char* id, const char* label, float rawValue, float outputValue, ImU32 color) {
+    const ImVec2 size(96.0f, 118.0f);
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    ImGui::InvisibleButton(id, size);
+
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImVec2 p1(p0.x + size.x, p0.y + size.y);
+    draw->AddRectFilled(p0, p1, IM_COL32(18, 22, 27, 255), 6.0f);
+    draw->AddRect(p0, p1, IM_COL32(84, 94, 108, 155), 6.0f);
+
+    const float barLeft = p0.x + 30.0f;
+    const float barRight = p1.x - 30.0f;
+    const float barTop = p0.y + 26.0f;
+    const float barBottom = p1.y - 30.0f;
+    draw->AddRectFilled(ImVec2(barLeft, barTop), ImVec2(barRight, barBottom), IM_COL32(42, 48, 56, 255), 4.0f);
+    const float rawY = barBottom - (barBottom - barTop) * (std::clamp)(rawValue, 0.0f, 1.0f);
+    const float outputY = barBottom - (barBottom - barTop) * (std::clamp)(outputValue, 0.0f, 1.0f);
+    draw->AddRectFilled(ImVec2(barLeft, outputY), ImVec2(barRight, barBottom), color, 4.0f);
+    draw->AddLine(ImVec2(barLeft - 8.0f, rawY), ImVec2(barRight + 8.0f, rawY), IM_COL32(80, 155, 255, 235), 2.0f);
+
+    draw->AddText(ImVec2(p0.x + 10.0f, p0.y + 8.0f), IM_COL32(218, 225, 235, 245), label);
+    char valueText[32]{};
+    std::snprintf(valueText, sizeof(valueText), "%.2f", outputValue);
+    const ImVec2 textSize = ImGui::CalcTextSize(valueText);
+    draw->AddText(ImVec2(p0.x + (size.x - textSize.x) * 0.5f, p1.y - 21.0f), IM_COL32(218, 225, 235, 245), valueText);
+}
+
 const char* InputDevicePageName(InputDeviceType type) {
     switch (type) {
     case InputDeviceType::Keyboard: return "Keyboard";
@@ -596,6 +857,14 @@ struct ModelMaterialMapping {
     std::string materialId;
 };
 
+struct ModelCollisionMapping {
+    int meshIndex{0};
+    std::string meshName;
+    int mode{1};
+    int buildQuality{2};
+    bool autoBake{true};
+};
+
 struct ModelImportSettings {
     int version{1};
     int pivotMode{0};
@@ -604,6 +873,7 @@ struct ModelImportSettings {
     int materialRemapNaming{0};
     int materialRemapSearch{0};
     std::vector<ModelMaterialMapping> materials;
+    std::vector<ModelCollisionMapping> collisions;
 };
 
 std::string DefaultImportedMaterialId(const std::string& meshAssetPath,
@@ -825,6 +1095,31 @@ bool LoadModelImportSettings(const std::string& meshAssetPath, ModelImportSettin
                 settings.materials.push_back(std::move(mapping));
             }
         }
+        if (auto it = object.find("collisions"); it != object.end() && it->second.is_array()) {
+            for (const Value& value : it->second.as_array()) {
+                if (!value.is_object()) {
+                    continue;
+                }
+                const auto& collisionObject = value.as_object();
+                ModelCollisionMapping mapping;
+                if (auto mi = collisionObject.find("meshIndex"); mi != collisionObject.end() && mi->second.is_number()) {
+                    mapping.meshIndex = static_cast<int>(mi->second.as_number());
+                }
+                if (auto name = collisionObject.find("meshName"); name != collisionObject.end() && name->second.is_string()) {
+                    mapping.meshName = name->second.as_string();
+                }
+                if (auto mode = collisionObject.find("mode"); mode != collisionObject.end() && mode->second.is_number()) {
+                    mapping.mode = static_cast<int>(mode->second.as_number());
+                }
+                if (auto quality = collisionObject.find("buildQuality"); quality != collisionObject.end() && quality->second.is_number()) {
+                    mapping.buildQuality = static_cast<int>(quality->second.as_number());
+                }
+                if (auto autoBake = collisionObject.find("autoBake"); autoBake != collisionObject.end() && autoBake->second.is_bool()) {
+                    mapping.autoBake = autoBake->second.as_bool();
+                }
+                settings.collisions.push_back(std::move(mapping));
+            }
+        }
         return true;
     } catch (...) {
         settings = ModelImportSettings{};
@@ -860,6 +1155,18 @@ bool SaveModelImportSettings(const std::string& meshAssetPath, const ModelImport
         out << "      \"importedMaterialName\": \"" << JsonEscape(mapping.importedMaterialName) << "\",\n";
         out << "      \"materialId\": \"" << JsonEscape(mapping.materialId) << "\"\n";
         out << "    }" << (i + 1 < settings.materials.size() ? "," : "") << "\n";
+    }
+    out << "  ],\n";
+    out << "  \"collisions\": [\n";
+    for (std::size_t i = 0; i < settings.collisions.size(); ++i) {
+        const ModelCollisionMapping& mapping = settings.collisions[i];
+        out << "    {\n";
+        out << "      \"meshIndex\": " << mapping.meshIndex << ",\n";
+        out << "      \"meshName\": \"" << JsonEscape(mapping.meshName) << "\",\n";
+        out << "      \"mode\": " << mapping.mode << ",\n";
+        out << "      \"buildQuality\": " << mapping.buildQuality << ",\n";
+        out << "      \"autoBake\": " << (mapping.autoBake ? "true" : "false") << "\n";
+        out << "    }" << (i + 1 < settings.collisions.size() ? "," : "") << "\n";
     }
     out << "  ]\n";
     out << "}\n";
@@ -932,6 +1239,24 @@ const ModelMaterialMapping* FindModelMaterialMapping(const ModelImportSettings& 
     return nullptr;
 }
 
+ModelCollisionMapping* FindModelCollisionMapping(ModelImportSettings& settings, int meshIndex) {
+    for (ModelCollisionMapping& mapping : settings.collisions) {
+        if (mapping.meshIndex == meshIndex) {
+            return &mapping;
+        }
+    }
+    return nullptr;
+}
+
+const ModelCollisionMapping* FindModelCollisionMapping(const ModelImportSettings& settings, int meshIndex) {
+    for (const ModelCollisionMapping& mapping : settings.collisions) {
+        if (mapping.meshIndex == meshIndex) {
+            return &mapping;
+        }
+    }
+    return nullptr;
+}
+
 ModelMaterialMapping& EnsureModelMaterialMapping(ModelImportSettings& settings,
                                                  const std::string& meshAssetPath,
                                                  const std::string& packageBaseName,
@@ -953,6 +1278,23 @@ ModelMaterialMapping& EnsureModelMaterialMapping(ModelImportSettings& settings,
     mapping.materialId = DefaultImportedMaterialId(meshAssetPath, packageBaseName, info);
     settings.materials.push_back(std::move(mapping));
     return settings.materials.back();
+}
+
+ModelCollisionMapping& EnsureModelCollisionMapping(ModelImportSettings& settings,
+                                                   const ImportedMeshInfo& info) {
+    const int meshIndex = static_cast<int>(info.meshIndex);
+    if (ModelCollisionMapping* existing = FindModelCollisionMapping(settings, meshIndex)) {
+        existing->meshName = info.meshName;
+        existing->mode = (std::max)(0, (std::min)(2, existing->mode));
+        existing->buildQuality = (std::max)(0, (std::min)(2, existing->buildQuality));
+        return *existing;
+    }
+
+    ModelCollisionMapping mapping;
+    mapping.meshIndex = meshIndex;
+    mapping.meshName = info.meshName;
+    settings.collisions.push_back(std::move(mapping));
+    return settings.collisions.back();
 }
 
 void ReconcileModelImportSettings(ModelImportSettings& settings,
@@ -978,6 +1320,69 @@ void ReconcileModelImportSettings(ModelImportSettings& settings,
         reconciled.push_back(std::move(mapping));
     }
     settings.materials = std::move(reconciled);
+
+    std::vector<ModelCollisionMapping> collisionSettings;
+    collisionSettings.reserve(infos.size());
+    for (const ImportedMeshInfo& info : infos) {
+        const int meshIndex = static_cast<int>(info.meshIndex);
+        ModelCollisionMapping mapping;
+        if (const ModelCollisionMapping* existing = FindModelCollisionMapping(settings, meshIndex)) {
+            mapping = *existing;
+        }
+        mapping.meshIndex = meshIndex;
+        mapping.meshName = info.meshName;
+        mapping.mode = (std::max)(0, (std::min)(2, mapping.mode));
+        mapping.buildQuality = (std::max)(0, (std::min)(2, mapping.buildQuality));
+        collisionSettings.push_back(std::move(mapping));
+    }
+    settings.collisions = std::move(collisionSettings);
+}
+
+MeshColliderMode CollisionMappingModeToMeshMode(const ModelCollisionMapping& mapping) {
+    return mapping.mode == 2 ? MeshColliderMode::ConvexHull : MeshColliderMode::TriangleMesh;
+}
+
+MeshColliderBuildQuality CollisionMappingQualityToBuildQuality(const ModelCollisionMapping& mapping) {
+    if (mapping.buildQuality == 0) return MeshColliderBuildQuality::BuildSpeed;
+    if (mapping.buildQuality == 1) return MeshColliderBuildQuality::Balanced;
+    return MeshColliderBuildQuality::BuildQuality;
+}
+
+PhysicsColliderDesc BuildModelCollisionDesc(const std::string& importPath,
+                                            const ImportedMeshInfo& info,
+                                            const ModelCollisionMapping& mapping) {
+    PhysicsColliderDesc collider;
+    collider.type = PhysicsColliderType::Mesh;
+    collider.meshAssetPath = importPath;
+    collider.meshName = info.meshName;
+    collider.meshIndex = static_cast<int>(info.meshIndex);
+    collider.meshPivotOffset = glm::vec3{0.0f};
+    collider.meshMode = CollisionMappingModeToMeshMode(mapping);
+    collider.meshBuildQuality = CollisionMappingQualityToBuildQuality(mapping);
+    return collider;
+}
+
+void ApplyModelCollisionMappingToSceneObject(SceneObject& object, const ModelCollisionMapping& mapping) {
+    if (mapping.mode == 0) {
+        object.hasMeshCollider = false;
+        object.meshCollider = MeshColliderComponent{};
+        return;
+    }
+    SetActiveColliderType(object, SceneColliderType::Mesh);
+    object.meshCollider.enabled = true;
+    object.meshCollider.isTrigger = false;
+    object.meshCollider.mode = CollisionMappingModeToMeshMode(mapping);
+    object.meshCollider.buildQuality = CollisionMappingQualityToBuildQuality(mapping);
+}
+
+const char* CollisionCacheStatusLabel(CollisionShapeCacheStatus status) {
+    switch (status) {
+    case CollisionShapeCacheStatus::Ready: return "Ready";
+    case CollisionShapeCacheStatus::Stale: return "Stale";
+    case CollisionShapeCacheStatus::Failed: return "Failed";
+    case CollisionShapeCacheStatus::Missing:
+    default: return "Missing";
+    }
 }
 
 std::string NormalizedImportMatchKey(const std::string& value) {
@@ -1550,12 +1955,139 @@ void SceneEditor::RenderModelAssetInspector() {
             }
             ImGui::EndTabItem();
         }
+
+        if (ImGui::BeginTabItem("Collision")) {
+            ImGui::TextWrapped("Bake mesh collision data before Play. Play mode still cooks missing or stale shapes, but ready cache entries load faster.");
+            ImGui::Spacing();
+
+            auto bakeCollisionForInfo = [&](const ImportedMeshInfo& info, ModelCollisionMapping& mapping) {
+                if (mapping.mode == 0) {
+                    return false;
+                }
+                CollisionShapeCacheInfo bakedInfo;
+                const bool baked = PhysicsWorld::BakeCollisionShape(BuildModelCollisionDesc(importPath, info, mapping), &bakedInfo);
+                if (console_) {
+                    const std::string meshLabel = info.meshName.empty() ? ("Mesh " + std::to_string(info.meshIndex)) : info.meshName;
+                    if (baked) {
+                        console_->AddLog("Baked collision: " + meshLabel + " (" + CollisionCacheStatusLabel(bakedInfo.status) + ")");
+                    } else {
+                        console_->AddError("Failed to bake collision: " + meshLabel + (bakedInfo.message.empty() ? "" : (" - " + bakedInfo.message)));
+                    }
+                }
+                return baked;
+            };
+
+            if (ImGui::Button("Bake All")) {
+                int bakedCount = 0;
+                for (const ImportedMeshInfo& info : infos) {
+                    ModelCollisionMapping& mapping = EnsureModelCollisionMapping(settings, info);
+                    if (bakeCollisionForInfo(info, mapping)) {
+                        ++bakedCount;
+                    }
+                }
+                SaveModelImportSettings(importPath, settings);
+                if (console_) {
+                    console_->AddLog("Collision bake complete: " + std::to_string(bakedCount) + " mesh" + (bakedCount == 1 ? "" : "es") + ".");
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Clear Collision Cache")) {
+                std::string error;
+                const int removedCount = PhysicsWorld::ClearCollisionShapeCache(&error);
+                lastPhysicsCacheStatus_ = "Ready";
+                if (console_) {
+                    if (!error.empty()) {
+                        console_->AddWarning("Cleared " + std::to_string(removedCount) + " collision cache files, but some files could not be removed: " + error);
+                    } else {
+                        console_->AddLog("Cleared " + std::to_string(removedCount) + " collision cache files.");
+                    }
+                }
+            }
+
+            ImGui::Spacing();
+            if (ImGui::BeginTable("ModelCollisionMappingsTable", 7, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Mesh", ImGuiTableColumnFlags_WidthFixed, 48.0f);
+                ImGui::TableSetupColumn("Name");
+                ImGui::TableSetupColumn("Triangles", ImGuiTableColumnFlags_WidthFixed, 78.0f);
+                ImGui::TableSetupColumn("Mode", ImGuiTableColumnFlags_WidthFixed, 130.0f);
+                ImGui::TableSetupColumn("Auto", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+                ImGui::TableSetupColumn("Cache", ImGuiTableColumnFlags_WidthFixed, 92.0f);
+                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 96.0f);
+                ImGui::TableHeadersRow();
+                const char* collisionModes[] = {"None", "Triangle Mesh", "Convex Hull"};
+                for (const ImportedMeshInfo& info : infos) {
+                    ModelCollisionMapping& mapping = EnsureModelCollisionMapping(settings, info);
+                    const std::uint32_t triangleCount = info.indexCount / 3;
+                    CollisionShapeCacheInfo cacheInfo;
+                    if (mapping.mode == 0) {
+                        cacheInfo.status = CollisionShapeCacheStatus::Missing;
+                        cacheInfo.message = "Collision disabled.";
+                    } else {
+                        cacheInfo = PhysicsWorld::GetCollisionShapeCacheInfo(BuildModelCollisionDesc(importPath, info, mapping));
+                    }
+
+                    ImGui::PushID(static_cast<int>(info.meshIndex));
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%u", info.meshIndex);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::TextUnformatted(info.meshName.empty() ? "(unnamed)" : info.meshName.c_str());
+                    if (triangleCount >= 50000 && mapping.mode == 1) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.62f, 0.25f, 1.0f), "Heavy triangle mesh");
+                    }
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("%u", triangleCount);
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::SetNextItemWidth(-1.0f);
+                    if (ImGui::Combo("##CollisionMode", &mapping.mode, collisionModes, IM_ARRAYSIZE(collisionModes))) {
+                        SaveModelImportSettings(importPath, settings);
+                    }
+                    ImGui::TableSetColumnIndex(4);
+                    if (ImGui::Checkbox("##AutoBake", &mapping.autoBake)) {
+                        SaveModelImportSettings(importPath, settings);
+                    }
+                    ImGui::TableSetColumnIndex(5);
+                    const CollisionShapeCacheStatus status = cacheInfo.status;
+                    if (status == CollisionShapeCacheStatus::Ready) {
+                        ImGui::TextColored(ImVec4(0.48f, 0.82f, 0.58f, 1.0f), "Ready");
+                    } else if (status == CollisionShapeCacheStatus::Stale) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.25f, 1.0f), "Stale");
+                    } else if (status == CollisionShapeCacheStatus::Failed) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.42f, 0.35f, 1.0f), "Failed");
+                    } else {
+                        ImGui::TextDisabled("Missing");
+                    }
+                    if (ImGui::IsItemHovered() && !cacheInfo.message.empty()) {
+                        ImGui::SetTooltip("%s", cacheInfo.message.c_str());
+                    }
+                    ImGui::TableSetColumnIndex(6);
+                    ImGui::BeginDisabled(mapping.mode == 0);
+                    if (ImGui::SmallButton("Bake")) {
+                        bakeCollisionForInfo(info, mapping);
+                        SaveModelImportSettings(importPath, settings);
+                    }
+                    ImGui::EndDisabled();
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::TextDisabled("Triangle Mesh colliders are static-only. Use Convex Hull for dynamic bodies.");
+            ImGui::EndTabItem();
+        }
         ImGui::EndTabBar();
     }
 }
 
 void SceneEditor::RenderProjectPanel() {
-    if (ImGui::Begin("Browser", nullptr, ImGuiWindowFlags_NoCollapse)) {
+    if (IsPanelHiddenByFullscreen("Browser")) {
+        return;
+    }
+
+    ApplyPanelFullscreenWindowSetup("Browser");
+    const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | PanelFullscreenWindowFlags("Browser");
+    if (ImGui::Begin("Browser", nullptr, windowFlags)) {
+        HandlePanelHeadingDoubleClick("Browser");
         if (ImGui::BeginTabBar("BrowserTabs")) {
             if (ImGui::BeginTabItem("Project")) {
                 if (ImGui::Button("Refresh")) {
@@ -1849,6 +2381,8 @@ void SceneEditor::RenderProjectPanel() {
                     const bool isPrefab = IsPrefabAssetPath(file);
                     const bool isShaderGraph = IsShaderGraphAssetPath(file);
                     const bool isTrack = IsTrackAssetPath(file);
+                    const bool isVehicleConfig = IsVehicleConfigAssetPath(file);
+                    const bool isVehicleSound = IsVehicleSoundAssetPath(file);
                     std::string filename = ProjectAssetDisplayFilename(file);
 
                     ImGui::PushID(file.c_str());
@@ -1868,6 +2402,10 @@ void SceneEditor::RenderProjectPanel() {
                                     OpenShaderGraphEditor(file);
                                 } else if (isTrack) {
                                     OpenTrackGenerator(file);
+                                } else if (isVehicleConfig) {
+                                    OpenVehicleConfigEditor(file);
+                                } else if (isVehicleSound) {
+                                    OpenVehicleSoundEditor(file);
                                 } else if (isPrefab) {
                                     if (InstantiatePrefab(file)) {
                                         if (console_) console_->AddLog("Instantiated prefab: " + file);
@@ -1928,6 +2466,32 @@ void SceneEditor::RenderProjectPanel() {
                             } else if (isShaderGraph) {
                                 if (ImGui::MenuItem("Edit")) {
                                     OpenShaderGraphEditor(file);
+                                }
+                                if (ImGui::MenuItem("Open in Default App")) {
+                                    if (OpenProjectAssetInDefaultEditor(file)) {
+                                        if (console_) {
+                                            console_->AddLog("Opened project file: " + file);
+                                        }
+                                    } else if (console_) {
+                                        console_->AddError("Failed to open project file: " + file);
+                                    }
+                                }
+                            } else if (isVehicleConfig) {
+                                if (ImGui::MenuItem("Edit")) {
+                                    OpenVehicleConfigEditor(file);
+                                }
+                                if (ImGui::MenuItem("Open in Default App")) {
+                                    if (OpenProjectAssetInDefaultEditor(file)) {
+                                        if (console_) {
+                                            console_->AddLog("Opened project file: " + file);
+                                        }
+                                    } else if (console_) {
+                                        console_->AddError("Failed to open project file: " + file);
+                                    }
+                                }
+                            } else if (isVehicleSound) {
+                                if (ImGui::MenuItem("Edit")) {
+                                    OpenVehicleSoundEditor(file);
                                 }
                                 if (ImGui::MenuItem("Open in Default App")) {
                                     if (OpenProjectAssetInDefaultEditor(file)) {
@@ -2299,13 +2863,13 @@ void SceneEditor::RenderProjectPanel() {
                         } else if (createProjectAssetType_ == ProjectCreateAssetType::VehicleProfile) {
                             created = CreateVehicleConfigAsset(createProjectAssetNameBuffer_, &createdVehicleConfigPath);
                             if (created) {
-                                selectedProjectFile_ = createdVehicleConfigPath;
+                                OpenVehicleConfigEditor(createdVehicleConfigPath);
                             }
                         } else if (createProjectAssetType_ == ProjectCreateAssetType::VehicleSoundProfile) {
                             std::string createdSoundProfilePath;
                             created = CreateVehicleSoundAsset(createProjectAssetNameBuffer_, &createdSoundProfilePath);
                             if (created) {
-                                selectedProjectFile_ = createdSoundProfilePath;
+                                OpenVehicleSoundEditor(createdSoundProfilePath);
                             }
                         } else if (createProjectAssetType_ == ProjectCreateAssetType::Track) {
                             const std::string baseName = SanitizeAssetBaseName(createProjectAssetNameBuffer_);
@@ -2416,6 +2980,21 @@ void SceneEditor::RenderProjectPhysicsSettings() {
 
     ImGui::Spacing();
     ImGui::TextDisabled("Assign each object's physics layer in the Inspector. This matrix controls which layers collide.");
+    ImGui::Spacing();
+    ImGui::SeparatorText("Collision Bake Cache");
+    ImGui::TextDisabled("Path: %s", PhysicsWorld::GetCollisionShapeCacheDirectory().c_str());
+    if (ImGui::Button("Clear Collision Cache")) {
+        std::string error;
+        const int removedCount = PhysicsWorld::ClearCollisionShapeCache(&error);
+        lastPhysicsCacheStatus_ = "Ready";
+        if (console_) {
+            if (!error.empty()) {
+                console_->AddWarning("Cleared " + std::to_string(removedCount) + " collision cache files, but some files could not be removed: " + error);
+            } else {
+                console_->AddLog("Cleared " + std::to_string(removedCount) + " collision cache files.");
+            }
+        }
+    }
 }
 
 void SceneEditor::RenderProjectTagsAndLayersSettings() {
@@ -2478,6 +3057,11 @@ void SceneEditor::RenderProjectInputSettings() {
     }
 
     bool projectSettingsChanged = false;
+    const int previousSelectedInputProfileIndex = selectedInputProfileIndex_;
+    const int previousSelectedInputDevicePage = selectedInputDevicePage_;
+    const int previousSelectedWheelSettingsProfileIndex = selectedWheelSettingsProfileIndex_;
+    const bool previousProjectInputTestActive = projectInputTestActive_;
+    const int previousProjectInputTestDeviceIndex = projectInputTestDeviceIndex_;
 
     if (ImGui::CollapsingHeader("Connected Devices", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (inputManager_ == nullptr) {
@@ -2720,7 +3304,10 @@ void SceneEditor::RenderProjectInputSettings() {
 
     if (ImGui::CollapsingHeader("Profiles", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (inputProfiles_.empty()) {
-            inputProfiles_.push_back(InputProfile{"default_vehicle", "Default Vehicle", {}});
+            InputProfile defaultProfile;
+            defaultProfile.id = "default_vehicle";
+            defaultProfile.displayName = "Default Vehicle";
+            inputProfiles_.push_back(std::move(defaultProfile));
             projectSettingsChanged = true;
         }
 
@@ -2776,6 +3363,141 @@ void SceneEditor::RenderProjectInputSettings() {
             if (ImGui::InputText("Display Name", nameBuffer, sizeof(nameBuffer))) {
                 profile.displayName = TrimCopyLocal(nameBuffer);
                 projectSettingsChanged = true;
+            }
+            ImGui::Spacing();
+            ImGui::SeparatorText("Keyboard Feel");
+            ImGui::TextDisabled("0 is slow/smooth, 1 is instant. The monitor below uses real bound input.");
+            float steeringSensitivity = NormalizeKeyboardSensitivity(profile.keyboardSteeringSensitivity);
+            float throttleSensitivity = NormalizeKeyboardSensitivity(profile.keyboardThrottleSensitivity);
+            float brakeSensitivity = NormalizeKeyboardSensitivity(profile.keyboardBrakeSensitivity);
+            if (ImGui::SliderFloat("Steering Sensitivity", &steeringSensitivity, 0.0f, 1.0f, "%.2f")) {
+                profile.keyboardSteeringSensitivity = steeringSensitivity;
+                projectSettingsChanged = true;
+            }
+            if (ImGui::SliderFloat("Throttle Sensitivity", &throttleSensitivity, 0.0f, 1.0f, "%.2f")) {
+                profile.keyboardThrottleSensitivity = throttleSensitivity;
+                projectSettingsChanged = true;
+            }
+            if (ImGui::SliderFloat("Brake Sensitivity", &brakeSensitivity, 0.0f, 1.0f, "%.2f")) {
+                profile.keyboardBrakeSensitivity = brakeSensitivity;
+                projectSettingsChanged = true;
+            }
+
+            const float steeringRate = KeyboardSteeringSensitivityToRate(profile.keyboardSteeringSensitivity);
+            const float throttleRate = KeyboardThrottleSensitivityToRate(profile.keyboardThrottleSensitivity);
+            const float brakeRate = KeyboardBrakeSensitivityToRate(profile.keyboardBrakeSensitivity);
+            ImGui::TextDisabled("Full response time: steering %.2fs, throttle %.2fs, brake %.2fs",
+                1.0f / steeringRate,
+                1.0f / throttleRate,
+                1.0f / brakeRate);
+
+            static float previewSteering = 0.0f;
+            static float previewThrottle = 0.0f;
+            static float previewBrake = 0.0f;
+            const char* livePreviewDevices[] = {"Keyboard", "Gamepad", "Wheel", "Any"};
+            const InputDevicePreference livePreviewPreferences[] = {
+                InputDevicePreference::Keyboard,
+                InputDevicePreference::Gamepad,
+                InputDevicePreference::Wheel,
+                InputDevicePreference::Any
+            };
+            projectInputTestDeviceIndex_ = (std::clamp)(projectInputTestDeviceIndex_, 0, static_cast<int>(std::size(livePreviewDevices)) - 1);
+            ImGui::SetNextItemWidth(150.0f);
+            ImGui::Combo("Monitor Device", &projectInputTestDeviceIndex_, livePreviewDevices, static_cast<int>(std::size(livePreviewDevices)));
+            ImGui::SameLine();
+            if (ImGui::Button(projectInputTestActive_ ? "Stop Input Test" : "Start Input Test")) {
+                projectInputTestActive_ = !projectInputTestActive_;
+                previewSteering = 0.0f;
+                previewThrottle = 0.0f;
+                previewBrake = 0.0f;
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled(projectInputTestActive_ ? "Receiving real input" : "Idle");
+
+            const InputDevicePreference previewPreference = livePreviewPreferences[projectInputTestDeviceIndex_];
+            const LiveInputSample steeringSample = projectInputTestActive_
+                ? ResolveLiveInputSample(inputManager_, profile, "steer", previewPreference)
+                : LiveInputSample{};
+            const LiveInputSample throttleSample = projectInputTestActive_
+                ? ResolveLiveInputSample(inputManager_, profile, "throttle", previewPreference)
+                : LiveInputSample{};
+            const LiveInputSample brakeSample = projectInputTestActive_
+                ? ResolveLiveInputSample(inputManager_, profile, "brake", previewPreference)
+                : LiveInputSample{};
+            const LiveInputSample keyboardSteeringSample = projectInputTestActive_
+                ? ResolveLiveInputSample(inputManager_, profile, "steer", InputDevicePreference::Keyboard)
+                : LiveInputSample{};
+            const LiveInputSample keyboardThrottleSample = projectInputTestActive_
+                ? ResolveLiveInputSample(inputManager_, profile, "throttle", InputDevicePreference::Keyboard)
+                : LiveInputSample{};
+            const LiveInputSample keyboardBrakeSample = projectInputTestActive_
+                ? ResolveLiveInputSample(inputManager_, profile, "brake", InputDevicePreference::Keyboard)
+                : LiveInputSample{};
+            const float liveSteering = steeringSample.value;
+            const float liveThrottle = (std::max)(0.0f, throttleSample.value);
+            const float liveBrake = (std::max)(0.0f, brakeSample.value);
+            const bool keyboardMonitor =
+                previewPreference == InputDevicePreference::Keyboard ||
+                (previewPreference == InputDevicePreference::Any &&
+                    (std::fabs(keyboardSteeringSample.value) > 0.001f ||
+                     std::fabs(keyboardThrottleSample.value) > 0.001f ||
+                     std::fabs(keyboardBrakeSample.value) > 0.001f));
+            const float targetSteering = liveSteering;
+            const float targetThrottle = liveThrottle;
+            const float targetBrake = liveBrake;
+            const float previewDeltaTime = (std::max)(ImGui::GetIO().DeltaTime, 1.0f / 240.0f);
+            if (keyboardMonitor) {
+                previewSteering = MoveTowardsPreview(
+                    previewSteering,
+                    targetSteering,
+                    previewDeltaTime * (std::fabs(targetSteering) <= 0.001f ? steeringRate * 1.5f : steeringRate));
+                previewThrottle = MoveTowardsPreview(
+                    previewThrottle,
+                    targetThrottle,
+                    previewDeltaTime * (targetThrottle <= 0.001f ? throttleRate * 1.5f : throttleRate));
+                previewBrake = MoveTowardsPreview(
+                    previewBrake,
+                    targetBrake,
+                    previewDeltaTime * (targetBrake <= 0.001f ? brakeRate * 1.5f : brakeRate));
+            } else {
+                previewSteering = targetSteering;
+                previewThrottle = targetThrottle;
+                previewBrake = targetBrake;
+            }
+
+            ImGui::Spacing();
+            ImGui::TextDisabled("Live Input Monitor");
+            ImGui::TextDisabled("Bindings/devices: steer %d/%d, throttle %d/%d, brake %d/%d",
+                steeringSample.matchingBindings,
+                steeringSample.matchingDevices,
+                throttleSample.matchingBindings,
+                throttleSample.matchingDevices,
+                brakeSample.matchingBindings,
+                brakeSample.matchingDevices);
+            RenderSteeringInputMeter("##LiveSteeringMeter", liveSteering, previewSteering);
+            if (ImGui::BeginTable("LivePedalMeters", 2, ImGuiTableFlags_SizingFixedFit)) {
+                ImGui::TableNextColumn();
+                RenderPedalInputMeter("##LiveThrottleMeter", "THR", liveThrottle, previewThrottle, IM_COL32(44, 196, 105, 245));
+                ImGui::TableNextColumn();
+                RenderPedalInputMeter("##LiveBrakeMeter", "BRK", liveBrake, previewBrake, IM_COL32(232, 73, 73, 245));
+                ImGui::EndTable();
+            }
+            if (!keyboardMonitor) {
+                ImGui::TextDisabled("Analog devices show direct output. Keyboard input shows smoothed output.");
+            }
+            if (!projectInputTestActive_) {
+                ImGui::TextDisabled("Press Start Input Test, then use the bound steering/throttle/brake controls.");
+            }
+
+            if (profile.keyboardSteeringSensitivity != steeringSensitivity ||
+                profile.keyboardThrottleSensitivity != throttleSensitivity ||
+                profile.keyboardBrakeSensitivity != brakeSensitivity) {
+                if (!projectSettingsChanged) {
+                    profile.keyboardSteeringSensitivity = steeringSensitivity;
+                    profile.keyboardThrottleSensitivity = throttleSensitivity;
+                    profile.keyboardBrakeSensitivity = brakeSensitivity;
+                    projectSettingsChanged = true;
+                }
             }
 
             std::vector<std::string> actions = GatherProfileActions(profile);
@@ -3037,6 +3759,12 @@ void SceneEditor::RenderProjectInputSettings() {
         SyncInputProfiles(inputManager_, inputProfiles_);
         SyncWheelSettingsProfiles(inputManager_, wheelSettingsProfiles_);
         SaveProject();
+    } else if (selectedInputProfileIndex_ != previousSelectedInputProfileIndex ||
+               selectedInputDevicePage_ != previousSelectedInputDevicePage ||
+               selectedWheelSettingsProfileIndex_ != previousSelectedWheelSettingsProfileIndex ||
+               projectInputTestActive_ != previousProjectInputTestActive ||
+               projectInputTestDeviceIndex_ != previousProjectInputTestDeviceIndex) {
+        SaveProject();
     }
 }
 
@@ -3128,6 +3856,11 @@ void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
                 mapping.materialId = CreateOrUpdateImportedMaterialAsset(materialManager_, importPath, baseName, info, false);
             }
             o.meshRenderer.materialId = mapping.materialId;
+            ModelCollisionMapping& collisionMapping = EnsureModelCollisionMapping(importSettings, info);
+            ApplyModelCollisionMappingToSceneObject(o, collisionMapping);
+            if (collisionMapping.autoBake && collisionMapping.mode != 0) {
+                PhysicsWorld::BakeCollisionShape(BuildModelCollisionDesc(importPath, info, collisionMapping));
+            }
             objects_.push_back(std::move(o));
             if (firstImportedIndex < 0) {
                 firstImportedIndex = static_cast<int>(objects_.size()) - 1;
@@ -3180,6 +3913,11 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
             mapping.materialId = CreateOrUpdateImportedMaterialAsset(materialManager_, importPath, baseName, infos.front(), false);
         }
         obj.meshRenderer.materialId = mapping.materialId;
+        ModelCollisionMapping& collisionMapping = EnsureModelCollisionMapping(importSettings, infos.front());
+        ApplyModelCollisionMappingToSceneObject(obj, collisionMapping);
+        if (collisionMapping.autoBake && collisionMapping.mode != 0) {
+            PhysicsWorld::BakeCollisionShape(BuildModelCollisionDesc(importPath, infos.front(), collisionMapping));
+        }
         SaveModelImportSettings(importPath, importSettings);
         materialManager_.LoadAll();
 

@@ -8,10 +8,13 @@
 #include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
+#include <implot/implot.h>
 
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <array>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 
@@ -210,6 +213,100 @@ void RenderSceneContributorRows(const std::vector<SceneMeshContributorStats>& co
     }
 }
 
+template <int Count>
+void PushProfilerSample(std::array<float, Count>& values, int sampleCount, float value) {
+    if (sampleCount < Count) {
+        values[static_cast<std::size_t>(sampleCount)] = value;
+        return;
+    }
+    std::move(values.begin() + 1, values.end(), values.begin());
+    values.back() = value;
+}
+
+template <int Count>
+float MaxProfilerSample(const std::array<float, Count>& values, int sampleCount) {
+    float maxValue = 0.0f;
+    const int count = (std::min)(sampleCount, Count);
+    for (int i = 0; i < count; ++i) {
+        maxValue = (std::max)(maxValue, values[static_cast<std::size_t>(i)]);
+    }
+    return maxValue;
+}
+
+void RenderMetricTile(const char* label, const char* value, const ImVec4& color) {
+    ImGui::BeginGroup();
+    ImGui::TextDisabled("%s", label);
+    ImGui::PushStyleColor(ImGuiCol_Text, color);
+    ImGui::TextUnformatted(value);
+    ImGui::PopStyleColor();
+    ImGui::EndGroup();
+}
+
+template <int Count>
+void RenderSingleProfilerPlot(const char* id,
+                              const char* seriesLabel,
+                              const std::array<float, Count>& values,
+                              int sampleCount,
+                              float minimumMax,
+                              const char* axisFormat) {
+    const int count = (std::min)(sampleCount, Count);
+    if (count <= 1) {
+        ImGui::TextDisabled("Collecting samples...");
+        return;
+    }
+
+    const float yMax = (std::max)(minimumMax, MaxProfilerSample(values, count) * 1.20f);
+    if (ImPlot::BeginPlot(id, ImVec2(-1.0f, 118.0f), ImPlotFlags_CanvasOnly)) {
+        ImPlot::SetupAxes(nullptr, nullptr,
+                          ImPlotAxisFlags_NoDecorations,
+                          ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickMarks);
+        ImPlot::SetupAxisFormat(ImAxis_Y1, axisFormat);
+        ImPlot::SetupAxesLimits(0.0, static_cast<double>(count - 1), 0.0, static_cast<double>(yMax), ImPlotCond_Always);
+        ImPlot::PlotLine(seriesLabel, values.data(), count, 1.0, 0.0);
+        ImPlot::EndPlot();
+    }
+}
+
+template <int Count>
+void RenderTimingProfilerPlot(const std::array<float, Count>& updateMs,
+                              const std::array<float, Count>& renderMs,
+                              const std::array<float, Count>& imguiMs,
+                              const std::array<float, Count>& swapMs,
+                              const std::array<float, Count>& editorUiMs,
+                              const std::array<float, Count>& physicsStepMs,
+                              int sampleCount) {
+    const int count = (std::min)(sampleCount, Count);
+    if (count <= 1) {
+        ImGui::TextDisabled("Collecting timing samples...");
+        return;
+    }
+
+    float yMax = 16.7f;
+    yMax = (std::max)(yMax, MaxProfilerSample(updateMs, count));
+    yMax = (std::max)(yMax, MaxProfilerSample(renderMs, count));
+    yMax = (std::max)(yMax, MaxProfilerSample(imguiMs, count));
+    yMax = (std::max)(yMax, MaxProfilerSample(swapMs, count));
+    yMax = (std::max)(yMax, MaxProfilerSample(editorUiMs, count));
+    yMax = (std::max)(yMax, MaxProfilerSample(physicsStepMs, count));
+    yMax *= 1.25f;
+
+    if (ImPlot::BeginPlot("##ProfilerTimingBreakdown", ImVec2(-1.0f, 150.0f), ImPlotFlags_NoTitle | ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect)) {
+        ImPlot::SetupAxes(nullptr, "ms",
+                          ImPlotAxisFlags_NoDecorations,
+                          ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickMarks);
+        ImPlot::SetupAxisFormat(ImAxis_Y1, "%.1f");
+        ImPlot::SetupAxesLimits(0.0, static_cast<double>(count - 1), 0.0, static_cast<double>(yMax), ImPlotCond_Always);
+        ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_NoButtons | ImPlotLegendFlags_NoMenus);
+        ImPlot::PlotLine("Update", updateMs.data(), count, 1.0, 0.0);
+        ImPlot::PlotLine("Render", renderMs.data(), count, 1.0, 0.0);
+        ImPlot::PlotLine("ImGui", imguiMs.data(), count, 1.0, 0.0);
+        ImPlot::PlotLine("Swap", swapMs.data(), count, 1.0, 0.0);
+        ImPlot::PlotLine("Editor", editorUiMs.data(), count, 1.0, 0.0);
+        ImPlot::PlotLine("Physics", physicsStepMs.data(), count, 1.0, 0.0);
+        ImPlot::EndPlot();
+    }
+}
+
 } // namespace
 
 DebugUI::DebugUI(bool enabled) : enabled_(enabled) {}
@@ -223,6 +320,7 @@ void DebugUI::Initialize(GLFWwindow* window) {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ApplyEditorTheme();
     ConfigureEditorTypography();
 
@@ -248,6 +346,7 @@ void DebugUI::Shutdown() {
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 }
 
@@ -302,6 +401,21 @@ void DebugUI::RenderAppMetrics(float deltaTime,
         ++averageFpsSamples_;
         averageFps_ = averageFpsAccum_ / static_cast<float>(averageFpsSamples_);
     }
+    const int historyCountBeforePush = profilerHistoryCount_;
+    PushProfilerSample(frameMsHistory_, historyCountBeforePush, frameTimeMs);
+    PushProfilerSample(fpsHistory_, historyCountBeforePush, fps);
+    PushProfilerSample(updateMsHistory_, historyCountBeforePush, frameTimings ? frameTimings->updateMs : 0.0f);
+    PushProfilerSample(renderMsHistory_, historyCountBeforePush, frameTimings ? frameTimings->renderMs : 0.0f);
+    PushProfilerSample(imguiMsHistory_, historyCountBeforePush, frameTimings ? frameTimings->imguiRenderMs : 0.0f);
+    PushProfilerSample(swapMsHistory_, historyCountBeforePush, frameTimings ? frameTimings->swapMs : 0.0f);
+    const float editorUiTotalMs = editorTimings
+        ? editorTimings->shortcutsMs + editorTimings->playModePopupMs + editorTimings->runtimeUpdatesMs +
+          editorTimings->dockspaceMs + editorTimings->scenePanelMs + editorTimings->inspectorMs +
+          editorTimings->browserMs + editorTimings->viewportPanelMs + editorTimings->auxiliaryWindowsMs
+        : 0.0f;
+    PushProfilerSample(editorUiMsHistory_, historyCountBeforePush, editorUiTotalMs);
+    PushProfilerSample(physicsStepMsHistory_, historyCountBeforePush, physicsStats ? static_cast<float>(physicsStats->lastStepTimeMs) : 0.0f);
+    profilerHistoryCount_ = (std::min)(profilerHistoryCount_ + 1, kProfilerHistoryCount);
 
     const RendererFrameStats& rendererStats = renderer.GetFrameStats();
 
@@ -318,17 +432,52 @@ void DebugUI::RenderAppMetrics(float deltaTime,
     }
 
     if (ImGui::Begin("Profiler", &showProfiler_)) {
-        ImGui::Text("Frame time: %.2f ms", frameTimeMs);
-        ImGui::Text("FPS: %.1f", fps);
-        ImGui::Text("Rolling frame: %.2f ms", rollingFrameTimeMs_);
-        ImGui::Text("Average FPS: %.1f  (%d samples)", averageFps_, averageFpsSamples_);
-        ImGui::SameLine();
+        char frameValue[64]{};
+        char fpsValue[64]{};
+        char avgValue[64]{};
+        char drawValue[64]{};
+        std::snprintf(frameValue, sizeof(frameValue), "%.2f ms", frameTimeMs);
+        std::snprintf(fpsValue, sizeof(fpsValue), "%.1f", fps);
+        std::snprintf(avgValue, sizeof(avgValue), "%.1f", averageFps_);
+        std::snprintf(drawValue, sizeof(drawValue), "%u", rendererStats.drawCallCount);
+
+        if (ImGui::BeginTable("ProfilerSummaryTiles", 4, ImGuiTableFlags_SizingStretchSame)) {
+            ImGui::TableNextColumn();
+            RenderMetricTile("Frame", frameValue, ImVec4(0.55f, 0.83f, 1.00f, 1.0f));
+            ImGui::TableNextColumn();
+            RenderMetricTile("FPS", fpsValue, ImVec4(0.52f, 0.92f, 0.65f, 1.0f));
+            ImGui::TableNextColumn();
+            RenderMetricTile("Avg FPS", avgValue, ImVec4(0.92f, 0.80f, 0.48f, 1.0f));
+            ImGui::TableNextColumn();
+            RenderMetricTile("Draw Calls", drawValue, ImVec4(0.88f, 0.72f, 1.00f, 1.0f));
+            ImGui::EndTable();
+        }
         if (ImGui::SmallButton("Reset")) {
             averageFpsAccum_ = 0.0f;
             averageFpsSamples_ = 0;
             averageFps_ = 0.0f;
             rollingFrameTimeMs_ = 0.0f;
+            profilerHistoryCount_ = 0;
+            frameMsHistory_.fill(0.0f);
+            fpsHistory_.fill(0.0f);
+            updateMsHistory_.fill(0.0f);
+            renderMsHistory_.fill(0.0f);
+            imguiMsHistory_.fill(0.0f);
+            swapMsHistory_.fill(0.0f);
+            editorUiMsHistory_.fill(0.0f);
+            physicsStepMsHistory_.fill(0.0f);
         }
+        ImGui::Separator();
+        ImGui::TextUnformatted("Frame Time");
+        RenderSingleProfilerPlot("##ProfilerFrameTimeGraph", "Frame", frameMsHistory_, profilerHistoryCount_, 33.3f, "%.1f");
+        ImGui::TextUnformatted("Timing Breakdown");
+        RenderTimingProfilerPlot(updateMsHistory_,
+                                 renderMsHistory_,
+                                 imguiMsHistory_,
+                                 swapMsHistory_,
+                                 editorUiMsHistory_,
+                                 physicsStepMsHistory_,
+                                 profilerHistoryCount_);
         ImGui::Separator();
 
         if (frameTimings) {

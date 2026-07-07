@@ -312,13 +312,41 @@ void Renderer::Flush() {
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
-    // Sort draw calls to minimize GPU state changes (texture binds, VAO switches).
-    if (settings_.enableDrawCallSorting && drawList_.size() > 1) {
-        std::sort(drawList_.begin(), drawList_.end(), [](const MeshDrawCommand& a, const MeshDrawCommand& b) {
-            if (a.shaderId != b.shaderId) return a.shaderId < b.shaderId;
-            if (a.diffuseTextureId != b.diffuseTextureId) return a.diffuseTextureId < b.diffuseTextureId;
-            if (a.vao != b.vao) return a.vao < b.vao;
-            return a.materialId < b.materialId;
+    const glm::vec3 cameraPosition = glm::vec3(glm::inverse(view_)[3]);
+    auto commandIsTransparent = [](const MeshDrawCommand& cmd) {
+        const std::string shaderId = cmd.unlit ? std::string("unlit") : ShaderRegistry::NormalizeShaderId(cmd.shaderId);
+        return ShaderRegistry::Resolve(shaderId).transparent || cmd.color.a < 0.999f;
+    };
+    auto commandDistanceSq = [&](const MeshDrawCommand& cmd) {
+        const glm::vec3 position = glm::vec3(cmd.modelMatrix[3]);
+        const glm::vec3 delta = position - cameraPosition;
+        return glm::dot(delta, delta);
+    };
+
+    std::vector<const MeshDrawCommand*> opaqueCommands;
+    std::vector<const MeshDrawCommand*> transparentCommands;
+    opaqueCommands.reserve(drawList_.size());
+    transparentCommands.reserve(drawList_.size());
+    for (const MeshDrawCommand& cmd : drawList_) {
+        if (commandIsTransparent(cmd)) {
+            transparentCommands.push_back(&cmd);
+        } else {
+            opaqueCommands.push_back(&cmd);
+        }
+    }
+
+    auto sortByState = [](const MeshDrawCommand* a, const MeshDrawCommand* b) {
+        if (a->shaderId != b->shaderId) return a->shaderId < b->shaderId;
+        if (a->diffuseTextureId != b->diffuseTextureId) return a->diffuseTextureId < b->diffuseTextureId;
+        if (a->vao != b->vao) return a->vao < b->vao;
+        return a->materialId < b->materialId;
+    };
+    if (settings_.enableDrawCallSorting && opaqueCommands.size() > 1) {
+        std::sort(opaqueCommands.begin(), opaqueCommands.end(), sortByState);
+    }
+    if (transparentCommands.size() > 1) {
+        std::stable_sort(transparentCommands.begin(), transparentCommands.end(), [&](const MeshDrawCommand* a, const MeshDrawCommand* b) {
+            return commandDistanceSq(*a) > commandDistanceSq(*b);
         });
     }
 
@@ -331,7 +359,7 @@ void Renderer::Flush() {
         shader.setInt("uMaterialRoughnessTexture", 3);
         shader.setInt("uMaterialAoTexture", 4);
         shader.setVec3("uAmbientColor", settings_.ambientColor);
-        shader.setVec3("uCameraPosition", glm::vec3(glm::inverse(view_)[3]));
+        shader.setVec3("uCameraPosition", cameraPosition);
     };
     const int lightCount = static_cast<int>((std::min)(lightDrawList_.size(), static_cast<std::size_t>(8)));
     auto bindLights = [&](Shader& shader) {
@@ -355,10 +383,10 @@ void Renderer::Flush() {
         }
     };
     std::string boundShaderId;
-    for (const auto& cmd : drawList_) {
+    auto drawMeshCommand = [&](const MeshDrawCommand& cmd) {
         Shader* activeShader = resolveShader(cmd.unlit ? std::string("unlit") : cmd.shaderId);
         if (activeShader == nullptr) {
-            continue;
+            return;
         }
         const std::string currentShaderId = cmd.unlit ? std::string("unlit") : ShaderRegistry::NormalizeShaderId(cmd.shaderId);
         if (boundShaderId != currentShaderId) {
@@ -444,6 +472,13 @@ void Renderer::Flush() {
         glBindVertexArray(cmd.vao);
         glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, nullptr);
         ++frameStats_.drawCallCount;
+    };
+
+    for (const MeshDrawCommand* cmd : opaqueCommands) {
+        drawMeshCommand(*cmd);
+    }
+    for (const MeshDrawCommand* cmd : transparentCommands) {
+        drawMeshCommand(*cmd);
     }
     glBindVertexArray(0);
     drawList_.clear();

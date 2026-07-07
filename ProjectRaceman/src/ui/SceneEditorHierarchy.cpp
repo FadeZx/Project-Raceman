@@ -98,7 +98,16 @@ std::vector<int> SortedSelectedIndices(const std::vector<int>& selectedIndices, 
 } // namespace
 
 void SceneEditor::RenderScenePanel() {
-    if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_NoCollapse)) {
+    if (IsPanelHiddenByFullscreen("Scene")) {
+        scenePanelHovered_ = false;
+        scenePanelFocused_ = false;
+        return;
+    }
+
+    ApplyPanelFullscreenWindowSetup("Scene");
+    const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | PanelFullscreenWindowFlags("Scene");
+    if (ImGui::Begin("Scene", nullptr, windowFlags)) {
+        HandlePanelHeadingDoubleClick("Scene");
         scenePanelHovered_ = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
         scenePanelFocused_ = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
         hierarchyKeyboardTargetObjectId_.clear();

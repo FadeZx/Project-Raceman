@@ -164,6 +164,11 @@ private:
     void RenderViewportPanel();
     void RenderDockspaceHost();
     void RenderStatusBar(float deltaTime);
+    bool IsPanelHiddenByFullscreen(const char* windowName) const;
+    int PanelFullscreenWindowFlags(const char* windowName) const;
+    void RestorePanelDockLayoutIfNeeded();
+    void ApplyPanelFullscreenWindowSetup(const char* windowName);
+    void HandlePanelHeadingDoubleClick(const char* windowName);
     void RenderModelAssetInspector();
     bool RefreshModelAssetInspectorCache(bool forceReload);
     void RenderMaterialInspector();
@@ -313,6 +318,8 @@ private:
     int selectedInputProfileIndex_{0};
     int selectedInputDevicePage_{0};
     int selectedWheelSettingsProfileIndex_{0};
+    bool projectInputTestActive_{false};
+    int projectInputTestDeviceIndex_{0};
 
     // shared primitives
     std::unordered_map<std::string, PrimitiveMesh> builtInPrimitiveMeshes_;
@@ -373,6 +380,8 @@ private:
     bool vehicleConfigEditorHovered_{false};
     bool vehicleConfigEditorFocused_{false};
     bool vehicleConfigEditActive_{false};
+    bool vehicleConfigEditorFocusRequested_{false};
+    double vehicleConfigEditorHighlightUntil_{0.0};
     bool showVehicleSoundEditor_{false};
     std::string inspectedVehicleSoundPath_;
     VehicleSoundProfile inspectedVehicleSound_{};
@@ -381,6 +390,8 @@ private:
     bool vehicleSoundEditorHovered_{false};
     bool vehicleSoundEditorFocused_{false};
     bool vehicleSoundEditActive_{false};
+    bool vehicleSoundEditorFocusRequested_{false};
+    double vehicleSoundEditorHighlightUntil_{0.0};
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
     bool scriptsRunning_{false};
     bool scriptsPaused_{false};
@@ -415,6 +426,9 @@ private:
         std::vector<VehicleWheelBinding> wheelBindings;
         std::vector<Transform> wheelAuthoredLocalTransforms;
         std::vector<glm::vec3> wheelAuthoredRotationEuler;
+        float smoothedKeyboardSteering{0.0f};
+        float smoothedKeyboardThrottle{0.0f};
+        float smoothedKeyboardBrake{0.0f};
         std::unique_ptr<physics::VehiclePhysics> instance;
     };
     std::vector<RuntimeVehicleInstance> runtimeVehicles_;
@@ -513,6 +527,15 @@ private:
         std::vector<std::string> rootObjectIds;
     } objectClipboard_;
     bool dockLayoutInitialized_{false};
+    struct FullscreenPanelState {
+        bool active{false};
+        std::string windowName;
+        unsigned int originalDockId{0};
+        std::string restoreWindowName;
+        unsigned int restoreDockId{0};
+        std::string dockSettingsSnapshot;
+    };
+    FullscreenPanelState fullscreenPanel_;
     glm::vec2 viewportPanelPos_{0.0f, 0.0f};
     glm::vec2 viewportPanelSize_{0.0f, 0.0f};
     glm::vec2 sceneViewportPos_{0.0f, 0.0f};
@@ -531,6 +554,9 @@ private:
     bool gameViewportFocused_{false};
     bool gameViewportRenderDirty_{true};
     glm::vec2 lastRenderedGameViewportSize_{0.0f, 0.0f};
+    bool colliderEditMode_{false};
+    bool colliderGizmoActive_{false};
+    bool colliderGizmoDirtyDuringDrag_{false};
     bool editorCameraNavigating_{false};
     glm::mat4 editorCameraView_{1.0f};
     glm::mat4 editorCameraProj_{1.0f};

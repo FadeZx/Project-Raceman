@@ -74,6 +74,8 @@ private:
     bool showProjectSettings_{false};
     bool showSkybox_{false};
     bool showConsole_{false};
+    int selectedProjectSettingsTab_{0};
+    bool restoreProjectSettingsTab_{true};
 
     // Cached skybox folders under assets/skybox
     std::vector<std::string> skyboxFolders_;

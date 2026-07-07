@@ -988,6 +988,8 @@ void SceneEditor::RenderUI(float deltaTime) {
     }
     frameTimings_.runtimeUpdatesMs = elapsedMs(timingStart);
 
+    RestorePanelDockLayoutIfNeeded();
+
     timingStart = glfwGetTime();
     RenderDockspaceHost();
     frameTimings_.dockspaceMs = elapsedMs(timingStart);
@@ -1089,6 +1091,117 @@ bool SceneEditor::ContainsGameViewportPoint(float x, float y) const {
         && y >= gameViewportPos_.y
         && x < gameViewportPos_.x + gameViewportSize_.x
         && y < gameViewportPos_.y + gameViewportSize_.y;
+}
+
+bool SceneEditor::IsPanelHiddenByFullscreen(const char* windowName) const {
+    return fullscreenPanel_.active
+        && windowName != nullptr
+        && fullscreenPanel_.windowName != windowName;
+}
+
+int SceneEditor::PanelFullscreenWindowFlags(const char* windowName) const {
+    if (!fullscreenPanel_.active || windowName == nullptr || fullscreenPanel_.windowName != windowName) {
+        return 0;
+    }
+    return ImGuiWindowFlags_NoDocking
+        | ImGuiWindowFlags_NoMove
+        | ImGuiWindowFlags_NoResize
+        | ImGuiWindowFlags_NoCollapse
+        | ImGuiWindowFlags_NoBringToFrontOnFocus;
+}
+
+void SceneEditor::RestorePanelDockLayoutIfNeeded() {
+    if (fullscreenPanel_.restoreWindowName.empty()) {
+        return;
+    }
+
+    if (!fullscreenPanel_.dockSettingsSnapshot.empty()) {
+        ImGui::LoadIniSettingsFromMemory(
+            fullscreenPanel_.dockSettingsSnapshot.c_str(),
+            fullscreenPanel_.dockSettingsSnapshot.size());
+        fullscreenPanel_.dockSettingsSnapshot.clear();
+    }
+
+    fullscreenPanel_.restoreWindowName.clear();
+    fullscreenPanel_.restoreDockId = 0;
+}
+
+void SceneEditor::ApplyPanelFullscreenWindowSetup(const char* windowName) {
+    if (windowName == nullptr) {
+        return;
+    }
+
+    if (!fullscreenPanel_.active || fullscreenPanel_.windowName != windowName) {
+        return;
+    }
+
+    constexpr float statusBarHeight = 24.0f;
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
+    ImGui::SetNextWindowViewport(viewport->ID);
+    ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(
+        ImVec2(viewport->WorkSize.x, (std::max)(1.0f, viewport->WorkSize.y - statusBarHeight)),
+        ImGuiCond_Always);
+    ImGui::SetNextWindowFocus();
+}
+
+void SceneEditor::HandlePanelHeadingDoubleClick(const char* windowName) {
+    if (windowName == nullptr || !ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+        return;
+    }
+
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window == nullptr || window->SkipItems) {
+        return;
+    }
+
+    ImGuiContext& g = *GImGui;
+    const bool hoveredThisWindow = g.HoveredWindow == window;
+    const bool hoveredDockHost = window->DockNode != nullptr
+        && window->DockNode->HostWindow != nullptr
+        && g.HoveredWindow == window->DockNode->HostWindow;
+    if (!hoveredThisWindow && !hoveredDockHost) {
+        return;
+    }
+
+    const ImVec2 mousePos = ImGui::GetIO().MousePos;
+    const ImVec2 titleSize = ImGui::CalcTextSize(windowName);
+    const ImRect titleBarRect = window->TitleBarRect();
+    const ImRect titleButtonRect(
+        ImVec2(titleBarRect.Min.x + ImGui::GetStyle().FramePadding.x, titleBarRect.Min.y),
+        ImVec2(titleBarRect.Min.x + ImGui::GetStyle().FramePadding.x * 3.0f + titleSize.x, titleBarRect.Max.y));
+    bool headingHovered = hoveredThisWindow && titleButtonRect.Contains(mousePos);
+    if (window->DockNode != nullptr
+        && window->DockNode->TabBar != nullptr
+        && !window->DockNode->IsHiddenTabBar()
+        && !window->DockNode->IsNoTabBar()) {
+        if (ImGuiTabItem* tab = ImGui::TabBarFindTabByID(window->DockNode->TabBar, window->TabId)) {
+            const ImRect tabButtonRect(
+                ImVec2(window->DockNode->TabBar->BarRect.Min.x + tab->Offset, window->DockNode->TabBar->BarRect.Min.y),
+                ImVec2(window->DockNode->TabBar->BarRect.Min.x + tab->Offset + tab->Width, window->DockNode->TabBar->BarRect.Max.y));
+            headingHovered = headingHovered || (hoveredDockHost && tabButtonRect.Contains(mousePos));
+        }
+    }
+    if (!headingHovered) {
+        return;
+    }
+
+    if (fullscreenPanel_.active && fullscreenPanel_.windowName == windowName) {
+        fullscreenPanel_.restoreWindowName = fullscreenPanel_.windowName;
+        fullscreenPanel_.restoreDockId = fullscreenPanel_.originalDockId;
+        fullscreenPanel_.active = false;
+        fullscreenPanel_.windowName.clear();
+        fullscreenPanel_.originalDockId = 0;
+        return;
+    }
+
+    fullscreenPanel_.active = true;
+    fullscreenPanel_.windowName = windowName;
+    fullscreenPanel_.originalDockId = static_cast<unsigned int>(window->DockId);
+    size_t dockSettingsSize = 0;
+    const char* dockSettings = ImGui::SaveIniSettingsToMemory(&dockSettingsSize);
+    fullscreenPanel_.dockSettingsSnapshot.assign(dockSettings, dockSettingsSize);
 }
 
 void SceneEditor::RenderViewportPanel() {
@@ -1256,49 +1369,63 @@ void SceneEditor::RenderViewportPanel() {
         ImGui::EndChild();
     };
 
-    bool sceneWindowOpen = ImGui::Begin("Scene View", nullptr, viewportWindowFlags);
-    if (sceneWindowOpen) {
-        renderViewportSurface("SceneViewportSurface", SceneEditorActiveViewport::Scene, sceneViewportTextureId_, sceneViewportPos_, sceneViewportSize_, sceneViewportHovered_);
-        HandleTrackDrawingInput();
-        // Accept scene asset drops from the project browser onto the viewport.
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
-                const char* droppedPath = static_cast<const char*>(payload->Data);
-                if (droppedPath != nullptr && droppedPath[0] != '\0') {
-                    ImportObj(droppedPath);
-                }
-            }
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
-                const char* droppedPath = static_cast<const char*>(payload->Data);
-                if (droppedPath != nullptr && droppedPath[0] != '\0') {
-                    if (IsPrefabAssetPath(droppedPath)) {
-                        InstantiatePrefab(droppedPath);
-                    } else if (IsMeshAssetPath(droppedPath)) {
+    if (!IsPanelHiddenByFullscreen("Scene View")) {
+        ApplyPanelFullscreenWindowSetup("Scene View");
+        const ImGuiWindowFlags sceneWindowFlags = viewportWindowFlags | PanelFullscreenWindowFlags("Scene View");
+        bool sceneWindowOpen = ImGui::Begin("Scene View", nullptr, sceneWindowFlags);
+        if (sceneWindowOpen) {
+            HandlePanelHeadingDoubleClick("Scene View");
+            renderViewportSurface("SceneViewportSurface", SceneEditorActiveViewport::Scene, sceneViewportTextureId_, sceneViewportPos_, sceneViewportSize_, sceneViewportHovered_);
+            HandleTrackDrawingInput();
+            // Accept scene asset drops from the project browser onto the viewport.
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
+                    const char* droppedPath = static_cast<const char*>(payload->Data);
+                    if (droppedPath != nullptr && droppedPath[0] != '\0') {
                         ImportObj(droppedPath);
                     }
                 }
-            }
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
-                const char* droppedPath = static_cast<const char*>(payload->Data);
-                if (droppedPath != nullptr && droppedPath[0] != '\0') {
-                    ImportObj(droppedPath);
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                    const char* droppedPath = static_cast<const char*>(payload->Data);
+                    if (droppedPath != nullptr && droppedPath[0] != '\0') {
+                        if (IsPrefabAssetPath(droppedPath)) {
+                            InstantiatePrefab(droppedPath);
+                        } else if (IsMeshAssetPath(droppedPath)) {
+                            ImportObj(droppedPath);
+                        }
+                    }
                 }
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
+                    const char* droppedPath = static_cast<const char*>(payload->Data);
+                    if (droppedPath != nullptr && droppedPath[0] != '\0') {
+                        ImportObj(droppedPath);
+                    }
+                }
+                ImGui::EndDragDropTarget();
             }
-            ImGui::EndDragDropTarget();
+        } else {
+            sceneViewportSize_ = glm::vec2(0.0f);
         }
+        ImGui::End();
     } else {
         sceneViewportSize_ = glm::vec2(0.0f);
     }
-    ImGui::End();
 
-    bool gameWindowOpen = ImGui::Begin("Game View", nullptr, viewportWindowFlags);
-    if (gameWindowOpen) {
-        renderGameViewToolbar();
-        renderViewportSurface("GameViewportSurface", SceneEditorActiveViewport::Game, gameViewportTextureId_, gameViewportPos_, gameViewportSize_, gameViewportHovered_);
+    if (!IsPanelHiddenByFullscreen("Game View")) {
+        ApplyPanelFullscreenWindowSetup("Game View");
+        const ImGuiWindowFlags gameWindowFlags = viewportWindowFlags | PanelFullscreenWindowFlags("Game View");
+        bool gameWindowOpen = ImGui::Begin("Game View", nullptr, gameWindowFlags);
+        if (gameWindowOpen) {
+            HandlePanelHeadingDoubleClick("Game View");
+            renderGameViewToolbar();
+            renderViewportSurface("GameViewportSurface", SceneEditorActiveViewport::Game, gameViewportTextureId_, gameViewportPos_, gameViewportSize_, gameViewportHovered_);
+        } else {
+            gameViewportSize_ = glm::vec2(0.0f);
+        }
+        ImGui::End();
     } else {
         gameViewportSize_ = glm::vec2(0.0f);
     }
-    ImGui::End();
 
     // ── Stats toggle button ────────────────────────────────────────────────
     const bool hasSceneViewport = sceneViewportSize_.x > 1.0f && sceneViewportSize_.y > 1.0f;
@@ -1409,7 +1536,7 @@ void SceneEditor::RenderStatusBar(float deltaTime) {
     const PhysicsBuildProgress* progress = GetPhysicsBuildProgress();
     if (progress != nullptr) {
         const std::string task = progress->GetTask();
-        if (task.find("Loaded:") == 0) {
+        if (task.find("Loaded:") == 0 || task.find("Loaded from cache:") == 0) {
             lastPhysicsCacheStatus_ = "Loaded from cache";
         } else if (task.find("Cooking:") == 0) {
             lastPhysicsCacheStatus_ = "Cooking";
@@ -3683,8 +3810,6 @@ void SceneEditor::Load(const std::string& path) {
                     } else if (componentType == "Vehicle") {
                         so.hasVehicle = true;
                         ReadBool(component, "enabled", so.vehicle.enabled);
-                        so.vehicle.canTilt = true;
-                        ReadBool(component, "canTilt", so.vehicle.canTilt);
                         ReadString(component, "configPath", so.vehicle.configPath);
                         so.vehicle.configPath = NormalizeSlashes(so.vehicle.configPath);
                         so.vehicle.inputProfileId = "default_vehicle";
@@ -4131,6 +4256,19 @@ void SceneEditor::LoadProject() {
                 if (editorIt != object.end() && editorIt->second.is_object()) {
                     const auto& editorState = editorIt->second.as_object();
                     ReadString(editorState, "selectedProjectDirectory", selectedProjectDirectory_);
+                    if (auto it = editorState.find("selectedInputProfileIndex"); it != editorState.end() && it->second.is_number()) {
+                        selectedInputProfileIndex_ = (std::max)(0, static_cast<int>(it->second.as_number()));
+                    }
+                    if (auto it = editorState.find("selectedInputDevicePage"); it != editorState.end() && it->second.is_number()) {
+                        selectedInputDevicePage_ = (std::clamp)(static_cast<int>(it->second.as_number()), 0, 2);
+                    }
+                    if (auto it = editorState.find("selectedWheelSettingsProfileIndex"); it != editorState.end() && it->second.is_number()) {
+                        selectedWheelSettingsProfileIndex_ = (std::max)(0, static_cast<int>(it->second.as_number()));
+                    }
+                    ReadBool(editorState, "projectInputTestActive", projectInputTestActive_);
+                    if (auto it = editorState.find("projectInputTestDeviceIndex"); it != editorState.end() && it->second.is_number()) {
+                        projectInputTestDeviceIndex_ = (std::clamp)(static_cast<int>(it->second.as_number()), 0, 3);
+                    }
                 }
 
                 auto physicsIt = object.find("physics");
@@ -4179,6 +4317,17 @@ void SceneEditor::LoadProject() {
                             InputProfile profile;
                             ReadString(profileObject, "id", profile.id);
                             ReadString(profileObject, "displayName", profile.displayName);
+                            if (auto it = profileObject.find("keyboardSteeringSensitivity"); it != profileObject.end() && it->second.is_number()) {
+                                profile.keyboardSteeringSensitivity = static_cast<float>(it->second.as_number());
+                            }
+                            if (auto it = profileObject.find("keyboardThrottleSensitivity"); it != profileObject.end() && it->second.is_number()) {
+                                profile.keyboardThrottleSensitivity = static_cast<float>(it->second.as_number());
+                            }
+                            if (auto it = profileObject.find("keyboardBrakeSensitivity"); it != profileObject.end() && it->second.is_number()) {
+                                profile.keyboardBrakeSensitivity = static_cast<float>(it->second.as_number());
+                            } else {
+                                profile.keyboardBrakeSensitivity = profile.keyboardThrottleSensitivity;
+                            }
                             auto bindingsIt = profileObject.find("bindings");
                             if (bindingsIt != profileObject.end() && bindingsIt->second.is_array()) {
                                 for (const auto& bindingValue : bindingsIt->second.as_array()) {
@@ -4355,6 +4504,14 @@ void SceneEditor::SaveProject() {
         out << "  \"assetsRoot\": \"" << JsonEscape(assetsRootSetting_) << "\",\n";
         out << "  \"defaultScene\": \"" << JsonEscape(NormalizeSlashes(defaultScenePath_)) << "\",\n";
         out << "  \"lastScene\": \"" << JsonEscape(NormalizeSlashes(lastScenePath_)) << "\",\n";
+        out << "  \"editorState\": {\n";
+        out << "    \"selectedProjectDirectory\": \"" << JsonEscape(NormalizeSlashes(selectedProjectDirectory_)) << "\",\n";
+        out << "    \"selectedInputProfileIndex\": " << selectedInputProfileIndex_ << ",\n";
+        out << "    \"selectedInputDevicePage\": " << selectedInputDevicePage_ << ",\n";
+        out << "    \"selectedWheelSettingsProfileIndex\": " << selectedWheelSettingsProfileIndex_ << ",\n";
+        out << "    \"projectInputTestActive\": " << (projectInputTestActive_ ? "true" : "false") << ",\n";
+        out << "    \"projectInputTestDeviceIndex\": " << projectInputTestDeviceIndex_ << "\n";
+        out << "  },\n";
         out << "  \"tags\": [\n";
         for (std::size_t tagIndex = 0; tagIndex < projectTags_.size(); ++tagIndex) {
             out << "    \"" << JsonEscape(projectTags_[tagIndex]) << "\"" << (tagIndex + 1 < projectTags_.size() ? ",\n" : "\n");
@@ -4389,6 +4546,9 @@ void SceneEditor::SaveProject() {
             out << "      {\n";
             out << "        \"id\": \"" << JsonEscape(profile.id) << "\",\n";
             out << "        \"displayName\": \"" << JsonEscape(profile.displayName) << "\",\n";
+            out << "        \"keyboardSteeringSensitivity\": " << profile.keyboardSteeringSensitivity << ",\n";
+            out << "        \"keyboardThrottleSensitivity\": " << profile.keyboardThrottleSensitivity << ",\n";
+            out << "        \"keyboardBrakeSensitivity\": " << profile.keyboardBrakeSensitivity << ",\n";
             out << "        \"bindings\": [\n";
             for (std::size_t bindingIndex = 0; bindingIndex < profile.bindings.size(); ++bindingIndex) {
                 const InputBinding& binding = profile.bindings[bindingIndex];

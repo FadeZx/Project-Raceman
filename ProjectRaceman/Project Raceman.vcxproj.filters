@@ -133,6 +133,12 @@
     <ClInclude Include="editor-assets\third_party\imnodes\imnodes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="editor-assets\third_party\implot\implot.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="editor-assets\third_party\implot\implot_internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\ui\TrackGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -262,6 +268,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="editor-assets\third_party\imnodes\imnodes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="editor-assets\third_party\implot\implot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="editor-assets\third_party\implot\implot_items.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

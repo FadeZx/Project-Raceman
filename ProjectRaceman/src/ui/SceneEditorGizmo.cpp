@@ -645,15 +645,15 @@ void SubmitWireMesh(Renderer& renderer,
                     const glm::vec4& color,
                     float width,
                     DebugLineDepthMode depthMode,
-                    std::size_t maxTriangles = 2000) {
+                    std::size_t maxTriangles = 0) {
     if (vertices.empty() || indices.size() < 3) {
         return;
     }
 
     const std::size_t triangleCount = indices.size() / 3;
-    const std::size_t stride = triangleCount > maxTriangles ? (triangleCount + maxTriangles - 1) / maxTriangles : 1;
+    const std::size_t trianglesToDraw = maxTriangles == 0 ? triangleCount : (std::min)(triangleCount, maxTriangles);
 
-    for (std::size_t tri = 0; tri < triangleCount; tri += stride) {
+    for (std::size_t tri = 0; tri < trianglesToDraw; ++tri) {
         const std::size_t base = tri * 3;
         if (base + 2 >= indices.size()) {
             break;
@@ -879,6 +879,97 @@ void SceneEditor::UpdateImGuizmo() {
         selectedIndex_ >= static_cast<int>(objects_.size()) ||
         !IsObjectEffectivelyEnabled(selectedIndex_)) {
         return;
+    }
+
+    SceneObject& selectedObject = objects_[selectedIndex_];
+    const SceneColliderType selectedColliderType = GetActiveColliderType(selectedObject);
+    if (colliderEditMode_ && selectedColliderType != SceneColliderType::None) {
+        glm::mat4 objectWorldMatrix = GetObjectDisplayWorldMatrix(selectedIndex_);
+        glm::mat4 colliderLocalMatrix(1.0f);
+        bool canManipulateCollider = false;
+
+        if (selectedColliderType == SceneColliderType::Box && selectedObject.boxCollider.enabled) {
+            const glm::vec3 boxSize{
+                (std::max)(0.01f, selectedObject.boxCollider.size.x),
+                (std::max)(0.01f, selectedObject.boxCollider.size.y),
+                (std::max)(0.01f, selectedObject.boxCollider.size.z)
+            };
+            colliderLocalMatrix = glm::translate(glm::mat4(1.0f), selectedObject.boxCollider.center)
+                * glm::scale(glm::mat4(1.0f), boxSize);
+            canManipulateCollider = true;
+        } else if (selectedColliderType == SceneColliderType::Sphere && selectedObject.sphereCollider.enabled) {
+            const float diameter = (std::max)(0.01f, selectedObject.sphereCollider.radius * 2.0f);
+            colliderLocalMatrix = glm::translate(glm::mat4(1.0f), selectedObject.sphereCollider.center)
+                * glm::scale(glm::mat4(1.0f), glm::vec3(diameter));
+            canManipulateCollider = true;
+        } else if (selectedColliderType == SceneColliderType::Capsule && selectedObject.capsuleCollider.enabled) {
+            const float radius = (std::max)(0.01f, selectedObject.capsuleCollider.radius);
+            const float height = (std::max)(radius * 2.0f, selectedObject.capsuleCollider.height);
+            colliderLocalMatrix = glm::translate(glm::mat4(1.0f), selectedObject.capsuleCollider.center)
+                * glm::scale(glm::mat4(1.0f), glm::vec3(radius * 2.0f, height, radius * 2.0f));
+            canManipulateCollider = true;
+        }
+
+        if (canManipulateCollider) {
+            glm::mat4 colliderWorldMatrix = objectWorldMatrix * colliderLocalMatrix;
+            glm::mat4 deltaMatrix(1.0f);
+            const bool allowColliderGizmoInput = !io.WantTextInput && !io.MouseDown[1] &&
+                (sceneViewportHovered_ || colliderGizmoActive_ || ImGuizmo::IsUsing());
+            ImGuizmo::Enable(allowColliderGizmoInput);
+            const bool manipulated = ImGuizmo::Manipulate(
+                glm::value_ptr(editorCameraView_),
+                glm::value_ptr(editorCameraProj_),
+                static_cast<ImGuizmo::OPERATION>(ImGuizmo::TRANSLATE | ImGuizmo::SCALE),
+                ImGuizmo::LOCAL,
+                glm::value_ptr(colliderWorldMatrix),
+                glm::value_ptr(deltaMatrix));
+            ImGuizmo::Enable(true);
+
+            if (ImGuizmo::IsUsing()) {
+                if (!colliderGizmoActive_) {
+                    PushUndoState();
+                    colliderGizmoActive_ = true;
+                    colliderGizmoDirtyDuringDrag_ = false;
+                }
+                if (manipulated) {
+                    const glm::mat4 newColliderLocalMatrix = glm::inverse(objectWorldMatrix) * colliderWorldMatrix;
+                    const Transform colliderTransform = TransformFromMatrix(newColliderLocalMatrix);
+                    if (selectedColliderType == SceneColliderType::Box) {
+                        selectedObject.boxCollider.center = colliderTransform.position;
+                        selectedObject.boxCollider.size = {
+                            (std::max)(0.01f, std::abs(colliderTransform.scale.x)),
+                            (std::max)(0.01f, std::abs(colliderTransform.scale.y)),
+                            (std::max)(0.01f, std::abs(colliderTransform.scale.z))
+                        };
+                    } else if (selectedColliderType == SceneColliderType::Sphere) {
+                        selectedObject.sphereCollider.center = colliderTransform.position;
+                        selectedObject.sphereCollider.radius = (std::max)(
+                            0.005f,
+                            ((std::abs(colliderTransform.scale.x) + std::abs(colliderTransform.scale.y) + std::abs(colliderTransform.scale.z)) / 3.0f) * 0.5f);
+                    } else if (selectedColliderType == SceneColliderType::Capsule) {
+                        selectedObject.capsuleCollider.center = colliderTransform.position;
+                        const float radius = (std::max)(
+                            0.005f,
+                            (std::abs(colliderTransform.scale.x) + std::abs(colliderTransform.scale.z)) * 0.25f);
+                        selectedObject.capsuleCollider.radius = radius;
+                        selectedObject.capsuleCollider.height = (std::max)(radius * 2.0f, std::abs(colliderTransform.scale.y));
+                    }
+                    colliderGizmoDirtyDuringDrag_ = true;
+                }
+                return;
+            }
+
+            if (colliderGizmoActive_) {
+                if (colliderGizmoDirtyDuringDrag_ && onDirty_) {
+                    onDirty_();
+                }
+                colliderGizmoActive_ = false;
+                colliderGizmoDirtyDuringDrag_ = false;
+                return;
+            }
+
+            return;
+        }
     }
 
     glm::mat4 objectWorldMatrix = GetObjectDisplayWorldMatrix(selectedIndex_);

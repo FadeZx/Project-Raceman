@@ -372,7 +372,6 @@ void SceneEditor::Save(const std::string& path) {
             out << "        {\n";
             out << "          \"type\": \"Vehicle\",\n";
             out << "          \"enabled\": " << (o.vehicle.enabled ? "true" : "false") << ",\n";
-            out << "          \"canTilt\": " << (o.vehicle.canTilt ? "true" : "false") << ",\n";
             out << "          \"configPath\": \"" << JsonEscape(NormalizeSlashes(o.vehicle.configPath)) << "\",\n";
             out << "          \"inputProfileId\": \"" << JsonEscape(o.vehicle.inputProfileId) << "\",\n";
             out << "          \"preferredInputDevice\": \"" << InputDevicePreferenceToStorage(o.vehicle.preferredInputDevice) << "\",\n";
@@ -697,7 +696,6 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
             out << "        {\n";
             out << "          \"type\": \"Vehicle\",\n";
             out << "          \"enabled\": " << (o.vehicle.enabled ? "true" : "false") << ",\n";
-            out << "          \"canTilt\": " << (o.vehicle.canTilt ? "true" : "false") << ",\n";
             out << "          \"configPath\": \"" << JsonEscape(NormalizeSlashes(o.vehicle.configPath)) << "\",\n";
             out << "          \"inputProfileId\": \"" << JsonEscape(o.vehicle.inputProfileId) << "\",\n";
             out << "          \"preferredInputDevice\": \"" << InputDevicePreferenceToStorage(o.vehicle.preferredInputDevice) << "\",\n";
@@ -1230,8 +1228,6 @@ void SceneEditor::Load(const std::string& path) {
                     } else if (componentType == "Vehicle") {
                         so.hasVehicle = true;
                         ReadBool(component, "enabled", so.vehicle.enabled);
-                        so.vehicle.canTilt = true;  // default — override if saved
-                        ReadBool(component, "canTilt", so.vehicle.canTilt);
                         ReadString(component, "configPath", so.vehicle.configPath);
                         so.vehicle.configPath = NormalizeSlashes(so.vehicle.configPath);
                         so.vehicle.inputProfileId = "default_vehicle";
@@ -1934,8 +1930,6 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                     } else if (componentType == "Vehicle") {
                         so.hasVehicle = true;
                         ReadBool(component, "enabled", so.vehicle.enabled);
-                        so.vehicle.canTilt = true;
-                        ReadBool(component, "canTilt", so.vehicle.canTilt);
                         ReadString(component, "configPath", so.vehicle.configPath);
                         so.vehicle.configPath = NormalizeSlashes(so.vehicle.configPath);
                         so.vehicle.inputProfileId = "default_vehicle";
@@ -2247,6 +2241,19 @@ void SceneEditor::LoadProject() {
                 if (editorIt != object.end() && editorIt->second.is_object()) {
                     const auto& editorState = editorIt->second.as_object();
                     ReadString(editorState, "selectedProjectDirectory", selectedProjectDirectory_);
+                    if (auto it = editorState.find("selectedInputProfileIndex"); it != editorState.end() && it->second.is_number()) {
+                        selectedInputProfileIndex_ = (std::max)(0, static_cast<int>(it->second.as_number()));
+                    }
+                    if (auto it = editorState.find("selectedInputDevicePage"); it != editorState.end() && it->second.is_number()) {
+                        selectedInputDevicePage_ = (std::clamp)(static_cast<int>(it->second.as_number()), 0, 2);
+                    }
+                    if (auto it = editorState.find("selectedWheelSettingsProfileIndex"); it != editorState.end() && it->second.is_number()) {
+                        selectedWheelSettingsProfileIndex_ = (std::max)(0, static_cast<int>(it->second.as_number()));
+                    }
+                    ReadBool(editorState, "projectInputTestActive", projectInputTestActive_);
+                    if (auto it = editorState.find("projectInputTestDeviceIndex"); it != editorState.end() && it->second.is_number()) {
+                        projectInputTestDeviceIndex_ = (std::clamp)(static_cast<int>(it->second.as_number()), 0, 3);
+                    }
                 }
 
                 auto physicsIt = object.find("physics");
@@ -2295,6 +2302,17 @@ void SceneEditor::LoadProject() {
                             InputProfile profile;
                             ReadString(profileObject, "id", profile.id);
                             ReadString(profileObject, "displayName", profile.displayName);
+                            if (auto it = profileObject.find("keyboardSteeringSensitivity"); it != profileObject.end() && it->second.is_number()) {
+                                profile.keyboardSteeringSensitivity = static_cast<float>(it->second.as_number());
+                            }
+                            if (auto it = profileObject.find("keyboardThrottleSensitivity"); it != profileObject.end() && it->second.is_number()) {
+                                profile.keyboardThrottleSensitivity = static_cast<float>(it->second.as_number());
+                            }
+                            if (auto it = profileObject.find("keyboardBrakeSensitivity"); it != profileObject.end() && it->second.is_number()) {
+                                profile.keyboardBrakeSensitivity = static_cast<float>(it->second.as_number());
+                            } else {
+                                profile.keyboardBrakeSensitivity = profile.keyboardThrottleSensitivity;
+                            }
                             auto bindingsIt = profileObject.find("bindings");
                             if (bindingsIt != profileObject.end() && bindingsIt->second.is_array()) {
                                 for (const auto& bindingValue : bindingsIt->second.as_array()) {
@@ -2476,6 +2494,14 @@ void SceneEditor::SaveProject() {
             out << "    \"" << JsonEscape(NormalizeSlashes(skyboxFaces_[fi])) << "\"" << (fi + 1 < skyboxFaces_.size() ? ",\n" : "\n");
         }
         out << "  ],\n";
+        out << "  \"editorState\": {\n";
+        out << "    \"selectedProjectDirectory\": \"" << JsonEscape(NormalizeSlashes(selectedProjectDirectory_)) << "\",\n";
+        out << "    \"selectedInputProfileIndex\": " << selectedInputProfileIndex_ << ",\n";
+        out << "    \"selectedInputDevicePage\": " << selectedInputDevicePage_ << ",\n";
+        out << "    \"selectedWheelSettingsProfileIndex\": " << selectedWheelSettingsProfileIndex_ << ",\n";
+        out << "    \"projectInputTestActive\": " << (projectInputTestActive_ ? "true" : "false") << ",\n";
+        out << "    \"projectInputTestDeviceIndex\": " << projectInputTestDeviceIndex_ << "\n";
+        out << "  },\n";
         out << "  \"tags\": [\n";
         for (std::size_t tagIndex = 0; tagIndex < projectTags_.size(); ++tagIndex) {
             out << "    \"" << JsonEscape(projectTags_[tagIndex]) << "\"" << (tagIndex + 1 < projectTags_.size() ? ",\n" : "\n");
@@ -2510,6 +2536,9 @@ void SceneEditor::SaveProject() {
             out << "      {\n";
             out << "        \"id\": \"" << JsonEscape(profile.id) << "\",\n";
             out << "        \"displayName\": \"" << JsonEscape(profile.displayName) << "\",\n";
+            out << "        \"keyboardSteeringSensitivity\": " << profile.keyboardSteeringSensitivity << ",\n";
+            out << "        \"keyboardThrottleSensitivity\": " << profile.keyboardThrottleSensitivity << ",\n";
+            out << "        \"keyboardBrakeSensitivity\": " << profile.keyboardBrakeSensitivity << ",\n";
             out << "        \"bindings\": [\n";
             for (std::size_t bindingIndex = 0; bindingIndex < profile.bindings.size(); ++bindingIndex) {
                 const InputBinding& binding = profile.bindings[bindingIndex];

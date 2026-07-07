@@ -3,7 +3,7 @@
   "name": "BOX02",
   "shader": "pbr",
   "albedoColor": [1, 1, 1, 1],
-  "metallic": 0,
+  "metallic": 0.32,
   "roughness": 1,
   "emissiveColor": [0, 0, 0],
   "uvTiling": [1, 1],
@@ -16,5 +16,6 @@
     "ao": ""
   },
   "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 }
   }
 }

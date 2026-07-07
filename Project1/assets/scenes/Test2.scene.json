@@ -13,7 +13,7 @@
         {
           "type": "Transform",
           "position": [-2.31907, 3.14599, 3.95966],
-          "rotationEuler": [-143.008, -3.50556, -24.6277],
+          "rotationEuler": [-37.008, -0.506, -46.128],
           "scale": [1, 1, 1]
         },
         {
@@ -26,8 +26,8 @@
           "type": "Light",
           "enabled": true,
           "lightType": "Directional",
-          "color": [1, 1, 1],
-          "intensity": 1.05,
+          "color": [0.995327, 0.94234, 0.888353],
+          "intensity": 1.2,
           "range": 100,
           "spotAngleDegrees": 30
         }
@@ -45,8 +45,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, 2.60622, -4.89506],
-          "rotationEuler": [10.7257, -0.882681, -0.469997],
+          "position": [0, 2.506, -4.41507],
+          "rotationEuler": [11.742, -0, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -70,11 +70,11 @@
           "cameraType": "FollowAndLookAt",
           "followTargetId": "gameobject_11",
           "lookAtTargetId": "gameobject_11",
-          "followOffset": [0, 2.60622, -4.89506],
-          "pitchOffset": 10.7257,
-          "yawOffset": -0.882681,
-          "positionDamping": 11,
-          "rotationDamping": 8.2
+          "followOffset": [0, 2.506, -4.41507],
+          "pitchOffset": 11.742,
+          "yawOffset": -0,
+          "positionDamping": 55,
+          "rotationDamping": 20
         },
         {
           "type": "AudioListener",
@@ -94,9 +94,9 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
+          "position": [-0.0206223, -0.298134, 0.163158],
           "rotationEuler": [0, -0, 0],
-          "scale": [0.012, 0.012, 0.012]
+          "scale": [0.011, 0.011, 0.011]
         },
         {
           "type": "MeshRenderer",
@@ -107,8 +107,7 @@
         {
           "type": "Vehicle",
           "enabled": true,
-          "canTilt": true,
-          "configPath": "assets/car/Test1.vehicle.json",
+          "configPath": "assets/car/F1.vehicle.json",
           "inputProfileId": "default_vehicle",
           "preferredInputDevice": "Any",
           "preferredInputDeviceId": "",
@@ -181,8 +180,8 @@
           "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "center": [0, 8.3, 0],
-          "size": [471.2, 58.75, 180]
+          "center": [5.55112e-17, -5.4531, -2.04982e-18],
+          "size": [499.544, 56.099, 197.568]
         }
       ]
     },
@@ -821,8 +820,47 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-83.149, -19.0673, 144.251],
+          "position": [-85, -25, 145],
           "rotationEuler": [0, -0, 0],
+          "scale": [83.3333, 83.3333, 83.3333]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/Project1/assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "chevrolet-nascar-flwheel_wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gameobject_141",
+      "parentId": "gameobject_11",
+      "name": "FL",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [85, -25, 145],
+          "rotationEuler": [-180, -5.00896e-06, -180],
           "scale": [83.3333, 83.3333, 83.3333]
         },
         {
@@ -860,7 +898,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-83.1491, -19.0664, -189.157],
+          "position": [-85, -19, -189.157],
           "rotationEuler": [0, -0, 0],
           "scale": [83.3333, 83.3333, 83.3333]
         },
@@ -899,46 +937,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [85.8245, -19.0645, -189.157],
-          "rotationEuler": [180, -5.00896e-06, 180],
-          "scale": [83.3333, 83.3333, 83.3333]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "D:/Project-Raceman/Project1/assets/car/Chevrolet-nascar-FLWheel.obj",
-          "meshIndex": 0,
-          "importedMaterialName": "wheel",
-          "diffuseTexturePath": "wheel.png"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "chevrolet-nascar-flwheel_wheel",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "gameobject_141",
-      "parentId": "gameobject_11",
-      "name": "FL",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [85.8245, -19.0628, 144.902],
+          "position": [85, -19, -190],
           "rotationEuler": [180, -5.00896e-06, 180],
           "scale": [83.3333, 83.3333, 83.3333]
         },
@@ -977,7 +976,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-488.3, 5.039, -500.2],
+          "position": [-488.2, 5.039, -501.4],
           "rotationEuler": [90, -0, 0],
           "scale": [0.966646, 0.966712, 0.966712]
         },
@@ -997,7 +996,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1025,14 +1024,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1044,7 +1035,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1072,14 +1063,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1091,7 +1074,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1119,14 +1102,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1138,7 +1113,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1166,14 +1141,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1185,7 +1152,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1213,14 +1180,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1232,7 +1191,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1260,14 +1219,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1326,7 +1277,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1354,14 +1305,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1373,7 +1316,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1401,14 +1344,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1561,7 +1496,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1589,14 +1524,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1608,7 +1535,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1636,14 +1563,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1655,7 +1574,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1683,14 +1602,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1702,7 +1613,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1730,14 +1641,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1749,7 +1652,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1777,14 +1680,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1796,7 +1691,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1824,14 +1719,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1843,7 +1730,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1871,14 +1758,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1890,7 +1769,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1918,14 +1797,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1937,7 +1808,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -1965,14 +1836,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -1984,7 +1847,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2012,14 +1875,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2031,7 +1886,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2059,14 +1914,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2078,7 +1925,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2106,14 +1953,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2125,7 +1964,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2153,14 +1992,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2172,7 +2003,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2200,14 +2031,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2219,7 +2042,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2247,14 +2070,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2266,7 +2081,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2294,14 +2109,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2313,7 +2120,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2341,14 +2148,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2407,7 +2206,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2435,14 +2234,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2454,7 +2245,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2482,14 +2273,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2501,7 +2284,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2529,14 +2312,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2548,7 +2323,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2576,14 +2351,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2595,7 +2362,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2623,14 +2390,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2642,7 +2401,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2670,14 +2429,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2689,7 +2440,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2717,14 +2468,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2736,7 +2479,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2764,14 +2507,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2783,7 +2518,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2811,14 +2546,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2830,7 +2557,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2858,14 +2585,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2877,7 +2596,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2905,14 +2624,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2924,7 +2635,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2952,14 +2663,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -2971,7 +2674,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2999,14 +2702,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3018,7 +2713,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3046,14 +2741,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3065,7 +2752,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3093,14 +2780,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3112,7 +2791,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3140,14 +2819,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3159,7 +2830,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3187,14 +2858,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3206,7 +2869,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3234,14 +2897,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3253,7 +2908,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3281,14 +2936,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3300,7 +2947,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3328,14 +2975,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3347,7 +2986,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3375,14 +3014,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3394,7 +3025,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3422,14 +3053,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3441,7 +3064,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3469,14 +3092,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3488,7 +3103,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3516,14 +3131,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3535,7 +3142,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3563,14 +3170,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3582,7 +3181,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3610,14 +3209,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3629,7 +3220,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3657,14 +3248,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3676,7 +3259,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3704,14 +3287,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3723,7 +3298,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3751,14 +3326,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3770,7 +3337,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3798,14 +3365,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3864,7 +3423,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3892,14 +3451,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3911,7 +3462,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3939,14 +3490,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -3958,7 +3501,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -3986,14 +3529,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4005,7 +3540,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4033,14 +3568,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4052,7 +3579,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4080,14 +3607,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4099,7 +3618,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4127,14 +3646,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4146,7 +3657,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4174,14 +3685,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4193,7 +3696,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4221,14 +3724,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4240,7 +3735,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4268,14 +3763,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4287,7 +3774,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4315,14 +3802,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4381,7 +3860,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4409,14 +3888,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4428,7 +3899,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4456,14 +3927,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4475,7 +3938,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4503,14 +3966,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4522,7 +3977,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4550,14 +4005,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4569,7 +4016,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4597,14 +4044,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4616,7 +4055,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4644,14 +4083,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4663,7 +4094,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4691,14 +4122,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4710,7 +4133,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4738,14 +4161,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4757,7 +4172,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4785,14 +4200,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4804,7 +4211,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4832,14 +4239,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4851,7 +4250,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4879,14 +4278,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4898,7 +4289,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4926,14 +4317,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4945,7 +4328,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -4973,14 +4356,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -4992,7 +4367,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5020,14 +4395,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5039,7 +4406,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5067,14 +4434,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5086,7 +4445,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5114,14 +4473,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5133,7 +4484,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5161,14 +4512,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5180,7 +4523,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5208,14 +4551,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5227,7 +4562,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5255,14 +4590,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5274,7 +4601,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5302,14 +4629,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5321,7 +4640,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5349,14 +4668,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5368,7 +4679,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5396,14 +4707,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5415,7 +4718,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5443,14 +4746,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5462,7 +4757,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5490,14 +4785,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5509,7 +4796,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5537,14 +4824,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5556,7 +4835,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5584,14 +4863,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5603,7 +4874,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5631,14 +4902,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5650,7 +4913,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5678,14 +4941,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5697,7 +4952,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5725,14 +4980,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5744,7 +4991,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5772,14 +5019,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5791,7 +5030,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5819,14 +5058,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5838,7 +5069,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5866,14 +5097,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5885,7 +5108,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5913,14 +5136,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5932,7 +5147,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -5960,14 +5175,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -5979,7 +5186,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6007,14 +5214,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6026,7 +5225,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6054,14 +5253,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6073,7 +5264,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6101,14 +5292,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6120,7 +5303,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6148,14 +5331,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6167,7 +5342,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6195,14 +5370,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6214,7 +5381,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6242,14 +5409,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6261,7 +5420,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6289,14 +5448,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6308,7 +5459,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6336,14 +5487,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6355,7 +5498,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6383,14 +5526,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6402,7 +5537,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6430,14 +5565,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6449,7 +5576,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6477,14 +5604,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6496,7 +5615,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6524,14 +5643,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6543,7 +5654,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6571,14 +5682,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6590,7 +5693,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6618,14 +5721,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6637,7 +5732,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6665,14 +5760,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6684,7 +5771,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6712,14 +5799,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6731,7 +5810,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6759,14 +5838,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6778,7 +5849,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6806,14 +5877,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6825,7 +5888,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6853,14 +5916,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6872,7 +5927,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6900,14 +5955,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6919,7 +5966,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6947,14 +5994,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -6966,7 +6005,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -6994,14 +6033,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7013,7 +6044,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7041,14 +6072,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7060,7 +6083,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7088,14 +6111,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7107,7 +6122,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7135,14 +6150,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7154,7 +6161,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7182,14 +6189,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7201,7 +6200,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7229,14 +6228,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7248,7 +6239,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7276,14 +6267,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7295,7 +6278,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7323,14 +6306,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7342,7 +6317,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7370,14 +6345,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7389,11 +6356,11 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
+          "position": [0, 0, -0.1],
           "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
@@ -7417,14 +6384,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7436,7 +6395,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7464,14 +6423,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7483,7 +6434,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7511,14 +6462,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7530,7 +6473,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7558,14 +6501,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7577,7 +6512,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7605,14 +6540,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7624,7 +6551,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7652,14 +6579,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7671,7 +6590,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7699,14 +6618,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7718,7 +6629,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7746,14 +6657,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7765,7 +6668,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7793,14 +6696,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7812,7 +6707,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7840,14 +6735,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7859,7 +6746,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7887,14 +6774,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7906,7 +6785,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7934,14 +6813,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -7953,7 +6824,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -7981,14 +6852,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8000,7 +6863,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8028,14 +6891,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8047,7 +6902,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8075,14 +6930,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8094,7 +6941,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8122,14 +6969,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8141,7 +6980,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8169,14 +7008,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8188,7 +7019,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8216,14 +7047,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8235,7 +7058,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8263,14 +7086,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8282,7 +7097,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8310,14 +7125,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8329,7 +7136,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8357,14 +7164,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8376,7 +7175,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8404,14 +7203,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8423,7 +7214,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8451,14 +7242,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8470,7 +7253,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8498,14 +7281,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8517,7 +7292,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8545,14 +7320,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8564,7 +7331,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8592,14 +7359,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8611,7 +7370,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8639,14 +7398,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8658,7 +7409,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8686,14 +7437,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8705,7 +7448,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8733,14 +7476,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8752,7 +7487,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8780,14 +7515,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8799,7 +7526,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8827,14 +7554,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8846,7 +7565,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8874,14 +7593,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8893,7 +7604,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8921,14 +7632,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8940,7 +7643,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -8968,14 +7671,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -8987,7 +7682,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9015,14 +7710,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9034,7 +7721,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9062,14 +7749,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9081,7 +7760,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9109,14 +7788,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9128,7 +7799,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9156,14 +7827,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9175,7 +7838,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9203,14 +7866,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9222,7 +7877,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9250,14 +7905,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9269,7 +7916,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9297,14 +7944,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9316,7 +7955,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9344,14 +7983,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9363,7 +7994,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9391,14 +8022,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9410,7 +8033,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9438,14 +8061,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9457,7 +8072,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9485,14 +8100,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9504,7 +8111,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9532,14 +8139,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9551,7 +8150,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9579,14 +8178,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9598,7 +8189,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9626,14 +8217,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9645,7 +8228,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9673,14 +8256,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9692,7 +8267,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9720,14 +8295,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9739,7 +8306,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9767,14 +8334,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9786,7 +8345,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9814,14 +8373,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9833,7 +8384,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9861,14 +8412,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9880,7 +8423,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9908,14 +8451,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9927,7 +8462,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -9955,14 +8490,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -9974,7 +8501,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10002,14 +8529,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10021,7 +8540,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10049,14 +8568,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10068,7 +8579,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10096,14 +8607,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10115,7 +8618,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10143,14 +8646,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10162,7 +8657,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10190,14 +8685,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10209,7 +8696,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10237,14 +8724,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10256,7 +8735,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10284,14 +8763,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10303,7 +8774,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10331,14 +8802,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10350,7 +8813,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10378,14 +8841,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10397,7 +8852,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10425,14 +8880,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10444,7 +8891,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10472,14 +8919,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10491,7 +8930,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10519,14 +8958,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10538,7 +8969,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10566,14 +8997,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10585,7 +9008,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10613,14 +9036,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10632,7 +9047,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10660,14 +9075,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10679,7 +9086,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10707,14 +9114,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10726,7 +9125,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10754,14 +9153,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10773,7 +9164,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10801,14 +9192,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10820,7 +9203,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10848,14 +9231,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10867,7 +9242,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10895,14 +9270,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -10961,7 +9328,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -10989,14 +9356,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11008,7 +9367,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -11036,14 +9395,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11055,7 +9406,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -11083,14 +9434,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11102,7 +9445,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -11130,14 +9473,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11149,11 +9484,11 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
+          "position": [0, 0, -0.2],
           "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
@@ -11177,14 +9512,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11196,7 +9523,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -11224,14 +9551,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11243,11 +9562,11 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
+          "position": [0, 0, -0.5],
           "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
@@ -11271,14 +9590,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11290,7 +9601,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -11318,14 +9629,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11807,7 +10110,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -11835,14 +10138,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11854,7 +10149,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -11882,14 +10177,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11901,7 +10188,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -11929,14 +10216,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11948,7 +10227,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -11976,14 +10255,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -11995,7 +10266,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -12023,14 +10294,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -12042,7 +10305,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -12070,14 +10333,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -12324,7 +10579,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -12352,14 +10607,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -12747,7 +10994,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -12775,14 +11022,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -12794,7 +11033,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -12822,14 +11061,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -12841,7 +11072,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -12869,14 +11100,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -12888,7 +11111,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -12916,14 +11139,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -12935,7 +11150,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -12963,14 +11178,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -12982,7 +11189,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13010,14 +11217,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13029,7 +11228,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13057,14 +11256,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13076,7 +11267,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13104,14 +11295,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13123,7 +11306,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13151,14 +11334,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13170,7 +11345,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13198,14 +11373,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13217,7 +11384,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13245,14 +11412,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13264,7 +11423,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13292,14 +11451,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13311,7 +11462,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13339,14 +11490,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13358,7 +11501,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13386,14 +11529,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13405,7 +11540,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13433,14 +11568,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13452,7 +11579,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13480,14 +11607,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13499,7 +11618,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13527,14 +11646,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13546,7 +11657,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13574,14 +11685,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13593,7 +11696,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13621,14 +11724,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13640,7 +11735,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13668,14 +11763,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13687,7 +11774,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13715,14 +11802,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13734,7 +11813,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13762,14 +11841,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13781,7 +11852,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13809,14 +11880,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13828,7 +11891,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13856,14 +11919,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13875,7 +11930,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13903,14 +11958,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -14533,7 +12580,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -14561,14 +12608,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -15520,7 +13559,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -15548,14 +13587,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -15708,7 +13739,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -15736,14 +13767,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -15755,7 +13778,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -15783,14 +13806,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -15802,7 +13817,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -15830,14 +13845,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -15849,7 +13856,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -15877,14 +13884,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -15943,7 +13942,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -15971,14 +13970,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -15990,7 +13981,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -16018,14 +14009,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -16068,11 +14051,11 @@
         },
         {
           "type": "Collider",
-          "colliderType": "Mesh",
+          "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     },
@@ -16083,8 +14066,8 @@
       "tag": "Untagged",
       "type": "GameObject",
       "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "enabled": false,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -16112,14 +14095,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -16131,7 +14106,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -16159,14 +14134,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -16178,7 +14145,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -16206,14 +14173,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -16225,7 +14184,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -16253,18 +14212,10 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_8", "gameobject_11"],
-  "inspectorComponentsClosed": []
+  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_1635", "gameobject_7", "gameobject_11", "gameobject_8"],
+  "inspectorComponentsClosed": ["mesh_393|Collider", "gameobject_11|Vehicle"]
 }

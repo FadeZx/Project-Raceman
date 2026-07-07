@@ -13,9 +13,9 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, 1.7, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [0.012, 0.012, 0.012]
+          "position": [-0.0206223, -0.298134, 0.163158],
+          "rotationEuler": [0, -0, 0],
+          "scale": [0.011, 0.011, 0.011]
         },
         {
           "type": "MeshRenderer",
@@ -26,8 +26,7 @@
         {
           "type": "Vehicle",
           "enabled": true,
-          "canTilt": true,
-          "configPath": "assets/car/Test1.vehicle.json",
+          "configPath": "assets/car/F1.vehicle.json",
           "inputProfileId": "default_vehicle",
           "preferredInputDevice": "Any",
           "preferredInputDeviceId": "",
@@ -80,7 +79,7 @@
           "sourcePath": "assets/car/formula 1/F1_chasis.fbx",
           "meshIndex": 0,
           "importedMaterialName": "Mat",
-          "diffuseTexturePath": "",
+          "diffuseTexturePath": "Substance SpecGloss/Right ones/formula1_DefaultMaterial_Diffuse.png",
           "pivotOffset": [-0.683868, 53.4748, -0.00106049]
         },
         {
@@ -100,8 +99,8 @@
           "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "center": [0, 8.3, 0],
-          "size": [471.2, 58.75, 180]
+          "center": [5.55112e-17, -5.4531, -2.04982e-18],
+          "size": [499.544, 56.099, 197.568]
         }
       ]
     },
@@ -157,8 +156,47 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-83.149, -19.0673, 144.251],
+          "position": [-85, -25, 145],
           "rotationEuler": [0, -0, 0],
+          "scale": [83.3333, 83.3333, 83.3333]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "D:/Project-Raceman/Project1/assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "chevrolet-nascar-flwheel_wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gameobject_141",
+      "parentId": "gameobject_11",
+      "name": "FL",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [85, -25, 145],
+          "rotationEuler": [-180, -5.00896e-06, -180],
           "scale": [83.3333, 83.3333, 83.3333]
         },
         {
@@ -196,7 +234,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-83.1491, -19.0664, -189.157],
+          "position": [-85, -19, -189.157],
           "rotationEuler": [0, -0, 0],
           "scale": [83.3333, 83.3333, 83.3333]
         },
@@ -235,46 +273,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [85.8245, -19.0645, -189.157],
-          "rotationEuler": [180, -5.00896e-06, 180],
-          "scale": [83.3333, 83.3333, 83.3333]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "D:/Project-Raceman/Project1/assets/car/Chevrolet-nascar-FLWheel.obj",
-          "meshIndex": 0,
-          "importedMaterialName": "wheel",
-          "diffuseTexturePath": "wheel.png"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "chevrolet-nascar-flwheel_wheel",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "gameobject_141",
-      "parentId": "gameobject_11",
-      "name": "FL",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [85.8245, -19.0628, 144.902],
+          "position": [85, -19, -190],
           "rotationEuler": [180, -5.00896e-06, 180],
           "scale": [83.3333, 83.3333, 83.3333]
         },

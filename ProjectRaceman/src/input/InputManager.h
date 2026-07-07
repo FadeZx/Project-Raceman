@@ -58,6 +58,9 @@ struct InputBinding {
 struct InputProfile {
     std::string id;
     std::string displayName;
+    float keyboardSteeringSensitivity{0.35f};
+    float keyboardThrottleSensitivity{0.45f};
+    float keyboardBrakeSensitivity{0.45f};
     std::vector<InputBinding> bindings;
 };
 

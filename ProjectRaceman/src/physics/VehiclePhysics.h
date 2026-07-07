@@ -106,8 +106,10 @@ private:
 
     void integrateEngine(float dt, float driveRatio, float averageWheelSpeed, float totalDriveTorqueApplied, int drivenWheels, float throttleTorque, float engineBrakeTorque);
     void integrateChassis(float dt, const Vector3 &totalForce, const Vector3 &totalTorque);
+    VehicleControlInput buildAssistedInput(float dt);
 
     VehicleConfig m_config;
+    VehicleControlInput m_rawInput{};
     VehicleControlInput m_input{};
     VehicleRigidBodyState m_body{};
     std::vector<WheelState> m_wheels;

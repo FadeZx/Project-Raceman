@@ -93,8 +93,11 @@ void MenuController::Render(Renderer& renderer,
 
     if (showProjectSettings_) {
         if (ImGui::Begin("Project Settings", &showProjectSettings_, ImGuiWindowFlags_NoCollapse)) {
+            const int previousProjectSettingsTab = selectedProjectSettingsTab_;
             if (ImGui::BeginTabBar("GlobalProjectSettingsTabs")) {
-                if (ImGui::BeginTabItem("Rendering")) {
+                ImGuiTabItemFlags renderingTabFlags = restoreProjectSettingsTab_ && selectedProjectSettingsTab_ == 0 ? ImGuiTabItemFlags_SetSelected : 0;
+                if (ImGui::BeginTabItem("Rendering", nullptr, renderingTabFlags)) {
+                    selectedProjectSettingsTab_ = 0;
                     auto& settings = renderer.GetSettings();
                     ImGui::ColorEdit3("Clear Color", &settings.clearColor.x);
                     ImGui::ColorEdit3("Ambient Light", &settings.ambientColor.x);
@@ -176,7 +179,9 @@ void MenuController::Render(Renderer& renderer,
                     ImGui::EndTabItem();
                 }
 
-                if (ImGui::BeginTabItem("Physics")) {
+                ImGuiTabItemFlags physicsTabFlags = restoreProjectSettingsTab_ && selectedProjectSettingsTab_ == 1 ? ImGuiTabItemFlags_SetSelected : 0;
+                if (ImGui::BeginTabItem("Physics", nullptr, physicsTabFlags)) {
+                    selectedProjectSettingsTab_ = 1;
                     if (physicsCullingEnabled) {
                         ImGui::Checkbox("Physics Body Culling", physicsCullingEnabled);
                     } else {
@@ -185,7 +190,9 @@ void MenuController::Render(Renderer& renderer,
                     ImGui::EndTabItem();
                 }
 
-                if (ImGui::BeginTabItem("Tags & Layers")) {
+                ImGuiTabItemFlags tagsTabFlags = restoreProjectSettingsTab_ && selectedProjectSettingsTab_ == 2 ? ImGuiTabItemFlags_SetSelected : 0;
+                if (ImGui::BeginTabItem("Tags & Layers", nullptr, tagsTabFlags)) {
+                    selectedProjectSettingsTab_ = 2;
                     if (projectMenu.renderTagsAndLayersSettings) {
                         projectMenu.renderTagsAndLayersSettings();
                     } else {
@@ -194,7 +201,9 @@ void MenuController::Render(Renderer& renderer,
                     ImGui::EndTabItem();
                 }
 
-                if (ImGui::BeginTabItem("Input")) {
+                ImGuiTabItemFlags inputTabFlags = restoreProjectSettingsTab_ && selectedProjectSettingsTab_ == 3 ? ImGuiTabItemFlags_SetSelected : 0;
+                if (ImGui::BeginTabItem("Input", nullptr, inputTabFlags)) {
+                    selectedProjectSettingsTab_ = 3;
                     if (projectMenu.renderInputSettings) {
                         projectMenu.renderInputSettings();
                     } else {
@@ -204,6 +213,10 @@ void MenuController::Render(Renderer& renderer,
                 }
 
                 ImGui::EndTabBar();
+                restoreProjectSettingsTab_ = false;
+            }
+            if (selectedProjectSettingsTab_ != previousProjectSettingsTab) {
+                SaveState();
             }
         }
         ImGui::End();
@@ -278,6 +291,9 @@ void MenuController::RenderMainMenu(const std::function<void()>& onAddMeshPlane,
         if (ImGui::BeginMenu("Window")) {
             if (ImGui::MenuItem("Project Settings...", nullptr, showProjectSettings_)) {
                 showProjectSettings_ = !showProjectSettings_;
+                if (showProjectSettings_) {
+                    restoreProjectSettingsTab_ = true;
+                }
                 SaveState();
             }
             bool showProfiler = profilerVisible;
@@ -461,6 +477,7 @@ void MenuController::LoadState() {
         if (key == "showProjectSettings") showProjectSettings_ = (val == "1");
         else if (key == "showSkybox") showSkybox_ = (val == "1");
         else if (key == "showConsole") showConsole_ = (val == "1");
+        else if (key == "selectedProjectSettingsTab") selectedProjectSettingsTab_ = std::clamp(std::stoi(val), 0, 3);
         else if (key == "selectedFolder") selectedFolder_ = std::stoi(val);
     }
 }
@@ -475,6 +492,7 @@ void MenuController::SaveState() const {
     out << "showProjectSettings=" << (showProjectSettings_ ? "1" : "0") << "\n";
     out << "showSkybox=" << (showSkybox_ ? "1" : "0") << "\n";
     out << "showConsole=" << (showConsole_ ? "1" : "0") << "\n";
+    out << "selectedProjectSettingsTab=" << selectedProjectSettingsTab_ << "\n";
     out << "selectedFolder=" << selectedFolder_ << "\n";
 }
 

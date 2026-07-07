@@ -171,6 +171,44 @@ std::filesystem::path BuildDiskCacheMetaPath(const std::filesystem::path& shapeP
     return metaPath;
 }
 
+std::string DiskCachePrefixForKey(const std::string& cacheKey) {
+    return "v" + std::to_string(kShapeCacheVersion) + "_" + std::to_string(FnvHash64(cacheKey)) + "_";
+}
+
+void PruneStaleDiskCacheEntries(const std::string& cacheKey, const std::filesystem::path& keepPath) {
+    const std::filesystem::path cacheDir = GetShapeCacheDir();
+    if (!std::filesystem::exists(cacheDir)) {
+        return;
+    }
+
+    const std::string prefix = DiskCachePrefixForKey(cacheKey);
+    const std::filesystem::path normalizedKeep = keepPath.lexically_normal();
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator(cacheDir, ec)) {
+        if (ec || !entry.is_regular_file()) {
+            continue;
+        }
+        const std::filesystem::path path = entry.path().lexically_normal();
+        const std::string filename = path.filename().string();
+        const bool isShape = path.extension() == ".joltshape";
+        const bool isMeta = filename.size() > 5 && filename.substr(filename.size() - 5) == ".meta";
+        if (!isShape && !isMeta) {
+            continue;
+        }
+        const std::string baseFilename = isMeta
+            ? filename.substr(0, filename.size() - 5)
+            : filename;
+        if (baseFilename.rfind(prefix, 0) != 0) {
+            continue;
+        }
+        if (path == normalizedKeep || path == BuildDiskCacheMetaPath(normalizedKeep).lexically_normal()) {
+            continue;
+        }
+        std::error_code removeError;
+        std::filesystem::remove(path, removeError);
+    }
+}
+
 std::uint64_t TryLoadShapeTriangleCountFromDisk(const std::filesystem::path& shapePath) {
     std::ifstream f(BuildDiskCacheMetaPath(shapePath));
     std::uint64_t triangleCount = 0;
@@ -491,7 +529,7 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
         if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Cache check: " + meshFilenameStr);
         std::uint64_t cachedTriangleCount = 0;
         if (JPH::ShapeRefC loaded = TryLoadShapeFromDisk(diskCachePath, &cachedTriangleCount)) {
-            if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Loaded: " + meshFilenameStr);
+            if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Loaded from cache: " + meshFilenameStr);
             shapeCache.shape = std::move(loaded);
             shapeCache.triangleCount = cachedTriangleCount;
             shapeCache.valid = true;
@@ -544,7 +582,9 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
         shapeCache.triangleCount = triangleCount;
         shapeCache.valid = true;
         if (!ec) {
-            SaveShapeToDisk(BuildDiskCachePath(cacheKey, mtime), shapeCache.shape, triangleCount);
+            const std::filesystem::path diskCachePath = BuildDiskCachePath(cacheKey, mtime);
+            PruneStaleDiskCacheEntries(cacheKey, diskCachePath);
+            SaveShapeToDisk(diskCachePath, shapeCache.shape, triangleCount);
         }
         if (outTriangleCount) {
             *outTriangleCount = triangleCount;
@@ -619,7 +659,9 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
     shapeCache.triangleCount = triangleCount;
     shapeCache.valid = true;
     if (!ec) {
-        SaveShapeToDisk(BuildDiskCachePath(cacheKey, mtime), shapeCache.shape, triangleCount);
+        const std::filesystem::path diskCachePath = BuildDiskCachePath(cacheKey, mtime);
+        PruneStaleDiskCacheEntries(cacheKey, diskCachePath);
+        SaveShapeToDisk(diskCachePath, shapeCache.shape, triangleCount);
     }
     if (outTriangleCount) {
         *outTriangleCount = triangleCount;
@@ -708,6 +750,135 @@ JPH::ShapeRefC CreateShape(const PhysicsBodyDesc& body, bool sensorOnly) {
 }
 
 } // namespace
+
+std::string PhysicsWorld::GetCollisionShapeCacheDirectory() {
+    return GetShapeCacheDir().string();
+}
+
+int PhysicsWorld::ClearCollisionShapeCache(std::string* outError) {
+    GetShapeCache().clear();
+    GetCollisionMeshCache().clear();
+
+    const std::filesystem::path cacheDir = GetShapeCacheDir();
+    if (!std::filesystem::exists(cacheDir)) {
+        return 0;
+    }
+
+    int removedCount = 0;
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator(cacheDir, ec)) {
+        if (ec) {
+            if (outError) {
+                *outError = ec.message();
+            }
+            return removedCount;
+        }
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+        const std::filesystem::path path = entry.path();
+        const std::string filename = path.filename().string();
+        const bool isShape = path.extension() == ".joltshape";
+        const bool isMeta = filename.size() > 5 && filename.substr(filename.size() - 5) == ".meta";
+        if (!isShape && !isMeta) {
+            continue;
+        }
+        std::error_code removeError;
+        if (std::filesystem::remove(path, removeError)) {
+            ++removedCount;
+        } else if (removeError && outError && outError->empty()) {
+            *outError = removeError.message();
+        }
+    }
+    return removedCount;
+}
+
+CollisionShapeCacheInfo PhysicsWorld::GetCollisionShapeCacheInfo(const PhysicsColliderDesc& collider) {
+    CollisionShapeCacheInfo info;
+    if (collider.type != PhysicsColliderType::Mesh || collider.meshAssetPath.empty()) {
+        info.status = CollisionShapeCacheStatus::Missing;
+        info.message = "Mesh collider source is empty.";
+        return info;
+    }
+
+    const std::filesystem::path resolvedPath = FindProjectAssetAbsolutePath(collider.meshAssetPath);
+    if (!std::filesystem::exists(resolvedPath)) {
+        info.status = CollisionShapeCacheStatus::Failed;
+        info.message = "Source mesh not found.";
+        return info;
+    }
+
+    std::error_code ec;
+    const std::filesystem::file_time_type mtime = std::filesystem::last_write_time(resolvedPath, ec);
+    if (ec) {
+        info.status = CollisionShapeCacheStatus::Failed;
+        info.message = ec.message();
+        return info;
+    }
+
+    const std::string cacheKey = BuildShapeCacheKey(collider);
+    const std::filesystem::path diskCachePath = BuildDiskCachePath(cacheKey, mtime);
+    info.cachePath = diskCachePath.string();
+    info.triangleCount = TryLoadShapeTriangleCountFromDisk(diskCachePath);
+
+    ShapeCacheEntry& memoryEntry = GetShapeCache()[cacheKey];
+    if (memoryEntry.valid && memoryEntry.shape) {
+        info.status = CollisionShapeCacheStatus::Ready;
+        info.triangleCount = memoryEntry.triangleCount;
+        info.message = "Ready in memory.";
+        return info;
+    }
+
+    if (std::filesystem::exists(diskCachePath)) {
+        info.status = CollisionShapeCacheStatus::Ready;
+        info.message = "Ready on disk.";
+        return info;
+    }
+
+    const std::string prefix = DiskCachePrefixForKey(cacheKey);
+    const std::filesystem::path cacheDir = GetShapeCacheDir();
+    if (std::filesystem::exists(cacheDir)) {
+        std::error_code dirError;
+        for (const auto& entry : std::filesystem::directory_iterator(cacheDir, dirError)) {
+            if (dirError || !entry.is_regular_file()) {
+                continue;
+            }
+            const std::string filename = entry.path().filename().string();
+            if (filename.rfind(prefix, 0) == 0) {
+                info.status = CollisionShapeCacheStatus::Stale;
+                info.message = "Source mesh changed after bake.";
+                return info;
+            }
+        }
+    }
+
+    info.status = CollisionShapeCacheStatus::Missing;
+    info.message = "No baked collision shape.";
+    return info;
+}
+
+bool PhysicsWorld::BakeCollisionShape(const PhysicsColliderDesc& collider, CollisionShapeCacheInfo* outInfo) {
+    if (collider.type != PhysicsColliderType::Mesh || collider.meshAssetPath.empty()) {
+        if (outInfo) {
+            *outInfo = GetCollisionShapeCacheInfo(collider);
+        }
+        return false;
+    }
+
+    std::uint64_t triangleCount = 0;
+    const bool baked = static_cast<bool>(CreateMeshShape(collider, &triangleCount));
+    if (outInfo) {
+        *outInfo = GetCollisionShapeCacheInfo(collider);
+        if (baked && outInfo->triangleCount == 0) {
+            outInfo->triangleCount = triangleCount;
+        }
+        if (!baked && outInfo->status != CollisionShapeCacheStatus::Failed) {
+            outInfo->status = CollisionShapeCacheStatus::Failed;
+            outInfo->message = "Failed to cook collision shape.";
+        }
+    }
+    return baked;
+}
 
 class PhysicsWorld::Impl {
 public:
@@ -1271,6 +1442,14 @@ public:
     }
 
     bool Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::string* ignoreObjectId) const {
+        std::unordered_set<std::string> ignoreObjectIds;
+        if (ignoreObjectId != nullptr && !ignoreObjectId->empty()) {
+            ignoreObjectIds.insert(*ignoreObjectId);
+        }
+        return RaycastIgnoring(origin, direction, maxDistance, outHit, ignoreObjectIds);
+    }
+
+    bool RaycastIgnoring(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::unordered_set<std::string>& ignoreObjectIds) const {
         outHit = {};
         if (!physicsSystem_ || maxDistance <= 0.0f) {
             return false;
@@ -1287,15 +1466,7 @@ public:
         JPH::AllHitCollisionCollector<JPH::CastRayCollector> collector;
 
         const JPH::BodyFilter* bodyFilterPtr = nullptr;
-        std::unique_ptr<JPH::IgnoreSingleBodyFilter> ignoreFilter;
         JPH::BodyFilter defaultFilter;
-        if (ignoreObjectId) {
-            auto it = bodyIds_.find(*ignoreObjectId);
-            if (it != bodyIds_.end()) {
-                ignoreFilter = std::make_unique<JPH::IgnoreSingleBodyFilter>(it->second);
-                bodyFilterPtr = ignoreFilter.get();
-            }
-        }
         const JPH::BodyFilter& bodyFilter = bodyFilterPtr ? *bodyFilterPtr : defaultFilter;
         // Use the same layer filters as the simulation so sensors are culled in broad phase
         // rather than after the narrow phase test.
@@ -1318,6 +1489,10 @@ public:
             if (body.IsSensor()) {
                 continue;
             }
+            auto idIt = bodyIdToObjectId_.find(hit.mBodyID);
+            if (idIt != bodyIdToObjectId_.end() && ignoreObjectIds.find(idIt->second) != ignoreObjectIds.end()) {
+                continue;
+            }
 
             const JPH::RVec3 hitPosition = ray.GetPointOnRay(hit.mFraction);
             const JPH::Vec3 hitNormal = body.GetWorldSpaceSurfaceNormal(hit.mSubShapeID2, hitPosition);
@@ -1326,7 +1501,6 @@ public:
             outHit.position = FromJoltRVec3(hitPosition);
             outHit.normal = FromJoltVec3(hitNormal);
             outHit.distance = maxDistance * hit.mFraction;
-            auto idIt = bodyIdToObjectId_.find(hit.mBodyID);
             if (idIt != bodyIdToObjectId_.end()) {
                 outHit.objectId = idIt->second;
             }
@@ -1540,6 +1714,10 @@ void PhysicsWorld::AddCharacterJumpImpulse(const std::string& objectId, float im
 
 bool PhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::string* ignoreObjectId) const {
     return impl_->Raycast(origin, direction, maxDistance, outHit, ignoreObjectId);
+}
+
+bool PhysicsWorld::RaycastIgnoring(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::unordered_set<std::string>& ignoreObjectIds) const {
+    return impl_->RaycastIgnoring(origin, direction, maxDistance, outHit, ignoreObjectIds);
 }
 
 const PhysicsWorldStats& PhysicsWorld::GetStats() const {

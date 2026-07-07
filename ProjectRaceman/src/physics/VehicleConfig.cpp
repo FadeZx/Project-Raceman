@@ -251,6 +251,45 @@ TransmissionConfig readTransmission(const json::Value &value)
     return transmission;
 }
 
+DrivingAssistConfig readDrivingAssists(const json::Value &value)
+{
+    DrivingAssistConfig assists{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end())
+    {
+        assists.enabled = it->second.as_bool();
+    }
+    if (auto it = obj.find("steeringSmoothingRate"); it != obj.end())
+    {
+        assists.steeringSmoothingRate = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("fullSteerSpeed"); it != obj.end())
+    {
+        assists.fullSteerSpeed = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("highSpeedSteerScale"); it != obj.end())
+    {
+        assists.highSpeedSteerScale = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("counterSteerStrength"); it != obj.end())
+    {
+        assists.counterSteerStrength = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("tractionControl"); it != obj.end())
+    {
+        assists.tractionControl = it->second.as_bool();
+    }
+    if (auto it = obj.find("tractionSlipLimit"); it != obj.end())
+    {
+        assists.tractionSlipLimit = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("minTractionTorqueScale"); it != obj.end())
+    {
+        assists.minTractionTorqueScale = static_cast<float>(it->second.as_number());
+    }
+    return assists;
+}
+
 VehicleChassisConfig readChassis(const json::Value &value)
 {
     VehicleChassisConfig chassis{};
@@ -309,6 +348,10 @@ VehicleConfig readVehicle(const json::Value &value)
     if (auto it = obj.find("transmission"); it != obj.end())
     {
         config.transmission = readTransmission(it->second);
+    }
+    if (auto it = obj.find("assists"); it != obj.end())
+    {
+        config.assists = readDrivingAssists(it->second);
     }
     if (auto it = obj.find("wheels"); it != obj.end())
     {
@@ -435,6 +478,16 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
     stream << "    \"finalDriveRatio\": " << config.transmission.finalDriveRatio << ",\n";
     stream << "    \"reverseRatio\": " << config.transmission.reverseRatio << ",\n";
     stream << "    \"shiftTime\": " << config.transmission.shiftTime << "\n";
+    stream << "  },\n";
+    stream << "  \"assists\": {\n";
+    stream << "    \"enabled\": " << (config.assists.enabled ? "true" : "false") << ",\n";
+    stream << "    \"steeringSmoothingRate\": " << config.assists.steeringSmoothingRate << ",\n";
+    stream << "    \"fullSteerSpeed\": " << config.assists.fullSteerSpeed << ",\n";
+    stream << "    \"highSpeedSteerScale\": " << config.assists.highSpeedSteerScale << ",\n";
+    stream << "    \"counterSteerStrength\": " << config.assists.counterSteerStrength << ",\n";
+    stream << "    \"tractionControl\": " << (config.assists.tractionControl ? "true" : "false") << ",\n";
+    stream << "    \"tractionSlipLimit\": " << config.assists.tractionSlipLimit << ",\n";
+    stream << "    \"minTractionTorqueScale\": " << config.assists.minTractionTorqueScale << "\n";
     stream << "  },\n";
     stream << "  \"wheels\": [\n";
     for (std::size_t i = 0; i < config.wheels.size(); ++i)

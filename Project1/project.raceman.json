@@ -12,6 +12,14 @@
     "",
     ""
   ],
+  "editorState": {
+    "selectedProjectDirectory": "assets/Prefabs",
+    "selectedInputProfileIndex": 1,
+    "selectedInputDevicePage": 0,
+    "selectedWheelSettingsProfileIndex": 0,
+    "projectInputTestActive": false,
+    "projectInputTestDeviceIndex": 0
+  },
   "tags": [
     "Untagged",
     "Player"
@@ -59,6 +67,9 @@
       {
         "id": "default_character",
         "displayName": "Default Character",
+        "keyboardSteeringSensitivity": 0.12,
+        "keyboardThrottleSensitivity": 0.095,
+        "keyboardBrakeSensitivity": 0.095,
         "bindings": [
           {
             "action": "moveX",
@@ -593,6 +604,9 @@
       {
         "id": "default_vehicle",
         "displayName": "Default Vehicle",
+        "keyboardSteeringSensitivity": 0.14,
+        "keyboardThrottleSensitivity": 0.12,
+        "keyboardBrakeSensitivity": 0.36,
         "bindings": [
           {
             "action": "steer",
@@ -1131,8 +1145,8 @@
         "displayName": "Default Wheel",
         "deviceNamePattern": "",
         "steeringRangeDegrees": 900,
-        "steeringSensitivity": 0.12,
-        "steeringSaturation": 0.32,
+        "steeringSensitivity": 0.1,
+        "steeringSaturation": 0.23,
         "steeringInvert": false,
         "steeringDeadzone": 0.5,
         "steeringCalibrationMin": -1,
@@ -1172,6 +1186,6 @@
     ]
   },
   "editorState": {
-    "selectedProjectDirectory": "assets/track_models/suzuka-circuit-2001-layout/source"
+    "selectedProjectDirectory": "assets/Prefabs"
   }
 }

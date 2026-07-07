@@ -73,6 +73,62 @@ WheelForceFeedbackSample BuildWheelForceFeedbackSample(const raceman::physics::V
     return sample;
 }
 
+float MoveTowards(float current, float target, float maxDelta) {
+    if (current < target) {
+        return (std::min)(current + maxDelta, target);
+    }
+    return (std::max)(current - maxDelta, target);
+}
+
+float NormalizeKeyboardSensitivity(float value) {
+    if (value > 1.0f) {
+        return (std::clamp)(value / 30.0f, 0.0f, 1.0f);
+    }
+    return (std::clamp)(value, 0.0f, 1.0f);
+}
+
+float KeyboardSteeringSensitivityToRate(float value) {
+    return 1.0f + NormalizeKeyboardSensitivity(value) * 11.0f;
+}
+
+float KeyboardThrottleSensitivityToRate(float value) {
+    return 1.0f + NormalizeKeyboardSensitivity(value) * 9.0f;
+}
+
+float KeyboardBrakeSensitivityToRate(float value) {
+    return 1.0f + NormalizeKeyboardSensitivity(value) * 9.0f;
+}
+
+float ResolveKeyboardAxis(const InputManager& inputManager, const InputProfile& profile, std::string_view action) {
+    float bestMagnitude = 0.0f;
+    float resolved = 0.0f;
+    for (const InputBinding& binding : profile.bindings) {
+        if (binding.action != action || binding.deviceType != InputDeviceType::Keyboard) {
+            continue;
+        }
+
+        float value = 0.0f;
+        if (binding.source == InputBindingSource::Key) {
+            value = binding.key >= 0 && inputManager.IsKeyDown(binding.key) ? 1.0f : 0.0f;
+        } else if (binding.source == InputBindingSource::KeyPair) {
+            const float negative = binding.negativeKey >= 0 && inputManager.IsKeyDown(binding.negativeKey) ? -1.0f : 0.0f;
+            const float positive = binding.positiveKey >= 0 && inputManager.IsKeyDown(binding.positiveKey) ? 1.0f : 0.0f;
+            value = negative + positive;
+        }
+
+        if (binding.invert) {
+            value = -value;
+        }
+
+        const float magnitude = std::fabs(value);
+        if (magnitude > bestMagnitude) {
+            bestMagnitude = magnitude;
+            resolved = value;
+        }
+    }
+    return (std::clamp)(resolved, -1.0f, 1.0f);
+}
+
 } // namespace
 
 void SceneEditor::SetProjectRoot(std::string path) {
@@ -357,8 +413,23 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
                 PhysicsRaycastHit sceneHit;
                 const glm::vec3 sceneOrigin = VehicleVectorToScene(origin);
                 const glm::vec3 sceneDirection = VehicleVectorToScene(direction);
-                const std::string *ignoreId = runtimeVehicle.chassisBodyObjectId.empty() ? nullptr : &runtimeVehicle.chassisBodyObjectId;
-                if (!physicsWorld_->Raycast(sceneOrigin, sceneDirection, maxDistance, sceneHit, ignoreId)) {
+                std::unordered_set<std::string> ignoredVehicleObjectIds;
+                if (!runtimeVehicle.chassisBodyObjectId.empty()) {
+                    ignoredVehicleObjectIds.insert(runtimeVehicle.chassisBodyObjectId);
+                }
+                const SceneObject& vehicleObject = objects_[runtimeVehicle.objectIndex];
+                ignoredVehicleObjectIds.insert(vehicleObject.id);
+                for (const std::string& chassisObjectId : vehicleObject.vehicle.chassisObjectIds) {
+                    if (!chassisObjectId.empty()) {
+                        ignoredVehicleObjectIds.insert(chassisObjectId);
+                    }
+                }
+                for (const VehicleWheelBinding& binding : vehicleObject.vehicle.wheelBindings) {
+                    if (!binding.objectId.empty()) {
+                        ignoredVehicleObjectIds.insert(binding.objectId);
+                    }
+                }
+                if (!physicsWorld_->RaycastIgnoring(sceneOrigin, sceneDirection, maxDistance, sceneHit, ignoredVehicleObjectIds)) {
                     return false;
                 }
                 if (!sceneHit.hit) {
@@ -432,6 +503,51 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             baseInput.brake = inputManager_->GetAxisForProfile(profileId, "brake",
                 vehicleObject.vehicle.preferredInputDevice,
                 vehicleObject.vehicle.preferredInputDeviceId);
+
+            const InputProfile* activeProfile = inputManager_->FindProfile(profileId);
+            if (activeProfile == nullptr) {
+                activeProfile = inputManager_->FindProfile("default_vehicle");
+            }
+            if (activeProfile != nullptr &&
+                (vehicleObject.vehicle.preferredInputDevice == InputDevicePreference::Any ||
+                 vehicleObject.vehicle.preferredInputDevice == InputDevicePreference::Keyboard)) {
+                const float keyboardSteer = ResolveKeyboardAxis(*inputManager_, *activeProfile, "steer");
+                const float keyboardThrottle = (std::max)(0.0f, ResolveKeyboardAxis(*inputManager_, *activeProfile, "throttle"));
+                const float keyboardBrake = (std::max)(0.0f, ResolveKeyboardAxis(*inputManager_, *activeProfile, "brake"));
+                const float steeringRate = KeyboardSteeringSensitivityToRate(activeProfile->keyboardSteeringSensitivity);
+                const float throttleRate = KeyboardThrottleSensitivityToRate(activeProfile->keyboardThrottleSensitivity);
+                const float brakeRate = KeyboardBrakeSensitivityToRate(activeProfile->keyboardBrakeSensitivity);
+                runtimeVehicle.smoothedKeyboardSteering = MoveTowards(
+                    runtimeVehicle.smoothedKeyboardSteering,
+                    keyboardSteer,
+                    deltaTime * (keyboardSteer == 0.0f ? steeringRate * 1.5f : steeringRate));
+                runtimeVehicle.smoothedKeyboardThrottle = MoveTowards(
+                    runtimeVehicle.smoothedKeyboardThrottle,
+                    keyboardThrottle,
+                    deltaTime * (keyboardThrottle == 0.0f ? throttleRate * 1.35f : throttleRate));
+                runtimeVehicle.smoothedKeyboardBrake = MoveTowards(
+                    runtimeVehicle.smoothedKeyboardBrake,
+                    keyboardBrake,
+                    deltaTime * (keyboardBrake == 0.0f ? brakeRate * 1.35f : brakeRate));
+
+                if (std::fabs(keyboardSteer) > 0.0f || std::fabs(runtimeVehicle.smoothedKeyboardSteering) > 0.0001f) {
+                    baseInput.steering = runtimeVehicle.smoothedKeyboardSteering;
+                }
+                if (keyboardThrottle > 0.0f || runtimeVehicle.smoothedKeyboardThrottle > 0.0001f) {
+                    baseInput.throttle = runtimeVehicle.smoothedKeyboardThrottle;
+                }
+                if (keyboardBrake > 0.0f || runtimeVehicle.smoothedKeyboardBrake > 0.0001f) {
+                    baseInput.brake = runtimeVehicle.smoothedKeyboardBrake;
+                }
+            } else {
+                runtimeVehicle.smoothedKeyboardSteering = 0.0f;
+                runtimeVehicle.smoothedKeyboardThrottle = 0.0f;
+                runtimeVehicle.smoothedKeyboardBrake = 0.0f;
+            }
+        } else {
+            runtimeVehicle.smoothedKeyboardSteering = 0.0f;
+            runtimeVehicle.smoothedKeyboardThrottle = 0.0f;
+            runtimeVehicle.smoothedKeyboardBrake = 0.0f;
         }
 
         const raceman::physics::VehicleTelemetry& telemetry = runtimeVehicle.instance->getTelemetry();
@@ -695,18 +811,13 @@ void SceneEditor::SetScriptsRunning(bool running) {
             body.rotationEuler = worldTransform.rotationEuler;
             body.scale = worldTransform.scale;
             body.bodyType = PhysicsBodyType::Dynamic;
-            body.mass = object.hasRigidbody ? object.rigidbody.mass : 1200.0f;
+            body.mass = object.hasRigidbody ? object.rigidbody.mass : (std::max)(1.0f, chassisConfig.chassis.mass);
             body.useGravity = true;
             body.friction = object.hasRigidbody ? object.rigidbody.friction : 0.8f;
             body.restitution = object.hasRigidbody ? object.rigidbody.restitution : 0.0f;
             body.linearDamping = object.hasRigidbody ? object.rigidbody.linearDamping : 0.0f;
             // Allow roll/pitch tilt momentum — use moderate damping to prevent wild oscillation
             body.angularDamping = object.hasRigidbody ? object.rigidbody.angularDamping : 0.4f;
-            if (!object.vehicle.canTilt) {
-                // Lock pitch and roll, keep only yaw free (Y-up world: X=pitch, Z=roll in Jolt coords)
-                body.freezeRotationX = true;
-                body.freezeRotationZ = true;
-            }
             body.motionQuality = PhysicsMotionQuality::Continuous;  // prevent tunneling at high speed
             body.overrideCenterOfMass = true;
             body.centerOfMassOffset = VehicleVectorToScene(chassisConfig.chassis.centerOfMassOffset);

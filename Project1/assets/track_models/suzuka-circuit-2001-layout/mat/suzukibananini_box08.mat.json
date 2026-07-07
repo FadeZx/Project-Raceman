@@ -4,7 +4,7 @@
   "shader": "pbr",
   "albedoColor": [1, 1, 1, 1],
   "metallic": 0,
-  "roughness": 1,
+  "roughness": 0.471,
   "emissiveColor": [0, 0, 0],
   "uvTiling": [1, 1],
   "uvOffset": [0, 0],
@@ -16,5 +16,6 @@
     "ao": ""
   },
   "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 }
   }
 }

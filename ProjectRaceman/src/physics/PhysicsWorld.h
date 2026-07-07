@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace raceman {
@@ -96,6 +97,20 @@ enum class PhysicsColliderType {
 enum class PhysicsMotionQuality : std::uint8_t {
     Discrete,
     Continuous
+};
+
+enum class CollisionShapeCacheStatus : std::uint8_t {
+    Missing,
+    Ready,
+    Stale,
+    Failed
+};
+
+struct CollisionShapeCacheInfo {
+    CollisionShapeCacheStatus status{CollisionShapeCacheStatus::Missing};
+    std::uint64_t triangleCount{0};
+    std::string cachePath;
+    std::string message;
 };
 
 struct PhysicsColliderDesc {
@@ -233,8 +248,13 @@ public:
     void AddCharacterJumpImpulse(const std::string& objectId, float impulse);
 
     bool Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::string* ignoreObjectId = nullptr) const;
+    bool RaycastIgnoring(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::unordered_set<std::string>& ignoreObjectIds) const;
     const PhysicsWorldStats& GetStats() const;
     PhysicsCullingDebugInfo GetCullingDebugInfo() const;
+    static std::string GetCollisionShapeCacheDirectory();
+    static int ClearCollisionShapeCache(std::string* outError = nullptr);
+    static CollisionShapeCacheInfo GetCollisionShapeCacheInfo(const PhysicsColliderDesc& collider);
+    static bool BakeCollisionShape(const PhysicsColliderDesc& collider, CollisionShapeCacheInfo* outInfo = nullptr);
 
 private:
     class Impl;

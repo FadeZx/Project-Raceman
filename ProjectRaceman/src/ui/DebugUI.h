@@ -2,6 +2,9 @@
 
 #include <glm/glm.hpp>
 
+#include <array>
+#include <cstddef>
+
 struct GLFWwindow;
 
 namespace raceman {
@@ -53,6 +56,8 @@ public:
     bool ShowFrustumCullDebug() const { return showFrustumCullDebug_; }
 
 private:
+    static constexpr int kProfilerHistoryCount = 180;
+
     bool enabled_{false};
     bool showProfiler_{true};
     float rollingFrameTimeMs_{0.0f};
@@ -61,6 +66,15 @@ private:
     float averageFps_{0.0f};
     bool showCullingDebug_{false};
     bool showFrustumCullDebug_{false};
+    int profilerHistoryCount_{0};
+    std::array<float, kProfilerHistoryCount> frameMsHistory_{};
+    std::array<float, kProfilerHistoryCount> fpsHistory_{};
+    std::array<float, kProfilerHistoryCount> updateMsHistory_{};
+    std::array<float, kProfilerHistoryCount> renderMsHistory_{};
+    std::array<float, kProfilerHistoryCount> imguiMsHistory_{};
+    std::array<float, kProfilerHistoryCount> swapMsHistory_{};
+    std::array<float, kProfilerHistoryCount> editorUiMsHistory_{};
+    std::array<float, kProfilerHistoryCount> physicsStepMsHistory_{};
 };
 
 } // namespace raceman

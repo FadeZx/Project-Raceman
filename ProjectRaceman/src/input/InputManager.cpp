@@ -638,7 +638,17 @@ InputManager::ResolvedDeviceSelection InputManager::SelectDeviceForBinding(const
                                                                            InputDevicePreference preferredDevice,
                                                                            std::string_view preferredSpecificDeviceId) const {
     if (binding.deviceType == InputDeviceType::Keyboard) {
+        if (preferredDevice != InputDevicePreference::Any &&
+            preferredDevice != InputDevicePreference::Keyboard) {
+            return {};
+        }
         return {nullptr, InputDeviceType::Keyboard, true};
+    }
+
+    if ((preferredDevice == InputDevicePreference::Keyboard && binding.deviceType != InputDeviceType::Keyboard) ||
+        (preferredDevice == InputDevicePreference::Gamepad && binding.deviceType != InputDeviceType::Gamepad) ||
+        (preferredDevice == InputDevicePreference::Wheel && binding.deviceType != InputDeviceType::Wheel)) {
+        return {};
     }
 
     auto matchesPreference = [&](const InputDeviceInfo& device) {
