@@ -135,6 +135,7 @@ struct MeshFilterComponent {
     bool enabled{true};
     std::string meshType;
     std::string sourcePath;
+    std::string assetId;
     int meshIndex{0};
     std::string meshName;
     glm::vec3 pivotOffset{0.0f, 0.0f, 0.0f};

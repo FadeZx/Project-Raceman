@@ -99,6 +99,7 @@ void InputManager::AttachToWindow(GLFWwindow* window) {
     window_ = window;
     glfwSetWindowUserPointer(window_, this);
     glfwSetKeyCallback(window_, &InputManager::KeyCallback);
+    glfwSetScrollCallback(window_, &InputManager::ScrollCallback);
     EnsureDefaultProfiles();
     EnsureDefaultWheelSettingsProfiles();
     if (wheelForceFeedbackController_) {
@@ -120,6 +121,9 @@ void InputManager::BeginFrame() {
         state.pressed = false;
     }
     if (window_ != nullptr) {
+        mouseWheelDelta_ = pendingMouseWheelDelta_;
+        pendingMouseWheelDelta_ = 0.0f;
+
         double mouseX = 0.0;
         double mouseY = 0.0;
         glfwGetCursorPos(window_, &mouseX, &mouseY);
@@ -139,6 +143,8 @@ void InputManager::BeginFrame() {
         }
     } else {
         mouseDelta_ = {0.0f, 0.0f};
+        mouseWheelDelta_ = 0.0f;
+        pendingMouseWheelDelta_ = 0.0f;
     }
     capturedBindingReady_ = false;
     PollDevices();
@@ -187,6 +193,10 @@ bool InputManager::WasMouseButtonPressed(int button) const {
 
 glm::vec2 InputManager::GetMouseDelta() const {
     return mouseDelta_;
+}
+
+float InputManager::GetMouseWheelDelta() const {
+    return mouseWheelDelta_;
 }
 
 float InputManager::GetAxis(std::string_view action) const {
@@ -477,6 +487,17 @@ void InputManager::KeyCallback(GLFWwindow* window, int key, int, int action, int
     } else if (action == GLFW_RELEASE) {
         manager->keyState_[key] = false;
     }
+}
+
+void InputManager::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    auto* manager = static_cast<InputManager*>(glfwGetWindowUserPointer(window));
+    if (!manager) {
+        return;
+    }
+
+    manager->pendingMouseWheelDelta_ += static_cast<float>(yoffset);
+
+    (void)xoffset;
 }
 
 void InputManager::PollDevices() {

@@ -503,6 +503,7 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
     if (collider.meshAssetPath.empty()) {
         return {};
     }
+    EnsureJoltInitialized();
 
     const std::string cacheKey = BuildShapeCacheKey(collider);
     ShapeCacheEntry& shapeCache = GetShapeCache()[cacheKey];

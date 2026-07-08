@@ -1267,6 +1267,137 @@ void SceneEditor::RenderPlayModeLoadingPopup() {
     ImGui::PopStyleVar(4);
 }
 
+void SceneEditor::StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs, std::string title) {
+    if (jobs.empty()) {
+        return;
+    }
+    if (collisionBake_.active) {
+        if (console_) {
+            console_->AddWarning("Collision bake is already running.");
+        }
+        return;
+    }
+
+    if (collisionBake_.thread && collisionBake_.thread->joinable()) {
+        collisionBake_.thread->join();
+    }
+
+    collisionBake_.active = true;
+    collisionBake_.title = title.empty() ? "Baking Collision" : std::move(title);
+    collisionBake_.progress = std::make_shared<PhysicsBuildProgress>();
+    collisionBake_.progress->stepsDone.store(0);
+    collisionBake_.progress->stepsTotal.store(static_cast<int>(jobs.size()));
+    collisionBake_.progress->SetTask("Preparing...");
+    collisionBake_.start = std::chrono::high_resolution_clock::now();
+    collisionBake_.bakedCount.store(0);
+    collisionBake_.failedCount.store(0);
+    {
+        std::lock_guard<std::mutex> lock(collisionBake_.mutex);
+        collisionBake_.lastError.clear();
+    }
+
+    auto progress = collisionBake_.progress;
+    auto* bakedCount = &collisionBake_.bakedCount;
+    auto* failedCount = &collisionBake_.failedCount;
+    auto* errorMutex = &collisionBake_.mutex;
+    auto* lastError = &collisionBake_.lastError;
+    collisionBake_.thread = std::make_unique<std::thread>(
+        [jobs = std::move(jobs), progress, bakedCount, failedCount, errorMutex, lastError]() {
+            for (std::size_t i = 0; i < jobs.size(); ++i) {
+                if (progress->cancelRequested.load()) {
+                    progress->wasCancelled.store(true);
+                    break;
+                }
+
+                const std::string label = jobs[i].second.empty()
+                    ? ("Mesh " + std::to_string(i + 1))
+                    : jobs[i].second;
+                progress->stepsDone.store(static_cast<int>(i));
+                progress->SetTask("Baking: " + label);
+
+                CollisionShapeCacheInfo info;
+                const bool baked = PhysicsWorld::BakeCollisionShape(jobs[i].first, &info);
+                if (baked) {
+                    bakedCount->fetch_add(1);
+                } else {
+                    failedCount->fetch_add(1);
+                    std::lock_guard<std::mutex> lock(*errorMutex);
+                    *lastError = label + (info.message.empty() ? "" : (": " + info.message));
+                }
+            }
+
+            progress->stepsDone.store(static_cast<int>(jobs.size()));
+            progress->SetTask(progress->wasCancelled.load() ? "Cancelled." : "Done.");
+            progress->isDone.store(true);
+        });
+}
+
+void SceneEditor::TickCollisionBake() {
+    if (!collisionBake_.active || !collisionBake_.progress || !collisionBake_.progress->isDone.load()) {
+        return;
+    }
+
+    if (collisionBake_.thread && collisionBake_.thread->joinable()) {
+        collisionBake_.thread->join();
+    }
+
+    const bool cancelled = collisionBake_.progress->wasCancelled.load();
+    const int bakedCount = collisionBake_.bakedCount.load();
+    const int failedCount = collisionBake_.failedCount.load();
+    std::string lastError;
+    {
+        std::lock_guard<std::mutex> lock(collisionBake_.mutex);
+        lastError = collisionBake_.lastError;
+    }
+
+    if (console_) {
+        if (cancelled) {
+            console_->AddWarning("Collision bake cancelled.");
+        } else if (failedCount > 0) {
+            console_->AddWarning("Collision bake finished: " + std::to_string(bakedCount) + " baked, " +
+                                 std::to_string(failedCount) + " failed." +
+                                 (lastError.empty() ? "" : (" Last error: " + lastError)));
+        } else {
+            console_->AddLog("Collision bake complete: " + std::to_string(bakedCount) + " mesh" +
+                             (bakedCount == 1 ? "" : "es") + ".");
+        }
+    }
+
+    collisionBake_.active = false;
+    collisionBake_.title.clear();
+    collisionBake_.progress.reset();
+    collisionBake_.thread.reset();
+}
+
+void SceneEditor::RenderCollisionBakeInlineStatus() {
+    if (!collisionBake_.active || !collisionBake_.progress) {
+        return;
+    }
+
+    PhysicsBuildProgress* progress = collisionBake_.progress.get();
+    const int done = progress->stepsDone.load();
+    const int total = (std::max)(progress->stepsTotal.load(), 1);
+    const float fraction = static_cast<float>(done) / static_cast<float>(total);
+
+    ImGui::PushID("CollisionBakeInlineStatus");
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::TextUnformatted(collisionBake_.title.empty() ? "Baking collision cache" : collisionBake_.title.c_str());
+    char label[32];
+    std::snprintf(label, sizeof(label), "%d / %d", done, total);
+    ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), label);
+
+    const std::string task = progress->GetTask();
+    if (!task.empty()) {
+        ImGui::TextDisabled("%s", task.c_str());
+    }
+
+    if (ImGui::SmallButton("Cancel")) {
+        progress->cancelRequested.store(true);
+    }
+    ImGui::PopID();
+}
+
 void SceneEditor::RebuildVehicleRuntime() {
     runtimeVehicles_.clear();
     int candidateCount = 0;

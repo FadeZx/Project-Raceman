@@ -11,8 +11,6 @@
 
 struct GLFWwindow;
 
-typedef void (*GLFWkeyfun)(GLFWwindow*, int, int, int, int);
-
 namespace raceman {
 
 enum class InputDeviceType {
@@ -137,6 +135,7 @@ public:
     bool IsMouseButtonDown(int button) const;
     bool WasMouseButtonPressed(int button) const;
     glm::vec2 GetMouseDelta() const;
+    float GetMouseWheelDelta() const;
     float GetAxis(std::string_view action) const;
     bool IsActionDown(std::string_view action) const;
     bool WasActionPressed(std::string_view action) const;
@@ -177,6 +176,7 @@ public:
     void RegisterKeyCallback(const std::function<void(int)>& callback);
 
     static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
 private:
     struct PolledButtonState {
@@ -216,6 +216,8 @@ private:
     glm::vec2 mousePosition_{0.0f, 0.0f};
     glm::vec2 previousMousePosition_{0.0f, 0.0f};
     glm::vec2 mouseDelta_{0.0f, 0.0f};
+    float mouseWheelDelta_{0.0f};
+    float pendingMouseWheelDelta_{0.0f};
     bool mousePositionInitialized_{false};
     bool listeningForBinding_{false};
     bool capturedBindingReady_{false};

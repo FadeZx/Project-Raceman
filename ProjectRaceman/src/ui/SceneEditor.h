@@ -6,10 +6,12 @@
 #include <functional>
 #include <cstdint>
 #include <unordered_map>
+#include <unordered_set>
 #include <thread>
 #include <chrono>
 #include <atomic>
 #include <mutex>
+#include <utility>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -38,6 +40,7 @@ class Renderer;
 class Console;
 class PhysicsWorld;
 class AudioManager;
+struct PhysicsColliderDesc;
 struct PhysicsBuildProgress;
 
 class SceneEditor {
@@ -60,6 +63,7 @@ public:
 
     // Submit renderables for drawing via Renderer (PBR pipeline)
     void SubmitDraws(Renderer& renderer, bool editorInteraction = true);
+    void SetRenderer(Renderer* renderer) { renderer_ = renderer; }
     void SetConsole(Console* console);
     void SetInputManager(InputManager* inputManager);
     void SetAudioManager(AudioManager* audio) { audioManager_ = audio; }
@@ -74,7 +78,7 @@ public:
     bool ContainsViewportPoint(float x, float y) const;
     bool ContainsSceneViewportPoint(float x, float y) const;
     bool ContainsGameViewportPoint(float x, float y) const;
-    bool ShouldRouteInputToGame() const { return activeViewport_ == SceneEditorActiveViewport::Game; }
+    bool ShouldRouteInputToGame() const { return activeViewport_ == SceneEditorActiveViewport::Game || (scriptsRunning_ && gameViewportHovered_); }
     bool IsSceneViewportActiveForEditorControls() const { return activeViewport_ == SceneEditorActiveViewport::Scene; }
     bool ShouldRenderGameViewportInEditMode() const {
         return gameViewportRenderDirty_ && gameViewportSize_.x > 1.0f && gameViewportSize_.y > 1.0f;
@@ -152,6 +156,7 @@ public:
 
     void ImportObj(const std::string& path);
     void ImportObjWithOptions(const std::string& path, int pivotMode);
+    bool ImportModelChild(const std::string& path, int meshIndex);
     void ScanObjDir(const std::string& dir);
     void SyncScripts() { SyncScriptProjectFiles(false); }
 
@@ -170,6 +175,18 @@ private:
     void ApplyPanelFullscreenWindowSetup(const char* windowName);
     void HandlePanelHeadingDoubleClick(const char* windowName);
     void RenderModelAssetInspector();
+    void RenderModelChildAssetInspector();
+    unsigned int GetModelChildThumbnailTexture(const std::string& importPath,
+                                               const ImportedMeshInfo& info,
+                                               const std::string& materialId,
+                                               int width,
+                                               int height);
+    unsigned int GetModelPackageThumbnailTexture(const std::string& importPath,
+                                                 const std::vector<ImportedMeshInfo>& infos,
+                                                 const std::vector<std::string>& materialIds,
+                                                 int width,
+                                                 int height);
+    void ClearModelChildThumbnailCache(const std::string& importPath, int meshIndex);
     bool RefreshModelAssetInspectorCache(bool forceReload);
     void RenderMaterialInspector();
     void RenderShaderGraphEditorWindow();
@@ -197,6 +214,11 @@ private:
     void RestoreFromPlayModeSnapshot();
     void TickPlayModeLoading();
     void RenderPlayModeLoadingPopup();
+    void StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs, std::string title);
+    void TickCollisionBake();
+    void RenderCollisionBakeInlineStatus();
+    void TickMaterialExtract();
+    void RenderMaterialExtractInlineStatus();
     void HandleConsoleCommand(const std::string& command);
     void UpdateGizmo(Renderer& renderer);
     void UpdateImGuizmo();
@@ -326,6 +348,7 @@ private:
     Console* console_{nullptr};
     InputManager* inputManager_{nullptr};
     AudioManager* audioManager_{nullptr};
+    Renderer* renderer_{nullptr};
 
     // Materials
     MaterialManager materialManager_;
@@ -343,6 +366,7 @@ private:
     std::vector<std::string> projectFiles_;
     std::string selectedProjectDirectory_{"assets"};
     std::string selectedProjectFile_;
+    int selectedModelChildMeshIndex_{-1};
 
     bool inspectMaterial_{false};
     std::string inspectedMaterialId_;
@@ -610,6 +634,16 @@ private:
         bool loaded{false};
     };
     ModelAssetInspectorCache modelAssetInspectorCache_;
+    std::unordered_map<std::string, ModelAssetInspectorCache> browserModelPackageCaches_;
+    std::unordered_set<std::string> expandedModelPackages_;
+    struct ModelThumbnailCacheEntry {
+        unsigned int framebuffer{0};
+        unsigned int texture{0};
+        unsigned int depthRenderbuffer{0};
+        int width{0};
+        int height{0};
+    };
+    std::unordered_map<std::string, ModelThumbnailCacheEntry> modelThumbnailCache_;
     std::vector<MaterialHistoryState> materialUndoStack_;
     std::vector<MaterialHistoryState> materialRedoStack_;
     bool materialEditActive_{false};
@@ -634,6 +668,31 @@ private:
         std::chrono::time_point<std::chrono::high_resolution_clock> buildStart{};
     };
     PlayModeLoadState playModeLoad_;
+    struct CollisionBakeState {
+        bool active{false};
+        std::string title;
+        std::shared_ptr<PhysicsBuildProgress> progress;
+        std::unique_ptr<std::thread> thread;
+        std::chrono::time_point<std::chrono::high_resolution_clock> start{};
+        std::atomic<int> bakedCount{0};
+        std::atomic<int> failedCount{0};
+        std::string lastError;
+        mutable std::mutex mutex;
+    };
+    CollisionBakeState collisionBake_;
+    struct MaterialExtractState {
+        bool active{false};
+        bool reloadMaterials{false};
+        bool refreshProjectFiles{false};
+        std::string title;
+        std::shared_ptr<PhysicsBuildProgress> progress;
+        std::unique_ptr<std::thread> thread;
+        std::atomic<int> itemCount{0};
+        std::atomic<int> errorCount{0};
+        std::string summary;
+        mutable std::mutex mutex;
+    };
+    MaterialExtractState materialExtract_;
     SceneProfilerStats profilerStats_{};
     SceneEditorFrameTimings frameTimings_{};
     std::string lastPhysicsCacheStatus_{"Ready"};

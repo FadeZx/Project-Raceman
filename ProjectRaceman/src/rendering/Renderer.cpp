@@ -408,6 +408,12 @@ void Renderer::Flush() {
             glDepthMask(GL_TRUE);
         }
 
+        // A mirrored object or parent transform reverses triangle winding. Match the
+        // front-face state to the submitted model matrix so back-face culling and
+        // gl_FrontFacing based normal correction keep imported meshes solid.
+        const bool mirroredTransform = glm::determinant(glm::mat3(cmd.modelMatrix)) < 0.0f;
+        glFrontFace(mirroredTransform ? GL_CW : GL_CCW);
+
         // MVP = proj * view * model
         glm::mat4 mvp = proj_ * view_ * cmd.modelMatrix;
         activeShader->setMat4("uMVP", mvp);

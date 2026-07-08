@@ -9,12 +9,13 @@
   "uvTiling": [1, 1],
   "uvOffset": [0, 0],
   "textures": {
-    "albedo": "assets/car/wheel.png",
+    "albedo": "assets/car/Nascar/wheel.png",
     "normal": "",
     "metallic": "",
     "roughness": "",
     "ao": ""
   },
   "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 }
   }
 }

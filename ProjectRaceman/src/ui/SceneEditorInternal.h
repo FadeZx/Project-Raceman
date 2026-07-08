@@ -402,6 +402,13 @@ inline std::string MaterialIdFromAssetPath(const std::string& path) {
     return filename.empty() ? "pbr_default" : filename;
 }
 
+inline std::string ModelChildAssetId(const std::string& sourcePath, int meshIndex) {
+    if (sourcePath.empty()) {
+        return {};
+    }
+    return NormalizeSlashes(sourcePath) + "#" + std::to_string((std::max)(0, meshIndex));
+}
+
 inline std::string ProjectAssetDisplayFilename(const std::string& path) {
     if (IsSceneAssetPath(path)) {
         std::string filename = fs::path(path).filename().string();
@@ -990,6 +997,7 @@ inline void ApplyMeshInfoToSceneObject(SceneObject& object, const ImportedMeshIn
     object.meshFilter.vao = info.vao;
     object.meshFilter.indexCount = info.indexCount;
     object.meshFilter.meshIndex = static_cast<int>(info.meshIndex);
+    object.meshFilter.assetId = ModelChildAssetId(object.meshFilter.sourcePath, object.meshFilter.meshIndex);
     object.meshFilter.meshName = info.meshName;
     object.meshFilter.importedMaterialName = info.materialName;
     object.meshFilter.diffuseTexturePath = NormalizeSlashes(info.diffuseTexturePath);
@@ -1035,6 +1043,7 @@ inline bool ConfigureBuiltInPrimitive(SceneObject& object, const std::string& me
     object.meshFilter.enabled = true;
     object.meshFilter.meshType = meshType;
     object.meshFilter.sourcePath.clear();
+    object.meshFilter.assetId.clear();
     object.meshFilter.meshIndex = 0;
     object.meshFilter.importedMaterialName.clear();
     object.meshFilter.diffuseTexturePath.clear();
@@ -1755,10 +1764,36 @@ inline bool AppendSupportedVehicleChassisColliders(const SceneObject& object,
 
 inline constexpr const char* kObjAssetPayload = "RACEMAN_PROJECT_OBJ";
 inline constexpr const char* kMeshAssetPayload = "RACEMAN_PROJECT_MESH";
+inline constexpr const char* kModelChildAssetPayload = "RACEMAN_PROJECT_MODEL_CHILD";
 inline constexpr const char* kMaterialAssetPayload = "RACEMAN_PROJECT_MATERIAL";
 inline constexpr const char* kProjectFilePayload = "RACEMAN_PROJECT_FILE";
 inline constexpr const char* kHierarchyObjectPayload = "SCENE_HIERARCHY_OBJECT_INDEX";
 inline constexpr const char* kHierarchyMultiObjectPayload = "SCENE_HIERARCHY_OBJECT_IDS";
+
+inline bool ParseModelChildAssetPayload(const void* data, int size, std::string& outPath, int& outMeshIndex) {
+    outPath.clear();
+    outMeshIndex = -1;
+    if (data == nullptr || size <= 1) {
+        return false;
+    }
+    std::string payload(static_cast<const char*>(data), static_cast<std::size_t>(size));
+    if (!payload.empty() && payload.back() == '\0') {
+        payload.pop_back();
+    }
+    const std::size_t split = payload.rfind('|');
+    if (split == std::string::npos || split == 0 || split + 1 >= payload.size()) {
+        return false;
+    }
+    try {
+        outPath = NormalizeSlashes(payload.substr(0, split));
+        outMeshIndex = std::stoi(payload.substr(split + 1));
+    } catch (...) {
+        outPath.clear();
+        outMeshIndex = -1;
+        return false;
+    }
+    return !outPath.empty() && outMeshIndex >= 0;
+}
 inline constexpr const char* kPlaneObjAssetPath = "editor-assets/mesh/plane.obj";
 
 } // namespace raceman::scene_editor_internal

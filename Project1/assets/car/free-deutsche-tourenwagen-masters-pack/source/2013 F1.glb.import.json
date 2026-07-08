@@ -1,0 +1,1273 @@
+{
+  "version": 1,
+  "pivotMode": 0,
+  "importMaterials": true,
+  "materialLocation": 0,
+  "materialRemapNaming": 0,
+  "materialRemapSearch": 0,
+  "materials": [
+    {
+      "meshIndex": 0,
+      "meshName": "2013 F1.003-0",
+      "importedMaterialName": "Doors1Mtl",
+      "materialId": "2013_f1_doors1mtl"
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "2013 F1.003-1",
+      "importedMaterialName": "Doors2Mtl",
+      "materialId": "2013_f1_doors2mtl"
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "2013 F1.003-2",
+      "importedMaterialName": "Hood1Mtl",
+      "materialId": "2013_f1_hood1mtl"
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "2013 F1.003-3",
+      "importedMaterialName": "Doors3Mtl",
+      "materialId": "2013_f1_doors3mtl"
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "2013 F1.003-4",
+      "importedMaterialName": "Doors4Mtl",
+      "materialId": "2013_f1_doors4mtl"
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "2013 F1.003-5",
+      "importedMaterialName": "Doors5Mtl",
+      "materialId": "2013_f1_doors5mtl"
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "2013 F1.003-6",
+      "importedMaterialName": "Doors6Mtl",
+      "materialId": "2013_f1_doors6mtl"
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "2013 F1.003-7",
+      "importedMaterialName": "Doors8Mtl",
+      "materialId": "2013_f1_doors8mtl"
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "2013 F1.003-8",
+      "importedMaterialName": "Bumpers2Mtl",
+      "materialId": "2013_f1_bumpers2mtl"
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "2013 F1.003-9",
+      "importedMaterialName": "Mirror2Mtl",
+      "materialId": "2013_f1_mirror2mtl"
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "2013 F1.003-10",
+      "importedMaterialName": "Bumpers3Mtl",
+      "materialId": "2013_f1_bumpers3mtl"
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "2013 F1.003-11",
+      "importedMaterialName": "Hood2Mtl",
+      "materialId": "2013_f1_hood2mtl"
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "2013 F1.003-12",
+      "importedMaterialName": "Hood3Mtl",
+      "materialId": "2013_f1_hood3mtl"
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "2013 F1.003-13",
+      "importedMaterialName": "Bumpers5Mtl",
+      "materialId": "2013_f1_bumpers5mtl"
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "2013 F1.003-14",
+      "importedMaterialName": "Bumpers6Mtl",
+      "materialId": "2013_f1_bumpers6mtl"
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "2013 F1.003-15",
+      "importedMaterialName": "Bumpers7Mtl",
+      "materialId": "2013_f1_bumpers7mtl"
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "2013 F1.003-16",
+      "importedMaterialName": "Bumpers9Mtl",
+      "materialId": "2013_f1_bumpers9mtl"
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "2013 F1.003-17",
+      "importedMaterialName": "Doors13Mtl",
+      "materialId": "2013_f1_doors13mtl"
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "2013 F1.003-18",
+      "importedMaterialName": "Doors15Mtl",
+      "materialId": "2013_f1_doors15mtl"
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "2013 F1.003-19",
+      "importedMaterialName": "Taillight1Mtl",
+      "materialId": "2013_f1_taillight1mtl"
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "2013 F1.003-20",
+      "importedMaterialName": "Sw1Mtl",
+      "materialId": "2013_f1_sw1mtl"
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "2013 F1.003-21",
+      "importedMaterialName": "Rainlight1Mtl",
+      "materialId": "2013_f1_rainlight1mtl"
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "2013 F1.003-22",
+      "importedMaterialName": "Misc1Mtl",
+      "materialId": "2013_f1_misc1mtl"
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "2013 F1.003-23",
+      "importedMaterialName": "Mirrorglass1Mtl",
+      "materialId": "2013_f1_mirrorglass1mtl"
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "2013 F1.003-24",
+      "importedMaterialName": "Glass1Mtl",
+      "materialId": "2013_f1_glass1mtl"
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "2013 F1.003-25",
+      "importedMaterialName": "Chassis1Mtl",
+      "materialId": "2013_f1_chassis1mtl"
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "2013 F1.003-26",
+      "importedMaterialName": "Badges1Mtl",
+      "materialId": "2013_f1_badges1mtl"
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "2013 F1.003-27",
+      "importedMaterialName": "Body2Mtl",
+      "materialId": "2013_f1_body2mtl"
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "2013 F1.003-28",
+      "importedMaterialName": "Misc2Mtl",
+      "materialId": "2013_f1_misc2mtl"
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "2013 F1.003-29",
+      "importedMaterialName": "Mirrorglass2Mtl",
+      "materialId": "2013_f1_mirrorglass2mtl"
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "2013 F1.003-30",
+      "importedMaterialName": "Lights2Mtl",
+      "materialId": "2013_f1_lights2mtl"
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "2013 F1.003-31",
+      "importedMaterialName": "Headlights1Mtl",
+      "materialId": "2013_f1_headlights1mtl"
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "2013 F1.003-32",
+      "importedMaterialName": "Cab2Mtl",
+      "materialId": "2013_f1_cab2mtl"
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "2013 F1.003-33",
+      "importedMaterialName": "Badges2Mtl",
+      "materialId": "2013_f1_badges2mtl"
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "2013 F1.003-34",
+      "importedMaterialName": "Body3Mtl",
+      "materialId": "2013_f1_body3mtl"
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "2013 F1.003-35",
+      "importedMaterialName": "Chassis3Mtl",
+      "materialId": "2013_f1_chassis3mtl"
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "2013 F1.003-36",
+      "importedMaterialName": "Tailight1Mtl",
+      "materialId": "2013_f1_tailight1mtl"
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "2013 F1.003-37",
+      "importedMaterialName": "Sw2Mtl",
+      "materialId": "2013_f1_sw2mtl"
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "2013 F1.003-38",
+      "importedMaterialName": "Lights3Mtl",
+      "materialId": "2013_f1_lights3mtl"
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "2013 F1.003-39",
+      "importedMaterialName": "Interior1Mtl",
+      "materialId": "2013_f1_interior1mtl"
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "2013 F1.003-40",
+      "importedMaterialName": "Glass3Mtl",
+      "materialId": "2013_f1_glass3mtl"
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "2013 F1.003-41",
+      "importedMaterialName": "Badges3Mtl",
+      "materialId": "2013_f1_badges3mtl"
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "2013 F1.003-42",
+      "importedMaterialName": "Body4Mtl",
+      "materialId": "2013_f1_body4mtl"
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "2013 F1.003-43",
+      "importedMaterialName": "Doors17Mtl",
+      "materialId": "2013_f1_doors17mtl"
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "2013 F1.003-44",
+      "importedMaterialName": "Body5Mtl",
+      "materialId": "2013_f1_body5mtl"
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "2013 F1.003-45",
+      "importedMaterialName": "Body6Mtl",
+      "materialId": "2013_f1_body6mtl"
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "2013 F1.003-46",
+      "importedMaterialName": "Body7Mtl",
+      "materialId": "2013_f1_body7mtl"
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "2013 F1.003-47",
+      "importedMaterialName": "Mirror8Mtl",
+      "materialId": "2013_f1_mirror8mtl"
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "2013 F1.003-48",
+      "importedMaterialName": "Body8Mtl",
+      "materialId": "2013_f1_body8mtl"
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "2013 F1.003-49",
+      "importedMaterialName": "Body9Mtl",
+      "materialId": "2013_f1_body9mtl"
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "2013 F1.003-50",
+      "importedMaterialName": "Taillight2Mtl",
+      "materialId": "2013_f1_taillight2mtl"
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "2013 F1.003-51",
+      "importedMaterialName": "Misc21Mtl",
+      "materialId": "2013_f1_misc21mtl"
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "2013 F1.003-52",
+      "importedMaterialName": "Lights8Mtl",
+      "materialId": "2013_f1_lights8mtl"
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "2013 F1.003-53",
+      "importedMaterialName": "Hoodmisc1Mtl",
+      "materialId": "2013_f1_hoodmisc1mtl"
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "2013 F1.003-54",
+      "importedMaterialName": "Headlights7Mtl",
+      "materialId": "2013_f1_headlights7mtl"
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "2013 F1.003-55",
+      "importedMaterialName": "Glass8Mtl",
+      "materialId": "2013_f1_glass8mtl"
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "2013 F1.003-56",
+      "importedMaterialName": "Cab8Mtl",
+      "materialId": "2013_f1_cab8mtl"
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "2013 F1.003-57",
+      "importedMaterialName": "Doors18Mtl",
+      "materialId": "2013_f1_doors18mtl"
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "2013 F1.003-58",
+      "importedMaterialName": "Sw7Mtl",
+      "materialId": "2013_f1_sw7mtl"
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "2013 F1.003-59",
+      "importedMaterialName": "Misc9Mtl",
+      "materialId": "2013_f1_misc9mtl"
+    },
+    {
+      "meshIndex": 60,
+      "meshName": "2013 F1.003-60",
+      "importedMaterialName": "Lights9Mtl",
+      "materialId": "2013_f1_lights9mtl"
+    },
+    {
+      "meshIndex": 61,
+      "meshName": "2013 F1.003-61",
+      "importedMaterialName": "Badges9Mtl",
+      "materialId": "2013_f1_badges9mtl"
+    },
+    {
+      "meshIndex": 62,
+      "meshName": "2013 F1.003-62",
+      "importedMaterialName": "Doors19Mtl",
+      "materialId": "2013_f1_doors19mtl"
+    },
+    {
+      "meshIndex": 63,
+      "meshName": "2013 F1.003-63",
+      "importedMaterialName": "Body16Mtl",
+      "materialId": "2013_f1_body16mtl"
+    },
+    {
+      "meshIndex": 64,
+      "meshName": "2013 F1.003-64",
+      "importedMaterialName": "Body17Mtl",
+      "materialId": "2013_f1_body17mtl"
+    },
+    {
+      "meshIndex": 65,
+      "meshName": "2013 F1.003-65",
+      "importedMaterialName": "Bumpers11Mtl",
+      "materialId": "2013_f1_bumpers11mtl"
+    },
+    {
+      "meshIndex": 66,
+      "meshName": "2013 F1.003-66",
+      "importedMaterialName": "Body18Mtl",
+      "materialId": "2013_f1_body18mtl"
+    },
+    {
+      "meshIndex": 67,
+      "meshName": "2013 F1.003-67",
+      "importedMaterialName": "Miscl1Mtl",
+      "materialId": "2013_f1_miscl1mtl"
+    },
+    {
+      "meshIndex": 68,
+      "meshName": "2013 F1.003-68",
+      "importedMaterialName": "Lights23Mtl",
+      "materialId": "2013_f1_lights23mtl"
+    },
+    {
+      "meshIndex": 69,
+      "meshName": "2013 F1.003-69",
+      "importedMaterialName": "Cab23Mtl",
+      "materialId": "2013_f1_cab23mtl"
+    },
+    {
+      "meshIndex": 70,
+      "meshName": "2013 F1.003-70",
+      "importedMaterialName": "Badges23Mtl",
+      "materialId": "2013_f1_badges23mtl"
+    },
+    {
+      "meshIndex": 71,
+      "meshName": "2013 F1.003-71",
+      "importedMaterialName": "Miscl3Mtl",
+      "materialId": "2013_f1_miscl3mtl"
+    },
+    {
+      "meshIndex": 72,
+      "meshName": "2013 F1.003-72",
+      "importedMaterialName": "Lights25Mtl",
+      "materialId": "2013_f1_lights25mtl"
+    },
+    {
+      "meshIndex": 73,
+      "meshName": "2013 F1.003-73",
+      "importedMaterialName": "Cab25Mtl",
+      "materialId": "2013_f1_cab25mtl"
+    },
+    {
+      "meshIndex": 74,
+      "meshName": "2013 F1.003-74",
+      "importedMaterialName": "Badges25Mtl",
+      "materialId": "2013_f1_badges25mtl"
+    },
+    {
+      "meshIndex": 75,
+      "meshName": "2013 F1.003-75",
+      "importedMaterialName": "Doors25Mtl",
+      "materialId": "2013_f1_doors25mtl"
+    },
+    {
+      "meshIndex": 76,
+      "meshName": "2013 F1.003-76",
+      "importedMaterialName": "Sw20Mtl",
+      "materialId": "2013_f1_sw20mtl"
+    },
+    {
+      "meshIndex": 77,
+      "meshName": "2013 F1.003-77",
+      "importedMaterialName": "Misc25Mtl",
+      "materialId": "2013_f1_misc25mtl"
+    },
+    {
+      "meshIndex": 78,
+      "meshName": "2013 F1.003-78",
+      "importedMaterialName": "Lights29Mtl",
+      "materialId": "2013_f1_lights29mtl"
+    },
+    {
+      "meshIndex": 79,
+      "meshName": "2013 F1.003-79",
+      "importedMaterialName": "Badges29Mtl",
+      "materialId": "2013_f1_badges29mtl"
+    },
+    {
+      "meshIndex": 80,
+      "meshName": "2013 F1.003-80",
+      "importedMaterialName": "Bumpers15Mtl",
+      "materialId": "2013_f1_bumpers15mtl"
+    },
+    {
+      "meshIndex": 81,
+      "meshName": "2013 F1.003-81",
+      "importedMaterialName": "Body32Mtl",
+      "materialId": "2013_f1_body32mtl"
+    },
+    {
+      "meshIndex": 82,
+      "meshName": "2013 F1.003-82",
+      "importedMaterialName": "Doors28Mtl",
+      "materialId": "2013_f1_doors28mtl"
+    },
+    {
+      "meshIndex": 83,
+      "meshName": "2013 F1.003-83",
+      "importedMaterialName": "Taillights21Mtl",
+      "materialId": "2013_f1_taillights21mtl"
+    },
+    {
+      "meshIndex": 84,
+      "meshName": "2013 F1.003-84",
+      "importedMaterialName": "Rearlights1Mtl",
+      "materialId": "2013_f1_rearlights1mtl"
+    },
+    {
+      "meshIndex": 85,
+      "meshName": "2013 F1.003-85",
+      "importedMaterialName": "Misc27Mtl",
+      "materialId": "2013_f1_misc27mtl"
+    },
+    {
+      "meshIndex": 86,
+      "meshName": "2013 F1.003-86",
+      "importedMaterialName": "Lights34Mtl",
+      "materialId": "2013_f1_lights34mtl"
+    },
+    {
+      "meshIndex": 87,
+      "meshName": "2013 F1.003-87",
+      "importedMaterialName": "Headlights33Mtl",
+      "materialId": "2013_f1_headlights33mtl"
+    },
+    {
+      "meshIndex": 88,
+      "meshName": "2013 F1.003-88",
+      "importedMaterialName": "Glass34Mtl",
+      "materialId": "2013_f1_glass34mtl"
+    },
+    {
+      "meshIndex": 89,
+      "meshName": "2013 F1.003-89",
+      "importedMaterialName": "Cab34Mtl",
+      "materialId": "2013_f1_cab34mtl"
+    },
+    {
+      "meshIndex": 90,
+      "meshName": "2013 F1.003-90",
+      "importedMaterialName": "Badges34Mtl",
+      "materialId": "2013_f1_badges34mtl"
+    },
+    {
+      "meshIndex": 91,
+      "meshName": "2013 F1.003-91",
+      "importedMaterialName": "Taillight8Mtl",
+      "materialId": "2013_f1_taillight8mtl"
+    },
+    {
+      "meshIndex": 92,
+      "meshName": "2013 F1.003-92",
+      "importedMaterialName": "Sw22Mtl",
+      "materialId": "2013_f1_sw22mtl"
+    },
+    {
+      "meshIndex": 93,
+      "meshName": "2013 F1.003-93",
+      "importedMaterialName": "Misc29Mtl",
+      "materialId": "2013_f1_misc29mtl"
+    },
+    {
+      "meshIndex": 94,
+      "meshName": "2013 F1.003-94",
+      "importedMaterialName": "Lights39Mtl",
+      "materialId": "2013_f1_lights39mtl"
+    },
+    {
+      "meshIndex": 95,
+      "meshName": "2013 F1.003-95",
+      "importedMaterialName": "Badges39Mtl",
+      "materialId": "2013_f1_badges39mtl"
+    },
+    {
+      "meshIndex": 96,
+      "meshName": "2013 F1.003-96",
+      "importedMaterialName": "Cab39Mtl",
+      "materialId": "2013_f1_cab39mtl"
+    }
+  ],
+  "collisions": [
+    {
+      "meshIndex": 0,
+      "meshName": "2013 F1.003-0",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "2013 F1.003-1",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "2013 F1.003-2",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "2013 F1.003-3",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "2013 F1.003-4",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "2013 F1.003-5",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "2013 F1.003-6",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "2013 F1.003-7",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "2013 F1.003-8",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "2013 F1.003-9",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "2013 F1.003-10",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "2013 F1.003-11",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "2013 F1.003-12",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "2013 F1.003-13",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "2013 F1.003-14",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "2013 F1.003-15",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "2013 F1.003-16",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "2013 F1.003-17",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "2013 F1.003-18",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "2013 F1.003-19",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "2013 F1.003-20",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "2013 F1.003-21",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "2013 F1.003-22",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "2013 F1.003-23",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "2013 F1.003-24",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "2013 F1.003-25",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "2013 F1.003-26",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "2013 F1.003-27",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "2013 F1.003-28",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "2013 F1.003-29",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "2013 F1.003-30",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "2013 F1.003-31",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "2013 F1.003-32",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "2013 F1.003-33",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "2013 F1.003-34",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "2013 F1.003-35",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "2013 F1.003-36",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "2013 F1.003-37",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "2013 F1.003-38",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "2013 F1.003-39",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "2013 F1.003-40",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "2013 F1.003-41",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "2013 F1.003-42",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "2013 F1.003-43",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "2013 F1.003-44",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "2013 F1.003-45",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "2013 F1.003-46",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "2013 F1.003-47",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "2013 F1.003-48",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "2013 F1.003-49",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "2013 F1.003-50",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "2013 F1.003-51",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "2013 F1.003-52",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "2013 F1.003-53",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "2013 F1.003-54",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "2013 F1.003-55",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "2013 F1.003-56",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "2013 F1.003-57",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "2013 F1.003-58",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "2013 F1.003-59",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 60,
+      "meshName": "2013 F1.003-60",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 61,
+      "meshName": "2013 F1.003-61",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 62,
+      "meshName": "2013 F1.003-62",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 63,
+      "meshName": "2013 F1.003-63",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 64,
+      "meshName": "2013 F1.003-64",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 65,
+      "meshName": "2013 F1.003-65",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 66,
+      "meshName": "2013 F1.003-66",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 67,
+      "meshName": "2013 F1.003-67",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 68,
+      "meshName": "2013 F1.003-68",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 69,
+      "meshName": "2013 F1.003-69",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 70,
+      "meshName": "2013 F1.003-70",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 71,
+      "meshName": "2013 F1.003-71",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 72,
+      "meshName": "2013 F1.003-72",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 73,
+      "meshName": "2013 F1.003-73",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 74,
+      "meshName": "2013 F1.003-74",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 75,
+      "meshName": "2013 F1.003-75",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 76,
+      "meshName": "2013 F1.003-76",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 77,
+      "meshName": "2013 F1.003-77",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 78,
+      "meshName": "2013 F1.003-78",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 79,
+      "meshName": "2013 F1.003-79",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 80,
+      "meshName": "2013 F1.003-80",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 81,
+      "meshName": "2013 F1.003-81",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 82,
+      "meshName": "2013 F1.003-82",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 83,
+      "meshName": "2013 F1.003-83",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 84,
+      "meshName": "2013 F1.003-84",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 85,
+      "meshName": "2013 F1.003-85",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 86,
+      "meshName": "2013 F1.003-86",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 87,
+      "meshName": "2013 F1.003-87",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 88,
+      "meshName": "2013 F1.003-88",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 89,
+      "meshName": "2013 F1.003-89",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 90,
+      "meshName": "2013 F1.003-90",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 91,
+      "meshName": "2013 F1.003-91",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 92,
+      "meshName": "2013 F1.003-92",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 93,
+      "meshName": "2013 F1.003-93",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 94,
+      "meshName": "2013 F1.003-94",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 95,
+      "meshName": "2013 F1.003-95",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    },
+    {
+      "meshIndex": 96,
+      "meshName": "2013 F1.003-96",
+      "mode": 1,
+      "buildQuality": 2,
+      "autoBake": true
+    }
+  ]
+}

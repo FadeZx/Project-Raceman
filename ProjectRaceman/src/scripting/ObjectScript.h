@@ -258,6 +258,7 @@ public:
     bool IsMouseButtonDown(int button) const;
     bool WasMouseButtonPressed(int button) const;
     glm::vec2 GetMouseDelta() const;
+    float GetMouseWheelDelta() const;
     float GetAxis(const std::string& action) const;
     bool IsActionDown(const std::string& action) const;
     bool WasActionPressed(const std::string& action) const;

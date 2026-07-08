@@ -831,6 +831,18 @@ SceneEditor::~SceneEditor() {
     if (playModeLoad_.scriptBuildThread && playModeLoad_.scriptBuildThread->joinable()) {
         playModeLoad_.scriptBuildThread->join();
     }
+    if (collisionBake_.thread && collisionBake_.thread->joinable()) {
+        if (collisionBake_.progress) {
+            collisionBake_.progress->cancelRequested.store(true);
+        }
+        collisionBake_.thread->join();
+    }
+    if (materialExtract_.thread && materialExtract_.thread->joinable()) {
+        if (materialExtract_.progress) {
+            materialExtract_.progress->cancelRequested.store(true);
+        }
+        materialExtract_.thread->join();
+    }
 
     // If the app is closed while in play mode, restore the pre-play snapshot so
     // the saved scene on disk reflects the authored state, not runtime transforms.
@@ -855,6 +867,18 @@ SceneEditor::~SceneEditor() {
         (void)path;
         if (textureId != 0) {
             glDeleteTextures(1, &textureId);
+        }
+    }
+    for (const auto& [key, entry] : modelThumbnailCache_) {
+        (void)key;
+        if (entry.depthRenderbuffer != 0) {
+            glDeleteRenderbuffers(1, &entry.depthRenderbuffer);
+        }
+        if (entry.texture != 0) {
+            glDeleteTextures(1, &entry.texture);
+        }
+        if (entry.framebuffer != 0) {
+            glDeleteFramebuffers(1, &entry.framebuffer);
         }
     }
 }
@@ -973,6 +997,8 @@ void SceneEditor::RenderUI(float deltaTime) {
     timingStart = glfwGetTime();
     TickPlayModeLoading();          // check if async physics build is done; finalize on main thread
     RenderPlayModeLoadingPopup();   // show modal progress UI while building (before dockspace so ID stack is clean)
+    TickCollisionBake();
+    TickMaterialExtract();
     frameTimings_.playModePopupMs = elapsedMs(timingStart);
 
     timingStart = glfwGetTime();
@@ -1306,9 +1332,11 @@ void SceneEditor::RenderViewportPanel() {
             const float mouseWheel = ImGui::GetIO().MouseWheel;
             if (outHovered && mouseWheel != 0.0f) {
                 if (viewportType == SceneEditorActiveViewport::Game) {
-                    gameViewportZoomScale_ = (std::max)(0.50f, (std::min)(2.00f, gameViewportZoomScale_ + mouseWheel * 0.10f));
-                    gameViewportRenderDirty_ = true;
                     activeViewport_ = SceneEditorActiveViewport::Game;
+                    if (!scriptsRunning_) {
+                        gameViewportZoomScale_ = (std::max)(0.50f, (std::min)(2.00f, gameViewportZoomScale_ + mouseWheel * 0.10f));
+                        gameViewportRenderDirty_ = true;
+                    }
                 } else if (viewportType == SceneEditorActiveViewport::Scene && hasEditorCameraMatrices_ && onEditorCameraViewChanged_) {
                     const glm::mat4 cameraWorld = glm::inverse(editorCameraView_);
                     const glm::vec3 position(cameraWorld[3]);
@@ -1380,13 +1408,13 @@ void SceneEditor::RenderViewportPanel() {
             // Accept scene asset drops from the project browser onto the viewport.
             if (ImGui::BeginDragDropTarget()) {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
-                    const char* droppedPath = static_cast<const char*>(payload->Data);
+                    const char* droppedPath = payload->DataSize > 0 ? static_cast<const char*>(payload->Data) : nullptr;
                     if (droppedPath != nullptr && droppedPath[0] != '\0') {
                         ImportObj(droppedPath);
                     }
                 }
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
-                    const char* droppedPath = static_cast<const char*>(payload->Data);
+                    const char* droppedPath = payload->DataSize > 0 ? static_cast<const char*>(payload->Data) : nullptr;
                     if (droppedPath != nullptr && droppedPath[0] != '\0') {
                         if (IsPrefabAssetPath(droppedPath)) {
                             InstantiatePrefab(droppedPath);
@@ -1395,8 +1423,15 @@ void SceneEditor::RenderViewportPanel() {
                         }
                     }
                 }
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kModelChildAssetPayload)) {
+                    std::string droppedPath;
+                    int meshIndex = -1;
+                    if (ParseModelChildAssetPayload(payload->Data, payload->DataSize, droppedPath, meshIndex)) {
+                        ImportModelChild(droppedPath, meshIndex);
+                    }
+                }
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
-                    const char* droppedPath = static_cast<const char*>(payload->Data);
+                    const char* droppedPath = payload->DataSize > 0 ? static_cast<const char*>(payload->Data) : nullptr;
                     if (droppedPath != nullptr && droppedPath[0] != '\0') {
                         ImportObj(droppedPath);
                     }
@@ -2487,8 +2522,8 @@ bool SceneEditor::BakeTrackToScene(bool realtime) {
             object.meshRenderer.materialId = materialId;
             object.meshCollider.mode = MeshColliderMode::TriangleMesh;
             object.inspectorComponentOrder = DefaultInspectorComponentOrder();
-            ApplyMeshInfoToSceneObject(object, infos.front(), model);
             object.meshFilter.sourcePath = objProjectPath;
+            ApplyMeshInfoToSceneObject(object, infos.front(), model);
             objects_.push_back(std::move(object));
             targetIndex = static_cast<int>(objects_.size()) - 1;
         } else {
@@ -2500,8 +2535,8 @@ bool SceneEditor::BakeTrackToScene(bool realtime) {
             object.hasMeshCollider = true;
             object.meshRenderer.materialId = materialId;
             object.meshCollider.mode = MeshColliderMode::TriangleMesh;
-            ApplyMeshInfoToSceneObject(object, infos.front(), model);
             object.meshFilter.sourcePath = objProjectPath;
+            ApplyMeshInfoToSceneObject(object, infos.front(), model);
             SyncInspectorComponentOrder(object);
         }
         return targetIndex;
@@ -3615,6 +3650,13 @@ void SceneEditor::Load(const std::string& path) {
             if (meshIndexIt != o.end() && meshIndexIt->second.is_number()) {
                 so.meshFilter.meshIndex = static_cast<int>(meshIndexIt->second.as_number());
             }
+            auto assetIdIt = o.find("assetId");
+            if (assetIdIt != o.end() && assetIdIt->second.is_string()) {
+                so.meshFilter.assetId = assetIdIt->second.as_string();
+            }
+            if (so.meshFilter.assetId.empty()) {
+                so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
+            }
 
             auto importedMaterialIt = o.find("importedMaterialName");
             if (importedMaterialIt != o.end() && importedMaterialIt->second.is_string()) {
@@ -3703,10 +3745,14 @@ void SceneEditor::Load(const std::string& path) {
                         ReadString(component, "meshType", so.meshFilter.meshType);
                         ReadString(component, "sourcePath", so.meshFilter.sourcePath);
                         so.meshFilter.sourcePath = NormalizeSlashes(so.meshFilter.sourcePath);
+                        ReadString(component, "assetId", so.meshFilter.assetId);
 
                         auto componentMeshIndexIt = component.find("meshIndex");
                         if (componentMeshIndexIt != component.end() && componentMeshIndexIt->second.is_number()) {
                             so.meshFilter.meshIndex = static_cast<int>(componentMeshIndexIt->second.as_number());
+                        }
+                        if (so.meshFilter.assetId.empty()) {
+                            so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
                         }
 
                         ReadString(component, "importedMaterialName", so.meshFilter.importedMaterialName);
@@ -4131,6 +4177,7 @@ void SceneEditor::Load(const std::string& path) {
                                 so,
                                 cachedAsset.infos[static_cast<std::size_t>(so.meshFilter.meshIndex)],
                                 cachedAsset.model);
+                            so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
                         }
                     }
                 } catch (...) {

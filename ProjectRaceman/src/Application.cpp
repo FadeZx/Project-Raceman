@@ -175,6 +175,7 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         consoleLog("Creating scene editor...");
         sceneEditor_ = std::make_unique<SceneEditor>();
         consoleLog("Scene editor created.");
+        sceneEditor_->SetRenderer(renderer_.get());
         sceneEditor_->SetConsole(console_.get());
         sceneEditor_->SetInputManager(inputManager_.get());
         sceneEditor_->SetAudioManager(audioManager_.get());
@@ -212,6 +213,7 @@ void Application::InitializeEditor(const std::string& projectPath) {
 #endif
 
     sceneEditor_ = std::make_unique<SceneEditor>();
+    sceneEditor_->SetRenderer(renderer_.get());
     sceneEditor_->SetConsole(console_.get());
     sceneEditor_->SetInputManager(inputManager_.get());
     sceneEditor_->SetAudioManager(audioManager_.get());
@@ -612,6 +614,12 @@ void Application::Update(float deltaTime) {
                 && ImGui::GetIO().WantTextInput);
 
         // Keyboard move
+        if (allowEditorCamera && rmbHeld_ && inputManager_) {
+            const float wheelDelta = inputManager_->GetMouseWheelDelta();
+            if (wheelDelta != 0.0f) {
+                camBaseSpeed_ = (std::max)(0.05f, (std::min)(200.0f, camBaseSpeed_ * std::pow(1.2f, wheelDelta)));
+            }
+        }
         float speed = camBaseSpeed_;
         if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_LEFT_SHIFT))  speed *= camFastMultiplier_;
         if (inputManager_ && inputManager_->IsKeyDown(GLFW_KEY_LEFT_CONTROL)) speed *= camSlowMultiplier_;

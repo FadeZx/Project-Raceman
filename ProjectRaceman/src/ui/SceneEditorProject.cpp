@@ -2,7 +2,9 @@
 #include "NativeDialogs.h"
 #include "../physics/SimpleJson.h"
 #include "../rendering/ShaderRegistry.h"
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <stb_image.h>
 
 namespace fs = std::filesystem;
 
@@ -33,6 +35,62 @@ const char* ProjectCreateAssetTypeDefaultName(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::Script) return "NewScript";
     if (type == ProjectCreateAssetType::ShaderGraph) return "NewShaderGraph";
     return "NewAsset";
+}
+
+std::string MakeModelChildPayload(const std::string& path, int meshIndex) {
+    return NormalizeSlashes(path) + "|" + std::to_string(meshIndex);
+}
+
+std::string ModelChildDisplayName(const ImportedMeshInfo& info) {
+    if (!info.meshName.empty()) {
+        return info.meshName;
+    }
+    return "Mesh " + std::to_string(info.meshIndex);
+}
+
+fs::path ResolvePreviewTexturePath(const std::string& value) {
+    if (value.empty()) return {};
+    fs::path path(NormalizeSlashes(value));
+    if (path.is_absolute()) return path.lexically_normal();
+    if (NormalizeSlashes(value).rfind("assets/", 0) == 0) {
+        return ProjectAssetPathToAbsolute(value);
+    }
+    return (FindAssetsRoot() / path).lexically_normal();
+}
+
+unsigned int LoadPreviewTextureCached(const std::string& texturePath,
+                                      std::unordered_map<std::string, unsigned int>& cache,
+                                      Console* console) {
+    const fs::path absolutePath = ResolvePreviewTexturePath(texturePath);
+    if (absolutePath.empty()) return 0;
+    const std::string key = NormalizeSlashes(absolutePath.lexically_normal().string());
+    if (auto existing = cache.find(key); existing != cache.end()) {
+        return existing->second;
+    }
+
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    unsigned char* data = stbi_load(key.c_str(), &width, &height, &channels, 4);
+    if (data == nullptr || width <= 0 || height <= 0) {
+        cache[key] = 0;
+        if (console) console->AddError("Failed to load material texture: " + key);
+        return 0;
+    }
+
+    unsigned int textureId = 0;
+    glGenTextures(1, &textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(data);
+    cache[key] = textureId;
+    return textureId;
 }
 
 const char* InputDeviceTypeLabel(InputDeviceType type) {
@@ -860,9 +918,9 @@ struct ModelMaterialMapping {
 struct ModelCollisionMapping {
     int meshIndex{0};
     std::string meshName;
-    int mode{1};
+    int mode{0};
     int buildQuality{2};
-    bool autoBake{true};
+    bool autoBake{false};
 };
 
 struct ModelImportSettings {
@@ -1487,6 +1545,385 @@ bool SceneEditor::RefreshModelAssetInspectorCache(bool forceReload) {
     return true;
 }
 
+unsigned int SceneEditor::GetModelChildThumbnailTexture(const std::string& importPath,
+                                                        const ImportedMeshInfo& info,
+                                                        const std::string& materialId,
+                                                        int width,
+                                                        int height) {
+    width = (std::max)(32, width);
+    height = (std::max)(32, height);
+    if (renderer_ == nullptr || info.vao == 0 || info.indexCount == 0) {
+        return 0;
+    }
+
+    const std::string resolvedMaterialId = materialId.empty() ? std::string("pbr_default") : materialId;
+    const std::string key = NormalizeSlashes(importPath) + "|" + std::to_string(info.meshIndex) + "|" +
+                            resolvedMaterialId + "|" + std::to_string(info.vao) + "|" +
+                            std::to_string(info.indexCount) + "|" + std::to_string(width) + "x" + std::to_string(height);
+    if (auto existing = modelThumbnailCache_.find(key); existing != modelThumbnailCache_.end() &&
+        existing->second.texture != 0 && existing->second.width == width && existing->second.height == height) {
+        return existing->second.texture;
+    }
+
+    ModelThumbnailCacheEntry& entry = modelThumbnailCache_[key];
+    if (entry.framebuffer == 0) glGenFramebuffers(1, &entry.framebuffer);
+    if (entry.texture == 0) glGenTextures(1, &entry.texture);
+    if (entry.depthRenderbuffer == 0) glGenRenderbuffers(1, &entry.depthRenderbuffer);
+    entry.width = width;
+    entry.height = height;
+
+    glBindTexture(GL_TEXTURE_2D, entry.texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glBindRenderbuffer(GL_RENDERBUFFER, entry.depthRenderbuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+
+    GLint previousFramebuffer = 0;
+    GLint previousViewport[4] = {0, 0, 0, 0};
+    GLboolean scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFramebuffer);
+    glGetIntegerv(GL_VIEWPORT, previousViewport);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, entry.framebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, entry.texture, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, entry.depthRenderbuffer);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
+        glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+        if (scissorEnabled) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+        return 0;
+    }
+
+    glViewport(0, 0, width, height);
+    glDisable(GL_SCISSOR_TEST);
+    glEnable(GL_DEPTH_TEST);
+    glClearColor(0.12f, 0.13f, 0.14f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    MeshDrawCommand cmd;
+    cmd.vao = info.vao;
+    cmd.indexCount = info.indexCount;
+    cmd.materialId = resolvedMaterialId;
+    cmd.color = {1.0f, 1.0f, 1.0f, 1.0f};
+    cmd.diffuseTextureId = info.diffuseTextureId;
+    cmd.useDiffuseTexture = info.diffuseTextureId != 0;
+
+    if (const Material* material = materialManager_.Get(resolvedMaterialId)) {
+        cmd.shaderId = material->shader;
+        cmd.color = {
+            material->albedoColor[0],
+            material->albedoColor[1],
+            material->albedoColor[2],
+            material->albedoColor[3]
+        };
+        cmd.emissiveColor = {
+            material->emissiveColor[0],
+            material->emissiveColor[1],
+            material->emissiveColor[2]
+        };
+        cmd.metallic = material->metallic;
+        cmd.roughness = material->roughness;
+        cmd.uvTiling = {material->uvTiling[0], material->uvTiling[1]};
+        cmd.uvOffset = {material->uvOffset[0], material->uvOffset[1]};
+        cmd.unlit = ToLowerCopy(material->shader) == "unlit";
+        cmd.materialTextureIds[0] = LoadPreviewTextureCached(material->texAlbedo, materialTextureCache_, console_);
+        cmd.materialTextureIds[1] = LoadPreviewTextureCached(material->texNormal, materialTextureCache_, console_);
+        cmd.materialTextureIds[2] = LoadPreviewTextureCached(material->texMetallic, materialTextureCache_, console_);
+        cmd.materialTextureIds[3] = LoadPreviewTextureCached(material->texRoughness, materialTextureCache_, console_);
+        cmd.materialTextureIds[4] = LoadPreviewTextureCached(material->texAo, materialTextureCache_, console_);
+        const ShaderDefinition& shaderDefinition = ShaderRegistry::Resolve(material->shader);
+        for (const ShaderDefinition::Property& property : shaderDefinition.properties) {
+            if (property.id == "albedoColor" || property.id == "emissiveColor" || property.id == "metallic" ||
+                property.id == "roughness" || property.id == "uvTiling" || property.id == "uvOffset" ||
+                property.id == "albedoTexture" || property.id == "normalTexture" || property.id == "metallicTexture" ||
+                property.id == "roughnessTexture" || property.id == "aoTexture") {
+                continue;
+            }
+            MeshDrawCommand::MaterialUniform uniform;
+            uniform.uniformName = property.uniformName;
+            uniform.textureUseUniform = property.textureUseUniform;
+            uniform.value.type = property.type;
+            uniform.value.values[0] = property.defaultValues[0];
+            uniform.value.values[1] = property.defaultValues[1];
+            uniform.value.values[2] = property.defaultValues[2];
+            uniform.value.values[3] = property.defaultValues[3];
+            uniform.value.boolValue = property.defaultBool;
+            if (auto propertyIt = material->properties.find(property.id); propertyIt != material->properties.end()) {
+                uniform.value = propertyIt->second;
+            }
+            if (uniform.value.type == MaterialPropertyType::Texture2D) {
+                uniform.textureId = LoadPreviewTextureCached(uniform.value.texturePath, materialTextureCache_, console_);
+            }
+            cmd.materialUniforms.push_back(uniform);
+        }
+    }
+    cmd.diffuseTextureId = cmd.materialTextureIds[0] != 0 ? cmd.materialTextureIds[0] : info.diffuseTextureId;
+    cmd.useDiffuseTexture = cmd.diffuseTextureId != 0;
+
+    const glm::vec3 center = (info.localBoundsMin + info.localBoundsMax) * 0.5f;
+    const glm::vec3 extent = info.localBoundsMax - info.localBoundsMin;
+    const float radius = (std::max)(0.001f, glm::length(extent) * 0.5f);
+    cmd.modelMatrix = glm::translate(glm::mat4(1.0f), -center);
+
+    const float aspect = static_cast<float>(width) / static_cast<float>(height);
+    const glm::vec3 cameraPos = glm::vec3(radius * 1.35f, radius * 0.75f, radius * 1.65f);
+    const glm::mat4 view = glm::lookAt(cameraPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::mat4 proj = glm::perspective(glm::radians(35.0f), aspect, 0.01f, radius * 8.0f + 1.0f);
+
+    renderer_->SetCamera(view, proj);
+    LightDrawCommand keyLight;
+    keyLight.type = RenderLightType::Directional;
+    keyLight.direction = glm::normalize(glm::vec3(-0.55f, -1.0f, -0.35f));
+    keyLight.color = glm::vec3(1.0f);
+    keyLight.intensity = 3.0f;
+    renderer_->SubmitLight(keyLight);
+    renderer_->SubmitMesh(cmd);
+    renderer_->Flush();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
+    glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+    if (scissorEnabled) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+    return entry.texture;
+}
+
+unsigned int SceneEditor::GetModelPackageThumbnailTexture(const std::string& importPath,
+                                                          const std::vector<ImportedMeshInfo>& infos,
+                                                          const std::vector<std::string>& materialIds,
+                                                          int width,
+                                                          int height) {
+    width = (std::max)(32, width);
+    height = (std::max)(32, height);
+    if (renderer_ == nullptr || infos.empty()) {
+        return 0;
+    }
+
+    std::string key = NormalizeSlashes(importPath) + "|package|";
+    glm::vec3 packageMin(0.0f);
+    glm::vec3 packageMax(0.0f);
+    bool boundsInitialized = false;
+    for (std::size_t i = 0; i < infos.size(); ++i) {
+        const ImportedMeshInfo& info = infos[i];
+        const std::string materialId = i < materialIds.size() && !materialIds[i].empty() ? materialIds[i] : std::string("pbr_default");
+        key += std::to_string(info.meshIndex) + ":" + materialId + ":" + std::to_string(info.vao) + ":" + std::to_string(info.indexCount) + ";";
+        if (!boundsInitialized) {
+            packageMin = info.localBoundsMin;
+            packageMax = info.localBoundsMax;
+            boundsInitialized = true;
+        } else {
+            packageMin.x = (std::min)(packageMin.x, info.localBoundsMin.x);
+            packageMin.y = (std::min)(packageMin.y, info.localBoundsMin.y);
+            packageMin.z = (std::min)(packageMin.z, info.localBoundsMin.z);
+            packageMax.x = (std::max)(packageMax.x, info.localBoundsMax.x);
+            packageMax.y = (std::max)(packageMax.y, info.localBoundsMax.y);
+            packageMax.z = (std::max)(packageMax.z, info.localBoundsMax.z);
+        }
+    }
+    key += std::to_string(width) + "x" + std::to_string(height);
+    if (auto existing = modelThumbnailCache_.find(key); existing != modelThumbnailCache_.end() &&
+        existing->second.texture != 0 && existing->second.width == width && existing->second.height == height) {
+        return existing->second.texture;
+    }
+
+    ModelThumbnailCacheEntry& entry = modelThumbnailCache_[key];
+    if (entry.framebuffer == 0) glGenFramebuffers(1, &entry.framebuffer);
+    if (entry.texture == 0) glGenTextures(1, &entry.texture);
+    if (entry.depthRenderbuffer == 0) glGenRenderbuffers(1, &entry.depthRenderbuffer);
+    entry.width = width;
+    entry.height = height;
+
+    glBindTexture(GL_TEXTURE_2D, entry.texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glBindRenderbuffer(GL_RENDERBUFFER, entry.depthRenderbuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+
+    GLint previousFramebuffer = 0;
+    GLint previousViewport[4] = {0, 0, 0, 0};
+    GLboolean scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFramebuffer);
+    glGetIntegerv(GL_VIEWPORT, previousViewport);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, entry.framebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, entry.texture, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, entry.depthRenderbuffer);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
+        glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+        if (scissorEnabled) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+        return 0;
+    }
+
+    glViewport(0, 0, width, height);
+    glDisable(GL_SCISSOR_TEST);
+    glEnable(GL_DEPTH_TEST);
+    glClearColor(0.12f, 0.13f, 0.14f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    const glm::vec3 center = (packageMin + packageMax) * 0.5f;
+    const glm::vec3 extent = packageMax - packageMin;
+    const float radius = (std::max)(0.001f, glm::length(extent) * 0.5f);
+    const float aspect = static_cast<float>(width) / static_cast<float>(height);
+    const glm::vec3 cameraPos = glm::vec3(radius * 1.35f, radius * 0.75f, radius * 1.65f);
+    const glm::mat4 view = glm::lookAt(cameraPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::mat4 proj = glm::perspective(glm::radians(35.0f), aspect, 0.01f, radius * 8.0f + 1.0f);
+    renderer_->SetCamera(view, proj);
+
+    LightDrawCommand keyLight;
+    keyLight.type = RenderLightType::Directional;
+    keyLight.direction = glm::normalize(glm::vec3(-0.55f, -1.0f, -0.35f));
+    keyLight.color = glm::vec3(1.0f);
+    keyLight.intensity = 3.0f;
+    renderer_->SubmitLight(keyLight);
+
+    for (std::size_t i = 0; i < infos.size(); ++i) {
+        const ImportedMeshInfo& info = infos[i];
+        if (info.vao == 0 || info.indexCount == 0) {
+            continue;
+        }
+        const std::string resolvedMaterialId = i < materialIds.size() && !materialIds[i].empty() ? materialIds[i] : std::string("pbr_default");
+        MeshDrawCommand cmd;
+        cmd.vao = info.vao;
+        cmd.indexCount = info.indexCount;
+        cmd.materialId = resolvedMaterialId;
+        cmd.color = {1.0f, 1.0f, 1.0f, 1.0f};
+        cmd.diffuseTextureId = info.diffuseTextureId;
+        cmd.useDiffuseTexture = info.diffuseTextureId != 0;
+        cmd.modelMatrix = glm::translate(glm::mat4(1.0f), -center);
+
+        if (const Material* material = materialManager_.Get(resolvedMaterialId)) {
+            cmd.shaderId = material->shader;
+            cmd.color = {
+                material->albedoColor[0],
+                material->albedoColor[1],
+                material->albedoColor[2],
+                material->albedoColor[3]
+            };
+            cmd.emissiveColor = {
+                material->emissiveColor[0],
+                material->emissiveColor[1],
+                material->emissiveColor[2]
+            };
+            cmd.metallic = material->metallic;
+            cmd.roughness = material->roughness;
+            cmd.uvTiling = {material->uvTiling[0], material->uvTiling[1]};
+            cmd.uvOffset = {material->uvOffset[0], material->uvOffset[1]};
+            cmd.unlit = ToLowerCopy(material->shader) == "unlit";
+            cmd.materialTextureIds[0] = LoadPreviewTextureCached(material->texAlbedo, materialTextureCache_, console_);
+            cmd.materialTextureIds[1] = LoadPreviewTextureCached(material->texNormal, materialTextureCache_, console_);
+            cmd.materialTextureIds[2] = LoadPreviewTextureCached(material->texMetallic, materialTextureCache_, console_);
+            cmd.materialTextureIds[3] = LoadPreviewTextureCached(material->texRoughness, materialTextureCache_, console_);
+            cmd.materialTextureIds[4] = LoadPreviewTextureCached(material->texAo, materialTextureCache_, console_);
+        }
+        cmd.diffuseTextureId = cmd.materialTextureIds[0] != 0 ? cmd.materialTextureIds[0] : info.diffuseTextureId;
+        cmd.useDiffuseTexture = cmd.diffuseTextureId != 0;
+        renderer_->SubmitMesh(cmd);
+    }
+    renderer_->Flush();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
+    glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+    if (scissorEnabled) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+    return entry.texture;
+}
+
+void SceneEditor::ClearModelChildThumbnailCache(const std::string& importPath, int meshIndex) {
+    const std::string prefix = NormalizeSlashes(importPath) + "|" + std::to_string(meshIndex) + "|";
+    for (auto it = modelThumbnailCache_.begin(); it != modelThumbnailCache_.end();) {
+        if (it->first.rfind(prefix, 0) == 0) {
+            if (it->second.depthRenderbuffer != 0) glDeleteRenderbuffers(1, &it->second.depthRenderbuffer);
+            if (it->second.texture != 0) glDeleteTextures(1, &it->second.texture);
+            if (it->second.framebuffer != 0) glDeleteFramebuffers(1, &it->second.framebuffer);
+            it = modelThumbnailCache_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void SceneEditor::TickMaterialExtract() {
+    if (!materialExtract_.active || !materialExtract_.progress || !materialExtract_.progress->isDone.load()) {
+        return;
+    }
+
+    if (materialExtract_.thread && materialExtract_.thread->joinable()) {
+        materialExtract_.thread->join();
+    }
+
+    std::string summary;
+    {
+        std::lock_guard<std::mutex> lock(materialExtract_.mutex);
+        summary = materialExtract_.summary;
+    }
+    const bool cancelled = materialExtract_.progress->wasCancelled.load();
+    const int errors = materialExtract_.errorCount.load();
+    if (!cancelled) {
+        if (materialExtract_.reloadMaterials) {
+            materialManager_.LoadAll();
+        }
+        if (materialExtract_.refreshProjectFiles) {
+            RefreshProjectFiles();
+        }
+        RefreshModelAssetInspectorCache(true);
+    }
+    if (console_) {
+        if (cancelled) {
+            console_->AddWarning("Material extraction cancelled.");
+        } else if (errors > 0) {
+            console_->AddWarning(summary.empty() ? "Material extraction finished with errors." : summary);
+        } else {
+            console_->AddLog(summary.empty() ? "Material extraction complete." : summary);
+        }
+    }
+
+    materialExtract_.active = false;
+    materialExtract_.reloadMaterials = false;
+    materialExtract_.refreshProjectFiles = false;
+    materialExtract_.title.clear();
+    materialExtract_.progress.reset();
+    materialExtract_.thread.reset();
+    materialExtract_.itemCount.store(0);
+    materialExtract_.errorCount.store(0);
+    {
+        std::lock_guard<std::mutex> lock(materialExtract_.mutex);
+        materialExtract_.summary.clear();
+    }
+}
+
+void SceneEditor::RenderMaterialExtractInlineStatus() {
+    if (!materialExtract_.active || !materialExtract_.progress) {
+        return;
+    }
+
+    PhysicsBuildProgress* progress = materialExtract_.progress.get();
+    const int done = progress->stepsDone.load();
+    const int total = (std::max)(progress->stepsTotal.load(), 1);
+    const float fraction = static_cast<float>(done) / static_cast<float>(total);
+
+    ImGui::PushID("MaterialExtractInlineStatus");
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::TextUnformatted(materialExtract_.title.empty() ? "Extracting materials" : materialExtract_.title.c_str());
+    char label[32];
+    std::snprintf(label, sizeof(label), "%d / %d", done, total);
+    ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), label);
+    const std::string task = progress->GetTask();
+    if (!task.empty()) {
+        ImGui::TextDisabled("%s", task.c_str());
+    }
+    if (ImGui::SmallButton("Cancel")) {
+        progress->cancelRequested.store(true);
+    }
+    ImGui::PopID();
+}
+
 void SceneEditor::RenderModelAssetInspector() {
     if (!IsMeshAssetPath(selectedProjectFile_)) {
         ImGui::TextDisabled("No model asset selected.");
@@ -1543,60 +1980,162 @@ void SceneEditor::RenderModelAssetInspector() {
     };
 
     auto extractMaterials = [&](bool overwriteExisting, const fs::path& targetFolder) {
-        bool changed = false;
-        for (const ImportedMeshInfo& info : infos) {
-            ModelMaterialMapping& mapping = EnsureModelMaterialMapping(settings, importPath, baseName, info);
-            const bool missing = mapping.materialId.empty() || !materialManager_.Exists(mapping.materialId);
-            if (overwriteExisting || missing) {
-                if (!targetFolder.empty()) {
-                    mapping.materialId = CreateOrUpdateImportedMaterialAssetAtFolder(importPath, baseName, info, targetFolder, overwriteExisting);
-                } else {
-                    mapping.materialId = CreateOrUpdateImportedMaterialAsset(materialManager_, importPath, baseName, info, overwriteExisting);
-                }
-                changed = true;
-            }
+        if (materialExtract_.active) {
+            if (console_) console_->AddWarning("Material extraction is already running.");
+            return;
         }
-        if (SaveModelImportSettings(importPath, settings)) {
-            changed = true;
-        }
-        if (changed) {
-            materialManager_.LoadAll();
-            RefreshProjectFiles();
-            if (console_) {
-                console_->AddLog(std::string(overwriteExisting ? "Re-extracted" : "Extracted") + " model materials: " + importPath);
-            }
-        }
-    };
-
-    auto extractTextures = [&](const fs::path& targetFolder) {
         if (targetFolder.empty()) {
             return;
         }
-        int extractedCount = 0;
-        for (const ImportedMeshInfo& info : infos) {
-            ModelMaterialMapping& mapping = EnsureModelMaterialMapping(settings, importPath, baseName, info);
-            if (mapping.materialId.empty()) {
-                mapping.materialId = DefaultImportedMaterialId(importPath, baseName, info);
-            }
-            auto extractSlot = [&](const std::string& texturePath,
-                                   const std::vector<unsigned char>& embeddedData,
-                                   const std::string& embeddedExtension,
-                                   const std::string& slotName) {
-                const std::string projectPath = ExtractOrResolveImportedTextureAssetPath(importPath, info, texturePath, embeddedData, embeddedExtension, targetFolder, mapping.materialId, slotName);
-                if (!projectPath.empty()) {
-                    ++extractedCount;
+        if (materialExtract_.thread && materialExtract_.thread->joinable()) {
+            materialExtract_.thread->join();
+        }
+
+        materialExtract_.active = true;
+        materialExtract_.reloadMaterials = true;
+        materialExtract_.refreshProjectFiles = true;
+        materialExtract_.title = overwriteExisting ? "Re-extracting model materials" : "Extracting model materials";
+        materialExtract_.progress = std::make_shared<PhysicsBuildProgress>();
+        materialExtract_.progress->stepsDone.store(0);
+        materialExtract_.progress->stepsTotal.store(static_cast<int>(infos.size()));
+        materialExtract_.progress->SetTask("Preparing...");
+        materialExtract_.itemCount.store(0);
+        materialExtract_.errorCount.store(0);
+        {
+            std::lock_guard<std::mutex> lock(materialExtract_.mutex);
+            materialExtract_.summary.clear();
+        }
+
+        auto progress = materialExtract_.progress;
+        auto* itemCount = &materialExtract_.itemCount;
+        auto* errorCount = &materialExtract_.errorCount;
+        auto* summaryMutex = &materialExtract_.mutex;
+        auto* summary = &materialExtract_.summary;
+        const std::vector<ImportedMeshInfo> jobInfos = infos;
+        const std::string jobImportPath = importPath;
+        const std::string jobBaseName = baseName;
+        const fs::path jobTargetFolder = targetFolder;
+        ModelImportSettings jobSettings = settings;
+        std::unordered_set<std::string> existingMaterialIds;
+        for (const std::string& materialId : materialManager_.ListMaterialIds()) {
+            existingMaterialIds.insert(materialId);
+        }
+        materialExtract_.thread = std::make_unique<std::thread>(
+            [progress, itemCount, errorCount, summaryMutex, summary, jobInfos, jobImportPath, jobBaseName, jobTargetFolder, overwriteExisting, jobSettings, existingMaterialIds]() mutable {
+                bool changed = false;
+                for (std::size_t i = 0; i < jobInfos.size(); ++i) {
+                    if (progress->cancelRequested.load()) {
+                        progress->wasCancelled.store(true);
+                        break;
+                    }
+                    const ImportedMeshInfo& info = jobInfos[i];
+                    const std::string meshLabel = ModelChildDisplayName(info);
+                    progress->stepsDone.store(static_cast<int>(i));
+                    progress->SetTask("Extracting: " + meshLabel);
+                    ModelMaterialMapping& mapping = EnsureModelMaterialMapping(jobSettings, jobImportPath, jobBaseName, info);
+                    const bool missing = mapping.materialId.empty() || existingMaterialIds.find(mapping.materialId) == existingMaterialIds.end();
+                    if (overwriteExisting || missing) {
+                        const std::string materialId = CreateOrUpdateImportedMaterialAssetAtFolder(jobImportPath, jobBaseName, info, jobTargetFolder, overwriteExisting);
+                        if (materialId.empty()) {
+                            errorCount->fetch_add(1);
+                        } else {
+                            mapping.materialId = materialId;
+                            itemCount->fetch_add(1);
+                            changed = true;
+                        }
+                    }
                 }
-            };
-            extractSlot(info.diffuseTexturePath, info.diffuseTextureEmbeddedData, info.diffuseTextureEmbeddedExtension, "albedo");
-            extractSlot(info.normalTexturePath, info.normalTextureEmbeddedData, info.normalTextureEmbeddedExtension, "normal");
-            extractSlot(info.metallicTexturePath, info.metallicTextureEmbeddedData, info.metallicTextureEmbeddedExtension, "metallic");
-            extractSlot(info.roughnessTexturePath, info.roughnessTextureEmbeddedData, info.roughnessTextureEmbeddedExtension, "roughness");
-            extractSlot(info.aoTexturePath, info.aoTextureEmbeddedData, info.aoTextureEmbeddedExtension, "ao");
+                if (!progress->wasCancelled.load()) {
+                    if (changed) {
+                        SaveModelImportSettings(jobImportPath, jobSettings);
+                    }
+                    std::lock_guard<std::mutex> lock(*summaryMutex);
+                    *summary = std::string(overwriteExisting ? "Re-extracted " : "Extracted ") +
+                               std::to_string(itemCount->load()) + " material" +
+                               (itemCount->load() == 1 ? "" : "s") + " from " + jobImportPath +
+                               (errorCount->load() > 0 ? (" (" + std::to_string(errorCount->load()) + " failed)") : "");
+                }
+                progress->stepsDone.store(static_cast<int>(jobInfos.size()));
+                progress->SetTask(progress->wasCancelled.load() ? "Cancelled." : "Done.");
+                progress->isDone.store(true);
+            });
+    };
+
+    auto extractTextures = [&](const fs::path& targetFolder) {
+        if (materialExtract_.active) {
+            if (console_) console_->AddWarning("Material extraction is already running.");
+            return;
         }
-        RefreshProjectFiles();
-        if (console_) {
-            console_->AddLog("Extracted or resolved " + std::to_string(extractedCount) + " imported texture slot" + (extractedCount == 1 ? "" : "s") + ".");
+        if (targetFolder.empty()) {
+            return;
         }
+        if (materialExtract_.thread && materialExtract_.thread->joinable()) {
+            materialExtract_.thread->join();
+        }
+
+        materialExtract_.active = true;
+        materialExtract_.reloadMaterials = false;
+        materialExtract_.refreshProjectFiles = true;
+        materialExtract_.title = "Extracting model textures";
+        materialExtract_.progress = std::make_shared<PhysicsBuildProgress>();
+        materialExtract_.progress->stepsDone.store(0);
+        materialExtract_.progress->stepsTotal.store(static_cast<int>(infos.size()));
+        materialExtract_.progress->SetTask("Preparing...");
+        materialExtract_.itemCount.store(0);
+        materialExtract_.errorCount.store(0);
+        {
+            std::lock_guard<std::mutex> lock(materialExtract_.mutex);
+            materialExtract_.summary.clear();
+        }
+
+        auto progress = materialExtract_.progress;
+        auto* itemCount = &materialExtract_.itemCount;
+        auto* summaryMutex = &materialExtract_.mutex;
+        auto* summary = &materialExtract_.summary;
+        const std::vector<ImportedMeshInfo> jobInfos = infos;
+        const std::string jobImportPath = importPath;
+        const std::string jobBaseName = baseName;
+        const fs::path jobTargetFolder = targetFolder;
+        ModelImportSettings jobSettings = settings;
+        materialExtract_.thread = std::make_unique<std::thread>(
+            [progress, itemCount, summaryMutex, summary, jobInfos, jobImportPath, jobBaseName, jobTargetFolder, jobSettings]() mutable {
+                for (std::size_t i = 0; i < jobInfos.size(); ++i) {
+                    if (progress->cancelRequested.load()) {
+                        progress->wasCancelled.store(true);
+                        break;
+                    }
+                    const ImportedMeshInfo& info = jobInfos[i];
+                    progress->stepsDone.store(static_cast<int>(i));
+                    progress->SetTask("Extracting textures: " + ModelChildDisplayName(info));
+                    ModelMaterialMapping& mapping = EnsureModelMaterialMapping(jobSettings, jobImportPath, jobBaseName, info);
+                    if (mapping.materialId.empty()) {
+                        mapping.materialId = DefaultImportedMaterialId(jobImportPath, jobBaseName, info);
+                    }
+                    auto extractSlot = [&](const std::string& texturePath,
+                                           const std::vector<unsigned char>& embeddedData,
+                                           const std::string& embeddedExtension,
+                                           const std::string& slotName) {
+                        const std::string projectPath = ExtractOrResolveImportedTextureAssetPath(jobImportPath, info, texturePath, embeddedData, embeddedExtension, jobTargetFolder, mapping.materialId, slotName);
+                        if (!projectPath.empty()) {
+                            itemCount->fetch_add(1);
+                        }
+                    };
+                    extractSlot(info.diffuseTexturePath, info.diffuseTextureEmbeddedData, info.diffuseTextureEmbeddedExtension, "albedo");
+                    extractSlot(info.normalTexturePath, info.normalTextureEmbeddedData, info.normalTextureEmbeddedExtension, "normal");
+                    extractSlot(info.metallicTexturePath, info.metallicTextureEmbeddedData, info.metallicTextureEmbeddedExtension, "metallic");
+                    extractSlot(info.roughnessTexturePath, info.roughnessTextureEmbeddedData, info.roughnessTextureEmbeddedExtension, "roughness");
+                    extractSlot(info.aoTexturePath, info.aoTextureEmbeddedData, info.aoTextureEmbeddedExtension, "ao");
+                }
+                if (!progress->wasCancelled.load()) {
+                    SaveModelImportSettings(jobImportPath, jobSettings);
+                    std::lock_guard<std::mutex> lock(*summaryMutex);
+                    *summary = "Extracted or resolved " + std::to_string(itemCount->load()) +
+                               " imported texture slot" + (itemCount->load() == 1 ? "" : "s") + ".";
+                }
+                progress->stepsDone.store(static_cast<int>(jobInfos.size()));
+                progress->SetTask(progress->wasCancelled.load() ? "Cancelled." : "Done.");
+                progress->isDone.store(true);
+            });
     };
 
     auto applyMaterialsToScene = [&]() {
@@ -1656,6 +2195,7 @@ void SceneEditor::RenderModelAssetInspector() {
             }
             ApplyMeshInfoToSceneObject(object, refreshedInfos[static_cast<std::size_t>(meshIndex)], refreshedModel);
             object.meshFilter.sourcePath = refreshedImportPath;
+            object.meshFilter.assetId = ModelChildAssetId(refreshedImportPath, object.meshFilter.meshIndex);
             if (object.hasMeshRenderer) {
                 if (const ModelMaterialMapping* mapping = FindModelMaterialMapping(settings, meshIndex)) {
                     if (!mapping->materialId.empty()) {
@@ -1853,6 +2393,7 @@ void SceneEditor::RenderModelAssetInspector() {
                 }
             }
             ImGui::EndDisabled();
+            RenderMaterialExtractInlineStatus();
 
             ImGui::Spacing();
             ImGui::TextWrapped("Material assignments can be remapped below. Search and Remap pairs imported slots to existing Raceman materials by texture or material name.");
@@ -1960,36 +2501,28 @@ void SceneEditor::RenderModelAssetInspector() {
             ImGui::TextWrapped("Bake mesh collision data before Play. Play mode still cooks missing or stale shapes, but ready cache entries load faster.");
             ImGui::Spacing();
 
-            auto bakeCollisionForInfo = [&](const ImportedMeshInfo& info, ModelCollisionMapping& mapping) {
+            auto makeCollisionBakeJob = [&](const ImportedMeshInfo& info, const ModelCollisionMapping& mapping) {
+                std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs;
                 if (mapping.mode == 0) {
-                    return false;
+                    return jobs;
                 }
-                CollisionShapeCacheInfo bakedInfo;
-                const bool baked = PhysicsWorld::BakeCollisionShape(BuildModelCollisionDesc(importPath, info, mapping), &bakedInfo);
-                if (console_) {
-                    const std::string meshLabel = info.meshName.empty() ? ("Mesh " + std::to_string(info.meshIndex)) : info.meshName;
-                    if (baked) {
-                        console_->AddLog("Baked collision: " + meshLabel + " (" + CollisionCacheStatusLabel(bakedInfo.status) + ")");
-                    } else {
-                        console_->AddError("Failed to bake collision: " + meshLabel + (bakedInfo.message.empty() ? "" : (" - " + bakedInfo.message)));
-                    }
-                }
-                return baked;
+                const std::string meshLabel = info.meshName.empty() ? ("Mesh " + std::to_string(info.meshIndex)) : info.meshName;
+                jobs.emplace_back(BuildModelCollisionDesc(importPath, info, mapping), meshLabel);
+                return jobs;
             };
 
+            ImGui::BeginDisabled(collisionBake_.active);
             if (ImGui::Button("Bake All")) {
-                int bakedCount = 0;
+                std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs;
                 for (const ImportedMeshInfo& info : infos) {
                     ModelCollisionMapping& mapping = EnsureModelCollisionMapping(settings, info);
-                    if (bakeCollisionForInfo(info, mapping)) {
-                        ++bakedCount;
-                    }
+                    auto meshJobs = makeCollisionBakeJob(info, mapping);
+                    jobs.insert(jobs.end(), meshJobs.begin(), meshJobs.end());
                 }
                 SaveModelImportSettings(importPath, settings);
-                if (console_) {
-                    console_->AddLog("Collision bake complete: " + std::to_string(bakedCount) + " mesh" + (bakedCount == 1 ? "" : "es") + ".");
-                }
+                StartCollisionBake(std::move(jobs), "Baking model collision cache");
             }
+            ImGui::EndDisabled();
             ImGui::SameLine();
             if (ImGui::Button("Clear Collision Cache")) {
                 std::string error;
@@ -2003,6 +2536,7 @@ void SceneEditor::RenderModelAssetInspector() {
                     }
                 }
             }
+            RenderCollisionBakeInlineStatus();
 
             ImGui::Spacing();
             if (ImGui::BeginTable("ModelCollisionMappingsTable", 7, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable)) {
@@ -2061,10 +2595,10 @@ void SceneEditor::RenderModelAssetInspector() {
                         ImGui::SetTooltip("%s", cacheInfo.message.c_str());
                     }
                     ImGui::TableSetColumnIndex(6);
-                    ImGui::BeginDisabled(mapping.mode == 0);
+                    ImGui::BeginDisabled(mapping.mode == 0 || collisionBake_.active);
                     if (ImGui::SmallButton("Bake")) {
-                        bakeCollisionForInfo(info, mapping);
                         SaveModelImportSettings(importPath, settings);
+                        StartCollisionBake(makeCollisionBakeJob(info, mapping), "Baking model collision cache");
                     }
                     ImGui::EndDisabled();
                     ImGui::PopID();
@@ -2073,6 +2607,150 @@ void SceneEditor::RenderModelAssetInspector() {
             }
 
             ImGui::TextDisabled("Triangle Mesh colliders are static-only. Use Convex Hull for dynamic bodies.");
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+}
+
+void SceneEditor::RenderModelChildAssetInspector() {
+    if (!IsMeshAssetPath(selectedProjectFile_) || selectedModelChildMeshIndex_ < 0) {
+        ImGui::TextDisabled("No model child selected.");
+        return;
+    }
+    if (!RefreshModelAssetInspectorCache(false)) {
+        ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.35f, 1.0f), "%s",
+                           modelAssetInspectorCache_.error.empty() ? "Failed to load model child." : modelAssetInspectorCache_.error.c_str());
+        return;
+    }
+
+    const std::string& importPath = modelAssetInspectorCache_.importPath;
+    const std::vector<ImportedMeshInfo>& infos = modelAssetInspectorCache_.infos;
+    auto infoIt = std::find_if(infos.begin(), infos.end(), [&](const ImportedMeshInfo& info) {
+        return static_cast<int>(info.meshIndex) == selectedModelChildMeshIndex_;
+    });
+    if (infoIt == infos.end()) {
+        ImGui::TextDisabled("Model child no longer exists.");
+        return;
+    }
+    const ImportedMeshInfo& info = *infoIt;
+
+    std::string baseName;
+    try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Model"; }
+
+    ModelImportSettings settings;
+    LoadModelImportSettings(importPath, settings);
+    ReconcileModelImportSettings(settings, importPath, baseName, infos);
+    ModelMaterialMapping& materialMapping = EnsureModelMaterialMapping(settings, importPath, baseName, info);
+    ModelCollisionMapping& collisionMapping = EnsureModelCollisionMapping(settings, info);
+
+    std::vector<std::string> materialIds = materialManager_.ListMaterialIds();
+    std::sort(materialIds.begin(), materialIds.end(), [](const std::string& a, const std::string& b) {
+        return ToLowerCopy(a) < ToLowerCopy(b);
+    });
+
+    ImGui::TextUnformatted(ModelChildDisplayName(info).c_str());
+    ImGui::TextDisabled("Model package: %s", ProjectAssetDisplayFilename(importPath).c_str());
+    ImGui::TextDisabled("Mesh index: %u", info.meshIndex);
+    ImGui::TextDisabled("Triangles: %u", info.indexCount / 3);
+    ImGui::Spacing();
+    const ImVec2 previewSize((std::max)(ImGui::GetContentRegionAvail().x, 80.0f), 180.0f);
+    const unsigned int previewTexture = GetModelChildThumbnailTexture(importPath, info, materialMapping.materialId,
+                                                                      static_cast<int>(previewSize.x), static_cast<int>(previewSize.y));
+    if (previewTexture != 0) {
+        ImGui::Image(static_cast<ImTextureID>(previewTexture), previewSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+    } else {
+        ImGui::Dummy(previewSize);
+    }
+
+    ImGui::Spacing();
+    if (ImGui::Button("Import To Scene")) {
+        ImportModelChild(importPath, static_cast<int>(info.meshIndex));
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Open Package")) {
+        selectedModelChildMeshIndex_ = -1;
+    }
+
+    if (ImGui::BeginTabBar("ModelChildInspectorTabs")) {
+        if (ImGui::BeginTabItem("Model")) {
+            ImGui::TextWrapped("%s", importPath.c_str());
+            ImGui::TextDisabled("Imported material: %s", info.materialName.empty() ? "(none)" : info.materialName.c_str());
+            ImGui::TextDisabled("Bounds min: %.3f, %.3f, %.3f", info.localBoundsMin.x, info.localBoundsMin.y, info.localBoundsMin.z);
+            ImGui::TextDisabled("Bounds max: %.3f, %.3f, %.3f", info.localBoundsMax.x, info.localBoundsMax.y, info.localBoundsMax.z);
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Material")) {
+            const char* preview = materialMapping.materialId.empty() ? "None (Material)" : materialMapping.materialId.c_str();
+            ImGui::SetNextItemWidth(-1.0f);
+            if (ImGui::BeginCombo("Raceman Material", preview)) {
+                if (ImGui::Selectable("None (Material)", materialMapping.materialId.empty())) {
+                    materialMapping.materialId.clear();
+                    ClearModelChildThumbnailCache(importPath, static_cast<int>(info.meshIndex));
+                    SaveModelImportSettings(importPath, settings);
+                }
+                for (const std::string& materialId : materialIds) {
+                    const bool selected = materialMapping.materialId == materialId;
+                    if (ImGui::Selectable(materialId.c_str(), selected)) {
+                        materialMapping.materialId = materialId;
+                        ClearModelChildThumbnailCache(importPath, static_cast<int>(info.meshIndex));
+                        SaveModelImportSettings(importPath, settings);
+                    }
+                    if (selected) ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::BeginDisabled(materialMapping.materialId.empty() || !materialManager_.Exists(materialMapping.materialId));
+            if (ImGui::Button("Edit Material")) {
+                OpenMaterialEditor(materialMapping.materialId);
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Extract Material")) {
+                materialMapping.materialId = CreateOrUpdateImportedMaterialAsset(materialManager_, importPath, baseName, info, false);
+                ClearModelChildThumbnailCache(importPath, static_cast<int>(info.meshIndex));
+                SaveModelImportSettings(importPath, settings);
+                materialManager_.LoadAll();
+                RefreshProjectFiles();
+            }
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Collider")) {
+            const char* collisionModes[] = {"None", "Triangle Mesh", "Convex Hull"};
+            ImGui::SetNextItemWidth(-1.0f);
+            if (ImGui::Combo("Mode", &collisionMapping.mode, collisionModes, IM_ARRAYSIZE(collisionModes))) {
+                SaveModelImportSettings(importPath, settings);
+            }
+            if (ImGui::Checkbox("Auto Bake", &collisionMapping.autoBake)) {
+                SaveModelImportSettings(importPath, settings);
+            }
+            CollisionShapeCacheInfo cacheInfo;
+            if (collisionMapping.mode == 0) {
+                cacheInfo.status = CollisionShapeCacheStatus::Missing;
+                cacheInfo.message = "Collision disabled.";
+            } else {
+                cacheInfo = PhysicsWorld::GetCollisionShapeCacheInfo(BuildModelCollisionDesc(importPath, info, collisionMapping));
+            }
+            ImGui::TextDisabled("Cache:");
+            ImGui::SameLine();
+            if (cacheInfo.status == CollisionShapeCacheStatus::Ready) {
+                ImGui::TextColored(ImVec4(0.48f, 0.82f, 0.58f, 1.0f), "Ready");
+            } else if (cacheInfo.status == CollisionShapeCacheStatus::Stale) {
+                ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.25f, 1.0f), "Stale");
+            } else if (cacheInfo.status == CollisionShapeCacheStatus::Failed) {
+                ImGui::TextColored(ImVec4(1.0f, 0.42f, 0.35f, 1.0f), "Failed");
+            } else {
+                ImGui::TextDisabled("Missing");
+            }
+            ImGui::BeginDisabled(collisionMapping.mode == 0 || collisionBake_.active);
+            if (ImGui::Button("Bake Collider")) {
+                std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs;
+                jobs.emplace_back(BuildModelCollisionDesc(importPath, info, collisionMapping), ModelChildDisplayName(info));
+                SaveModelImportSettings(importPath, settings);
+                StartCollisionBake(std::move(jobs), "Baking model child collision");
+            }
+            ImGui::EndDisabled();
+            RenderCollisionBakeInlineStatus();
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
@@ -2225,7 +2903,11 @@ void SceneEditor::RenderProjectPanel() {
                                       const std::string& displayName,
                                       const std::string& iconFilename,
                                       bool selected,
-                                      bool isFolder) -> bool {
+                                      bool isFolder,
+                                      bool expandable = false,
+                                      bool expanded = false,
+                                      bool* toggled = nullptr,
+                                      unsigned int previewTexture = 0) -> bool {
                     ImGui::PushID(id.c_str());
                     ImVec2 pos = ImGui::GetCursorScreenPos();
                     const bool tileVisible = pos.y + tileHeight >= visibleTileMinY && pos.y <= visibleTileMaxY;
@@ -2242,7 +2924,19 @@ void SceneEditor::RenderProjectPanel() {
                     }
                     ImGui::InvisibleButton("##projectTile", ImVec2(tileWidth, tileHeight));
                     const bool hovered = ImGui::IsItemHovered();
-                    const bool clicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+                    bool toggleClicked = false;
+                    if (expandable && hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                        const ImVec2 mouse = ImGui::GetIO().MousePos;
+                        const ImVec2 arrowMin(pos.x + tileWidth - 21.0f, pos.y + iconSize * 0.5f + 10.0f);
+                        const ImVec2 arrowMax(arrowMin.x + 17.0f, arrowMin.y + 17.0f);
+                        if (mouse.x >= arrowMin.x && mouse.x <= arrowMax.x && mouse.y >= arrowMin.y && mouse.y <= arrowMax.y) {
+                            toggleClicked = true;
+                            if (toggled != nullptr) {
+                                *toggled = true;
+                            }
+                        }
+                    }
+                    const bool clicked = ImGui::IsItemClicked(ImGuiMouseButton_Left) && !toggleClicked;
                     const bool doubleClicked = hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
                     ImDrawList* drawList = ImGui::GetWindowDrawList();
                     const ImU32 background = selected
@@ -2258,7 +2952,9 @@ void SceneEditor::RenderProjectPanel() {
                     }
                     const ImVec2 iconMin(pos.x + (tileWidth - iconSize) * 0.5f, pos.y + 8.0f);
                     const ImVec2 iconMax(iconMin.x + iconSize, iconMin.y + iconSize);
-                    if (drawGeneratedShaderGraphIcon) {
+                    if (previewTexture != 0) {
+                        drawList->AddImage(static_cast<ImTextureID>(previewTexture), iconMin, iconMax, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+                    } else if (drawGeneratedShaderGraphIcon) {
                         const ImU32 bg = ImGui::ColorConvertFloat4ToU32(ImVec4(0.12f, 0.18f, 0.30f, 1.0f));
                         const ImU32 line = ImGui::ColorConvertFloat4ToU32(ImVec4(0.24f, 0.72f, 0.95f, 1.0f));
                         const ImU32 nodeA = ImGui::ColorConvertFloat4ToU32(ImVec4(0.95f, 0.44f, 0.36f, 1.0f));
@@ -2275,6 +2971,21 @@ void SceneEditor::RenderProjectPanel() {
                     } else {
                         drawList->AddRect(iconMin, iconMax, ImGui::GetColorU32(ImGuiCol_TextDisabled), 4.0f);
                         drawList->AddText(ImVec2(iconMin.x + 8.0f, iconMin.y + 14.0f), ImGui::GetColorU32(ImGuiCol_TextDisabled), isFolder ? "DIR" : "FILE");
+                    }
+                    if (expandable) {
+                        const ImVec2 arrowCenter(pos.x + tileWidth - 12.5f, pos.y + iconSize * 0.5f + 18.5f);
+                        const ImU32 arrowColor = ImGui::GetColorU32(hovered ? ImGuiCol_Text : ImGuiCol_TextDisabled);
+                        if (expanded) {
+                            drawList->AddTriangleFilled(ImVec2(arrowCenter.x - 5.0f, arrowCenter.y - 2.0f),
+                                                        ImVec2(arrowCenter.x + 5.0f, arrowCenter.y - 2.0f),
+                                                        ImVec2(arrowCenter.x, arrowCenter.y + 4.0f),
+                                                        arrowColor);
+                        } else {
+                            drawList->AddTriangleFilled(ImVec2(arrowCenter.x - 2.0f, arrowCenter.y - 5.0f),
+                                                        ImVec2(arrowCenter.x - 2.0f, arrowCenter.y + 5.0f),
+                                                        ImVec2(arrowCenter.x + 4.0f, arrowCenter.y),
+                                                        arrowColor);
+                        }
                     }
                     if (renamingProjectFile_ == id) {
                         ImGui::SetCursorScreenPos(ImVec2(pos.x + 4.0f, pos.y + iconSize + 18.0f));
@@ -2384,14 +3095,49 @@ void SceneEditor::RenderProjectPanel() {
                     const bool isVehicleConfig = IsVehicleConfigAssetPath(file);
                     const bool isVehicleSound = IsVehicleSoundAssetPath(file);
                     std::string filename = ProjectAssetDisplayFilename(file);
+                    unsigned int packagePreviewTexture = 0;
+                    if (isMesh && renamingProjectFile_ != file) {
+                        const ImVec2 tilePos = ImGui::GetCursorScreenPos();
+                        const bool tileVisible = tilePos.y + tileHeight >= visibleTileMinY && tilePos.y <= visibleTileMaxY;
+                        if (tileVisible) {
+                            ModelAssetInspectorCache& packageCache = browserModelPackageCaches_[file];
+                            if (packageCache.selectedPath != file) {
+                                packageCache = ModelAssetInspectorCache{};
+                                packageCache.selectedPath = file;
+                                if (!TryLoadMeshAsset(file, packageCache.importPath, packageCache.model, packageCache.infos)) {
+                                    packageCache.error = "Failed to load model package.";
+                                } else {
+                                    packageCache.loaded = true;
+                                }
+                            }
+                            if (packageCache.loaded && packageCache.error.empty()) {
+                                std::string packageBaseName;
+                                try { packageBaseName = fs::path(packageCache.importPath).stem().string(); } catch (...) { packageBaseName = "Model"; }
+                                ModelImportSettings packageSettings;
+                                LoadModelImportSettings(packageCache.importPath, packageSettings);
+                                ReconcileModelImportSettings(packageSettings, packageCache.importPath, packageBaseName, packageCache.infos);
+                                std::vector<std::string> packageMaterialIds;
+                                packageMaterialIds.reserve(packageCache.infos.size());
+                                for (const ImportedMeshInfo& info : packageCache.infos) {
+                                    ModelMaterialMapping& mapping = EnsureModelMaterialMapping(packageSettings, packageCache.importPath, packageBaseName, info);
+                                    packageMaterialIds.push_back(mapping.materialId);
+                                }
+                                packagePreviewTexture = GetModelPackageThumbnailTexture(packageCache.importPath, packageCache.infos, packageMaterialIds,
+                                                                                       static_cast<int>(iconSize), static_cast<int>(iconSize));
+                            }
+                        }
+                    }
 
                     ImGui::PushID(file.c_str());
                     if (renamingProjectFile_ == file) {
                         renderTile(file, filename, AssetIconForProjectFile(file), selectedProjectFile_ == file, false);
                     } else {
                         bool deletedFromContext = false;
-                        const bool selected = (selectedProjectFile_ == file);
-                        if (renderTile(file, filename, AssetIconForProjectFile(file), selected, false)) {
+                        const bool selected = (selectedProjectFile_ == file && (!isMesh || selectedModelChildMeshIndex_ < 0));
+                        bool packageToggleClicked = false;
+                        const bool packageExpanded = expandedModelPackages_.find(file) != expandedModelPackages_.end();
+                        if (renderTile(file, filename, AssetIconForProjectFile(file), selected, false,
+                                       isMesh, packageExpanded, &packageToggleClicked, packagePreviewTexture)) {
                             SelectProjectFile(file);
                             if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                                 if (isScene) {
@@ -2419,6 +3165,13 @@ void SceneEditor::RenderProjectPanel() {
                                 } else if (console_) {
                                     console_->AddError("Failed to open project file: " + file);
                                 }
+                            }
+                        }
+                        if (packageToggleClicked) {
+                            if (packageExpanded) {
+                                expandedModelPackages_.erase(file);
+                            } else {
+                                expandedModelPackages_.insert(file);
                             }
                         }
                         if (ImGui::BeginPopupContextItem("ProjectFileContext")) {
@@ -2612,6 +3365,51 @@ void SceneEditor::RenderProjectPanel() {
                             ImGui::PopID();
                             breakTileLoop = true;
                             break;
+                        }
+                        if (isMesh && expandedModelPackages_.find(file) != expandedModelPackages_.end()) {
+                            ModelAssetInspectorCache& packageCache = browserModelPackageCaches_[file];
+                            if (packageCache.selectedPath != file) {
+                                packageCache = ModelAssetInspectorCache{};
+                                packageCache.selectedPath = file;
+                                if (!TryLoadMeshAsset(file, packageCache.importPath, packageCache.model, packageCache.infos)) {
+                                    packageCache.error = "Failed to load model package.";
+                                } else {
+                                    packageCache.loaded = true;
+                                }
+                            }
+                            if (packageCache.loaded && packageCache.error.empty()) {
+                                std::string childBaseName;
+                                try { childBaseName = fs::path(packageCache.importPath).stem().string(); } catch (...) { childBaseName = "Model"; }
+                                ModelImportSettings childSettings;
+                                LoadModelImportSettings(packageCache.importPath, childSettings);
+                                ReconcileModelImportSettings(childSettings, packageCache.importPath, childBaseName, packageCache.infos);
+
+                                for (const ImportedMeshInfo& info : packageCache.infos) {
+                                    ModelMaterialMapping& childMaterial = EnsureModelMaterialMapping(childSettings, packageCache.importPath, childBaseName, info);
+                                    const unsigned int thumb = GetModelChildThumbnailTexture(packageCache.importPath, info, childMaterial.materialId,
+                                                                                            static_cast<int>(iconSize), static_cast<int>(iconSize));
+                                    const bool childSelected = selectedProjectFile_ == file && selectedModelChildMeshIndex_ == static_cast<int>(info.meshIndex);
+                                    const std::string childId = file + "#mesh:" + std::to_string(info.meshIndex);
+                                    const std::string childLabel = ModelChildDisplayName(info);
+                                    ImGui::PushID(childId.c_str());
+                                    if (renderTile(childId, childLabel, "asset-mesh.png", childSelected, false,
+                                                   false, false, nullptr, thumb)) {
+                                        selectedProjectFile_ = NormalizeSlashes(file);
+                                        selectedProjectDirectory_ = ParentProjectDirectory(selectedProjectFile_);
+                                        selectedModelChildMeshIndex_ = static_cast<int>(info.meshIndex);
+                                        selectedIndex_ = -1;
+                                        selectedIndices_.clear();
+                                        inspectMaterial_ = false;
+                                    }
+                                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                                        const std::string payload = MakeModelChildPayload(file, static_cast<int>(info.meshIndex));
+                                        ImGui::SetDragDropPayload(kModelChildAssetPayload, payload.c_str(), payload.size() + 1);
+                                        ImGui::Text("%s / %s", ProjectAssetDisplayFilename(file).c_str(), childLabel.c_str());
+                                        ImGui::EndDragDropSource();
+                                    }
+                                    ImGui::PopID();
+                                }
+                            }
                         }
                         const bool fileActive = (selectedProjectFile_ == file) && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
                         if ((ImGui::IsItemFocused() || fileActive) && ImGui::IsKeyPressed(ImGuiKey_F2)) {
@@ -3805,6 +4603,7 @@ void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
         const bool centerPivot = pivotMode == 1;
         std::string packageRootId;
         int firstImportedIndex = -1;
+        std::vector<std::pair<PhysicsColliderDesc, std::string>> autoBakeJobs;
         if (infos.size() > 1) {
             SceneObject packageRoot;
             packageRoot.id = MakeId("gameobject");
@@ -3851,6 +4650,7 @@ void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
                 o.meshFilter.pivotOffset = meshCenter;
             }
             ApplyMeshInfoToSceneObject(o, info, model);
+            o.meshFilter.assetId = ModelChildAssetId(importPath, o.meshFilter.meshIndex);
             ModelMaterialMapping& mapping = EnsureModelMaterialMapping(importSettings, importPath, baseName, info);
             if (!materialManager_.Exists(mapping.materialId)) {
                 mapping.materialId = CreateOrUpdateImportedMaterialAsset(materialManager_, importPath, baseName, info, false);
@@ -3859,7 +4659,8 @@ void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
             ModelCollisionMapping& collisionMapping = EnsureModelCollisionMapping(importSettings, info);
             ApplyModelCollisionMappingToSceneObject(o, collisionMapping);
             if (collisionMapping.autoBake && collisionMapping.mode != 0) {
-                PhysicsWorld::BakeCollisionShape(BuildModelCollisionDesc(importPath, info, collisionMapping));
+                const std::string meshLabel = info.meshName.empty() ? ("Mesh " + std::to_string(info.meshIndex)) : info.meshName;
+                autoBakeJobs.emplace_back(BuildModelCollisionDesc(importPath, info, collisionMapping), meshLabel);
             }
             objects_.push_back(std::move(o));
             if (firstImportedIndex < 0) {
@@ -3876,9 +4677,83 @@ void SceneEditor::ImportObjWithOptions(const std::string& path, int pivotMode) {
             }
             RefreshProjectFiles();
             if (onDirty_) onDirty_();
+            if (!autoBakeJobs.empty()) {
+                StartCollisionBake(std::move(autoBakeJobs), "Baking imported model collision");
+            }
         }
     } catch (const std::exception&) {
         // ignore
+    }
+}
+
+bool SceneEditor::ImportModelChild(const std::string& path, int meshIndex) {
+    if (path.empty() || meshIndex < 0) {
+        return false;
+    }
+    try {
+        std::string importPath;
+        std::shared_ptr<::Model> model;
+        std::vector<ImportedMeshInfo> infos;
+        if (!TryLoadMeshAsset(path, importPath, model, infos)) {
+            return false;
+        }
+        auto infoIt = std::find_if(infos.begin(), infos.end(), [&](const ImportedMeshInfo& info) {
+            return static_cast<int>(info.meshIndex) == meshIndex;
+        });
+        if (infoIt == infos.end()) {
+            return false;
+        }
+        const ImportedMeshInfo& info = *infoIt;
+        std::string baseName;
+        try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Mesh"; }
+
+        materialManager_.LoadAll();
+        ModelImportSettings importSettings;
+        LoadModelImportSettings(importPath, importSettings);
+        ReconcileModelImportSettings(importSettings, importPath, baseName, infos);
+
+        PushUndoState();
+        SceneObject object;
+        object.id = MakeId("mesh");
+        object.name = ModelChildDisplayName(info);
+        object.type = "GameObject";
+        object.transform.position = {0.0f, 0.0f, 0.0f};
+        object.transform.rotationEuler = {0.0f, 0.0f, 0.0f};
+        object.transform.scale = {1.0f, 1.0f, 1.0f};
+        object.hasMeshRenderer = true;
+        object.meshRenderer.color = {1.0f, 1.0f, 1.0f, 1.0f};
+        object.meshFilter.sourcePath = importPath;
+        ApplyMeshInfoToSceneObject(object, info, model);
+        object.meshFilter.assetId = ModelChildAssetId(importPath, object.meshFilter.meshIndex);
+
+        ModelMaterialMapping& materialMapping = EnsureModelMaterialMapping(importSettings, importPath, baseName, info);
+        if (!materialMapping.materialId.empty() && materialManager_.Exists(materialMapping.materialId)) {
+            object.meshRenderer.materialId = materialMapping.materialId;
+        } else {
+            object.meshRenderer.materialId = materialMapping.materialId.empty()
+                ? "pbr_default"
+                : materialMapping.materialId;
+        }
+
+        ModelCollisionMapping& collisionMapping = EnsureModelCollisionMapping(importSettings, info);
+        ApplyModelCollisionMappingToSceneObject(object, collisionMapping);
+
+        objects_.push_back(std::move(object));
+        const int importedIndex = static_cast<int>(objects_.size()) - 1;
+        Select(importedIndex);
+        SaveModelImportSettings(importPath, importSettings);
+        if (onDirty_) onDirty_();
+        if (console_) {
+            console_->AddLog("Imported model child: " + importPath + " / " + ModelChildDisplayName(info));
+        }
+        if (collisionMapping.autoBake && collisionMapping.mode != 0) {
+            std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs;
+            jobs.emplace_back(BuildModelCollisionDesc(importPath, info, collisionMapping), ModelChildDisplayName(info));
+            StartCollisionBake(std::move(jobs), "Baking imported model child collision");
+        }
+        return true;
+    } catch (...) {
+        return false;
     }
 }
 
@@ -3902,6 +4777,7 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
         obj.hasMeshRenderer = true;
         obj.meshFilter.sourcePath = importPath;
         ApplyMeshInfoToSceneObject(obj, infos.front(), model);
+        obj.meshFilter.assetId = ModelChildAssetId(importPath, obj.meshFilter.meshIndex);
         std::string baseName;
         try { baseName = fs::path(importPath).stem().string(); } catch (...) { baseName = "Mesh"; }
         materialManager_.LoadAll();
@@ -3915,8 +4791,11 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
         obj.meshRenderer.materialId = mapping.materialId;
         ModelCollisionMapping& collisionMapping = EnsureModelCollisionMapping(importSettings, infos.front());
         ApplyModelCollisionMappingToSceneObject(obj, collisionMapping);
+        std::vector<std::pair<PhysicsColliderDesc, std::string>> autoBakeJobs;
         if (collisionMapping.autoBake && collisionMapping.mode != 0) {
-            PhysicsWorld::BakeCollisionShape(BuildModelCollisionDesc(importPath, infos.front(), collisionMapping));
+            const ImportedMeshInfo& info = infos.front();
+            const std::string meshLabel = info.meshName.empty() ? ("Mesh " + std::to_string(info.meshIndex)) : info.meshName;
+            autoBakeJobs.emplace_back(BuildModelCollisionDesc(importPath, info, collisionMapping), meshLabel);
         }
         SaveModelImportSettings(importPath, importSettings);
         materialManager_.LoadAll();
@@ -3926,6 +4805,9 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
         }
         RefreshProjectFiles();
         if (onDirty_) onDirty_();
+        if (!autoBakeJobs.empty()) {
+            StartCollisionBake(std::move(autoBakeJobs), "Baking mesh collision");
+        }
         return true;
     } catch (...) {
         if (console_) {
@@ -4081,6 +4963,9 @@ void SceneEditor::CommitProjectFileRename() {
             rewriteProjectPath(selectedProjectFile_);
             for (auto& object : objects_) {
                 rewriteProjectPath(object.meshFilter.sourcePath);
+                if (!object.meshFilter.sourcePath.empty()) {
+                    object.meshFilter.assetId = ModelChildAssetId(object.meshFilter.sourcePath, object.meshFilter.meshIndex);
+                }
                 rewriteProjectPath(object.meshFilter.diffuseTexturePath);
                 rewriteProjectPath(object.vehicle.configPath);
                 for (ObjectScriptAttachment& script : object.scriptComponent.attachments) {
@@ -4116,6 +5001,7 @@ void SceneEditor::CommitProjectFileRename() {
         for (auto& object : objects_) {
             if (!oldWasDirectory && NormalizeSlashes(object.meshFilter.sourcePath) == oldProjectPath) {
                 object.meshFilter.sourcePath = newProjectPath;
+                object.meshFilter.assetId = ModelChildAssetId(newProjectPath, object.meshFilter.meshIndex);
             }
             if (!oldWasDirectory && NormalizeSlashes(object.meshFilter.diffuseTexturePath) == oldProjectPath) {
                 object.meshFilter.diffuseTexturePath = newProjectPath;
@@ -4212,6 +5098,7 @@ void SceneEditor::DeleteProjectFile(const std::string& path) {
         for (auto& object : objects_) {
             if (NormalizeSlashes(object.meshFilter.sourcePath) == projectPath) {
                 object.meshFilter.sourcePath.clear();
+                object.meshFilter.assetId.clear();
                 object.meshFilter.vao = 0;
                 object.meshFilter.indexCount = 0;
                 object.meshFilter.modelRef.reset();
@@ -4432,6 +5319,7 @@ bool SceneEditor::MoveProjectFile(const std::string& path, const std::string& ta
         for (auto& object : objects_) {
             if (NormalizeSlashes(object.meshFilter.sourcePath) == oldProjectPath) {
                 object.meshFilter.sourcePath = newProjectPath;
+                object.meshFilter.assetId = ModelChildAssetId(newProjectPath, object.meshFilter.meshIndex);
             }
             if (NormalizeSlashes(object.meshFilter.diffuseTexturePath) == oldProjectPath) {
                 object.meshFilter.diffuseTexturePath = newProjectPath;

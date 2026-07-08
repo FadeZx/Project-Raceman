@@ -361,6 +361,13 @@ void SceneEditor::RenderScenePanel() {
                     }
                 }
             }
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kModelChildAssetPayload)) {
+                std::string projectObjPath;
+                int meshIndex = -1;
+                if (ParseModelChildAssetPayload(payload->Data, payload->DataSize, projectObjPath, meshIndex)) {
+                    ImportModelChild(projectObjPath, meshIndex);
+                }
+            }
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kObjAssetPayload)) {
                 const char* projectObjPath = static_cast<const char*>(payload->Data);
                 if (projectObjPath != nullptr && projectObjPath[0] != '\0') {

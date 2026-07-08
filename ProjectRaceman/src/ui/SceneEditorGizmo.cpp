@@ -586,6 +586,7 @@ bool IntersectRayTriangle(
 
 void SceneEditor::SelectProjectFile(const std::string& path) {
     selectedProjectFile_ = NormalizeSlashes(path);
+    selectedModelChildMeshIndex_ = -1;
     if (!selectedProjectFile_.empty()) {
         selectedProjectDirectory_ = ParentProjectDirectory(selectedProjectFile_);
     }

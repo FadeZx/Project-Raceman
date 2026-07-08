@@ -13,7 +13,7 @@
     ""
   ],
   "editorState": {
-    "selectedProjectDirectory": "assets/Prefabs",
+    "selectedProjectDirectory": "assets/car/2018-bmw-m8-gte/source",
     "selectedInputProfileIndex": 1,
     "selectedInputDevicePage": 0,
     "selectedWheelSettingsProfileIndex": 0,
@@ -1186,6 +1186,6 @@
     ]
   },
   "editorState": {
-    "selectedProjectDirectory": "assets/Prefabs"
+    "selectedProjectDirectory": "assets/car/2018-bmw-m8-gte/source"
   }
 }

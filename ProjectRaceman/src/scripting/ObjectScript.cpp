@@ -745,6 +745,10 @@ glm::vec2 ObjectScriptContext::GetMouseDelta() const {
     return inputManager_ != nullptr ? inputManager_->GetMouseDelta() : glm::vec2(0.0f);
 }
 
+float ObjectScriptContext::GetMouseWheelDelta() const {
+    return inputManager_ != nullptr ? inputManager_->GetMouseWheelDelta() : 0.0f;
+}
+
 float ObjectScriptContext::GetAxis(const std::string& action) const {
     return inputManager_ != nullptr ? inputManager_->GetAxis(action) : 0.0f;
 }

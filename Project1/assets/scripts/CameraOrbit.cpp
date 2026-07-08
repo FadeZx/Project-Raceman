@@ -71,9 +71,10 @@ void CameraOrbit::OnUpdate(raceman::ObjectScriptContext& context, float deltaTim
     yawDegrees_ += yawDelta;
     pitchDegrees_ = glm::clamp(pitchDegrees_ + pitchDelta * pitchDirection, minPitch, maxPitch);
 
-    if (context.IsMouseButtonDown(GLFW_MOUSE_BUTTON_MIDDLE)) {
+    const float mouseWheel = context.GetMouseWheelDelta();
+    if (mouseWheel != 0.0f) {
         const float zoomSpeed = context.GetFloatField("zoomSpeed", 5.0f);
-        radius = glm::max(0.5f, radius - context.GetMouseDelta().y * zoomSpeed * 0.02f);
+        radius = glm::max(0.5f, radius - mouseWheel * zoomSpeed * 0.2f);
     }
 
     context.SetFloatField("radius", radius);

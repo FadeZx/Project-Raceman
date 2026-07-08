@@ -294,6 +294,7 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"enabled\": " << (o.meshFilter.enabled ? "true" : "false") << ",\n";
             out << "          \"meshType\": \"" << JsonEscape(meshType) << "\",\n";
             out << "          \"sourcePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.sourcePath)) << "\",\n";
+            out << "          \"assetId\": \"" << JsonEscape(o.meshFilter.assetId.empty() ? ModelChildAssetId(o.meshFilter.sourcePath, o.meshFilter.meshIndex) : o.meshFilter.assetId) << "\",\n";
             out << "          \"meshIndex\": " << o.meshFilter.meshIndex << ",\n";
             out << "          \"importedMaterialName\": \"" << JsonEscape(o.meshFilter.importedMaterialName) << "\",\n";
             out << "          \"diffuseTexturePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.diffuseTexturePath)) << "\"";
@@ -625,6 +626,7 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
             out << "          \"enabled\": " << (o.meshFilter.enabled ? "true" : "false") << ",\n";
             out << "          \"meshType\": \"" << JsonEscape(meshType) << "\",\n";
             out << "          \"sourcePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.sourcePath)) << "\",\n";
+            out << "          \"assetId\": \"" << JsonEscape(o.meshFilter.assetId.empty() ? ModelChildAssetId(o.meshFilter.sourcePath, o.meshFilter.meshIndex) : o.meshFilter.assetId) << "\",\n";
             out << "          \"meshIndex\": " << o.meshFilter.meshIndex << ",\n";
             out << "          \"importedMaterialName\": \"" << JsonEscape(o.meshFilter.importedMaterialName) << "\",\n";
             out << "          \"diffuseTexturePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.diffuseTexturePath)) << "\"";
@@ -1033,6 +1035,13 @@ void SceneEditor::Load(const std::string& path) {
             if (meshIndexIt != o.end() && meshIndexIt->second.is_number()) {
                 so.meshFilter.meshIndex = static_cast<int>(meshIndexIt->second.as_number());
             }
+            auto assetIdIt = o.find("assetId");
+            if (assetIdIt != o.end() && assetIdIt->second.is_string()) {
+                so.meshFilter.assetId = assetIdIt->second.as_string();
+            }
+            if (so.meshFilter.assetId.empty()) {
+                so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
+            }
 
             auto importedMaterialIt = o.find("importedMaterialName");
             if (importedMaterialIt != o.end() && importedMaterialIt->second.is_string()) {
@@ -1121,10 +1130,14 @@ void SceneEditor::Load(const std::string& path) {
                         ReadString(component, "meshType", so.meshFilter.meshType);
                         ReadString(component, "sourcePath", so.meshFilter.sourcePath);
                         so.meshFilter.sourcePath = NormalizeSlashes(so.meshFilter.sourcePath);
+                        ReadString(component, "assetId", so.meshFilter.assetId);
 
                         auto componentMeshIndexIt = component.find("meshIndex");
                         if (componentMeshIndexIt != component.end() && componentMeshIndexIt->second.is_number()) {
                             so.meshFilter.meshIndex = static_cast<int>(componentMeshIndexIt->second.as_number());
+                        }
+                        if (so.meshFilter.assetId.empty()) {
+                            so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
                         }
 
                         ReadString(component, "importedMaterialName", so.meshFilter.importedMaterialName);
@@ -1639,6 +1652,7 @@ void SceneEditor::Load(const std::string& path) {
                                 so,
                                 cacheEntry.infos[static_cast<std::size_t>(so.meshFilter.meshIndex)],
                                 cacheEntry.model);
+                            so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
                         }
                     }
                 } catch (...) {
@@ -1857,8 +1871,12 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                         ReadString(component, "meshType", so.meshFilter.meshType);
                         ReadString(component, "sourcePath", so.meshFilter.sourcePath);
                         so.meshFilter.sourcePath = NormalizeSlashes(so.meshFilter.sourcePath);
+                        ReadString(component, "assetId", so.meshFilter.assetId);
                         if (auto mi = component.find("meshIndex"); mi != component.end() && mi->second.is_number()) {
                             so.meshFilter.meshIndex = static_cast<int>(mi->second.as_number());
+                        }
+                        if (so.meshFilter.assetId.empty()) {
+                            so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
                         }
                         ReadString(component, "importedMaterialName", so.meshFilter.importedMaterialName);
                         ReadString(component, "diffuseTexturePath", so.meshFilter.diffuseTexturePath);
@@ -2098,6 +2116,7 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                         so.meshFilter.meshType = "Mesh";
                         so.meshFilter.sourcePath = cacheEntry.resolvedPath;
                         ApplyMeshInfoToSceneObject(so, cacheEntry.infos[static_cast<std::size_t>(so.meshFilter.meshIndex)], cacheEntry.model);
+                        so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
                     }
                 } catch (...) {}
             }

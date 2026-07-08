@@ -817,6 +817,8 @@ void SceneEditor::RenderInspectorPanel() {
         inspectorKeyboardTargetObjectId_.clear();
         if (inspectMaterial_) {
             RenderMaterialInspector();
+        } else if (selectedIndex_ < 0 && IsMeshAssetPath(selectedProjectFile_) && selectedModelChildMeshIndex_ >= 0) {
+            RenderModelChildAssetInspector();
         } else if (selectedIndex_ < 0 && IsMeshAssetPath(selectedProjectFile_)) {
             RenderModelAssetInspector();
         } else if (selectedIndices_.size() > 1) {
@@ -1293,6 +1295,7 @@ void SceneEditor::RenderInspectorPanel() {
                 }
                 if (meshType == "Mesh") {
                     RenderInspectorWrappedValue("Source:", obj.meshFilter.sourcePath.empty() ? "(none)" : obj.meshFilter.sourcePath);
+                    RenderInspectorWrappedValue("Mesh Filter ID:", obj.meshFilter.assetId.empty() ? ModelChildAssetId(obj.meshFilter.sourcePath, obj.meshFilter.meshIndex) : obj.meshFilter.assetId);
                     ImGui::TextDisabled("Submesh Index: %d", obj.meshFilter.meshIndex);
                     RenderInspectorWrappedValue("Submesh Name:", obj.meshFilter.meshName.empty() ? "(unnamed)" : obj.meshFilter.meshName);
                     RenderInspectorWrappedValue("Imported Material:", obj.meshFilter.importedMaterialName.empty() ? "(none)" : obj.meshFilter.importedMaterialName);
@@ -2381,22 +2384,21 @@ void SceneEditor::RenderInspectorPanel() {
                             }
                             ImGui::SameLine();
                             ImGui::TextDisabled("Triangles: %llu", static_cast<unsigned long long>(cacheInfo.triangleCount));
+                            ImGui::BeginDisabled(collisionBake_.active);
                             if (ImGui::Button("Bake Now##MeshColliderBake")) {
-                                CollisionShapeCacheInfo bakedInfo;
-                                const bool baked = PhysicsWorld::BakeCollisionShape(collider, &bakedInfo);
-                                if (console_) {
-                                    if (baked) {
-                                        console_->AddLog("Baked mesh collider cache: " + obj.meshFilter.sourcePath);
-                                    } else {
-                                        console_->AddError("Failed to bake mesh collider cache: " + obj.meshFilter.sourcePath + (bakedInfo.message.empty() ? "" : (" - " + bakedInfo.message)));
-                                    }
-                                }
+                                std::string label = obj.meshFilter.meshName.empty() ? obj.meshFilter.sourcePath : obj.meshFilter.meshName;
+                                std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs;
+                                jobs.emplace_back(collider, std::move(label));
+                                StartCollisionBake(std::move(jobs), "Baking mesh collider cache");
                             }
+                            ImGui::EndDisabled();
                             ImGui::SameLine();
                             if (ImGui::Button("Open Model Importer##MeshColliderImporter")) {
                                 selectedProjectFile_ = obj.meshFilter.sourcePath;
+                                selectedModelChildMeshIndex_ = obj.meshFilter.meshIndex;
                                 RefreshModelAssetInspectorCache(true);
                             }
+                            RenderCollisionBakeInlineStatus();
                         }
                         if (obj.meshCollider.mode == MeshColliderMode::TriangleMesh) {
                             ImGui::TextDisabled("Triangle mesh colliders are static-only in Jolt.");
