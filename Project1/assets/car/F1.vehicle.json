@@ -1,0 +1,130 @@
+{
+  "name": "F1",
+  "chassis": {
+    "mass": 900.000,
+    "yawInertia": 2600.000,
+    "rollInertia": 1700.000,
+    "pitchInertia": 2100.000,
+    "centerOfMassOffset": [0.000, 0.000, -0.300]
+  },
+  "frontSuspension": {
+    "restLength": 0.280,
+    "springRate": 28000.000,
+    "bumpStopRate": 85000.000,
+    "compressionDamping": 1900.000,
+    "reboundDamping": 2400.000,
+    "antiRollStiffness": 9500.000
+  },
+  "rearSuspension": {
+    "restLength": 0.285,
+    "springRate": 30000.000,
+    "bumpStopRate": 90000.000,
+    "compressionDamping": 2000.000,
+    "reboundDamping": 2550.000,
+    "antiRollStiffness": 8500.000
+  },
+  "differential": {
+    "torqueSplit": 1.000,
+    "lockingCoefficient": 0.220,
+    "limitedSlip": true
+  },
+  "engine": {
+    "idleRPM": 2500.000,
+    "redlineRPM": 13000.000,
+    "stallRPM": 1600.000,
+    "inertia": 0.300,
+    "torqueCurve": [
+      {"rpm": 2500.000, "torque": 180.000},
+      {"rpm": 6500.000, "torque": 260.000},
+      {"rpm": 10000.000, "torque": 310.000},
+      {"rpm": 13000.000, "torque": 285.000}
+    ]
+  },
+  "transmission": {
+    "mode": "automatic",
+    "gearRatios": [2.650, 2.050, 1.650, 1.360, 1.150, 1.000, 0.880],
+    "finalDriveRatio": 3.250,
+    "reverseRatio": -3.000,
+    "shiftTime": 0.080
+  },
+  "assists": {
+    "enabled": false,
+    "steeringSmoothingRate": 8.500,
+    "fullSteerSpeed": 10.000,
+    "highSpeedSteerScale": 0.260,
+    "counterSteerStrength": 0.240,
+    "tractionControl": false,
+    "tractionSlipLimit": 0.160,
+    "minTractionTorqueScale": 0.300
+  },
+  "wheels": [
+    {
+      "name": "Front Left",
+      "mountPosition": [-0.850, 1.350, 0.000],
+      "radius": 0.450,
+      "width": 0.240,
+      "mass": 15.000,
+      "inertia": 1.000,
+      "maxSteerAngle": 0.550,
+      "camber": -0.045,
+      "toe": -0.003,
+      "gripFactor": 2.800,
+      "longitudinalStiffness": 26000.000,
+      "lateralStiffness": 32000.000,
+      "maxBrakingTorque": 4200.000,
+      "driven": false,
+      "hasBrake": true
+    },
+    {
+      "name": "Front Right",
+      "mountPosition": [0.850, 1.350, 0.000],
+      "radius": 0.450,
+      "width": 0.240,
+      "mass": 15.000,
+      "inertia": 1.000,
+      "maxSteerAngle": 0.550,
+      "camber": -0.045,
+      "toe": -0.003,
+      "gripFactor": 2.800,
+      "longitudinalStiffness": 26000.000,
+      "lateralStiffness": 32000.000,
+      "maxBrakingTorque": 4200.000,
+      "driven": false,
+      "hasBrake": true
+    },
+    {
+      "name": "Rear Left",
+      "mountPosition": [-0.850, -1.350, 0.000],
+      "radius": 0.450,
+      "width": 0.240,
+      "mass": 15.000,
+      "inertia": 1.000,
+      "maxSteerAngle": 0.000,
+      "camber": -0.035,
+      "toe": 0.004,
+      "gripFactor": 3.100,
+      "longitudinalStiffness": 32000.000,
+      "lateralStiffness": 36000.000,
+      "maxBrakingTorque": 3600.000,
+      "driven": true,
+      "hasBrake": true
+    },
+    {
+      "name": "Rear Right",
+      "mountPosition": [0.850, -1.350, 0.000],
+      "radius": 0.450,
+      "width": 0.240,
+      "mass": 15.000,
+      "inertia": 1.000,
+      "maxSteerAngle": 0.000,
+      "camber": -0.035,
+      "toe": 0.004,
+      "gripFactor": 3.100,
+      "longitudinalStiffness": 32000.000,
+      "lateralStiffness": 36000.000,
+      "maxBrakingTorque": 3600.000,
+      "driven": true,
+      "hasBrake": true
+    }
+  ]
+}

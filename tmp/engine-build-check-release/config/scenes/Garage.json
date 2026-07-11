@@ -1,0 +1,240 @@
+{
+  "objects": [
+    {
+      "id": "plane_1",
+      "parentId": "",
+      "name": "Plane",
+      "type": "Plane",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [1.08503, -0.218724, 0.921],
+          "rotationEuler": [0, 0, 0],
+          "scale": [10, 1, 10]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Plane",
+          "sourcePath": "",
+          "meshIndex": 0,
+          "importedMaterialName": "",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [0, 0.357843, 0.0841984, 1]
+        },
+        {
+          "type": "BoxCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0, 0, 0],
+          "size": [1, 0.051, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_2",
+      "parentId": "gameobject_1",
+      "name": "Wheel_Left",
+      "type": "Mesh",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, -0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+            {
+              "enabled": true,
+              "scriptName": "Test1",
+              "scriptPath": "assets/scripts/Test1.cpp"
+            }
+          ]
+        },
+        {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 1,
+          "useGravity": true,
+          "velocity": [0, 0, 0]
+        },
+        {
+          "type": "BoxCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_1",
+      "parentId": "gameobject_1",
+      "name": "Wheel_Right",
+      "type": "Mesh",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [2.13854, 0, 0],
+          "rotationEuler": [175.401, 0.514004, -180],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Chevrolet-nascar-FLWheel.obj",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "Wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+            {
+              "enabled": true,
+              "scriptName": "Test1",
+              "scriptPath": "assets/scripts/Test1.cpp"
+            }
+          ]
+        },
+        {
+          "type": "Rigidbody",
+          "enabled": true,
+          "bodyType": "Dynamic",
+          "mass": 1,
+          "useGravity": true,
+          "velocity": [0, 0, 0]
+        },
+        {
+          "type": "SphereCollider",
+          "enabled": true,
+          "isTrigger": false,
+          "center": [0.1, 0, 0],
+          "radius": 0.5
+        }
+      ]
+    },
+    {
+      "id": "camera_3",
+      "parentId": "",
+      "name": "Camera",
+      "type": "Camera",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [1.05491, 2.12743, 10.0648],
+          "rotationEuler": [-15.4008, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": true,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.38,
+          "farClip": 561,
+          "clearColor": [0.02, 0.02, 0.02, 1]
+        }
+      ]
+    },
+    {
+      "id": "light_1",
+      "parentId": "",
+      "name": "Directional Light",
+      "type": "Light",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [-24.9017, 25.5468, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "lightType": "Directional",
+          "color": [0.946078, 0.838049, 0.612168],
+          "intensity": 1.5,
+          "range": 100,
+          "spotAngleDegrees": 30
+        }
+      ]
+    },
+    {
+      "id": "light_1",
+      "parentId": "",
+      "name": "Spot Light",
+      "type": "Light",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [4.04892, 4.12308, 4.39756],
+          "rotationEuler": [-35, 23.711, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "lightType": "Spot",
+          "color": [1, 1, 1],
+          "intensity": 6.5,
+          "range": 14,
+          "spotAngleDegrees": 32
+        }
+      ]
+    },
+    {
+      "id": "gameobject_1",
+      "parentId": "",
+      "name": "Wheels",
+      "type": "GameObject",
+      "enabled": true,
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        }
+      ]
+    }
+  ]
+}

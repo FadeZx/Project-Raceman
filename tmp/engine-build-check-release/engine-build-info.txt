@@ -1,0 +1,5 @@
+Project Raceman engine build
+Configuration=Release
+Platform=x64
+Source=D:\Project-Raceman\ProjectRaceman
+BuiltAt=2026-07-09T10:53:46.4233221+07:00

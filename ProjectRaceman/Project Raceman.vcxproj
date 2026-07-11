@@ -161,6 +161,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\input\InputManager.cpp" />
     <ClCompile Include="src\input\WheelForceFeedback.cpp" />
+    <ClCompile Include="src\physics\JoltCompatibility.cpp" />
     <ClCompile Include="src\physics\PhysicsLayer.cpp" />
     <ClCompile Include="src\physics\PhysicsWorld.cpp" />
     <ClCompile Include="src\audio\AudioManager.cpp" />

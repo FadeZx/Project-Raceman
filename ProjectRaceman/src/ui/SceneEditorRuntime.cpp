@@ -465,14 +465,15 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             ? std::string("default_vehicle")
             : vehicleObject.vehicle.inputProfileId;
         const bool routeInput = ShouldRouteInputToGame() && inputManager_ != nullptr;
+        constexpr float kDriveIntentInputThreshold = 0.20f;
         const bool wantsForward = routeInput &&
             inputManager_->GetAxisForProfile(profileId, "throttle",
                 vehicleObject.vehicle.preferredInputDevice,
-                vehicleObject.vehicle.preferredInputDeviceId) > 0.01f;
+                vehicleObject.vehicle.preferredInputDeviceId) > kDriveIntentInputThreshold;
         const bool wantsReverseOrBrake = routeInput &&
             inputManager_->GetAxisForProfile(profileId, "brake",
                 vehicleObject.vehicle.preferredInputDevice,
-                vehicleObject.vehicle.preferredInputDeviceId) > 0.01f;
+                vehicleObject.vehicle.preferredInputDeviceId) > kDriveIntentInputThreshold;
         const bool manualShiftUpPressed = routeInput &&
             inputManager_->WasActionPressedForProfile(profileId, "shiftUp",
                 vehicleObject.vehicle.preferredInputDevice,
@@ -562,26 +563,22 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
 
         if (manualTransmission) {
             if (manualShiftUpPressed) {
-                if (telemetry.isReverse) {
-                    runtimeVehicle.instance->setReverse(false);
-                }
-                runtimeVehicle.instance->setNeutral(false);
                 runtimeVehicle.instance->shiftUp();
             }
             if (manualShiftDownPressed) {
-                if (telemetry.isReverse) {
-                    runtimeVehicle.instance->setReverse(false);
-                }
                 runtimeVehicle.instance->shiftDown();
             }
             if (manualNeutralPressed) {
                 runtimeVehicle.instance->setNeutral(!telemetry.isNeutral);
             }
             if (manualReversePressed && std::fabs(longitudinalSpeed) <= kReverseEngageSpeed) {
-                reverseActive = !telemetry.isReverse;
-                runtimeVehicle.instance->setNeutral(false);
+                if (telemetry.isReverse) {
+                    runtimeVehicle.instance->setNeutral(true);
+                } else {
+                    runtimeVehicle.instance->setNeutral(false);
+                    runtimeVehicle.instance->setReverse(true);
+                }
             }
-            runtimeVehicle.instance->setReverse(reverseActive);
 
             if (wantsForward && !wantsReverseOrBrake) {
                 input.throttle = (std::max)(input.throttle, 1.0f);
@@ -604,9 +601,11 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             runtimeVehicle.instance->setReverse(reverseActive);
 
             if (wantsForward && !wantsReverseOrBrake) {
+                runtimeVehicle.instance->setNeutral(false);
                 input.throttle = (std::max)(input.throttle, 1.0f);
             } else if (wantsReverseOrBrake && !wantsForward) {
                 if (reverseActive) {
+                    runtimeVehicle.instance->setNeutral(false);
                     input.throttle = (std::max)(input.throttle, 1.0f);
                 } else {
                     input.brake = (std::max)(input.brake, 1.0f);

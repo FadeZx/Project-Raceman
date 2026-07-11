@@ -45,8 +45,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.0206223, 2.20787, -4.25191],
-          "rotationEuler": [11.742, -0, 0],
+          "position": [-1.84774e-06, 2.005, -3.932],
+          "rotationEuler": [0, 0.500002, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -70,15 +70,2514 @@
           "cameraType": "FollowAndLookAt",
           "followTargetId": "gameobject_64",
           "lookAtTargetId": "gameobject_64",
-          "followOffset": [-0.0206223, 2.20787, -4.25191],
-          "pitchOffset": 11.742,
-          "yawOffset": -0,
+          "followOffset": [-1.84774e-06, 2.005, -3.932],
+          "pitchOffset": 0,
+          "yawOffset": 0.500002,
           "positionDamping": 55,
           "rotationDamping": 20
         },
         {
           "type": "AudioListener",
           "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "gameobject_1",
+      "parentId": "gameobject_64",
+      "name": "Model",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [-90, 0, 180],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_3",
+      "parentId": "gameobject_1",
+      "name": "BMW_0",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#0",
+          "meshIndex": 0,
+          "importedMaterialName": "Mesh_0571.rip.001",
+          "diffuseTexturePath": "*0"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0571rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_4",
+      "parentId": "gameobject_1",
+      "name": "BMW_1",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#1",
+          "meshIndex": 1,
+          "importedMaterialName": "generic_gauge_glass.001",
+          "diffuseTexturePath": "*1"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_generic_gauge_glass001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_5",
+      "parentId": "gameobject_1",
+      "name": "BMW_2",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#2",
+          "meshIndex": 2,
+          "importedMaterialName": "daylights.001",
+          "diffuseTexturePath": "*2"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_daylights001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_6",
+      "parentId": "gameobject_1",
+      "name": "BMW_3",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#3",
+          "meshIndex": 3,
+          "importedMaterialName": "INT_Decals_LCD.001",
+          "diffuseTexturePath": "*3"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_int_decals_lcd001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_7",
+      "parentId": "gameobject_1",
+      "name": "BMW_4",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#4",
+          "meshIndex": 4,
+          "importedMaterialName": "Mesh_0571.rip.001",
+          "diffuseTexturePath": "*0"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0571rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_9",
+      "parentId": "gameobject_1",
+      "name": "BMW_5",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#5",
+          "meshIndex": 5,
+          "importedMaterialName": "Mesh_0571.rip.001",
+          "diffuseTexturePath": "*0"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0571rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_10",
+      "parentId": "gameobject_1",
+      "name": "BMW_6",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#6",
+          "meshIndex": 6,
+          "importedMaterialName": "Mesh_0597.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0597rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_11",
+      "parentId": "gameobject_1",
+      "name": "BMW_7",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#7",
+          "meshIndex": 7,
+          "importedMaterialName": "Mesh_0597.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0597rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_12",
+      "parentId": "gameobject_1",
+      "name": "BMW_8",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#8",
+          "meshIndex": 8,
+          "importedMaterialName": "Mesh_0597.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0597rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_13",
+      "parentId": "gameobject_1",
+      "name": "BMW_9",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#9",
+          "meshIndex": 9,
+          "importedMaterialName": "Mesh_0597.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0597rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_14",
+      "parentId": "gameobject_1",
+      "name": "BMW_10",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#10",
+          "meshIndex": 10,
+          "importedMaterialName": "Mesh_0597.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0597rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_15",
+      "parentId": "gameobject_1",
+      "name": "BMW_11",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#11",
+          "meshIndex": 11,
+          "importedMaterialName": "Mesh_0597.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0597rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_16",
+      "parentId": "gameobject_1",
+      "name": "BMW_12",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#12",
+          "meshIndex": 12,
+          "importedMaterialName": "Mesh_0597.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0597rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_17",
+      "parentId": "gameobject_1",
+      "name": "BMW_13",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#13",
+          "meshIndex": 13,
+          "importedMaterialName": "Mesh_0597.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0597rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_18",
+      "parentId": "gameobject_1",
+      "name": "BMW_14",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#14",
+          "meshIndex": 14,
+          "importedMaterialName": "Mesh_0597.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0597rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_19",
+      "parentId": "gameobject_1",
+      "name": "BMW_15",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#15",
+          "meshIndex": 15,
+          "importedMaterialName": "Mesh_0001.rip.001",
+          "diffuseTexturePath": "*5"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0001rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_20",
+      "parentId": "gameobject_1",
+      "name": "BMW_16",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#16",
+          "meshIndex": 16,
+          "importedMaterialName": "Mesh_0002.rip.001",
+          "diffuseTexturePath": "*6"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0002rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_21",
+      "parentId": "gameobject_1",
+      "name": "BMW_17",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#17",
+          "meshIndex": 17,
+          "importedMaterialName": "Mesh_0002.rip.001",
+          "diffuseTexturePath": "*6"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0002rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_22",
+      "parentId": "gameobject_1",
+      "name": "BMW_18",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#18",
+          "meshIndex": 18,
+          "importedMaterialName": "Mesh_0006.rip.001",
+          "diffuseTexturePath": "*9"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0006rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_23",
+      "parentId": "gameobject_1",
+      "name": "BMW_19",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#19",
+          "meshIndex": 19,
+          "importedMaterialName": "Mesh_0017.rip.001",
+          "diffuseTexturePath": "*11"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0017rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_24",
+      "parentId": "gameobject_1",
+      "name": "BMW_20",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#20",
+          "meshIndex": 20,
+          "importedMaterialName": "Mesh_0017.rip.001",
+          "diffuseTexturePath": "*11"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0017rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_25",
+      "parentId": "gameobject_1",
+      "name": "BMW_21",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#21",
+          "meshIndex": 21,
+          "importedMaterialName": "Mesh_0024.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0024rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_26",
+      "parentId": "gameobject_1",
+      "name": "BMW_22",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#22",
+          "meshIndex": 22,
+          "importedMaterialName": "Mesh_0024.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0024rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_27",
+      "parentId": "gameobject_1",
+      "name": "BMW_23",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#23",
+          "meshIndex": 23,
+          "importedMaterialName": "Mesh_0024.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0024rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_28",
+      "parentId": "gameobject_1",
+      "name": "BMW_24",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#24",
+          "meshIndex": 24,
+          "importedMaterialName": "Mesh_0027.rip.001",
+          "diffuseTexturePath": "*15"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0027rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_29",
+      "parentId": "gameobject_1",
+      "name": "BMW_25",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#25",
+          "meshIndex": 25,
+          "importedMaterialName": "Mesh_0047.rip.001",
+          "diffuseTexturePath": "*16"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0047rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_30",
+      "parentId": "gameobject_1",
+      "name": "BMW_26",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#26",
+          "meshIndex": 26,
+          "importedMaterialName": "Mesh_0064.rip.001",
+          "diffuseTexturePath": "*17"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0064rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_31",
+      "parentId": "gameobject_1",
+      "name": "BMW_27",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#27",
+          "meshIndex": 27,
+          "importedMaterialName": "Mesh_0065.rip.001",
+          "diffuseTexturePath": "*18"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0065rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_32",
+      "parentId": "gameobject_1",
+      "name": "BMW_28",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#28",
+          "meshIndex": 28,
+          "importedMaterialName": "Mesh_0066.rip.001",
+          "diffuseTexturePath": "*19"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0066rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_33",
+      "parentId": "gameobject_1",
+      "name": "BMW_29",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#29",
+          "meshIndex": 29,
+          "importedMaterialName": "Mesh_0067.rip",
+          "diffuseTexturePath": "*20"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0067rip",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_34",
+      "parentId": "gameobject_1",
+      "name": "BMW_30",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#30",
+          "meshIndex": 30,
+          "importedMaterialName": "Mesh_0001.rip.001",
+          "diffuseTexturePath": "*5"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0001rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_35",
+      "parentId": "gameobject_1",
+      "name": "BMW_31",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#31",
+          "meshIndex": 31,
+          "importedMaterialName": "Mesh_0004.rip.001",
+          "diffuseTexturePath": "*21"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0004rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_36",
+      "parentId": "gameobject_1",
+      "name": "BMW_32",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#32",
+          "meshIndex": 32,
+          "importedMaterialName": "Mesh_0005.rip.001",
+          "diffuseTexturePath": "*22"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0005rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_37",
+      "parentId": "gameobject_1",
+      "name": "BMW_33",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#33",
+          "meshIndex": 33,
+          "importedMaterialName": "Mesh_0007.rip.001",
+          "diffuseTexturePath": "*23"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0007rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_38",
+      "parentId": "gameobject_1",
+      "name": "BMW_34",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#34",
+          "meshIndex": 34,
+          "importedMaterialName": "Mesh_0006.rip.001",
+          "diffuseTexturePath": "*9"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0006rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_39",
+      "parentId": "gameobject_1",
+      "name": "BMW_35",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#35",
+          "meshIndex": 35,
+          "importedMaterialName": "Mesh_0009.rip.001",
+          "diffuseTexturePath": "*25"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0009rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_40",
+      "parentId": "gameobject_1",
+      "name": "BMW_36",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#36",
+          "meshIndex": 36,
+          "importedMaterialName": "Mesh_0017.rip.001",
+          "diffuseTexturePath": "*11"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0017rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_41",
+      "parentId": "gameobject_1",
+      "name": "BMW_37",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#37",
+          "meshIndex": 37,
+          "importedMaterialName": "Mesh_0017.rip.001",
+          "diffuseTexturePath": "*11"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0017rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_42",
+      "parentId": "gameobject_1",
+      "name": "BMW_38",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#38",
+          "meshIndex": 38,
+          "importedMaterialName": "Mesh_0024.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0024rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_43",
+      "parentId": "gameobject_1",
+      "name": "BMW_39",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#39",
+          "meshIndex": 39,
+          "importedMaterialName": "Mesh_0024.rip.001",
+          "diffuseTexturePath": "*4"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0024rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_44",
+      "parentId": "gameobject_1",
+      "name": "BMW_40",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#40",
+          "meshIndex": 40,
+          "importedMaterialName": "Mesh_0027.rip.001",
+          "diffuseTexturePath": "*15"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0027rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_45",
+      "parentId": "gameobject_1",
+      "name": "BMW_41",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#41",
+          "meshIndex": 41,
+          "importedMaterialName": "Mesh_0046.rip.001",
+          "diffuseTexturePath": "*26"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0046rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_46",
+      "parentId": "gameobject_1",
+      "name": "BMW_42",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#42",
+          "meshIndex": 42,
+          "importedMaterialName": "Mesh_0064.rip.001",
+          "diffuseTexturePath": "*17"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0064rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_47",
+      "parentId": "gameobject_1",
+      "name": "BMW_43",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#43",
+          "meshIndex": 43,
+          "importedMaterialName": "Mesh_0065.rip.001",
+          "diffuseTexturePath": "*18"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0065rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_48",
+      "parentId": "gameobject_1",
+      "name": "BMW_44",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#44",
+          "meshIndex": 44,
+          "importedMaterialName": "Mesh_0066.rip.001",
+          "diffuseTexturePath": "*19"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0066rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_49",
+      "parentId": "gameobject_1",
+      "name": "BMW_45",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#45",
+          "meshIndex": 45,
+          "importedMaterialName": "int_shild.001",
+          "diffuseTexturePath": "*20"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_int_shild001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_50",
+      "parentId": "gameobject_1",
+      "name": "BMW_46",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#46",
+          "meshIndex": 46,
+          "importedMaterialName": "Mesh_0571.rip.001",
+          "diffuseTexturePath": "*0"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0571rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_51",
+      "parentId": "gameobject_1",
+      "name": "BMW_47",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#47",
+          "meshIndex": 47,
+          "importedMaterialName": "PANNELLO_NERO.001",
+          "diffuseTexturePath": "*28"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_pannello_nero001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_52",
+      "parentId": "gameobject_1",
+      "name": "BMW_48",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#48",
+          "meshIndex": 48,
+          "importedMaterialName": "Mesh_0571.rip.001",
+          "diffuseTexturePath": "*0"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0571rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_53",
+      "parentId": "gameobject_1",
+      "name": "BMW_49",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#49",
+          "meshIndex": 49,
+          "importedMaterialName": "scarichi.001",
+          "diffuseTexturePath": "*29"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_scarichi001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_54",
+      "parentId": "gameobject_1",
+      "name": "BMW_50",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#50",
+          "meshIndex": 50,
+          "importedMaterialName": "specchi.001",
+          "diffuseTexturePath": "*1"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_specchi001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_55",
+      "parentId": "gameobject_1",
+      "name": "BMW_51",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#51",
+          "meshIndex": 51,
+          "importedMaterialName": "Mesh_0596.rip.001",
+          "diffuseTexturePath": "*30"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0596rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_56",
+      "parentId": "gameobject_1",
+      "name": "BMW_52",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#52",
+          "meshIndex": 52,
+          "importedMaterialName": "plastiche_volante.001",
+          "diffuseTexturePath": "*33"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_plastiche_volante001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_57",
+      "parentId": "gameobject_1",
+      "name": "BMW_53",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#53",
+          "meshIndex": 53,
+          "importedMaterialName": "carbonio_volante.001",
+          "diffuseTexturePath": "*35"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_carbonio_volante001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_58",
+      "parentId": "gameobject_1",
+      "name": "BMW_54",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#54",
+          "meshIndex": 54,
+          "importedMaterialName": "alcantara.001",
+          "diffuseTexturePath": "*37"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_alcantara001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_59",
+      "parentId": "gameobject_1",
+      "name": "BMW_55",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#55",
+          "meshIndex": 55,
+          "importedMaterialName": "metallo_volante.001",
+          "diffuseTexturePath": "*39"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_metallo_volante001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_60",
+      "parentId": "gameobject_1",
+      "name": "BMW_56",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#56",
+          "meshIndex": 56,
+          "importedMaterialName": "ergal.001",
+          "diffuseTexturePath": "*40"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_ergal001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_61",
+      "parentId": "gameobject_1",
+      "name": "BMW_57",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#57",
+          "meshIndex": 57,
+          "importedMaterialName": "palette.001",
+          "diffuseTexturePath": "*33"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_palette001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_62",
+      "parentId": "gameobject_1",
+      "name": "BMW_58",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#58",
+          "meshIndex": 58,
+          "importedMaterialName": "Mesh_0571.rip.001",
+          "diffuseTexturePath": "*0"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0571rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mesh_63",
+      "parentId": "gameobject_1",
+      "name": "BMW_59",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
+          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#59",
+          "meshIndex": 59,
+          "importedMaterialName": "Mesh_0571.rip.001",
+          "diffuseTexturePath": "*0"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "bmw_mesh_0571rip001",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gameobject_64",
+      "parentId": "",
+      "name": "BMW",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Vehicle", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.0561381, -0.812, 0],
+          "rotationEuler": [0, -0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Vehicle",
+          "enabled": true,
+          "configPath": "assets/car/2018-bmw-m8-gte/source/BMW.vehicle.json",
+          "inputProfileId": "default_vehicle",
+          "preferredInputDevice": "Gamepad",
+          "preferredInputDeviceId": "",
+          "chassisObjectIds": ["mesh_64"],
+          "wheelBindings": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gameobject_72",
+      "parentId": "gameobject_64",
+      "name": "RL",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": false,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0.63492, 0.247784, -1.50897],
+          "rotationEuler": [90, -5.00894e-06, 1.89307e-11],
+          "scale": [0.916661, 0.916666, 0.916666]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj",
+          "assetId": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj#0",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "chevrolet-nascar-flwheel_wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
         }
       ]
     },
@@ -94,7 +2593,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.0206223, -0.298134, 0.163158],
+          "position": [-5.48369, -0.31339, -6.41643],
           "rotationEuler": [0, -0, 0],
           "scale": [0.011, 0.011, 0.011]
         },
@@ -107,7 +2606,7 @@
         {
           "type": "Vehicle",
           "enabled": true,
-          "configPath": "assets/car/F1.vehicle.json",
+          "configPath": "assets/car/Nascar/F1.vehicle.json",
           "inputProfileId": "default_vehicle",
           "preferredInputDevice": "Any",
           "preferredInputDeviceId": "",
@@ -179,7 +2678,7 @@
         {
           "type": "Collider",
           "colliderType": "Box",
-          "enabled": true,
+          "enabled": false,
           "isTrigger": false,
           "center": [5.55112e-17, -5.4531, -2.04982e-18],
           "size": [499.544, 56.099, 197.568]
@@ -605,7 +3104,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, -0.179552, 0],
+          "position": [0, -8.68, 0],
           "rotationEuler": [0, -0, 0],
           "scale": [10000, 10000, 10000]
         },
@@ -10436,7 +12935,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
       "components": [
         {
           "type": "Transform",
@@ -10465,6 +12964,14 @@
           "enabled": true,
           "attachments": [
           ]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Mesh",
+          "enabled": true,
+          "isTrigger": false,
+          "buildQuality": "BuildQuality",
+          "mode": "TriangleMesh"
         }
       ]
     },
@@ -12404,7 +14911,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -12433,14 +14940,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -13724,7 +16223,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -13753,14 +16252,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
         }
       ]
     },
@@ -14541,2641 +17032,54 @@
       ]
     },
     {
-      "id": "gameobject_1",
+      "id": "mesh_64",
       "parentId": "gameobject_64",
-      "name": "Model",
+      "name": "BodyBound",
       "tag": "Untagged",
       "type": "GameObject",
       "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "Collider"],
+      "enabled": false,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [-90, -5.00896e-06, 180],
-          "scale": [1, 1, 1]
+          "position": [0.0561381, 0.736787, -0.00252305],
+          "rotationEuler": [0, -0, 0],
+          "scale": [1.93511, 1, 4.78442]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Cube",
+          "sourcePath": "",
+          "assetId": "",
+          "meshIndex": 0,
+          "importedMaterialName": "",
+          "diffuseTexturePath": ""
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": false,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
         },
         {
           "type": "Collider",
           "colliderType": "Box",
           "enabled": true,
           "isTrigger": false,
-          "center": [1.23124e-13, 5.32907e-14, -0.61006],
-          "size": [1, 4.63866, 1.22571]
-        }
-      ]
-    },
-    {
-      "id": "mesh_3",
-      "parentId": "gameobject_1",
-      "name": "BMW_0",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#0",
-          "meshIndex": 0,
-          "importedMaterialName": "Mesh_0571.rip.001",
-          "diffuseTexturePath": "*0"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0571rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_4",
-      "parentId": "gameobject_1",
-      "name": "BMW_1",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#1",
-          "meshIndex": 1,
-          "importedMaterialName": "generic_gauge_glass.001",
-          "diffuseTexturePath": "*1"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_generic_gauge_glass001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_5",
-      "parentId": "gameobject_1",
-      "name": "BMW_2",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#2",
-          "meshIndex": 2,
-          "importedMaterialName": "daylights.001",
-          "diffuseTexturePath": "*2"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_daylights001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_6",
-      "parentId": "gameobject_1",
-      "name": "BMW_3",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#3",
-          "meshIndex": 3,
-          "importedMaterialName": "INT_Decals_LCD.001",
-          "diffuseTexturePath": "*3"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_int_decals_lcd001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_7",
-      "parentId": "gameobject_1",
-      "name": "BMW_4",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#4",
-          "meshIndex": 4,
-          "importedMaterialName": "Mesh_0571.rip.001",
-          "diffuseTexturePath": "*0"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0571rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_9",
-      "parentId": "gameobject_1",
-      "name": "BMW_5",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#5",
-          "meshIndex": 5,
-          "importedMaterialName": "Mesh_0571.rip.001",
-          "diffuseTexturePath": "*0"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0571rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_10",
-      "parentId": "gameobject_1",
-      "name": "BMW_6",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#6",
-          "meshIndex": 6,
-          "importedMaterialName": "Mesh_0597.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0597rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_11",
-      "parentId": "gameobject_1",
-      "name": "BMW_7",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#7",
-          "meshIndex": 7,
-          "importedMaterialName": "Mesh_0597.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0597rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_12",
-      "parentId": "gameobject_1",
-      "name": "BMW_8",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#8",
-          "meshIndex": 8,
-          "importedMaterialName": "Mesh_0597.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0597rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_13",
-      "parentId": "gameobject_1",
-      "name": "BMW_9",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#9",
-          "meshIndex": 9,
-          "importedMaterialName": "Mesh_0597.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0597rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_14",
-      "parentId": "gameobject_1",
-      "name": "BMW_10",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#10",
-          "meshIndex": 10,
-          "importedMaterialName": "Mesh_0597.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0597rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_15",
-      "parentId": "gameobject_1",
-      "name": "BMW_11",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#11",
-          "meshIndex": 11,
-          "importedMaterialName": "Mesh_0597.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0597rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_16",
-      "parentId": "gameobject_1",
-      "name": "BMW_12",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#12",
-          "meshIndex": 12,
-          "importedMaterialName": "Mesh_0597.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0597rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_17",
-      "parentId": "gameobject_1",
-      "name": "BMW_13",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#13",
-          "meshIndex": 13,
-          "importedMaterialName": "Mesh_0597.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0597rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_18",
-      "parentId": "gameobject_1",
-      "name": "BMW_14",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#14",
-          "meshIndex": 14,
-          "importedMaterialName": "Mesh_0597.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0597rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_19",
-      "parentId": "gameobject_1",
-      "name": "BMW_15",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#15",
-          "meshIndex": 15,
-          "importedMaterialName": "Mesh_0001.rip.001",
-          "diffuseTexturePath": "*5"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0001rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_20",
-      "parentId": "gameobject_1",
-      "name": "BMW_16",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#16",
-          "meshIndex": 16,
-          "importedMaterialName": "Mesh_0002.rip.001",
-          "diffuseTexturePath": "*6"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0002rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_21",
-      "parentId": "gameobject_1",
-      "name": "BMW_17",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#17",
-          "meshIndex": 17,
-          "importedMaterialName": "Mesh_0002.rip.001",
-          "diffuseTexturePath": "*6"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0002rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_22",
-      "parentId": "gameobject_1",
-      "name": "BMW_18",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#18",
-          "meshIndex": 18,
-          "importedMaterialName": "Mesh_0006.rip.001",
-          "diffuseTexturePath": "*9"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0006rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_23",
-      "parentId": "gameobject_1",
-      "name": "BMW_19",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#19",
-          "meshIndex": 19,
-          "importedMaterialName": "Mesh_0017.rip.001",
-          "diffuseTexturePath": "*11"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0017rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_24",
-      "parentId": "gameobject_1",
-      "name": "BMW_20",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#20",
-          "meshIndex": 20,
-          "importedMaterialName": "Mesh_0017.rip.001",
-          "diffuseTexturePath": "*11"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0017rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_25",
-      "parentId": "gameobject_1",
-      "name": "BMW_21",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#21",
-          "meshIndex": 21,
-          "importedMaterialName": "Mesh_0024.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0024rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_26",
-      "parentId": "gameobject_1",
-      "name": "BMW_22",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#22",
-          "meshIndex": 22,
-          "importedMaterialName": "Mesh_0024.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0024rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_27",
-      "parentId": "gameobject_1",
-      "name": "BMW_23",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#23",
-          "meshIndex": 23,
-          "importedMaterialName": "Mesh_0024.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0024rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_28",
-      "parentId": "gameobject_1",
-      "name": "BMW_24",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#24",
-          "meshIndex": 24,
-          "importedMaterialName": "Mesh_0027.rip.001",
-          "diffuseTexturePath": "*15"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0027rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_29",
-      "parentId": "gameobject_1",
-      "name": "BMW_25",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#25",
-          "meshIndex": 25,
-          "importedMaterialName": "Mesh_0047.rip.001",
-          "diffuseTexturePath": "*16"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0047rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_30",
-      "parentId": "gameobject_1",
-      "name": "BMW_26",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#26",
-          "meshIndex": 26,
-          "importedMaterialName": "Mesh_0064.rip.001",
-          "diffuseTexturePath": "*17"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0064rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_31",
-      "parentId": "gameobject_1",
-      "name": "BMW_27",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#27",
-          "meshIndex": 27,
-          "importedMaterialName": "Mesh_0065.rip.001",
-          "diffuseTexturePath": "*18"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0065rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_32",
-      "parentId": "gameobject_1",
-      "name": "BMW_28",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#28",
-          "meshIndex": 28,
-          "importedMaterialName": "Mesh_0066.rip.001",
-          "diffuseTexturePath": "*19"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0066rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_33",
-      "parentId": "gameobject_1",
-      "name": "BMW_29",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#29",
-          "meshIndex": 29,
-          "importedMaterialName": "Mesh_0067.rip",
-          "diffuseTexturePath": "*20"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0067rip",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_34",
-      "parentId": "gameobject_1",
-      "name": "BMW_30",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#30",
-          "meshIndex": 30,
-          "importedMaterialName": "Mesh_0001.rip.001",
-          "diffuseTexturePath": "*5"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0001rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_35",
-      "parentId": "gameobject_1",
-      "name": "BMW_31",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#31",
-          "meshIndex": 31,
-          "importedMaterialName": "Mesh_0004.rip.001",
-          "diffuseTexturePath": "*21"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0004rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_36",
-      "parentId": "gameobject_1",
-      "name": "BMW_32",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#32",
-          "meshIndex": 32,
-          "importedMaterialName": "Mesh_0005.rip.001",
-          "diffuseTexturePath": "*22"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0005rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_37",
-      "parentId": "gameobject_1",
-      "name": "BMW_33",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#33",
-          "meshIndex": 33,
-          "importedMaterialName": "Mesh_0007.rip.001",
-          "diffuseTexturePath": "*23"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0007rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_38",
-      "parentId": "gameobject_1",
-      "name": "BMW_34",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#34",
-          "meshIndex": 34,
-          "importedMaterialName": "Mesh_0006.rip.001",
-          "diffuseTexturePath": "*9"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0006rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_39",
-      "parentId": "gameobject_1",
-      "name": "BMW_35",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#35",
-          "meshIndex": 35,
-          "importedMaterialName": "Mesh_0009.rip.001",
-          "diffuseTexturePath": "*25"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0009rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_40",
-      "parentId": "gameobject_1",
-      "name": "BMW_36",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#36",
-          "meshIndex": 36,
-          "importedMaterialName": "Mesh_0017.rip.001",
-          "diffuseTexturePath": "*11"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0017rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_41",
-      "parentId": "gameobject_1",
-      "name": "BMW_37",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#37",
-          "meshIndex": 37,
-          "importedMaterialName": "Mesh_0017.rip.001",
-          "diffuseTexturePath": "*11"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0017rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_42",
-      "parentId": "gameobject_1",
-      "name": "BMW_38",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#38",
-          "meshIndex": 38,
-          "importedMaterialName": "Mesh_0024.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0024rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_43",
-      "parentId": "gameobject_1",
-      "name": "BMW_39",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#39",
-          "meshIndex": 39,
-          "importedMaterialName": "Mesh_0024.rip.001",
-          "diffuseTexturePath": "*4"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0024rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_44",
-      "parentId": "gameobject_1",
-      "name": "BMW_40",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#40",
-          "meshIndex": 40,
-          "importedMaterialName": "Mesh_0027.rip.001",
-          "diffuseTexturePath": "*15"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0027rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_45",
-      "parentId": "gameobject_1",
-      "name": "BMW_41",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#41",
-          "meshIndex": 41,
-          "importedMaterialName": "Mesh_0046.rip.001",
-          "diffuseTexturePath": "*26"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0046rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_46",
-      "parentId": "gameobject_1",
-      "name": "BMW_42",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#42",
-          "meshIndex": 42,
-          "importedMaterialName": "Mesh_0064.rip.001",
-          "diffuseTexturePath": "*17"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0064rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_47",
-      "parentId": "gameobject_1",
-      "name": "BMW_43",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#43",
-          "meshIndex": 43,
-          "importedMaterialName": "Mesh_0065.rip.001",
-          "diffuseTexturePath": "*18"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0065rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_48",
-      "parentId": "gameobject_1",
-      "name": "BMW_44",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#44",
-          "meshIndex": 44,
-          "importedMaterialName": "Mesh_0066.rip.001",
-          "diffuseTexturePath": "*19"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0066rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_49",
-      "parentId": "gameobject_1",
-      "name": "BMW_45",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#45",
-          "meshIndex": 45,
-          "importedMaterialName": "int_shild.001",
-          "diffuseTexturePath": "*20"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_int_shild001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_50",
-      "parentId": "gameobject_1",
-      "name": "BMW_46",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#46",
-          "meshIndex": 46,
-          "importedMaterialName": "Mesh_0571.rip.001",
-          "diffuseTexturePath": "*0"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0571rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_51",
-      "parentId": "gameobject_1",
-      "name": "BMW_47",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#47",
-          "meshIndex": 47,
-          "importedMaterialName": "PANNELLO_NERO.001",
-          "diffuseTexturePath": "*28"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_pannello_nero001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_52",
-      "parentId": "gameobject_1",
-      "name": "BMW_48",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#48",
-          "meshIndex": 48,
-          "importedMaterialName": "Mesh_0571.rip.001",
-          "diffuseTexturePath": "*0"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0571rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_53",
-      "parentId": "gameobject_1",
-      "name": "BMW_49",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#49",
-          "meshIndex": 49,
-          "importedMaterialName": "scarichi.001",
-          "diffuseTexturePath": "*29"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_scarichi001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_54",
-      "parentId": "gameobject_1",
-      "name": "BMW_50",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#50",
-          "meshIndex": 50,
-          "importedMaterialName": "specchi.001",
-          "diffuseTexturePath": "*1"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_specchi001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_55",
-      "parentId": "gameobject_1",
-      "name": "BMW_51",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#51",
-          "meshIndex": 51,
-          "importedMaterialName": "Mesh_0596.rip.001",
-          "diffuseTexturePath": "*30"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0596rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_56",
-      "parentId": "gameobject_1",
-      "name": "BMW_52",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#52",
-          "meshIndex": 52,
-          "importedMaterialName": "plastiche_volante.001",
-          "diffuseTexturePath": "*33"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_plastiche_volante001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_57",
-      "parentId": "gameobject_1",
-      "name": "BMW_53",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#53",
-          "meshIndex": 53,
-          "importedMaterialName": "carbonio_volante.001",
-          "diffuseTexturePath": "*35"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_carbonio_volante001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_58",
-      "parentId": "gameobject_1",
-      "name": "BMW_54",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#54",
-          "meshIndex": 54,
-          "importedMaterialName": "alcantara.001",
-          "diffuseTexturePath": "*37"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_alcantara001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_59",
-      "parentId": "gameobject_1",
-      "name": "BMW_55",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#55",
-          "meshIndex": 55,
-          "importedMaterialName": "metallo_volante.001",
-          "diffuseTexturePath": "*39"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_metallo_volante001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_60",
-      "parentId": "gameobject_1",
-      "name": "BMW_56",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#56",
-          "meshIndex": 56,
-          "importedMaterialName": "ergal.001",
-          "diffuseTexturePath": "*40"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_ergal001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_61",
-      "parentId": "gameobject_1",
-      "name": "BMW_57",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#57",
-          "meshIndex": 57,
-          "importedMaterialName": "palette.001",
-          "diffuseTexturePath": "*33"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_palette001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_62",
-      "parentId": "gameobject_1",
-      "name": "BMW_58",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#58",
-          "meshIndex": 58,
-          "importedMaterialName": "Mesh_0571.rip.001",
-          "diffuseTexturePath": "*0"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0571rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_63",
-      "parentId": "gameobject_1",
-      "name": "BMW_59",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#59",
-          "meshIndex": 59,
-          "importedMaterialName": "Mesh_0571.rip.001",
-          "diffuseTexturePath": "*0"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0571rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "gameobject_64",
-      "parentId": "",
-      "name": "BMW",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "Vehicle"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "Vehicle",
-          "enabled": true,
-          "configPath": "assets/car/2018-bmw-m8-gte/source/BMW.vehicle.json",
-          "inputProfileId": "default_vehicle",
-          "preferredInputDevice": "Keyboard",
-          "preferredInputDeviceId": "",
-          "chassisObjectIds": ["gameobject_1"],
-          "wheelBindings": [
-            {
-              "wheelName": "Front Left",
-              "objectId": "gameobject_70",
-              "visualRotationEuler": [0, 0, 0]
-            },
-            {
-              "wheelName": "Front Right",
-              "objectId": "gameobject_69",
-              "visualRotationEuler": [0, 0, 0]
-            },
-            {
-              "wheelName": "Rear Left",
-              "objectId": "gameobject_72",
-              "visualRotationEuler": [0, 0, 0]
-            },
-            {
-              "wheelName": "Rear Right",
-              "objectId": "gameobject_71",
-              "visualRotationEuler": [0, 0, 0]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "gameobject_69",
-      "parentId": "gameobject_64",
-      "name": "FR",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [-0.876366, 0.226205, 1.43182],
-          "rotationEuler": [0, -0, 0],
-          "scale": [0.916666, 0.916666, 0.916666]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj",
-          "assetId": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj#0",
-          "meshIndex": 0,
-          "importedMaterialName": "wheel",
-          "diffuseTexturePath": "wheel.png"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "chevrolet-nascar-flwheel_wheel",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "gameobject_70",
-      "parentId": "gameobject_64",
-      "name": "FL",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0.867608, 0.242395, 1.40508],
-          "rotationEuler": [180, -5.00896e-06, 180],
-          "scale": [0.916666, 0.916666, 0.916666]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj",
-          "assetId": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj#0",
-          "meshIndex": 0,
-          "importedMaterialName": "wheel",
-          "diffuseTexturePath": "wheel.png"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "chevrolet-nascar-flwheel_wheel",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "gameobject_71",
-      "parentId": "gameobject_64",
-      "name": "RR",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [-0.876, 0.269236, -1.46194],
-          "rotationEuler": [0, -0, 0],
-          "scale": [0.916666, 0.916666, 0.916666]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj",
-          "assetId": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj#0",
-          "meshIndex": 0,
-          "importedMaterialName": "wheel",
-          "diffuseTexturePath": "wheel.png"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "chevrolet-nascar-flwheel_wheel",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "gameobject_72",
-      "parentId": "gameobject_64",
-      "name": "RL",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0.876, 0.269, -1.462],
-          "rotationEuler": [-180, -5.00896e-06, -180],
-          "scale": [0.916666, 0.916666, 0.916666]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj",
-          "assetId": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj#0",
-          "meshIndex": 0,
-          "importedMaterialName": "wheel",
-          "diffuseTexturePath": "wheel.png"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "chevrolet-nascar-flwheel_wheel",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
+          "center": [0, 0, 0],
+          "size": [1, 1, 1]
         }
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_11", "gameobject_145", "gameobject_8"],
-  "inspectorComponentsClosed": ["mesh_393|Collider", "gameobject_11|Vehicle"]
+  "hierarchyClosed": ["gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_8"],
+  "inspectorComponentsClosed": ["mesh_393|Collider", "gameobject_11|Vehicle", "camera_1|Cinemachine"]
 }

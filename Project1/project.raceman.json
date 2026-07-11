@@ -15,10 +15,10 @@
   "editorState": {
     "selectedProjectDirectory": "assets/car/2018-bmw-m8-gte/source",
     "selectedInputProfileIndex": 1,
-    "selectedInputDevicePage": 0,
+    "selectedInputDevicePage": 1,
     "selectedWheelSettingsProfileIndex": 0,
-    "projectInputTestActive": false,
-    "projectInputTestDeviceIndex": 0
+    "projectInputTestActive": true,
+    "projectInputTestDeviceIndex": 3
   },
   "tags": [
     "Untagged",
@@ -598,15 +598,47 @@
             "calibrationCenter": 0,
             "calibrationMax": 1,
             "responseExponent": 1
+          },
+          {
+            "action": "lookX",
+            "deviceType": "Gamepad",
+            "source": "Axis",
+            "key": -1,
+            "negativeKey": -1,
+            "positiveKey": -1,
+            "axis": 2,
+            "button": -1,
+            "invert": false,
+            "deadzone": 0.18,
+            "calibrationMin": -1,
+            "calibrationCenter": 0,
+            "calibrationMax": 1,
+            "responseExponent": 1
+          },
+          {
+            "action": "lookY",
+            "deviceType": "Gamepad",
+            "source": "Axis",
+            "key": -1,
+            "negativeKey": -1,
+            "positiveKey": -1,
+            "axis": 3,
+            "button": -1,
+            "invert": true,
+            "deadzone": 0.18,
+            "calibrationMin": -1,
+            "calibrationCenter": 0,
+            "calibrationMax": 1,
+            "responseExponent": 1
           }
         ]
       },
       {
         "id": "default_vehicle",
         "displayName": "Default Vehicle",
-        "keyboardSteeringSensitivity": 0.14,
-        "keyboardThrottleSensitivity": 0.12,
-        "keyboardBrakeSensitivity": 0.36,
+        "keyboardSteeringSensitivity": 0.57,
+        "keyboardThrottleSensitivity": 1,
+        "keyboardBrakeSensitivity": 1,
         "bindings": [
           {
             "action": "steer",
@@ -676,7 +708,7 @@
             "action": "shiftUp",
             "deviceType": "Keyboard",
             "source": "Key",
-            "key": 69,
+            "key": 265,
             "negativeKey": -1,
             "positiveKey": -1,
             "axis": -1,
@@ -692,7 +724,7 @@
             "action": "shiftDown",
             "deviceType": "Keyboard",
             "source": "Key",
-            "key": 81,
+            "key": 264,
             "negativeKey": -1,
             "positiveKey": -1,
             "axis": -1,

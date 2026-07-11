@@ -1,0 +1,6 @@
+assets/skybox/racetrack\px.jpg
+assets/skybox/racetrack\nx.jpg
+assets/skybox/racetrack\py.jpg
+assets/skybox/racetrack\ny.jpg
+assets/skybox/racetrack\pz.jpg
+assets/skybox/racetrack\nz.jpg

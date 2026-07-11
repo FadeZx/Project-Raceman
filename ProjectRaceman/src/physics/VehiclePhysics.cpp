@@ -51,15 +51,20 @@ VehiclePhysics::VehiclePhysics(const VehicleConfig &config)
     m_body.transform.position = {0.0f, 0.0f, m_config.frontSuspension.restLength + m_config.rearSuspension.restLength};
     m_engineAngularVelocity = m_config.engine.idleRPM * (kTwoPi / 60.0f);
     m_prevEngineRPM = m_config.engine.idleRPM;
+    m_lastTelemetry.engineRPM = m_config.engine.idleRPM;
+    m_lastTelemetry.currentGear = 0;
+    m_lastTelemetry.isNeutral = true;
+    m_lastTelemetry.isReverse = false;
+    m_lastTelemetry.wheels.resize(m_wheels.size());
 }
 
 void VehiclePhysics::setInput(const VehicleControlInput &input)
 {
-    m_rawInput.throttle = clamp(input.throttle, 0.0f, 1.0f);
-    m_rawInput.brake = clamp(input.brake, 0.0f, 1.0f);
-    m_rawInput.clutch = clamp(input.clutch, 0.0f, 1.0f);
-    m_rawInput.steering = clamp(input.steering, -1.0f, 1.0f);
-    m_rawInput.handbrake = clamp(input.handbrake, 0.0f, 1.0f);
+    m_input.throttle = clamp(input.throttle, 0.0f, 1.0f);
+    m_input.brake = clamp(input.brake, 0.0f, 1.0f);
+    m_input.clutch = clamp(input.clutch, 0.0f, 1.0f);
+    m_input.steering = clamp(input.steering, -1.0f, 1.0f);
+    m_input.handbrake = clamp(input.handbrake, 0.0f, 1.0f);
 }
 
 void VehiclePhysics::setTelemetryCallback(std::function<void(const VehicleTelemetry &)> callback)
@@ -74,6 +79,13 @@ void VehiclePhysics::setGroundRaycastCallback(std::function<bool(const Vector3 &
 
 void VehiclePhysics::shiftUp()
 {
+    if (m_isReverse)
+    {
+        m_isReverse = false;
+        m_isNeutral = true;
+        m_currentGear = 0;
+        return;
+    }
     if (m_isNeutral)
     {
         m_isNeutral = false;
@@ -88,6 +100,17 @@ void VehiclePhysics::shiftUp()
 
 void VehiclePhysics::shiftDown()
 {
+    if (m_isReverse)
+    {
+        return;
+    }
+    if (m_isNeutral)
+    {
+        m_isReverse = true;
+        m_isNeutral = false;
+        m_currentGear = 0;
+        return;
+    }
     if (m_currentGear > 0)
     {
         --m_currentGear;
@@ -101,6 +124,10 @@ void VehiclePhysics::shiftDown()
 void VehiclePhysics::setNeutral(bool neutral)
 {
     m_isNeutral = neutral;
+    if (neutral)
+    {
+        m_isReverse = false;
+    }
 }
 
 void VehiclePhysics::setReverse(bool reverse)
@@ -109,6 +136,7 @@ void VehiclePhysics::setReverse(bool reverse)
     if (reverse)
     {
         m_isNeutral = false;
+        m_currentGear = 0;
     }
 }
 
@@ -169,7 +197,6 @@ void VehiclePhysics::update(float dt)
         return;
     }
 
-    m_input = buildAssistedInput(dt);
     Vector3 previousVelocity = m_body.linearVelocity;
 
     float engineRPM = m_engineAngularVelocity * (60.0f / kTwoPi);
@@ -316,9 +343,41 @@ void VehiclePhysics::update(float dt)
         float longitudinalSpeed = dot(wheelVelocity, forward);
         float lateralSpeed = dot(wheelVelocity, right);
 
+        float brakeInput = wheel.config.hasBrake ? m_input.brake : 0.0f;
+        float handbrakeInput = (!isFront) ? m_input.handbrake : 0.0f;
+        wheel.brakeTorque = (brakeInput + handbrakeInput) * wheel.config.maxBrakingTorque;
+
         float wheelCircumferenceSpeed = wheel.angularVelocity * wheel.config.radius;
         float slipRatio = 0.0f;
-        if (std::fabs(longitudinalSpeed) > 0.5f)
+        const bool neutralFreeRolling =
+            std::fabs(driveRatio) <= kEpsilon &&
+            std::fabs(perWheelDriveTorque) <= kEpsilon;
+        const bool brakeHoldingAtStandstill =
+            wheel.brakeTorque > 0.0f &&
+            neutralFreeRolling &&
+            std::fabs(longitudinalSpeed) < 0.10f &&
+            std::fabs(wheelCircumferenceSpeed) < 0.10f;
+        if (neutralFreeRolling)
+        {
+            const float safeRadius = std::max(kEpsilon, wheel.config.radius);
+            if (brakeHoldingAtStandstill)
+            {
+                wheel.angularVelocity = 0.0f;
+            }
+            else
+            {
+                wheel.angularVelocity = longitudinalSpeed / safeRadius;
+            }
+            wheelCircumferenceSpeed = wheel.angularVelocity * wheel.config.radius;
+            slipRatio = 0.0f;
+        }
+        else if (brakeHoldingAtStandstill)
+        {
+            wheel.angularVelocity = 0.0f;
+            wheelCircumferenceSpeed = 0.0f;
+            slipRatio = 0.0f;
+        }
+        else if (std::fabs(longitudinalSpeed) > 0.5f)
         {
             slipRatio = (wheelCircumferenceSpeed - longitudinalSpeed) / std::fabs(longitudinalSpeed);
         }
@@ -329,6 +388,18 @@ void VehiclePhysics::update(float dt)
 
         float maxGripForce = wheel.normalForce * wheel.config.gripFactor;
         float longitudinalForce = clamp(slipRatio * wheel.config.longitudinalStiffness, -maxGripForce, maxGripForce);
+        if (neutralFreeRolling && wheel.brakeTorque > 0.0f)
+        {
+            if (std::fabs(longitudinalSpeed) < 0.10f)
+            {
+                longitudinalForce = 0.0f;
+            }
+            else
+            {
+                const float brakeForce = wheel.brakeTorque / std::max(kEpsilon, wheel.config.radius);
+                longitudinalForce = -sign(longitudinalSpeed) * clamp(brakeForce, 0.0f, maxGripForce);
+            }
+        }
         float slipAngle = std::atan2(lateralSpeed, std::fabs(longitudinalSpeed) + 0.1f);
         float lateralForce = clamp(-slipAngle * wheel.config.lateralStiffness, -maxGripForce, maxGripForce);
 
@@ -336,24 +407,9 @@ void VehiclePhysics::update(float dt)
         totalForce += wheel.contactForce;
         totalTorque += cross(relPos, wheel.contactForce);
 
-        float brakeInput = wheel.config.hasBrake ? m_input.brake : 0.0f;
-        float handbrakeInput = (!isFront) ? m_input.handbrake : 0.0f;
-        wheel.brakeTorque = (brakeInput + handbrakeInput) * wheel.config.maxBrakingTorque;
-
         // Only drive wheels that have ground contact — prevents wheels spinning
         // to unrealistic RPM while airborne then launching the car on landing.
-        float tractionTorqueScale = 1.0f;
-        if (m_config.assists.enabled && m_config.assists.tractionControl && wheel.config.driven && wheel.normalForce > 0.0f && m_input.throttle > 0.05f)
-        {
-            const float slipMagnitude = std::fabs(slipRatio);
-            const float slipLimit = std::max(0.01f, m_config.assists.tractionSlipLimit);
-            if (slipMagnitude > slipLimit)
-            {
-                const float minimumScale = clamp(m_config.assists.minTractionTorqueScale, 0.0f, 1.0f);
-                tractionTorqueScale = clamp(slipLimit / slipMagnitude, minimumScale, 1.0f);
-            }
-        }
-        wheel.driveTorque = (wheel.config.driven && wheel.normalForce > 0.0f) ? perWheelDriveTorque * tractionTorqueScale : 0.0f;
+        wheel.driveTorque = (wheel.config.driven && wheel.normalForce > 0.0f) ? perWheelDriveTorque : 0.0f;
         if (wheel.config.driven)
         {
             totalDriveTorqueApplied += wheel.driveTorque;
@@ -362,11 +418,33 @@ void VehiclePhysics::update(float dt)
 
         float resistanceTorque = longitudinalForce * wheel.config.radius;
         float rollingResistance = 0.015f * wheel.normalForce * sign(wheel.angularVelocity);
-        float brakeTorque = wheel.brakeTorque * sign(wheel.angularVelocity);
 
-        float netWheelTorque = wheel.driveTorque - resistanceTorque - brakeTorque - rollingResistance;
+        float netWheelTorque = wheel.driveTorque - resistanceTorque - rollingResistance;
         float angularAcceleration = netWheelTorque / std::max(0.1f, wheel.config.inertia);
         wheel.angularVelocity += angularAcceleration * dt;
+        if (wheel.brakeTorque > 0.0f)
+        {
+            const float brakeAngularDelta = (wheel.brakeTorque / std::max(0.1f, wheel.config.inertia)) * dt;
+            if (std::fabs(wheel.angularVelocity) <= brakeAngularDelta)
+            {
+                wheel.angularVelocity = 0.0f;
+            }
+            else
+            {
+                wheel.angularVelocity -= sign(wheel.angularVelocity) * brakeAngularDelta;
+            }
+        }
+        if (neutralFreeRolling)
+        {
+            if (std::fabs(longitudinalSpeed) < 0.10f)
+            {
+                wheel.angularVelocity = 0.0f;
+            }
+            else
+            {
+                wheel.angularVelocity = longitudinalSpeed / std::max(kEpsilon, wheel.config.radius);
+            }
+        }
         wheel.rotationAngle += wheel.angularVelocity * dt;
 
         WheelTelemetry telemetry{};
@@ -412,42 +490,6 @@ void VehiclePhysics::update(float dt)
     {
         m_telemetryCallback(m_lastTelemetry);
     }
-}
-
-VehicleControlInput VehiclePhysics::buildAssistedInput(float dt)
-{
-    VehicleControlInput result = m_rawInput;
-    if (!m_config.assists.enabled)
-    {
-        m_input = result;
-        return result;
-    }
-
-    const Vector3 right = m_body.transform.rotation.rotate({1.0f, 0.0f, 0.0f});
-    const float speed = length(m_body.linearVelocity);
-    const float lateralSpeed = dot(m_body.linearVelocity, right);
-
-    const float fullSteerSpeed = std::max(0.1f, m_config.assists.fullSteerSpeed);
-    const float speedT = clamp(speed / fullSteerSpeed, 0.0f, 1.0f);
-    const float highSpeedScale = clamp(m_config.assists.highSpeedSteerScale, 0.05f, 1.0f);
-    const float steerScale = 1.0f + (highSpeedScale - 1.0f) * speedT;
-
-    float targetSteering = m_rawInput.steering * steerScale;
-    if (speed > 2.0f && std::fabs(lateralSpeed) > 0.25f)
-    {
-        const float counterSteer = clamp(lateralSpeed / std::max(4.0f, speed), -1.0f, 1.0f) * clamp(m_config.assists.counterSteerStrength, 0.0f, 1.0f);
-        targetSteering = clamp(targetSteering - counterSteer, -1.0f, 1.0f);
-    }
-
-    const float smoothingRate = std::max(0.0f, m_config.assists.steeringSmoothingRate);
-    const float steeringAlpha = smoothingRate <= 0.0f ? 1.0f : clamp(dt * smoothingRate, 0.0f, 1.0f);
-    result.steering = m_input.steering + (targetSteering - m_input.steering) * steeringAlpha;
-    result.throttle = m_rawInput.throttle;
-    result.brake = m_rawInput.brake;
-    result.clutch = m_rawInput.clutch;
-    result.handbrake = m_rawInput.handbrake;
-
-    return result;
 }
 
 void VehiclePhysics::integrateEngine(float dt, float driveRatio, float averageWheelSpeed, float totalDriveTorqueApplied, int drivenWheels, float throttleTorque, float engineBrakeTorque)

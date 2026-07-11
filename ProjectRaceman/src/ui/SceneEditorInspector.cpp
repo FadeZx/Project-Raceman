@@ -4386,16 +4386,6 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                 applyCheckboxEdit("Limited Slip##vehicleProfileDiffLimitedSlip", inspectedVehicleConfig_.differential.limitedSlip);
                 endCard();
 
-                beginCard("vehicleProfileAssistsCard", "Driving Assists", "Racing game input stability", accentSecondary);
-                applyCheckboxEdit("Enable Assists##vehicleProfileAssistsEnabled", inspectedVehicleConfig_.assists.enabled);
-                applyDragFloatEdit("Steering Smoothing (1/s)", "##vehicleProfileAssistSteeringSmoothing", inspectedVehicleConfig_.assists.steeringSmoothingRate, 0.1f, 0.0f, 100.0f);
-                applyDragFloatEdit("Full Steer Speed (m/s)", "##vehicleProfileAssistFullSteerSpeed", inspectedVehicleConfig_.assists.fullSteerSpeed, 0.1f, 0.1f, 200.0f);
-                applyDragFloatEdit("High Speed Steer Scale (0-1)", "##vehicleProfileAssistHighSpeedSteerScale", inspectedVehicleConfig_.assists.highSpeedSteerScale, 0.01f, 0.05f, 1.0f);
-                applyDragFloatEdit("Counter-Steer Strength (0-1)", "##vehicleProfileAssistCounterSteer", inspectedVehicleConfig_.assists.counterSteerStrength, 0.01f, 0.0f, 1.0f);
-                applyCheckboxEdit("Traction Control##vehicleProfileAssistTractionControl", inspectedVehicleConfig_.assists.tractionControl);
-                applyDragFloatEdit("Traction Slip Limit", "##vehicleProfileAssistTractionSlipLimit", inspectedVehicleConfig_.assists.tractionSlipLimit, 0.01f, 0.01f, 10.0f);
-                applyDragFloatEdit("Minimum Drive Torque Scale (0-1)", "##vehicleProfileAssistMinTorqueScale", inspectedVehicleConfig_.assists.minTractionTorqueScale, 0.01f, 0.0f, 1.0f);
-                endCard();
                 ImGui::EndTabItem();
             }
 

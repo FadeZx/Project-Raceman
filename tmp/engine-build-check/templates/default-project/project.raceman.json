@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "projectName": "__PROJECT_NAME__",
+  "assetsRoot": "assets",
+  "defaultScene": "assets/scenes/Main.scene.json",
+  "lastScene": "assets/scenes/Main.scene.json",
+  "skybox": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "tags": [
+    "Untagged"
+  ],
+  "physics": {
+    "layers": [
+      "Default",
+      "World",
+      "Vehicle",
+      "VehicleWheel",
+      "Trigger",
+      "Player",
+      "Layer6",
+      "Layer7"
+    ],
+    "collisionMatrix": [
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, false, true, true, true, true]
+      },
+      {
+        "values": [true, true, false, false, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      },
+      {
+        "values": [true, true, true, true, true, true, true, true]
+      }
+    ]
+  },
+  "input": {
+    "profiles": [],
+    "wheelSettings": []
+  },
+  "editorState": {
+    "selectedProjectDirectory": "assets"
+  }
+}

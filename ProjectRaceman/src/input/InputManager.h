@@ -205,6 +205,7 @@ private:
 
     GLFWwindow* window_{nullptr};
     std::unordered_map<int, bool> keyState_;
+    std::unordered_map<int, bool> previousKeyState_;
     std::unordered_map<int, bool> keyPressed_;
     std::unordered_map<int, bool> mouseButtonState_;
     std::unordered_map<int, bool> mouseButtonPressed_;
@@ -224,6 +225,7 @@ private:
     InputBinding capturedBinding_{};
     InputDeviceType listeningDeviceType_{InputDeviceType::Unknown};
     InputBindingSource listeningSource_{InputBindingSource::None};
+    std::unordered_map<int, float> listeningAxisBaseline_;
     bool wheelForceFeedbackActive_{false};
     float wheelForceFeedbackTorque_{0.0f};
     float wheelForceFeedbackDamper_{0.0f};

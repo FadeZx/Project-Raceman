@@ -109,8 +109,49 @@ void InputManager::AttachToWindow(GLFWwindow* window) {
 }
 
 void InputManager::BeginFrame() {
-    for (auto& [key, pressed] : keyPressed_) {
-        pressed = false;
+    if (window_ != nullptr) {
+        std::vector<int> keysToPoll;
+        auto addKeyToPoll = [&](int key) {
+            if (key < 0) {
+                return;
+            }
+            if (std::find(keysToPoll.begin(), keysToPoll.end(), key) == keysToPoll.end()) {
+                keysToPoll.push_back(key);
+            }
+        };
+        for (const auto& [key, down] : keyState_) {
+            (void)down;
+            addKeyToPoll(key);
+        }
+        for (const auto& [key, down] : previousKeyState_) {
+            (void)down;
+            addKeyToPoll(key);
+        }
+        for (const InputProfile& profile : inputProfiles_) {
+            for (const InputBinding& binding : profile.bindings) {
+                if (binding.deviceType != InputDeviceType::Keyboard) {
+                    continue;
+                }
+                addKeyToPoll(binding.key);
+                addKeyToPoll(binding.negativeKey);
+                addKeyToPoll(binding.positiveKey);
+            }
+        }
+
+        for (int key : keysToPoll) {
+            const int state = glfwGetKey(window_, key);
+            const bool isDown = state == GLFW_PRESS || state == GLFW_REPEAT;
+            const bool wasDown = previousKeyState_[key];
+            keyPressed_[key] = !wasDown && isDown;
+            keyState_[key] = isDown;
+            previousKeyState_[key] = isDown;
+        }
+    } else {
+        for (auto& [key, pressed] : keyPressed_) {
+            (void)key;
+            pressed = false;
+        }
+        previousKeyState_ = keyState_;
     }
     for (auto& [button, pressed] : mouseButtonPressed_) {
         (void)button;
@@ -146,7 +187,6 @@ void InputManager::BeginFrame() {
         mouseWheelDelta_ = 0.0f;
         pendingMouseWheelDelta_ = 0.0f;
     }
-    capturedBindingReady_ = false;
     PollDevices();
     const bool wheelWindowFocused = window_ == nullptr || glfwGetWindowAttrib(window_, GLFW_FOCUSED) == GLFW_TRUE;
     if (wheelForceFeedbackController_) {
@@ -319,54 +359,75 @@ InputProfile* InputManager::FindProfile(std::string_view profileId) {
 }
 
 void InputManager::EnsureDefaultProfiles() {
+    auto addMissingBindings = [](InputProfile& profile, const std::vector<InputBinding>& defaults) {
+        for (const InputBinding& defaultBinding : defaults) {
+            const auto existing = std::find_if(profile.bindings.begin(), profile.bindings.end(), [&](const InputBinding& binding) {
+                return binding.action == defaultBinding.action &&
+                       binding.deviceType == defaultBinding.deviceType &&
+                       binding.source == defaultBinding.source;
+            });
+            if (existing == profile.bindings.end()) {
+                profile.bindings.push_back(defaultBinding);
+            }
+        }
+    };
+
+    const std::vector<InputBinding> defaultCharacterBindings = {
+        {"moveX", InputDeviceType::Keyboard, InputBindingSource::KeyPair, -1, GLFW_KEY_A, GLFW_KEY_D},
+        {"moveY", InputDeviceType::Keyboard, InputBindingSource::KeyPair, -1, GLFW_KEY_S, GLFW_KEY_W},
+        {"jump", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_SPACE},
+        {"moveX", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_LEFT_X, -1, false, 0.18f},
+        {"moveY", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_LEFT_Y, -1, true, 0.18f},
+        {"lookX", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_RIGHT_X, -1, false, 0.18f},
+        {"lookY", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_RIGHT_Y, -1, true, 0.18f},
+        {"jump", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_A},
+        {"moveX", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 0, -1, false, 0.08f},
+        {"moveY", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 1, -1, true, 0.05f},
+        {"jump", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 0}
+    };
+
+    const std::vector<InputBinding> defaultVehicleBindings = {
+        {"steer", InputDeviceType::Keyboard, InputBindingSource::KeyPair, -1, GLFW_KEY_A, GLFW_KEY_D},
+        {"throttle", InputDeviceType::Keyboard, InputBindingSource::KeyPair, -1, -1, GLFW_KEY_W},
+        {"brake", InputDeviceType::Keyboard, InputBindingSource::KeyPair, -1, -1, GLFW_KEY_S},
+        {"handbrake", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_SPACE},
+        {"shiftUp", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_E},
+        {"shiftDown", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_Q},
+        {"neutral", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_N},
+        {"reverse", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_R},
+        {"steer", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_LEFT_X, -1, false, 0.18f},
+        {"throttle", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER, -1, false, 0.05f, -1.0f, -1.0f, 1.0f},
+        {"brake", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_LEFT_TRIGGER, -1, false, 0.05f, -1.0f, -1.0f, 1.0f},
+        {"handbrake", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_B},
+        {"shiftUp", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER},
+        {"shiftDown", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_LEFT_BUMPER},
+        {"reverse", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_Y},
+        {"steer", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 0, -1, false, 0.05f},
+        {"throttle", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 1, -1, true, 0.02f},
+        {"brake", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 2, -1, true, 0.02f},
+        {"handbrake", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 0},
+        {"shiftUp", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 4},
+        {"shiftDown", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 5}
+    };
+
     if (FindProfile("default_character") == nullptr) {
         InputProfile profile;
         profile.id = "default_character";
         profile.displayName = "Default Character";
-        profile.bindings = {
-            {"moveX", InputDeviceType::Keyboard, InputBindingSource::KeyPair, -1, GLFW_KEY_A, GLFW_KEY_D},
-            {"moveY", InputDeviceType::Keyboard, InputBindingSource::KeyPair, -1, GLFW_KEY_S, GLFW_KEY_W},
-            {"jump", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_SPACE},
-            {"moveX", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_LEFT_X, -1, false, 0.18f},
-            {"moveY", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_LEFT_Y, -1, true, 0.18f},
-            {"lookX", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_RIGHT_X, -1, false, 0.18f},
-            {"lookY", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_RIGHT_Y, -1, true, 0.18f},
-            {"jump", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_A},
-            {"moveX", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 0, -1, false, 0.08f},
-            {"moveY", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 1, -1, true, 0.05f},
-            {"jump", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 0}
-        };
+        profile.bindings = defaultCharacterBindings;
         inputProfiles_.push_back(std::move(profile));
+    } else if (InputProfile* profile = FindProfile("default_character")) {
+        addMissingBindings(*profile, defaultCharacterBindings);
     }
 
     if (FindProfile("default_vehicle") == nullptr) {
         InputProfile profile;
         profile.id = "default_vehicle";
         profile.displayName = "Default Vehicle";
-        profile.bindings = {
-            {"steer", InputDeviceType::Keyboard, InputBindingSource::KeyPair, -1, GLFW_KEY_A, GLFW_KEY_D},
-            {"throttle", InputDeviceType::Keyboard, InputBindingSource::KeyPair, -1, -1, GLFW_KEY_W},
-            {"brake", InputDeviceType::Keyboard, InputBindingSource::KeyPair, -1, -1, GLFW_KEY_S},
-            {"handbrake", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_SPACE},
-            {"shiftUp", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_E},
-            {"shiftDown", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_Q},
-            {"neutral", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_N},
-            {"reverse", InputDeviceType::Keyboard, InputBindingSource::Key, GLFW_KEY_R},
-            {"steer", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_LEFT_X, -1, false, 0.18f},
-            {"throttle", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER, -1, false, 0.05f, -1.0f, -1.0f, 1.0f},
-            {"brake", InputDeviceType::Gamepad, InputBindingSource::Axis, -1, -1, -1, GLFW_GAMEPAD_AXIS_LEFT_TRIGGER, -1, false, 0.05f, -1.0f, -1.0f, 1.0f},
-            {"handbrake", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_B},
-            {"shiftUp", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER},
-            {"shiftDown", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_LEFT_BUMPER},
-            {"reverse", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_Y},
-            {"steer", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 0, -1, false, 0.05f},
-            {"throttle", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 1, -1, true, 0.02f},
-            {"brake", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 2, -1, true, 0.02f},
-            {"handbrake", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 0},
-            {"shiftUp", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 4},
-            {"shiftDown", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 5}
-        };
+        profile.bindings = defaultVehicleBindings;
         inputProfiles_.push_back(std::move(profile));
+    } else if (InputProfile* profile = FindProfile("default_vehicle")) {
+        addMissingBindings(*profile, defaultVehicleBindings);
     }
 }
 
@@ -435,6 +496,18 @@ void InputManager::StartListeningForBinding(InputDeviceType deviceType, InputBin
     capturedBinding_ = {};
     listeningDeviceType_ = deviceType;
     listeningSource_ = source;
+    listeningAxisBaseline_.clear();
+    if (source == InputBindingSource::Axis) {
+        for (const InputDeviceInfo& device : devices_) {
+            if (device.type != deviceType) {
+                continue;
+            }
+            for (int axisIndex = 0; axisIndex < static_cast<int>(device.axes.size()); ++axisIndex) {
+                listeningAxisBaseline_[device.joystickId * 1000 + axisIndex] =
+                    device.axes[static_cast<std::size_t>(axisIndex)];
+            }
+        }
+    }
 }
 
 void InputManager::CancelListeningForBinding() {
@@ -443,6 +516,7 @@ void InputManager::CancelListeningForBinding() {
     capturedBinding_ = {};
     listeningDeviceType_ = InputDeviceType::Unknown;
     listeningSource_ = InputBindingSource::None;
+    listeningAxisBaseline_.clear();
 }
 
 bool InputManager::ConsumeCapturedBinding(InputBinding& binding) {
@@ -454,6 +528,7 @@ bool InputManager::ConsumeCapturedBinding(InputBinding& binding) {
     listeningForBinding_ = false;
     listeningDeviceType_ = InputDeviceType::Unknown;
     listeningSource_ = InputBindingSource::None;
+    listeningAxisBaseline_.clear();
     return true;
 }
 
@@ -517,8 +592,10 @@ void InputManager::PollDevices() {
 
         const char* joystickName = glfwGetJoystickName(joystickId);
 #if RACEMAN_GLFW_HAS_GAMEPAD_API
-        const bool isGamepad = glfwJoystickIsGamepad(joystickId) == GLFW_TRUE;
+        const bool hasGamepadMapping = glfwJoystickIsGamepad(joystickId) == GLFW_TRUE;
+        const bool isGamepad = hasGamepadMapping || LooksLikeGamepadName(joystickName);
 #else
+        const bool hasGamepadMapping = false;
         const bool isGamepad = LooksLikeGamepadName(joystickName);
 #endif
         InputDeviceInfo device;
@@ -531,11 +608,24 @@ void InputManager::PollDevices() {
         if (isGamepad) {
 #if RACEMAN_GLFW_HAS_GAMEPAD_API
             GLFWgamepadstate gamepadState{};
-            if (glfwGetGamepadState(joystickId, &gamepadState) == GLFW_TRUE) {
+            if (hasGamepadMapping && glfwGetGamepadState(joystickId, &gamepadState) == GLFW_TRUE) {
                 device.axisCount = GLFW_GAMEPAD_AXIS_LAST + 1;
                 device.buttonCount = GLFW_GAMEPAD_BUTTON_LAST + 1;
                 device.axes.assign(gamepadState.axes, gamepadState.axes + device.axisCount);
                 device.buttons.assign(gamepadState.buttons, gamepadState.buttons + device.buttonCount);
+            } else {
+                int axisCount = 0;
+                int buttonCount = 0;
+                const float* axes = glfwGetJoystickAxes(joystickId, &axisCount);
+                const unsigned char* buttons = glfwGetJoystickButtons(joystickId, &buttonCount);
+                device.axisCount = axisCount;
+                device.buttonCount = buttonCount;
+                if (axes != nullptr && axisCount > 0) {
+                    device.axes.assign(axes, axes + axisCount);
+                }
+                if (buttons != nullptr && buttonCount > 0) {
+                    device.buttons.assign(buttons, buttons + buttonCount);
+                }
             }
 #else
             int axisCount = 0;
@@ -571,7 +661,13 @@ void InputManager::PollDevices() {
             listeningDeviceType_ == device.type &&
             listeningSource_ == InputBindingSource::Axis) {
             for (int axisIndex = 0; axisIndex < static_cast<int>(device.axes.size()); ++axisIndex) {
-                if (std::abs(device.axes[static_cast<std::size_t>(axisIndex)]) >= 0.75f) {
+                const int axisKey = joystickId * 1000 + axisIndex;
+                const float currentValue = device.axes[static_cast<std::size_t>(axisIndex)];
+                auto baselineIt = listeningAxisBaseline_.find(axisKey);
+                if (baselineIt == listeningAxisBaseline_.end()) {
+                    baselineIt = listeningAxisBaseline_.emplace(axisKey, currentValue).first;
+                }
+                if (std::abs(currentValue - baselineIt->second) >= 0.5f) {
                     capturedBinding_ = {};
                     capturedBinding_.deviceType = device.type;
                     capturedBinding_.source = InputBindingSource::Axis;

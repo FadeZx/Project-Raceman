@@ -1,0 +1,5 @@
+Project Raceman engine build
+Configuration=Debug
+Platform=x64
+Source=D:\Project-Raceman\ProjectRaceman
+BuiltAt=2026-07-09T11:42:54.0145916+07:00

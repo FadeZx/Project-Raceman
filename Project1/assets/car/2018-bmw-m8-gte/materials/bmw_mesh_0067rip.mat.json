@@ -2,7 +2,7 @@
   "version": 1,
   "name": "Mesh_0067.rip",
   "shader": "transparent",
-  "albedoColor": [1, 1, 1, 1],
+  "albedoColor": [1, 0.11215, 0.11215, 1],
   "metallic": 0,
   "roughness": 1,
   "emissiveColor": [0, 0, 0],
@@ -16,5 +16,6 @@
     "ao": ""
   },
   "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 }
   }
 }

@@ -1633,7 +1633,7 @@ void SceneEditor::RenderStatusBar(float deltaTime) {
 void SceneEditor::HandleEditorShortcuts() {
     ImGuiIO& io = ImGui::GetIO();
     if (IsCtrlSPressed()) {
-        SaveActiveAsset();
+        SaveCurrentScene();
         return;
     }
     if (io.WantTextInput) {
@@ -3865,6 +3865,7 @@ void SceneEditor::Load(const std::string& path) {
                             so.vehicle.preferredInputDevice = InputDevicePreferenceFromStorage(preferredInputDevice);
                         }
                         ReadString(component, "preferredInputDeviceId", so.vehicle.preferredInputDeviceId);
+                        ReadBool(component, "useChassisCollision", so.vehicle.useChassisCollision);
                         so.vehicle.chassisObjectIds.clear();
                         if (auto chassisObjectIdsIt = component.find("chassisObjectIds"); chassisObjectIdsIt != component.end() && chassisObjectIdsIt->second.is_array()) {
                             for (const auto& chassisValue : chassisObjectIdsIt->second.as_array()) {

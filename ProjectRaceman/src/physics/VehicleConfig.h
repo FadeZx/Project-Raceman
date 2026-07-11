@@ -77,18 +77,6 @@ struct TransmissionConfig
     float shiftTime{0.25f};
 };
 
-struct DrivingAssistConfig
-{
-    bool enabled{true};
-    float steeringSmoothingRate{7.5f};
-    float fullSteerSpeed{8.0f};
-    float highSpeedSteerScale{0.32f};
-    float counterSteerStrength{0.18f};
-    bool tractionControl{true};
-    float tractionSlipLimit{0.18f};
-    float minTractionTorqueScale{0.35f};
-};
-
 struct VehicleChassisConfig
 {
     float mass{1'200.0f};
@@ -107,7 +95,6 @@ struct VehicleConfig
     DifferentialConfig differential{};
     EngineConfig engine{};
     TransmissionConfig transmission{};
-    DrivingAssistConfig assists{};
     std::vector<WheelConfig> wheels{};
 };
 

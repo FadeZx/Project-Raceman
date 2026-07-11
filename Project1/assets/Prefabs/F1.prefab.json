@@ -26,7 +26,7 @@
         {
           "type": "Vehicle",
           "enabled": true,
-          "configPath": "assets/car/F1.vehicle.json",
+          "configPath": "assets/car/Nascar/F1.vehicle.json",
           "inputProfileId": "default_vehicle",
           "preferredInputDevice": "Any",
           "preferredInputDeviceId": "",

@@ -34,9 +34,9 @@ struct VehicleTelemetry
     float throttle{0.0f};
     float brake{0.0f};
     float steering{0.0f};
-    int currentGear{1};
+    int currentGear{0};
     bool isReverse{false};
-    bool isNeutral{false};
+    bool isNeutral{true};
     Vector3 linearVelocity{};
     Vector3 linearAcceleration{};
     float longitudinalSpeed{0.0f};
@@ -106,10 +106,8 @@ private:
 
     void integrateEngine(float dt, float driveRatio, float averageWheelSpeed, float totalDriveTorqueApplied, int drivenWheels, float throttleTorque, float engineBrakeTorque);
     void integrateChassis(float dt, const Vector3 &totalForce, const Vector3 &totalTorque);
-    VehicleControlInput buildAssistedInput(float dt);
 
     VehicleConfig m_config;
-    VehicleControlInput m_rawInput{};
     VehicleControlInput m_input{};
     VehicleRigidBodyState m_body{};
     std::vector<WheelState> m_wheels;
@@ -126,7 +124,7 @@ private:
     float m_prevEngineRPM{0.0f};
 
     int m_currentGear{0};
-    bool m_isNeutral{false};
+    bool m_isNeutral{true};
     bool m_isReverse{false};
     float m_shiftCooldown{0.0f};
 };
