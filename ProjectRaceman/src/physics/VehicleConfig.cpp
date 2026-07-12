@@ -70,9 +70,9 @@ const char* transmissionModeToString(TransmissionConfig::Mode mode)
 {
     switch (mode)
     {
-    case TransmissionConfig::Mode::Manual: return "manual";
+    case TransmissionConfig::Mode::Manual: return "Manual";
     case TransmissionConfig::Mode::Automatic:
-    default: return "automatic";
+    default: return "Automatic";
     }
 }
 

@@ -499,7 +499,9 @@ std::filesystem::path FindProjectAssetAbsolutePath(const std::string& assetPath)
     return (std::filesystem::current_path() / assetPath).lexically_normal();
 }
 
-JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_t* outTriangleCount = nullptr) {
+JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider,
+                               std::uint64_t* outTriangleCount = nullptr,
+                               bool allowCooking = false) {
     if (collider.meshAssetPath.empty()) {
         return {};
     }
@@ -540,6 +542,16 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
             return shapeCache.shape;
         }
     }
+
+    if (!allowCooking) {
+        if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Missing baked cache: " + meshFilenameStr);
+        std::fprintf(stdout,
+                     "[CollisionCache] MISSING baked mesh collider cache for %s. Add or rebake the Mesh Collider in the editor.\n",
+                     collider.meshAssetPath.c_str());
+        std::fflush(stdout);
+        return {};
+    }
+
     if (s_activeBuildProgress) s_activeBuildProgress->SetTask("Cooking: " + meshFilenameStr);
 
     ImportedCollisionMesh collisionMesh;
@@ -672,7 +684,7 @@ JPH::ShapeRefC CreateMeshShape(const PhysicsColliderDesc& collider, std::uint64_
 
 JPH::ShapeRefC CreateBaseShape(const PhysicsColliderDesc& collider, const glm::vec3& scale) {
     if (collider.type == PhysicsColliderType::Mesh) {
-        JPH::ShapeRefC shape = CreateMeshShape(collider);
+        JPH::ShapeRefC shape = CreateMeshShape(collider, nullptr, true);
         if (!shape) {
             return {};
         }
@@ -867,7 +879,7 @@ bool PhysicsWorld::BakeCollisionShape(const PhysicsColliderDesc& collider, Colli
     }
 
     std::uint64_t triangleCount = 0;
-    const bool baked = static_cast<bool>(CreateMeshShape(collider, &triangleCount));
+    const bool baked = static_cast<bool>(CreateMeshShape(collider, &triangleCount, true));
     if (outInfo) {
         *outInfo = GetCollisionShapeCacheInfo(collider);
         if (baked && outInfo->triangleCount == 0) {
@@ -1320,6 +1332,20 @@ public:
         }
     }
 
+    void AddBodyForceAtPosition(const std::string& objectId, const glm::vec3& force, const glm::vec3& position) {
+        if (!physicsSystem_) {
+            return;
+        }
+        auto bodyIt = bodyIds_.find(objectId);
+        if (bodyIt != bodyIds_.end()) {
+            physicsSystem_->GetBodyInterface().AddForce(
+                bodyIt->second,
+                ToJoltVec3(force),
+                ToJoltRVec3(position),
+                JPH::EActivation::Activate);
+        }
+    }
+
     void MoveBodyKinematic(const std::string& objectId, const glm::vec3& position, const glm::vec3& rotationEuler, float deltaTime) {
         auto stateIt = states_.find(objectId);
         if (stateIt != states_.end()) {
@@ -1663,6 +1689,10 @@ void PhysicsWorld::MoveBodyKinematic(const std::string& objectId, const glm::vec
 
 void PhysicsWorld::AddBodyForce(const std::string& objectId, const glm::vec3& force) {
     impl_->AddBodyForce(objectId, force);
+}
+
+void PhysicsWorld::AddBodyForceAtPosition(const std::string& objectId, const glm::vec3& force, const glm::vec3& position) {
+    impl_->AddBodyForceAtPosition(objectId, force, position);
 }
 
 void PhysicsWorld::AddBodyImpulse(const std::string& objectId, const glm::vec3& impulse) {

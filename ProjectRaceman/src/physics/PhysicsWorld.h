@@ -226,6 +226,7 @@ public:
     void SetBodyAngularVelocity(const std::string& objectId, const glm::vec3& velocity);
     void MoveBodyKinematic(const std::string& objectId, const glm::vec3& position, const glm::vec3& rotationEuler, float deltaTime);
     void AddBodyForce(const std::string& objectId, const glm::vec3& force);
+    void AddBodyForceAtPosition(const std::string& objectId, const glm::vec3& force, const glm::vec3& position);
     void AddBodyImpulse(const std::string& objectId, const glm::vec3& impulse);
     void AddBodyTorque(const std::string& objectId, const glm::vec3& torque);
     void AddBodyAngularImpulse(const std::string& objectId, const glm::vec3& impulse);

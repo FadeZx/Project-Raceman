@@ -42,6 +42,7 @@
     ]
   },
   "transmission": {
+    "mode": "Automatic",
     "gearRatios": [2.90, 2.10, 1.55, 1.25, 1.05, 0.88],
     "finalDriveRatio": 3.73,
     "reverseRatio": -2.90,

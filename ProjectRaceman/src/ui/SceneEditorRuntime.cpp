@@ -175,9 +175,79 @@ void SceneEditor::StartRuntime() {
 void SceneEditor::UpdateRuntime(float deltaTime) {
     TickPlayModeLoading();
 
+    UpdateRuntimeSystems(deltaTime);
+}
+
+void SceneEditor::UpdateRuntimeSystems(float deltaTime) {
+    if (!scriptsRunning_ || deltaTime <= 0.0f) {
+        runtimeSimulationAccumulator_ = 0.0f;
+        return;
+    }
+
     UpdateScripts(deltaTime);
-    UpdateVehiclePhysics(deltaTime);
-    UpdatePhysics(deltaTime);
+
+    constexpr float kFixedStep = 1.0f / 60.0f;
+    constexpr float kMaxAccumulatedFrameTime = 0.10f;
+    constexpr int kMaxFixedStepsPerFrame = 4;
+
+    if (scriptsPaused_) {
+        runtimeSimulationAccumulator_ = 0.0f;
+        for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
+            runtimeVehicle.pendingShiftUp = false;
+            runtimeVehicle.pendingShiftDown = false;
+            runtimeVehicle.pendingNeutral = false;
+            runtimeVehicle.pendingReverse = false;
+        }
+    } else {
+        const bool routeInput = ShouldRouteInputToGame() && inputManager_ != nullptr;
+        for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
+            if (!routeInput ||
+                runtimeVehicle.objectIndex < 0 ||
+                runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
+                runtimeVehicle.pendingShiftUp = false;
+                runtimeVehicle.pendingShiftDown = false;
+                runtimeVehicle.pendingNeutral = false;
+                runtimeVehicle.pendingReverse = false;
+                continue;
+            }
+
+            const SceneObject& vehicleObject = objects_[runtimeVehicle.objectIndex];
+            const std::string profileId = vehicleObject.vehicle.inputProfileId.empty()
+                ? std::string("default_vehicle")
+                : vehicleObject.vehicle.inputProfileId;
+            runtimeVehicle.pendingShiftUp = runtimeVehicle.pendingShiftUp ||
+                inputManager_->WasActionPressedForProfile(profileId, "shiftUp",
+                    vehicleObject.vehicle.preferredInputDevice,
+                    vehicleObject.vehicle.preferredInputDeviceId);
+            runtimeVehicle.pendingShiftDown = runtimeVehicle.pendingShiftDown ||
+                inputManager_->WasActionPressedForProfile(profileId, "shiftDown",
+                    vehicleObject.vehicle.preferredInputDevice,
+                    vehicleObject.vehicle.preferredInputDeviceId);
+            runtimeVehicle.pendingNeutral = runtimeVehicle.pendingNeutral ||
+                inputManager_->WasActionPressedForProfile(profileId, "neutral",
+                    vehicleObject.vehicle.preferredInputDevice,
+                    vehicleObject.vehicle.preferredInputDeviceId);
+            runtimeVehicle.pendingReverse = runtimeVehicle.pendingReverse ||
+                inputManager_->WasActionPressedForProfile(profileId, "reverse",
+                    vehicleObject.vehicle.preferredInputDevice,
+                    vehicleObject.vehicle.preferredInputDeviceId);
+        }
+
+        runtimeSimulationAccumulator_ += (std::min)(deltaTime, kMaxAccumulatedFrameTime);
+
+        int fixedSteps = 0;
+        while (runtimeSimulationAccumulator_ >= kFixedStep && fixedSteps < kMaxFixedStepsPerFrame) {
+            UpdateVehiclePhysics(kFixedStep);
+            UpdatePhysics(kFixedStep);
+            runtimeSimulationAccumulator_ -= kFixedStep;
+            ++fixedSteps;
+        }
+
+        if (fixedSteps >= kMaxFixedStepsPerFrame && runtimeSimulationAccumulator_ >= kFixedStep) {
+            runtimeSimulationAccumulator_ = 0.0f;
+        }
+    }
+
     UpdateVehicles(deltaTime);
     UpdateCinemachine(deltaTime);
     UpdateAudio(deltaTime);
@@ -403,7 +473,25 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
 
         const bool canRaycast = physicsWorld_ != nullptr;
         if (canRaycast) {
-            runtimeVehicle.instance->setGroundRaycastCallback([this, &runtimeVehicle](const raceman::physics::Vector3 &origin,
+            std::unordered_set<std::string> ignoredVehicleObjectIds;
+            if (!runtimeVehicle.chassisBodyObjectId.empty()) {
+                ignoredVehicleObjectIds.insert(runtimeVehicle.chassisBodyObjectId);
+            }
+            const SceneObject& vehicleObject = objects_[runtimeVehicle.objectIndex];
+            ignoredVehicleObjectIds.insert(vehicleObject.id);
+            for (const std::string& chassisObjectId : vehicleObject.vehicle.chassisObjectIds) {
+                if (!chassisObjectId.empty()) {
+                    ignoredVehicleObjectIds.insert(chassisObjectId);
+                }
+            }
+            for (const VehicleWheelBinding& binding : vehicleObject.vehicle.wheelBindings) {
+                if (!binding.objectId.empty()) {
+                    ignoredVehicleObjectIds.insert(binding.objectId);
+                }
+            }
+
+            runtimeVehicle.instance->setGroundRaycastCallback([this, ignoredVehicleObjectIds = std::move(ignoredVehicleObjectIds)](
+                                                                                      const raceman::physics::Vector3 &origin,
                                                                                       const raceman::physics::Vector3 &direction,
                                                                                       float maxDistance,
                                                                                       raceman::physics::VehicleRaycastHit &outHit) {
@@ -413,22 +501,6 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
                 PhysicsRaycastHit sceneHit;
                 const glm::vec3 sceneOrigin = VehicleVectorToScene(origin);
                 const glm::vec3 sceneDirection = VehicleVectorToScene(direction);
-                std::unordered_set<std::string> ignoredVehicleObjectIds;
-                if (!runtimeVehicle.chassisBodyObjectId.empty()) {
-                    ignoredVehicleObjectIds.insert(runtimeVehicle.chassisBodyObjectId);
-                }
-                const SceneObject& vehicleObject = objects_[runtimeVehicle.objectIndex];
-                ignoredVehicleObjectIds.insert(vehicleObject.id);
-                for (const std::string& chassisObjectId : vehicleObject.vehicle.chassisObjectIds) {
-                    if (!chassisObjectId.empty()) {
-                        ignoredVehicleObjectIds.insert(chassisObjectId);
-                    }
-                }
-                for (const VehicleWheelBinding& binding : vehicleObject.vehicle.wheelBindings) {
-                    if (!binding.objectId.empty()) {
-                        ignoredVehicleObjectIds.insert(binding.objectId);
-                    }
-                }
                 if (!physicsWorld_->RaycastIgnoring(sceneOrigin, sceneDirection, maxDistance, sceneHit, ignoredVehicleObjectIds)) {
                     return false;
                 }
@@ -466,30 +538,14 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             : vehicleObject.vehicle.inputProfileId;
         const bool routeInput = ShouldRouteInputToGame() && inputManager_ != nullptr;
         constexpr float kDriveIntentInputThreshold = 0.20f;
-        const bool wantsForward = routeInput &&
-            inputManager_->GetAxisForProfile(profileId, "throttle",
-                vehicleObject.vehicle.preferredInputDevice,
-                vehicleObject.vehicle.preferredInputDeviceId) > kDriveIntentInputThreshold;
-        const bool wantsReverseOrBrake = routeInput &&
-            inputManager_->GetAxisForProfile(profileId, "brake",
-                vehicleObject.vehicle.preferredInputDevice,
-                vehicleObject.vehicle.preferredInputDeviceId) > kDriveIntentInputThreshold;
-        const bool manualShiftUpPressed = routeInput &&
-            inputManager_->WasActionPressedForProfile(profileId, "shiftUp",
-                vehicleObject.vehicle.preferredInputDevice,
-                vehicleObject.vehicle.preferredInputDeviceId);
-        const bool manualShiftDownPressed = routeInput &&
-            inputManager_->WasActionPressedForProfile(profileId, "shiftDown",
-                vehicleObject.vehicle.preferredInputDevice,
-                vehicleObject.vehicle.preferredInputDeviceId);
-        const bool manualNeutralPressed = routeInput &&
-            inputManager_->WasActionPressedForProfile(profileId, "neutral",
-                vehicleObject.vehicle.preferredInputDevice,
-                vehicleObject.vehicle.preferredInputDeviceId);
-        const bool manualReversePressed = routeInput &&
-            inputManager_->WasActionPressedForProfile(profileId, "reverse",
-                vehicleObject.vehicle.preferredInputDevice,
-                vehicleObject.vehicle.preferredInputDeviceId);
+        const bool manualShiftUpPressed = routeInput && runtimeVehicle.pendingShiftUp;
+        const bool manualShiftDownPressed = routeInput && runtimeVehicle.pendingShiftDown;
+        const bool manualNeutralPressed = routeInput && runtimeVehicle.pendingNeutral;
+        const bool manualReversePressed = routeInput && runtimeVehicle.pendingReverse;
+        runtimeVehicle.pendingShiftUp = false;
+        runtimeVehicle.pendingShiftDown = false;
+        runtimeVehicle.pendingNeutral = false;
+        runtimeVehicle.pendingReverse = false;
         raceman::physics::VehicleControlInput baseInput{};
         if (routeInput) {
             baseInput.steering = inputManager_->GetAxisForProfile(profileId, "steer",
@@ -551,67 +607,95 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             runtimeVehicle.smoothedKeyboardBrake = 0.0f;
         }
 
+        baseInput.steering = std::clamp(baseInput.steering, -1.0f, 1.0f);
+        baseInput.throttle = std::clamp(baseInput.throttle, 0.0f, 1.0f);
+        baseInput.brake = std::clamp(baseInput.brake, 0.0f, 1.0f);
+        baseInput.handbrake = std::clamp(baseInput.handbrake, 0.0f, 1.0f);
+
+        const float throttleAmount = baseInput.throttle;
+        const float brakeAmount = baseInput.brake;
+        const bool wantsForward = routeInput && throttleAmount > kDriveIntentInputThreshold;
+        const bool wantsReverseOrBrake = routeInput && brakeAmount > kDriveIntentInputThreshold;
+
         const raceman::physics::VehicleTelemetry& telemetry = runtimeVehicle.instance->getTelemetry();
         const float longitudinalSpeed = VehicleLongitudinalSpeed(currentRigidBodyState);
         constexpr float kReverseEngageSpeed = 0.75f;
-        constexpr float kReverseSwitchSpeed = 0.5f;
         const bool manualTransmission = runtimeVehicle.instance->getConfig().transmission.mode ==
             raceman::physics::TransmissionConfig::Mode::Manual;
 
         raceman::physics::VehicleControlInput input = baseInput;
         bool reverseActive = telemetry.isReverse;
+        runtimeVehicle.autoShiftCooldown = (std::max)(0.0f, runtimeVehicle.autoShiftCooldown - deltaTime);
 
         if (manualTransmission) {
-            if (manualShiftUpPressed) {
+            if (manualReversePressed) {
+                if (std::fabs(longitudinalSpeed) <= kReverseEngageSpeed) {
+                    if (telemetry.isReverse) {
+                        runtimeVehicle.instance->setNeutral(true);
+                    } else {
+                        runtimeVehicle.instance->setNeutral(false);
+                        runtimeVehicle.instance->setReverse(true);
+                    }
+                }
+            } else if (manualNeutralPressed) {
+                runtimeVehicle.instance->setNeutral(!telemetry.isNeutral);
+            } else if (manualShiftUpPressed) {
                 runtimeVehicle.instance->shiftUp();
-            }
-            if (manualShiftDownPressed) {
+            } else if (manualShiftDownPressed &&
+                !(telemetry.isNeutral && std::fabs(longitudinalSpeed) > kReverseEngageSpeed)) {
                 runtimeVehicle.instance->shiftDown();
             }
-            if (manualNeutralPressed) {
-                runtimeVehicle.instance->setNeutral(!telemetry.isNeutral);
-            }
-            if (manualReversePressed && std::fabs(longitudinalSpeed) <= kReverseEngageSpeed) {
-                if (telemetry.isReverse) {
-                    runtimeVehicle.instance->setNeutral(true);
-                } else {
-                    runtimeVehicle.instance->setNeutral(false);
-                    runtimeVehicle.instance->setReverse(true);
-                }
-            }
 
-            if (wantsForward && !wantsReverseOrBrake) {
-                input.throttle = (std::max)(input.throttle, 1.0f);
-            } else if (wantsReverseOrBrake && !wantsForward) {
-                input.brake = (std::max)(input.brake, 1.0f);
-            } else if (wantsForward && wantsReverseOrBrake) {
-                input.brake = (std::max)(input.brake, 1.0f);
+            if (wantsForward && wantsReverseOrBrake) {
+                input.throttle = 0.0f;
             }
         } else {
-            if (wantsForward && !wantsReverseOrBrake && reverseActive && std::fabs(longitudinalSpeed) <= kReverseSwitchSpeed) {
+            if (wantsForward && wantsReverseOrBrake) {
+                input.throttle = 0.0f;
+                input.brake = brakeAmount;
+            } else if (wantsForward) {
                 reverseActive = false;
-            } else if (wantsReverseOrBrake && !wantsForward) {
+                if (telemetry.isNeutral || telemetry.isReverse) {
+                    runtimeVehicle.instance->setForwardGear(0);
+                    runtimeVehicle.autoShiftCooldown = runtimeVehicle.instance->getConfig().transmission.shiftTime;
+                } else {
+                    runtimeVehicle.instance->setReverse(false);
+                    runtimeVehicle.instance->setNeutral(false);
+                }
+                input.throttle = throttleAmount;
+                input.brake = 0.0f;
+            } else if (wantsReverseOrBrake) {
                 if (reverseActive || longitudinalSpeed <= kReverseEngageSpeed) {
                     reverseActive = true;
+                    runtimeVehicle.instance->setNeutral(false);
+                    input.throttle = brakeAmount;
+                    input.brake = 0.0f;
+                } else {
+                    input.throttle = 0.0f;
+                    input.brake = brakeAmount;
                 }
-            } else if (wantsForward && !wantsReverseOrBrake) {
-                reverseActive = false;
             }
 
             runtimeVehicle.instance->setReverse(reverseActive);
 
-            if (wantsForward && !wantsReverseOrBrake) {
-                runtimeVehicle.instance->setNeutral(false);
-                input.throttle = (std::max)(input.throttle, 1.0f);
-            } else if (wantsReverseOrBrake && !wantsForward) {
-                if (reverseActive) {
-                    runtimeVehicle.instance->setNeutral(false);
-                    input.throttle = (std::max)(input.throttle, 1.0f);
-                } else {
-                    input.brake = (std::max)(input.brake, 1.0f);
+            const auto& vehicleConfig = runtimeVehicle.instance->getConfig();
+            const int gearCount = static_cast<int>(vehicleConfig.transmission.gearRatios.size());
+            if (wantsForward &&
+                !wantsReverseOrBrake &&
+                !reverseActive &&
+                gearCount > 1 &&
+                runtimeVehicle.autoShiftCooldown <= 0.0f) {
+                const raceman::physics::VehicleTelemetry& shiftTelemetry = runtimeVehicle.instance->getTelemetry();
+                const int currentGear = (shiftTelemetry.currentGear <= 0) ? 1 : shiftTelemetry.currentGear;
+                const float upshiftRPM = vehicleConfig.engine.redlineRPM * 0.88f;
+                const float downshiftRPM = (std::max)(vehicleConfig.engine.idleRPM * 1.35f, vehicleConfig.engine.redlineRPM * 0.38f);
+                if (shiftTelemetry.engineRPM >= upshiftRPM && currentGear < gearCount) {
+                    runtimeVehicle.instance->setForwardGear(currentGear);
+                    runtimeVehicle.autoShiftCooldown = vehicleConfig.transmission.shiftTime;
+                } else if (shiftTelemetry.engineRPM <= downshiftRPM && currentGear > 1) {
+                    runtimeVehicle.instance->setForwardGear(currentGear - 2);
+                    runtimeVehicle.autoShiftCooldown = vehicleConfig.transmission.shiftTime;
                 }
-            } else if (wantsForward && wantsReverseOrBrake) {
-                input.brake = (std::max)(input.brake, 1.0f);
             }
         }
 
@@ -627,12 +711,26 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         }
 
         if (hasPhysicsChassis) {
-            physicsWorld_->AddBodyForce(
-                runtimeVehicle.chassisBodyObjectId,
-                VehicleVectorToScene(runtimeVehicle.instance->getPendingChassisForce()));
-            physicsWorld_->AddBodyTorque(
-                runtimeVehicle.chassisBodyObjectId,
-                VehiclePseudoVectorToScene(runtimeVehicle.instance->getPendingChassisTorque()));
+            const raceman::physics::VehicleTelemetry& appliedTelemetry = runtimeVehicle.instance->getTelemetry();
+            bool appliedWheelForces = false;
+            for (const raceman::physics::WheelTelemetry& wheel : appliedTelemetry.wheels) {
+                if (raceman::physics::dot(wheel.force, wheel.force) <= 0.000001f) {
+                    continue;
+                }
+                physicsWorld_->AddBodyForceAtPosition(
+                    runtimeVehicle.chassisBodyObjectId,
+                    VehicleVectorToScene(wheel.force),
+                    VehicleVectorToScene(wheel.contactPosition));
+                appliedWheelForces = true;
+            }
+            if (!appliedWheelForces) {
+                physicsWorld_->AddBodyForce(
+                    runtimeVehicle.chassisBodyObjectId,
+                    VehicleVectorToScene(runtimeVehicle.instance->getPendingChassisForce()));
+                physicsWorld_->AddBodyTorque(
+                    runtimeVehicle.chassisBodyObjectId,
+                    VehiclePseudoVectorToScene(runtimeVehicle.instance->getPendingChassisTorque()));
+            }
         }
     }
 
@@ -740,6 +838,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
     if (scriptsRunning_ == running) {
         return;
     }
+    runtimeSimulationAccumulator_ = 0.0f;
     // Don't start a new build while one is already in progress.
     if (running && playModeLoad_.phase != PlayModeLoadState::Phase::Idle) {
         return;
@@ -1072,6 +1171,7 @@ void SceneEditor::SetScriptsPaused(bool paused) {
     }
 
     scriptsPaused_ = paused;
+    runtimeSimulationAccumulator_ = 0.0f;
     if (!scriptsPaused_) {
         activeViewport_ = SceneEditorActiveViewport::Game;
     }
@@ -1243,7 +1343,7 @@ void SceneEditor::RenderPlayModeLoadingPopup() {
                 const int total = prog->stepsTotal.load();
                 const float fraction = (total > 0) ? static_cast<float>(done) / static_cast<float>(total) : 0.0f;
 
-                ImGui::TextUnformatted("Baking collision geometry...");
+                ImGui::TextUnformatted("Preparing or baking collision geometry...");
 
                 char label[32];
                 std::snprintf(label, sizeof(label), "%d / %d", done, (std::max)(total, 1));

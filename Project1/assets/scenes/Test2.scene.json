@@ -73,7 +73,7 @@
           "followOffset": [-1.84774e-06, 2.005, -3.932],
           "pitchOffset": 0,
           "yawOffset": 0.500002,
-          "positionDamping": 55,
+          "positionDamping": 20,
           "rotationDamping": 20
         },
         {
@@ -2660,7 +2660,7 @@
           "assetId": "assets/car/formula 1/F1_chasis.fbx#0",
           "meshIndex": 0,
           "importedMaterialName": "Mat",
-          "diffuseTexturePath": "Substance SpecGloss/Right ones/formula1_DefaultMaterial_Diffuse.png",
+          "diffuseTexturePath": "",
           "pivotOffset": [-0.683868, 53.4748, -0.00106049]
         },
         {
@@ -17080,6 +17080,6 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_8"],
+  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_1635", "gameobject_7", "gameobject_11", "gameobject_8"],
   "inspectorComponentsClosed": ["mesh_393|Collider", "gameobject_11|Vehicle", "camera_1|Cinemachine"]
 }

@@ -215,11 +215,16 @@ private:
     void TickPlayModeLoading();
     void RenderPlayModeLoadingPopup();
     void StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs, std::string title);
+    bool TryBuildMeshColliderBakeJob(const SceneObject& object, PhysicsColliderDesc& outCollider, std::string& outLabel) const;
+    void StartMeshColliderAutoBake(const SceneObject& object, const std::string& title);
+    void StartMeshColliderAutoBakeForIndices(const std::vector<int>& objectIndices, const std::string& title);
+    void StartSelectedMeshColliderAutoBake(const std::string& title);
     void TickCollisionBake();
     void RenderCollisionBakeInlineStatus();
     void TickMaterialExtract();
     void RenderMaterialExtractInlineStatus();
     void HandleConsoleCommand(const std::string& command);
+    void UpdateRuntimeSystems(float deltaTime);
     void UpdateGizmo(Renderer& renderer);
     void UpdateImGuizmo();
     void SubmitGizmo(Renderer& renderer);
@@ -419,6 +424,7 @@ private:
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
     bool scriptsRunning_{false};
     bool scriptsPaused_{false};
+    float runtimeSimulationAccumulator_{0.0f};
     bool playModeScriptAssemblyReady_{false};
     bool showCreateScriptPopup_{false};
     char createScriptNameBuffer_[128]{};
@@ -453,6 +459,11 @@ private:
         float smoothedKeyboardSteering{0.0f};
         float smoothedKeyboardThrottle{0.0f};
         float smoothedKeyboardBrake{0.0f};
+        bool pendingShiftUp{false};
+        bool pendingShiftDown{false};
+        bool pendingNeutral{false};
+        bool pendingReverse{false};
+        float autoShiftCooldown{0.0f};
         std::unique_ptr<physics::VehiclePhysics> instance;
     };
     std::vector<RuntimeVehicleInstance> runtimeVehicles_;

@@ -121,6 +121,21 @@ void VehiclePhysics::shiftDown()
     }
 }
 
+void VehiclePhysics::setForwardGear(int gearIndex)
+{
+    if (m_config.transmission.gearRatios.empty())
+    {
+        m_isNeutral = true;
+        m_isReverse = false;
+        m_currentGear = 0;
+        return;
+    }
+
+    m_isNeutral = false;
+    m_isReverse = false;
+    m_currentGear = std::clamp(gearIndex, 0, static_cast<int>(m_config.transmission.gearRatios.size()) - 1);
+}
+
 void VehiclePhysics::setNeutral(bool neutral)
 {
     m_isNeutral = neutral;
@@ -199,8 +214,9 @@ void VehiclePhysics::update(float dt)
 
     Vector3 previousVelocity = m_body.linearVelocity;
 
+    const float idleFloorRPM = std::max(m_config.engine.stallRPM, m_config.engine.idleRPM);
     float engineRPM = m_engineAngularVelocity * (60.0f / kTwoPi);
-    engineRPM = std::max(engineRPM, m_config.engine.stallRPM);
+    engineRPM = clamp(engineRPM, idleFloorRPM, m_config.engine.redlineRPM);
     m_prevEngineRPM = engineRPM;
     float baseEngineTorque = sampleTorqueCurve(m_config.engine, engineRPM);
     float throttleTorque = baseEngineTorque * m_input.throttle;
@@ -253,12 +269,19 @@ void VehiclePhysics::update(float dt)
     }
 
     float perWheelDriveTorque = (drivenWheelCount > 0) ? (totalDriveTorque / drivenWheelCount) : 0.0f;
+    float totalEngineBrakeWheelTorque = 0.0f;
+    if (canControl && std::abs(driveRatio) > kEpsilon && drivenWheelCount > 0)
+    {
+        totalEngineBrakeWheelTorque = engineBrake * std::abs(driveRatio) * clutchFactor;
+    }
+    const float perWheelEngineBrakeTorque = (drivenWheelCount > 0) ? (totalEngineBrakeWheelTorque / drivenWheelCount) : 0.0f;
 
     Vector3 totalForce{0.0f, 0.0f, 0.0f};
     Vector3 totalTorque{0.0f, 0.0f, 0.0f};
 
     float accumulatedWheelSpeed = 0.0f;
     float totalDriveTorqueApplied = 0.0f;
+    int groundedDrivenWheelCount = 0;
 
     m_lastTelemetry.wheels.clear();
     m_lastTelemetry.wheels.resize(m_wheels.size());
@@ -277,6 +300,7 @@ void VehiclePhysics::update(float dt)
         float suspensionLength = suspension.restLength;
         float previousCompression = wheel.compression;
         Vector3 contactNormal = m_body.transform.rotation.rotate({0.0f, 0.0f, 1.0f});
+        Vector3 contactPosition = mountWorld + m_body.transform.rotation.rotate({0.0f, 0.0f, -suspension.restLength});
         if (m_groundRaycast)
         {
             constexpr float kRayPadding = 0.25f;
@@ -291,6 +315,7 @@ void VehiclePhysics::update(float dt)
                 suspensionLength = clamp(hit.distance - wheel.config.radius, 0.0f, suspension.restLength);
                 wheel.compression = clamp(suspension.restLength - suspensionLength, 0.0f, suspension.restLength);
                 wheel.compressionVelocity = (wheel.compression - previousCompression) / dt;
+                contactPosition = hit.position;
 
                 float springForce = wheel.compression * suspension.springRate;
                 float damping = wheel.compressionVelocity >= 0.0f ? wheel.compressionVelocity * suspension.compressionDamping : wheel.compressionVelocity * suspension.reboundDamping;
@@ -310,6 +335,7 @@ void VehiclePhysics::update(float dt)
             suspensionLength = clamp(unsprungLength, 0.0f, suspension.restLength);
             wheel.compression = clamp(suspension.restLength - suspensionLength, 0.0f, suspension.restLength);
             wheel.compressionVelocity = (wheel.compression - previousCompression) / dt;
+            contactPosition = {mountWorld.x, mountWorld.y, 0.0f};
 
             float springForce = wheel.compression * suspension.springRate;
             float damping = wheel.compressionVelocity >= 0.0f ? wheel.compressionVelocity * suspension.compressionDamping : wheel.compressionVelocity * suspension.reboundDamping;
@@ -345,7 +371,8 @@ void VehiclePhysics::update(float dt)
 
         float brakeInput = wheel.config.hasBrake ? m_input.brake : 0.0f;
         float handbrakeInput = (!isFront) ? m_input.handbrake : 0.0f;
-        wheel.brakeTorque = (brakeInput + handbrakeInput) * wheel.config.maxBrakingTorque;
+        const float brakeDemand = clamp(brakeInput + handbrakeInput, 0.0f, 1.0f);
+        wheel.brakeTorque = brakeDemand * wheel.config.maxBrakingTorque;
 
         float wheelCircumferenceSpeed = wheel.angularVelocity * wheel.config.radius;
         float slipRatio = 0.0f;
@@ -354,7 +381,6 @@ void VehiclePhysics::update(float dt)
             std::fabs(perWheelDriveTorque) <= kEpsilon;
         const bool brakeHoldingAtStandstill =
             wheel.brakeTorque > 0.0f &&
-            neutralFreeRolling &&
             std::fabs(longitudinalSpeed) < 0.10f &&
             std::fabs(wheelCircumferenceSpeed) < 0.10f;
         if (neutralFreeRolling)
@@ -388,20 +414,82 @@ void VehiclePhysics::update(float dt)
 
         float maxGripForce = wheel.normalForce * wheel.config.gripFactor;
         float longitudinalForce = clamp(slipRatio * wheel.config.longitudinalStiffness, -maxGripForce, maxGripForce);
-        if (neutralFreeRolling && wheel.brakeTorque > 0.0f)
+        if (wheel.normalForce > 0.0f)
         {
+            constexpr float kRollingResistanceCoefficient = 0.018f;
+            const float rollingResistanceForce = wheel.normalForce * kRollingResistanceCoefficient;
+            if (std::fabs(longitudinalSpeed) > 0.05f)
+            {
+                longitudinalForce -= sign(longitudinalSpeed) * rollingResistanceForce;
+            }
+            else if (m_input.throttle < 0.05f && wheel.brakeTorque <= 0.0f)
+            {
+                const Vector3 gravity{0.0f, 0.0f, -kGravity};
+                const Vector3 tangentGravity = gravity - contactNormal * dot(gravity, contactNormal);
+                const float wheelMassShare = m_config.chassis.mass / std::max(1.0f, static_cast<float>(m_wheels.size()));
+                const float slopeForce = dot(tangentGravity, forward) * wheelMassShare;
+                const float staticHoldLimit = wheel.normalForce * 0.08f;
+                longitudinalForce += clamp(-slopeForce, -staticHoldLimit, staticHoldLimit);
+            }
+        }
+        if (wheel.brakeTorque > 0.0f)
+        {
+            const float brakeForceLimit = clamp(wheel.brakeTorque / std::max(kEpsilon, wheel.config.radius), 0.0f, maxGripForce);
             if (std::fabs(longitudinalSpeed) < 0.10f)
             {
-                longitudinalForce = 0.0f;
+                const float holdMassShare = m_config.chassis.mass / std::max(1.0f, static_cast<float>(m_wheels.size()));
+                longitudinalForce = clamp(
+                    -(longitudinalSpeed / std::max(kEpsilon, dt)) * holdMassShare,
+                    -brakeForceLimit,
+                    brakeForceLimit);
             }
             else
             {
-                const float brakeForce = wheel.brakeTorque / std::max(kEpsilon, wheel.config.radius);
-                longitudinalForce = -sign(longitudinalSpeed) * clamp(brakeForce, 0.0f, maxGripForce);
+                longitudinalForce = -sign(longitudinalSpeed) * brakeForceLimit;
             }
         }
         float slipAngle = std::atan2(lateralSpeed, std::fabs(longitudinalSpeed) + 0.1f);
         float lateralForce = clamp(-slipAngle * wheel.config.lateralStiffness, -maxGripForce, maxGripForce);
+        if (wheel.normalForce > 0.0f &&
+            m_input.throttle < 0.05f &&
+            wheel.brakeTorque <= 0.0f &&
+            std::fabs(lateralSpeed) < 0.10f)
+        {
+            const Vector3 gravity{0.0f, 0.0f, -kGravity};
+            const Vector3 tangentGravity = gravity - contactNormal * dot(gravity, contactNormal);
+            const float wheelMassShare = m_config.chassis.mass / std::max(1.0f, static_cast<float>(m_wheels.size()));
+            const float slopeForce = dot(tangentGravity, right) * wheelMassShare;
+            const float staticHoldLimit = wheel.normalForce * 0.08f;
+            lateralForce += clamp(-slopeForce, -staticHoldLimit, staticHoldLimit);
+        }
+        const float combinedTireForce = std::sqrt(longitudinalForce * longitudinalForce + lateralForce * lateralForce);
+        if (combinedTireForce > maxGripForce && combinedTireForce > kEpsilon)
+        {
+            const float gripScale = maxGripForce / combinedTireForce;
+            longitudinalForce *= gripScale;
+            lateralForce *= gripScale;
+        }
+        const float tireForceSmoothing = clamp(dt * (wheel.brakeTorque > 0.0f ? 30.0f : 18.0f), 0.0f, 1.0f);
+        wheel.smoothedLongitudinalForce += (longitudinalForce - wheel.smoothedLongitudinalForce) * tireForceSmoothing;
+        wheel.smoothedLateralForce += (lateralForce - wheel.smoothedLateralForce) * tireForceSmoothing;
+        longitudinalForce = wheel.smoothedLongitudinalForce;
+        lateralForce = wheel.smoothedLateralForce;
+        const float smoothedCombinedTireForce = std::sqrt(longitudinalForce * longitudinalForce + lateralForce * lateralForce);
+        if (maxGripForce <= kEpsilon)
+        {
+            wheel.smoothedLongitudinalForce = 0.0f;
+            wheel.smoothedLateralForce = 0.0f;
+            longitudinalForce = 0.0f;
+            lateralForce = 0.0f;
+        }
+        else if (smoothedCombinedTireForce > maxGripForce)
+        {
+            const float gripScale = maxGripForce / smoothedCombinedTireForce;
+            wheel.smoothedLongitudinalForce *= gripScale;
+            wheel.smoothedLateralForce *= gripScale;
+            longitudinalForce = wheel.smoothedLongitudinalForce;
+            lateralForce = wheel.smoothedLateralForce;
+        }
 
         wheel.contactForce = forward * longitudinalForce + right * lateralForce + up * wheel.normalForce;
         totalForce += wheel.contactForce;
@@ -410,16 +498,23 @@ void VehiclePhysics::update(float dt)
         // Only drive wheels that have ground contact — prevents wheels spinning
         // to unrealistic RPM while airborne then launching the car on landing.
         wheel.driveTorque = (wheel.config.driven && wheel.normalForce > 0.0f) ? perWheelDriveTorque : 0.0f;
-        if (wheel.config.driven)
+        if (wheel.config.driven && wheel.normalForce > 0.0f)
         {
             totalDriveTorqueApplied += wheel.driveTorque;
             accumulatedWheelSpeed += wheel.angularVelocity;
+            ++groundedDrivenWheelCount;
         }
 
         float resistanceTorque = longitudinalForce * wheel.config.radius;
         float rollingResistance = 0.015f * wheel.normalForce * sign(wheel.angularVelocity);
+        float engineBrakeWheelTorque = (wheel.config.driven && wheel.normalForce > 0.0f) ? perWheelEngineBrakeTorque : 0.0f;
+        float engineBrakeDirection = sign(wheel.angularVelocity);
+        if (engineBrakeDirection == 0.0f)
+        {
+            engineBrakeDirection = sign(longitudinalSpeed);
+        }
 
-        float netWheelTorque = wheel.driveTorque - resistanceTorque - rollingResistance;
+        float netWheelTorque = wheel.driveTorque - resistanceTorque - rollingResistance - engineBrakeWheelTorque * engineBrakeDirection;
         float angularAcceleration = netWheelTorque / std::max(0.1f, wheel.config.inertia);
         wheel.angularVelocity += angularAcceleration * dt;
         if (wheel.brakeTorque > 0.0f)
@@ -453,6 +548,7 @@ void VehiclePhysics::update(float dt)
         telemetry.brakeTorque = wheel.brakeTorque;
         telemetry.normalForce = wheel.normalForce;
         telemetry.suspensionTravel = wheel.compression;
+        telemetry.contactPosition = contactPosition;
         telemetry.force = wheel.contactForce;
         m_lastTelemetry.wheels[i] = telemetry;
     }
@@ -460,6 +556,18 @@ void VehiclePhysics::update(float dt)
     if (!m_externalBodySimulation)
     {
         totalForce += Vector3{0.0f, 0.0f, -m_config.chassis.mass * kGravity};
+    }
+    const Vector3 planarVelocity{m_body.linearVelocity.x, m_body.linearVelocity.y, 0.0f};
+    const float planarSpeed = length(planarVelocity);
+    if (planarSpeed > 0.05f)
+    {
+        const Vector3 dragDirection = planarVelocity / planarSpeed;
+        constexpr float kAeroDragCoefficient = 5.0f;
+        constexpr float kCoastDragPerMass = 0.035f;
+        const float dragMagnitude =
+            kAeroDragCoefficient * planarSpeed * planarSpeed +
+            kCoastDragPerMass * m_config.chassis.mass * planarSpeed;
+        totalForce -= dragDirection * dragMagnitude;
     }
 
     m_pendingChassisForce = totalForce;
@@ -469,8 +577,8 @@ void VehiclePhysics::update(float dt)
         integrateChassis(dt, totalForce, totalTorque);
     }
 
-    float averageWheelSpeed = (drivenWheelCount > 0) ? (accumulatedWheelSpeed / drivenWheelCount) : 0.0f;
-    integrateEngine(dt, driveRatio, averageWheelSpeed, totalDriveTorqueApplied, drivenWheelCount, throttleTorque, engineBrake);
+    float averageWheelSpeed = (groundedDrivenWheelCount > 0) ? (accumulatedWheelSpeed / groundedDrivenWheelCount) : 0.0f;
+    integrateEngine(dt, driveRatio, averageWheelSpeed, totalDriveTorqueApplied, groundedDrivenWheelCount, throttleTorque, engineBrake);
 
     m_lastTelemetry.engineRPM = m_prevEngineRPM;
     m_lastTelemetry.throttle = m_input.throttle;
@@ -500,7 +608,9 @@ void VehiclePhysics::integrateEngine(float dt, float driveRatio, float averageWh
 
     if (drivenWheels > 0 && std::abs(driveRatio) > kEpsilon)
     {
-        float targetAngularVelocity = std::abs(driveRatio) * averageWheelSpeed;
+        const float wheelSpeedSmoothing = clamp(dt * 8.0f, 0.0f, 1.0f);
+        m_smoothedDrivenWheelAngularVelocity += (averageWheelSpeed - m_smoothedDrivenWheelAngularVelocity) * wheelSpeedSmoothing;
+        float targetAngularVelocity = std::abs(driveRatio * m_smoothedDrivenWheelAngularVelocity);
         float slipCorrection = (targetAngularVelocity - m_engineAngularVelocity) * (1.0f - m_input.clutch) * 5.0f;
         netTorque += slipCorrection * m_config.engine.inertia;
     }
@@ -509,7 +619,8 @@ void VehiclePhysics::integrateEngine(float dt, float driveRatio, float averageWh
     m_engineAngularVelocity = std::max(0.0f, m_engineAngularVelocity + angularAcceleration * dt);
 
     float rpm = m_engineAngularVelocity * (60.0f / kTwoPi);
-    rpm = clamp(rpm, m_config.engine.stallRPM, m_config.engine.redlineRPM);
+    const float idleFloorRPM = std::max(m_config.engine.stallRPM, m_config.engine.idleRPM);
+    rpm = clamp(rpm, idleFloorRPM, m_config.engine.redlineRPM);
     m_engineAngularVelocity = rpm * (kTwoPi / 60.0f);
     m_prevEngineRPM = rpm;
 }

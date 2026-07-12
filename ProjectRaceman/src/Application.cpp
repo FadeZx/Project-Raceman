@@ -1023,13 +1023,16 @@ void Application::Render() {
     };
 
     if (sceneEditor_) {
-        const bool renderSceneViewport = !sceneEditor_->ShouldRouteInputToGame();
+        const bool runMode = sceneEditor_->IsRunMode();
+        const bool renderSceneViewport = runMode
+            ? sceneEditor_->IsSceneViewportActiveForEditorControls()
+            : !sceneEditor_->ShouldRouteInputToGame();
         if (renderSceneViewport) {
             renderScenePass(sceneEditor_->GetSceneRenderViewport(cfg.width, cfg.height));
         }
-        const bool renderGameViewport = sceneEditor_->IsRunMode()
-            || sceneEditor_->ShouldRouteInputToGame()
-            || sceneEditor_->ShouldRenderGameViewportInEditMode();
+        const bool renderGameViewport = runMode
+            ? !renderSceneViewport
+            : (sceneEditor_->ShouldRouteInputToGame() || sceneEditor_->ShouldRenderGameViewportInEditMode());
         if (renderGameViewport) {
             renderGamePass(sceneEditor_->GetGameRenderViewport(cfg.width, cfg.height));
             sceneEditor_->MarkGameViewportRendered();

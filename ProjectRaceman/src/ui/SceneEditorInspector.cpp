@@ -2175,6 +2175,9 @@ void SceneEditor::RenderInspectorPanel() {
                             colliderEditMode_ = false;
                         }
                         if (onDirty_) onDirty_();
+                        if (newColliderType == SceneColliderType::Mesh) {
+                            StartMeshColliderAutoBake(obj, "Baking mesh collider cache");
+                        }
                     }
 
                     const SceneColliderType activeColliderType = GetActiveColliderType(obj);
@@ -2355,6 +2358,7 @@ void SceneEditor::RenderInspectorPanel() {
                             PushUndoState();
                             obj.meshCollider.mode = meshMode;
                             if (onDirty_) onDirty_();
+                            StartMeshColliderAutoBake(obj, "Baking mesh collider cache");
                         }
 
                         ImGui::TextDisabled("Build Quality: Quality (fixed)");
@@ -3718,6 +3722,9 @@ void SceneEditor::RenderMultiSelectionInspector() {
                 PushUndoState();
                 forEachSelected([&](SceneObject& object) { SetActiveColliderType(object, newColliderType); });
                 markDirty();
+                if (newColliderType == SceneColliderType::Mesh) {
+                    StartSelectedMeshColliderAutoBake("Baking mesh collider cache");
+                }
             }
 
             const SceneColliderType resolvedType = sameColliderType ? activeColliderType : newColliderType;
@@ -3855,6 +3862,7 @@ void SceneEditor::RenderMultiSelectionInspector() {
                     PushUndoState();
                     forEachSelected([&](SceneObject& object) { object.meshCollider.mode = meshMode; });
                     markDirty();
+                    StartSelectedMeshColliderAutoBake("Baking mesh collider cache");
                 }
                 ImGui::TextDisabled("Build Quality: Quality (fixed)");
                 ImGui::TextDisabled("Mesh colliders use each object's Mesh Filter source.");

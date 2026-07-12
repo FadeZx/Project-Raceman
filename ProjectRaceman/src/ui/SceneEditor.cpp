@@ -1003,12 +1003,7 @@ void SceneEditor::RenderUI(float deltaTime) {
 
     timingStart = glfwGetTime();
     if (scriptsRunning_) {
-        UpdateScripts(deltaTime);
-        UpdateVehiclePhysics(deltaTime);
-        UpdatePhysics(deltaTime);
-        UpdateVehicles(deltaTime);
-        UpdateCinemachine(deltaTime);
-        UpdateAudio(deltaTime);
+        UpdateRuntimeSystems(deltaTime);
     } else {
         PreviewCinemachineInEditor();
     }
@@ -1876,10 +1871,98 @@ bool SceneEditor::PasteInspectorComponentFromClipboard(const std::vector<int>& t
     if (onDirty_) {
         onDirty_();
     }
+    if (targetType == SceneInspectorComponentType::Collider && componentClipboard_.sourceObject.hasMeshCollider) {
+        StartMeshColliderAutoBakeForIndices(validTargets, "Baking mesh collider cache");
+    }
     if (console_) {
         console_->AddLog(std::string("Pasted ") + InspectorComponentTypeToString(targetType) + " component.");
     }
     return true;
+}
+
+bool SceneEditor::TryBuildMeshColliderBakeJob(const SceneObject& object,
+                                              PhysicsColliderDesc& outCollider,
+                                              std::string& outLabel) const {
+    if (!object.hasMeshCollider || !object.hasMeshFilter || object.meshFilter.sourcePath.empty()) {
+        return false;
+    }
+
+    PhysicsColliderDesc collider;
+    collider.type = PhysicsColliderType::Mesh;
+    collider.meshAssetPath = object.meshFilter.sourcePath;
+    collider.meshName = object.meshFilter.meshName;
+    collider.meshIndex = object.meshFilter.meshIndex;
+    collider.meshPivotOffset = object.meshFilter.pivotOffset;
+    collider.meshMode = object.meshCollider.mode;
+    collider.meshBuildQuality = object.meshCollider.buildQuality;
+
+    const CollisionShapeCacheInfo cacheInfo = PhysicsWorld::GetCollisionShapeCacheInfo(collider);
+    if (cacheInfo.status == CollisionShapeCacheStatus::Ready) {
+        return false;
+    }
+
+    outCollider = std::move(collider);
+    outLabel = object.meshFilter.meshName.empty()
+        ? fs::path(object.meshFilter.sourcePath).filename().string()
+        : object.meshFilter.meshName;
+    if (outLabel.empty()) {
+        outLabel = object.name.empty() ? std::string("Mesh Collider") : object.name;
+    }
+    return true;
+}
+
+void SceneEditor::StartMeshColliderAutoBake(const SceneObject& object, const std::string& title) {
+    PhysicsColliderDesc collider;
+    std::string label;
+    if (!TryBuildMeshColliderBakeJob(object, collider, label)) {
+        return;
+    }
+
+    std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs;
+    jobs.emplace_back(std::move(collider), std::move(label));
+    StartCollisionBake(std::move(jobs), title);
+}
+
+void SceneEditor::StartMeshColliderAutoBakeForIndices(const std::vector<int>& objectIndices, const std::string& title) {
+    if (objectIndices.empty()) {
+        return;
+    }
+
+    std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs;
+    std::unordered_set<std::string> seen;
+    for (int index : objectIndices) {
+        if (index < 0 || index >= static_cast<int>(objects_.size())) {
+            continue;
+        }
+
+        PhysicsColliderDesc collider;
+        std::string label;
+        if (!TryBuildMeshColliderBakeJob(objects_[index], collider, label)) {
+            continue;
+        }
+
+        char pivot[96];
+        std::snprintf(pivot, sizeof(pivot), "%.4f,%.4f,%.4f",
+                      collider.meshPivotOffset.x,
+                      collider.meshPivotOffset.y,
+                      collider.meshPivotOffset.z);
+        const std::string key = collider.meshAssetPath + "#" +
+                                std::to_string(collider.meshIndex) + "#" +
+                                std::to_string(static_cast<int>(collider.meshMode)) + "#" +
+                                std::to_string(static_cast<int>(collider.meshBuildQuality)) + "#" +
+                                pivot;
+        if (!seen.insert(key).second) {
+            continue;
+        }
+        jobs.emplace_back(std::move(collider), std::move(label));
+    }
+
+    StartCollisionBake(std::move(jobs), title);
+}
+
+void SceneEditor::StartSelectedMeshColliderAutoBake(const std::string& title) {
+    NormalizeSelection();
+    StartMeshColliderAutoBakeForIndices(selectedIndices_, title);
 }
 
 void SceneEditor::CopySelectedObjectsToClipboard() {

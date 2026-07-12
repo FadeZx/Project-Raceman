@@ -25,6 +25,7 @@ struct WheelTelemetry
     float brakeTorque{0.0f};
     float normalForce{0.0f};
     float suspensionTravel{0.0f};
+    Vector3 contactPosition{};
     Vector3 force{};
 };
 
@@ -84,6 +85,7 @@ public:
 
     void shiftUp();
     void shiftDown();
+    void setForwardGear(int gearIndex);
     void setNeutral(bool neutral);
     void setReverse(bool reverse);
 
@@ -100,6 +102,8 @@ private:
         float driveTorque{0.0f};
         float brakeTorque{0.0f};
         Vector3 contactForce{};
+        float smoothedLongitudinalForce{0.0f};
+        float smoothedLateralForce{0.0f};
         float normalForce{0.0f};
         Transform transform{};
     };
@@ -122,6 +126,7 @@ private:
 
     float m_engineAngularVelocity{0.0f};
     float m_prevEngineRPM{0.0f};
+    float m_smoothedDrivenWheelAngularVelocity{0.0f};
 
     int m_currentGear{0};
     bool m_isNeutral{true};
