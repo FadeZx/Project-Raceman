@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -91,6 +92,25 @@ enum class SceneEditorActiveViewport {
     Scene,
     Game
 };
+
+enum class TrackSurfaceType {
+    Asphalt,
+    Dirt,
+    Grass,
+    Curb,
+    Wall,
+    Custom
+};
+
+inline constexpr int kTrackSurfaceTypeCount = 6;
+
+struct ColliderSurfaceConfig {
+    TrackSurfaceType type{TrackSurfaceType::Asphalt};
+    float gripMultiplier{1.0f};
+    float rollingDrag{0.08f};
+};
+
+using TrackSurfaceSettings = std::array<ColliderSurfaceConfig, kTrackSurfaceTypeCount>;
 
 struct ShaderGraphNodeState {
     int id{0};
@@ -362,6 +382,7 @@ struct SceneObject {
     CapsuleColliderComponent capsuleCollider;
     PlaneColliderComponent planeCollider;
     MeshColliderComponent meshCollider;
+    ColliderSurfaceConfig colliderSurface;
     CameraComponent camera;
     CinemachineCameraComponent cinemachine;
     LightComponent light;

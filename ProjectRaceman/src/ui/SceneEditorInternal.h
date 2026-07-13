@@ -159,6 +159,112 @@ inline const char* SceneColliderTypeIcon(SceneColliderType type) {
     return "component-box-collider.png";
 }
 
+inline const char* TrackSurfaceTypeLabel(TrackSurfaceType type) {
+    switch (type) {
+    case TrackSurfaceType::Asphalt: return "Asphalt";
+    case TrackSurfaceType::Dirt: return "Dirt";
+    case TrackSurfaceType::Grass: return "Grass";
+    case TrackSurfaceType::Curb: return "Curb";
+    case TrackSurfaceType::Wall: return "Wall";
+    case TrackSurfaceType::Custom: return "Custom";
+    }
+    return "Asphalt";
+}
+
+inline constexpr std::array<TrackSurfaceType, kTrackSurfaceTypeCount> kTrackSurfaceTypes = {
+    TrackSurfaceType::Asphalt,
+    TrackSurfaceType::Dirt,
+    TrackSurfaceType::Grass,
+    TrackSurfaceType::Curb,
+    TrackSurfaceType::Wall,
+    TrackSurfaceType::Custom
+};
+
+inline int TrackSurfaceTypeIndex(TrackSurfaceType type) {
+    for (int index = 0; index < kTrackSurfaceTypeCount; ++index) {
+        if (kTrackSurfaceTypes[static_cast<std::size_t>(index)] == type) {
+            return index;
+        }
+    }
+    return 0;
+}
+
+inline TrackSurfaceType TrackSurfaceTypeFromString(const std::string& value) {
+    std::string lower = value;
+    for (char& ch : lower) {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    if (lower == "dirt") return TrackSurfaceType::Dirt;
+    if (lower == "grass") return TrackSurfaceType::Grass;
+    if (lower == "curb" || lower == "kerb") return TrackSurfaceType::Curb;
+    if (lower == "wall") return TrackSurfaceType::Wall;
+    if (lower == "custom") return TrackSurfaceType::Custom;
+    return TrackSurfaceType::Asphalt;
+}
+
+inline ColliderSurfaceConfig MakeDefaultTrackSurfaceConfig(TrackSurfaceType type) {
+    ColliderSurfaceConfig surface{};
+    surface.type = type;
+    switch (type) {
+    case TrackSurfaceType::Asphalt:
+        surface.gripMultiplier = 1.0f;
+        surface.rollingDrag = 0.08f;
+        break;
+    case TrackSurfaceType::Dirt:
+        surface.gripMultiplier = 0.58f;
+        surface.rollingDrag = 0.65f;
+        break;
+    case TrackSurfaceType::Grass:
+        surface.gripMultiplier = 0.36f;
+        surface.rollingDrag = 1.25f;
+        break;
+    case TrackSurfaceType::Curb:
+        surface.gripMultiplier = 0.82f;
+        surface.rollingDrag = 0.18f;
+        break;
+    case TrackSurfaceType::Wall:
+        surface.gripMultiplier = 0.05f;
+        surface.rollingDrag = 2.50f;
+        break;
+    case TrackSurfaceType::Custom:
+        surface.gripMultiplier = 1.0f;
+        surface.rollingDrag = 0.08f;
+        break;
+    }
+    return surface;
+}
+
+inline TrackSurfaceSettings MakeDefaultTrackSurfaceSettings() {
+    TrackSurfaceSettings settings{};
+    for (int index = 0; index < kTrackSurfaceTypeCount; ++index) {
+        settings[static_cast<std::size_t>(index)] =
+            MakeDefaultTrackSurfaceConfig(kTrackSurfaceTypes[static_cast<std::size_t>(index)]);
+    }
+    return settings;
+}
+
+inline const ColliderSurfaceConfig& GetTrackSurfaceSettings(const TrackSurfaceSettings& settings, TrackSurfaceType type) {
+    return settings[static_cast<std::size_t>(TrackSurfaceTypeIndex(type))];
+}
+
+inline void ReadColliderSurfaceConfig(const raceman::physics::json::Object& component, ColliderSurfaceConfig& surface) {
+    auto surfaceIt = component.find("surface");
+    if (surfaceIt == component.end() || !surfaceIt->second.is_object()) {
+        return;
+    }
+    const auto& surfaceObj = surfaceIt->second.as_object();
+    std::string surfaceType;
+    if (ReadString(surfaceObj, "type", surfaceType)) {
+        surface.type = TrackSurfaceTypeFromString(surfaceType);
+    }
+    if (auto gripIt = surfaceObj.find("gripMultiplier"); gripIt != surfaceObj.end() && gripIt->second.is_number()) {
+        surface.gripMultiplier = (std::max)(0.0f, static_cast<float>(gripIt->second.as_number()));
+    }
+    if (auto dragIt = surfaceObj.find("rollingDrag"); dragIt != surfaceObj.end() && dragIt->second.is_number()) {
+        surface.rollingDrag = (std::max)(0.0f, static_cast<float>(dragIt->second.as_number()));
+    }
+}
+
 inline std::vector<SceneInspectorComponentType> DefaultInspectorComponentOrder() {
     return {
         SceneInspectorComponentType::Transform,

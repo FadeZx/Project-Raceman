@@ -2533,7 +2533,7 @@
           "enabled": true,
           "configPath": "assets/car/2018-bmw-m8-gte/source/BMW.vehicle.json",
           "inputProfileId": "default_vehicle",
-          "preferredInputDevice": "Gamepad",
+          "preferredInputDevice": "Any",
           "preferredInputDeviceId": "",
           "chassisObjectIds": ["mesh_64"],
           "wheelBindings": [
@@ -2682,6 +2682,10 @@
           "isTrigger": false,
           "center": [5.55112e-17, -5.4531, -2.04982e-18],
           "size": [499.544, 56.099, 197.568]
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -2780,6 +2784,10 @@
           "isTrigger": false,
           "center": [0, 0, 0],
           "size": [1, 1, 1]
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -2837,6 +2845,10 @@
           "isTrigger": false,
           "center": [0, 0, 0],
           "size": [1, 1, 1]
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -2894,6 +2906,10 @@
           "isTrigger": false,
           "center": [0, 0, 0],
           "size": [1, 1, 1]
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -2975,6 +2991,10 @@
           "isTrigger": false,
           "center": [0, 0, 0],
           "size": [1, 1, 1]
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -3032,6 +3052,10 @@
           "isTrigger": false,
           "center": [0, 0, 0],
           "size": [1, 1, 1]
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -3089,6 +3113,10 @@
           "isTrigger": false,
           "center": [0, 0, 0],
           "size": [1, 1, 1]
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -3139,6 +3167,10 @@
           "offset": 0,
           "infinite": false,
           "halfExtent": 1000
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -3211,6 +3243,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -3259,6 +3295,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -3316,6 +3356,10 @@
           "isTrigger": false,
           "center": [0, 0, 0],
           "size": [1, 1, 1]
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -3788,6 +3832,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -3916,6 +3964,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -3964,6 +4016,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -4012,6 +4068,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Curb"
+          }
         }
       ]
     },
@@ -4740,6 +4800,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -5988,6 +6052,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -6436,6 +6504,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12044,6 +12116,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12412,6 +12488,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12460,6 +12540,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12508,6 +12592,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12556,6 +12644,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12604,6 +12696,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12652,6 +12748,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12700,6 +12800,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12748,6 +12852,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12796,6 +12904,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12844,6 +12956,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -12972,6 +13088,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -13023,7 +13143,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
       "components": [
         {
           "type": "Transform",
@@ -13052,6 +13172,18 @@
           "enabled": true,
           "attachments": [
           ]
+        },
+        {
+          "type": "Collider",
+          "colliderType": "Mesh",
+          "enabled": true,
+          "isTrigger": false,
+          "buildQuality": "BuildQuality",
+          "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Grass"
+          }
         }
       ]
     },
@@ -13140,6 +13272,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Grass"
+          }
         }
       ]
     },
@@ -13188,6 +13324,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Dirt"
+          }
         }
       ]
     },
@@ -13236,6 +13376,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Grass"
+          }
         }
       ]
     },
@@ -13284,6 +13428,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -13332,6 +13480,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Grass"
+          }
         }
       ]
     },
@@ -13420,6 +13572,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -13468,6 +13624,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -13516,6 +13676,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -13564,6 +13728,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -13612,6 +13780,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -13660,6 +13832,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -13708,6 +13884,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -13756,6 +13936,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -14804,6 +14988,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -14852,6 +15040,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -14900,6 +15092,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -14988,6 +15184,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15036,6 +15236,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15084,6 +15288,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15132,6 +15340,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15180,6 +15392,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15228,6 +15444,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15276,6 +15496,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15324,6 +15548,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15372,6 +15600,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15460,6 +15692,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15508,6 +15744,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15556,6 +15796,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15604,6 +15848,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15652,6 +15900,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15700,6 +15952,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15748,6 +16004,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15796,6 +16056,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15844,6 +16108,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15892,6 +16160,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15940,6 +16212,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -15988,6 +16264,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -16036,6 +16316,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -16084,6 +16368,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -16132,6 +16420,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -16300,6 +16592,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -16348,6 +16644,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -16436,6 +16736,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -16484,6 +16788,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -16532,6 +16840,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -16740,6 +17052,10 @@
           "isTrigger": false,
           "buildQuality": "BuildQuality",
           "mode": "TriangleMesh"
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -16868,6 +17184,10 @@
           "isTrigger": false,
           "center": [0, 0, 0],
           "size": [1, 1, 1]
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     },
@@ -17038,7 +17358,7 @@
       "tag": "Untagged",
       "type": "GameObject",
       "physicsLayer": 0,
-      "enabled": false,
+      "enabled": true,
       "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
       "components": [
         {
@@ -17076,10 +17396,14 @@
           "isTrigger": false,
           "center": [0, 0, 0],
           "size": [1, 1, 1]
+,
+          "surface": {
+            "type": "Asphalt"
+          }
         }
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_1635", "gameobject_7", "gameobject_11", "gameobject_8"],
+  "hierarchyClosed": ["gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_8", "gameobject_11", "gameobject_64"],
   "inspectorComponentsClosed": ["mesh_393|Collider", "gameobject_11|Vehicle", "camera_1|Cinemachine"]
 }

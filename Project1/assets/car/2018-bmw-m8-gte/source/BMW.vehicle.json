@@ -23,15 +23,39 @@
     "reboundDamping": 5600.000,
     "antiRollStiffness": 9000.000
   },
+  "groundContact": {
+    "enabled": true,
+    "probeUp": 0.750,
+    "extraProbeLength": 0.750,
+    "rideHeightOffset": 0.000,
+    "heightSmoothing": 18.000,
+    "tiltSmoothing": 12.000,
+    "minGroundNormalY": 0.200,
+    "obstacleProbeHeight": 0.450,
+    "obstacleSkin": 0.750,
+    "wallNormalYMax": 0.450,
+    "airborneGravity": 18.000
+  },
+  "tireGrip": {
+    "enabled": true,
+    "lateralGrip": 5.000,
+    "longitudinalGrip": 0.350,
+    "slipAngleLimit": 18.000,
+    "slideGripLoss": 0.450,
+    "recoveryRate": 12.000,
+    "handbrakeGripScale": 0.450,
+    "downforceGripScale": 0.400,
+    "minTractionScale": 0.550
+  },
   "differential": {
     "torqueSplit": 1.000,
     "lockingCoefficient": 0.320,
     "limitedSlip": true
   },
   "engine": {
-    "idleRPM": 1100.000,
-    "redlineRPM": 7200.000,
-    "stallRPM": 750.000,
+    "idleRPM": 520.000,
+    "redlineRPM": 6170.000,
+    "stallRPM": 550.000,
     "inertia": 0.220,
     "torqueCurve": [
       {"rpm": 1200.000, "torque": 360.000},
@@ -43,25 +67,11 @@
     ]
   },
   "transmission": {
-    "mode": "manual",
+    "mode": "Manual",
     "gearRatios": [2.917, 2.067, 1.556, 1.250, 1.034, 0.885],
     "finalDriveRatio": 3.730,
     "reverseRatio": -2.615,
     "shiftTime": 0.120
-  },
-  "assists": {
-    "enabled": true,
-    "steeringSmoothingRate": 10.000,
-    "fullSteerSpeed": 11.000,
-    "highSpeedSteerScale": 0.240,
-    "counterSteerStrength": 0.120,
-    "brakeBias": 0.600,
-    "tractionControl": true,
-    "tractionSlipLimit": 0.120,
-    "minTractionTorqueScale": 0.520,
-    "antiLockBrakes": true,
-    "absSlipLimit": 0.220,
-    "absMinBrakeTorqueScale": 0.250
   },
   "wheels": [
     {
@@ -74,7 +84,7 @@
       "maxSteerAngle": 0.520,
       "camber": -2.800,
       "toe": 0.040,
-      "gripFactor": 0.415,
+      "gripFactor": 3.200,
       "longitudinalStiffness": 17800.000,
       "lateralStiffness": 13800.000,
       "maxBrakingTorque": 8200.000,
@@ -91,7 +101,7 @@
       "maxSteerAngle": 0.520,
       "camber": -2.800,
       "toe": -0.040,
-      "gripFactor": 1.520,
+      "gripFactor": 3.200,
       "longitudinalStiffness": 17800.000,
       "lateralStiffness": 13800.000,
       "maxBrakingTorque": 8200.000,
@@ -108,7 +118,7 @@
       "maxSteerAngle": 0.000,
       "camber": -2.200,
       "toe": 0.100,
-      "gripFactor": 1.560,
+      "gripFactor": 3.350,
       "longitudinalStiffness": 18400.000,
       "lateralStiffness": 14600.000,
       "maxBrakingTorque": 6400.000,
@@ -125,7 +135,7 @@
       "maxSteerAngle": 0.000,
       "camber": -2.200,
       "toe": -0.100,
-      "gripFactor": 1.560,
+      "gripFactor": 3.350,
       "longitudinalStiffness": 18400.000,
       "lateralStiffness": 14600.000,
       "maxBrakingTorque": 6400.000,

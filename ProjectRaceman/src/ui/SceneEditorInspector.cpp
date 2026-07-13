@@ -1,8 +1,8 @@
 #include "SceneEditorInternal.h"
 #include "../rendering/ShaderRegistry.h"
+#include "../physics/PhysicsWorld.h"
 #include "../physics/SimpleJson.h"
 #include "../physics/VehicleConfig.h"
-#include "../physics/VehiclePhysics.h"
 #include "../scripting/ScriptRegistry.h"
 
 #include <glad/glad.h>
@@ -1862,61 +1862,78 @@ void SceneEditor::RenderInspectorPanel() {
                     if (scriptsRunning_) {
                         const auto runtimeVehicleIt = std::find_if(runtimeVehicles_.begin(), runtimeVehicles_.end(),
                             [&](const RuntimeVehicleInstance& runtimeVehicle) {
-                                return runtimeVehicle.objectIndex == selectedIndex_ && runtimeVehicle.instance != nullptr;
+                                return runtimeVehicle.objectIndex == selectedIndex_;
                             });
                         if (runtimeVehicleIt != runtimeVehicles_.end()) {
+                            const RuntimeVehicleInstance& runtimeVehicle = *runtimeVehicleIt;
                             if (BeginInspectorSubsection("Runtime Debug", "VehicleRuntimeDebugSection", vehicleAccent, ImGuiTreeNodeFlags_None)) {
-                            const raceman::physics::VehicleTelemetry& telemetry = runtimeVehicleIt->instance->getTelemetry();
-                            const float speed = glm::length(glm::vec3(telemetry.linearVelocity.x, telemetry.linearVelocity.y, telemetry.linearVelocity.z));
+                            const float speed = std::fabs(runtimeVehicle.arcadeSpeed);
                             ImGui::TextDisabled("Vehicle: %s  |  Wheels: %d", loadedConfig.name.c_str(), static_cast<int>(loadedConfig.wheels.size()));
                             ImGui::TextDisabled("Speed: %.2f m/s", speed);
-                            ImGui::TextDisabled("Engine RPM: %.0f", telemetry.engineRPM);
-                            if (telemetry.isReverse) {
+                            ImGui::TextDisabled("Engine RPM: %.0f", runtimeVehicle.arcadeEngineRPM);
+                            if (runtimeVehicle.arcadeGear < 0) {
                                 ImGui::TextDisabled("Gear: R");
-                            } else if (telemetry.isNeutral) {
+                            } else if (runtimeVehicle.arcadeGear == 0) {
                                 ImGui::TextDisabled("Gear: N");
                             } else {
-                                ImGui::TextDisabled("Gear: %d", telemetry.currentGear);
+                                ImGui::TextDisabled("Gear: %d", runtimeVehicle.arcadeGear);
                             }
                             ImGui::TextDisabled("Throttle / Brake / Steering: %.2f / %.2f / %.2f",
-                                telemetry.throttle,
-                                telemetry.brake,
-                                telemetry.steering);
+                                runtimeVehicle.arcadeThrottle,
+                                runtimeVehicle.arcadeBrake,
+                                runtimeVehicle.arcadeSteering);
+                            ImGui::TextDisabled("Lateral / Slip / Traction: %.2f m/s / %.1f deg / %.2f",
+                                runtimeVehicle.arcadeLateralSpeed,
+                                runtimeVehicle.arcadeSlipAngle,
+                                runtimeVehicle.arcadeTractionScale);
 
                             // Per-wheel contact debug table
-                            if (!telemetry.wheels.empty() &&
-                                ImGui::BeginTable("##WheelDebug", 5,
+                            if (!loadedConfig.wheels.empty() &&
+                                ImGui::BeginTable("##WheelDebug", 8,
                                     ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                     ImGuiTableFlags_SizingFixedFit)) {
                                 ImGui::TableSetupColumn("Wheel");
+                                ImGui::TableSetupColumn("Surface");
                                 ImGui::TableSetupColumn("Contact");
                                 ImGui::TableSetupColumn("NormalF");
                                 ImGui::TableSetupColumn("SuspTravel");
+                                ImGui::TableSetupColumn("Slip");
+                                ImGui::TableSetupColumn("Trac");
                                 ImGui::TableSetupColumn("RPM");
                                 ImGui::TableHeadersRow();
-                                for (std::size_t wi = 0; wi < telemetry.wheels.size(); ++wi) {
-                                    const raceman::physics::WheelTelemetry& wt = telemetry.wheels[wi];
-                                    const bool grounded = wt.normalForce > 0.0f;
+                                for (std::size_t wi = 0; wi < loadedConfig.wheels.size(); ++wi) {
+                                    const raceman::physics::WheelConfig& wt = loadedConfig.wheels[wi];
+                                    const float wheelRadius = (std::max)(0.05f, wt.radius);
+                                    const bool hasContact = wi < runtimeVehicle.arcadeWheelContacts.size();
+                                    const auto* contact = hasContact ? &runtimeVehicle.arcadeWheelContacts[wi] : nullptr;
+                                    const bool grounded = contact != nullptr && contact->grounded;
+                                    const float normalForce = contact != nullptr ? contact->normalForce : 0.0f;
+                                    const float suspensionTravel = contact != nullptr ? contact->suspensionTravel : 0.0f;
+                                    const float slipAngle = contact != nullptr ? contact->slipAngle : 0.0f;
+                                    const float tractionScale = contact != nullptr ? contact->tractionScale : 1.0f;
+                                    const float angularVelocity = contact != nullptr ? contact->angularVelocity : (runtimeVehicle.arcadeSpeed / wheelRadius);
+                                    const float wheelRpm = angularVelocity * (60.0f / (2.0f * 3.14159f));
                                     ImGui::TableNextRow();
                                     ImGui::TableSetColumnIndex(0);
-                                    if (wi < loadedConfig.wheels.size()) {
-                                        ImGui::TextUnformatted(loadedConfig.wheels[wi].name.c_str());
-                                    } else {
-                                        ImGui::Text("%d", static_cast<int>(wi));
-                                    }
+                                    ImGui::TextUnformatted(wt.name.c_str());
                                     ImGui::TableSetColumnIndex(1);
+                                    ImGui::TextUnformatted(contact != nullptr ? TrackSurfaceTypeLabel(contact->surfaceType) : "-");
+                                    ImGui::TableSetColumnIndex(2);
                                     if (grounded) {
                                         ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "ON");
                                     } else {
                                         ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "OFF");
                                     }
-                                    ImGui::TableSetColumnIndex(2);
-                                    ImGui::Text("%.0f N", wt.normalForce);
                                     ImGui::TableSetColumnIndex(3);
-                                    ImGui::Text("%.3f m", wt.suspensionTravel);
+                                    ImGui::Text("%.0f N", normalForce);
                                     ImGui::TableSetColumnIndex(4);
-                                    const float rpm = wt.angularVelocity * (60.0f / (2.0f * 3.14159f));
-                                    ImGui::Text("%.0f", rpm);
+                                    ImGui::Text("%.3f m", suspensionTravel);
+                                    ImGui::TableSetColumnIndex(5);
+                                    ImGui::Text("%.1f", slipAngle);
+                                    ImGui::TableSetColumnIndex(6);
+                                    ImGui::Text("%.2f", tractionScale);
+                                    ImGui::TableSetColumnIndex(7);
+                                    ImGui::Text("%.0f", wheelRpm);
                                 }
                                 ImGui::EndTable();
                             }
@@ -2203,6 +2220,44 @@ void SceneEditor::RenderInspectorPanel() {
                             ImGui::SetTooltip("Toggle Scene View handles for collider center and size.");
                         }
                     }
+
+                    {
+                        constexpr TrackSurfaceType kSurfaceTypes[] = {
+                            TrackSurfaceType::Asphalt,
+                            TrackSurfaceType::Dirt,
+                            TrackSurfaceType::Grass,
+                            TrackSurfaceType::Curb,
+                            TrackSurfaceType::Wall,
+                            TrackSurfaceType::Custom
+                        };
+                        int surfaceIndex = 0;
+                        for (int i = 0; i < static_cast<int>(sizeof(kSurfaceTypes) / sizeof(kSurfaceTypes[0])); ++i) {
+                            if (kSurfaceTypes[i] == obj.colliderSurface.type) {
+                                surfaceIndex = i;
+                                break;
+                            }
+                        }
+                        const char* preview = TrackSurfaceTypeLabel(obj.colliderSurface.type);
+                        if (ImGui::BeginCombo("Surface##ColliderSurfaceType", preview)) {
+                            for (int i = 0; i < static_cast<int>(sizeof(kSurfaceTypes) / sizeof(kSurfaceTypes[0])); ++i) {
+                                const bool selected = i == surfaceIndex;
+                                if (ImGui::Selectable(TrackSurfaceTypeLabel(kSurfaceTypes[i]), selected)) {
+                                    PushUndoState();
+                                    obj.colliderSurface.type = kSurfaceTypes[i];
+                                    if (onDirty_) onDirty_();
+                                }
+                                if (selected) {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+
+                        const ColliderSurfaceConfig& resolvedSurface = GetProjectTrackSurfaceSettings(obj.colliderSurface.type);
+                        ImGui::TextDisabled("Project Grip: %.2f", resolvedSurface.gripMultiplier);
+                        ImGui::TextDisabled("Project Rolling Drag: %.2f", resolvedSurface.rollingDrag);
+                    }
+
                     if (activeColliderType == SceneColliderType::Box) {
                         const bool isTriggerBefore = obj.boxCollider.isTrigger;
                         if (ImGui::Checkbox("Is Trigger##ColliderBox", &obj.boxCollider.isTrigger)) {
@@ -3728,6 +3783,48 @@ void SceneEditor::RenderMultiSelectionInspector() {
             }
 
             const SceneColliderType resolvedType = sameColliderType ? activeColliderType : newColliderType;
+            {
+                constexpr TrackSurfaceType kSurfaceTypes[] = {
+                    TrackSurfaceType::Asphalt,
+                    TrackSurfaceType::Dirt,
+                    TrackSurfaceType::Grass,
+                    TrackSurfaceType::Curb,
+                    TrackSurfaceType::Wall,
+                    TrackSurfaceType::Custom
+                };
+                const bool sameSurfaceType = allSelected([&](const SceneObject& object) {
+                    return object.colliderSurface.type == active.colliderSurface.type;
+                });
+                int surfaceIndex = 0;
+                for (int i = 0; i < static_cast<int>(sizeof(kSurfaceTypes) / sizeof(kSurfaceTypes[0])); ++i) {
+                    if (kSurfaceTypes[i] == active.colliderSurface.type) {
+                        surfaceIndex = i;
+                        break;
+                    }
+                }
+                const char* preview = sameSurfaceType ? TrackSurfaceTypeLabel(active.colliderSurface.type) : "Mixed";
+                if (ImGui::BeginCombo("Surface##multiColliderSurfaceType", preview)) {
+                    for (int i = 0; i < static_cast<int>(sizeof(kSurfaceTypes) / sizeof(kSurfaceTypes[0])); ++i) {
+                        const bool selected = sameSurfaceType && i == surfaceIndex;
+                        if (ImGui::Selectable(TrackSurfaceTypeLabel(kSurfaceTypes[i]), selected)) {
+                            PushUndoState();
+                            forEachSelected([&](SceneObject& object) { object.colliderSurface.type = kSurfaceTypes[i]; });
+                            markDirty();
+                        }
+                        if (selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                if (sameSurfaceType) {
+                    const ColliderSurfaceConfig& resolvedSurface = GetProjectTrackSurfaceSettings(active.colliderSurface.type);
+                    ImGui::TextDisabled("Project Grip: %.2f", resolvedSurface.gripMultiplier);
+                    ImGui::TextDisabled("Project Rolling Drag: %.2f", resolvedSurface.rollingDrag);
+                }
+            }
+
             if (resolvedType == SceneColliderType::Box && sameColliderType) {
                 bool isTrigger = active.boxCollider.isTrigger;
                 if (ImGui::Checkbox("Is Trigger##multiColliderBox", &isTrigger)) {
@@ -4266,6 +4363,36 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
             applyDragFloatEdit("Anti-Roll Stiffness (N/m)", (std::string("##") + idPrefix + "_antiRollStiffness").c_str(), suspension.antiRollStiffness, 10.0f, 0.0f, 1000000.0f);
             endCard();
         };
+        auto renderGroundContactSection = [&]() {
+            raceman::physics::VehicleGroundContactConfig& groundContact = inspectedVehicleConfig_.groundContact;
+            beginCard("vehicleProfileGroundContact", "Ground Contact", "Raycast ride and wall probing", accentPrimary);
+            applyCheckboxEdit("Enabled##vehicleProfileGroundContactEnabled", groundContact.enabled);
+            applyDragFloatEdit("Probe Up (m)", "##vehicleProfileGroundContactProbeUp", groundContact.probeUp, 0.01f, 0.0f, 100.0f);
+            applyDragFloatEdit("Extra Probe Length (m)", "##vehicleProfileGroundContactExtraProbeLength", groundContact.extraProbeLength, 0.01f, 0.0f, 100.0f);
+            applyDragFloatEdit("Ride Height Offset (m)", "##vehicleProfileGroundContactRideHeightOffset", groundContact.rideHeightOffset, 0.01f, -10.0f, 10.0f);
+            applyDragFloatEdit("Height Smoothing", "##vehicleProfileGroundContactHeightSmoothing", groundContact.heightSmoothing, 0.1f, 0.0f, 1000.0f);
+            applyDragFloatEdit("Tilt Smoothing", "##vehicleProfileGroundContactTiltSmoothing", groundContact.tiltSmoothing, 0.1f, 0.0f, 1000.0f);
+            applyDragFloatEdit("Min Ground Normal Y", "##vehicleProfileGroundContactMinGroundNormalY", groundContact.minGroundNormalY, 0.01f, -1.0f, 1.0f);
+            applyDragFloatEdit("Obstacle Probe Height (m)", "##vehicleProfileGroundContactObstacleProbeHeight", groundContact.obstacleProbeHeight, 0.01f, 0.0f, 100.0f);
+            applyDragFloatEdit("Obstacle Skin (m)", "##vehicleProfileGroundContactObstacleSkin", groundContact.obstacleSkin, 0.01f, 0.0f, 100.0f);
+            applyDragFloatEdit("Wall Normal Y Max", "##vehicleProfileGroundContactWallNormalYMax", groundContact.wallNormalYMax, 0.01f, -1.0f, 1.0f);
+            applyDragFloatEdit("Airborne Gravity (m/s^2)", "##vehicleProfileGroundContactAirborneGravity", groundContact.airborneGravity, 0.1f, 0.0f, 1000.0f);
+            endCard();
+        };
+        auto renderTireGripSection = [&]() {
+            raceman::physics::VehicleTireGripConfig& tireGrip = inspectedVehicleConfig_.tireGrip;
+            beginCard("vehicleProfileTireGrip", "Tire Grip", "Arcade slip and surface response", accentSecondary);
+            applyCheckboxEdit("Enabled##vehicleProfileTireGripEnabled", tireGrip.enabled);
+            applyDragFloatEdit("Lateral Grip", "##vehicleProfileTireGripLateralGrip", tireGrip.lateralGrip, 0.05f, 0.0f, 100.0f);
+            applyDragFloatEdit("Longitudinal Grip", "##vehicleProfileTireGripLongitudinalGrip", tireGrip.longitudinalGrip, 0.01f, 0.0f, 10.0f);
+            applyDragFloatEdit("Slip Angle Limit (deg)", "##vehicleProfileTireGripSlipAngleLimit", tireGrip.slipAngleLimit, 0.1f, 0.1f, 90.0f);
+            applyDragFloatEdit("Slide Grip Loss", "##vehicleProfileTireGripSlideGripLoss", tireGrip.slideGripLoss, 0.01f, 0.0f, 1.0f);
+            applyDragFloatEdit("Recovery Rate", "##vehicleProfileTireGripRecoveryRate", tireGrip.recoveryRate, 0.05f, 0.0f, 100.0f);
+            applyDragFloatEdit("Handbrake Grip Scale", "##vehicleProfileTireGripHandbrakeGripScale", tireGrip.handbrakeGripScale, 0.01f, 0.0f, 1.0f);
+            applyDragFloatEdit("Downforce Grip Scale", "##vehicleProfileTireGripDownforceGripScale", tireGrip.downforceGripScale, 0.01f, 0.0f, 10.0f);
+            applyDragFloatEdit("Min Traction Scale", "##vehicleProfileTireGripMinTractionScale", tireGrip.minTractionScale, 0.01f, 0.0f, 1.0f);
+            endCard();
+        };
         auto renderMetric = [&](const char* label, const char* value, const char* hint = nullptr) {
             ImGui::BeginGroup();
             ImGui::TextDisabled("%s", label);
@@ -4383,6 +4510,9 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                     renderSuspensionSection("vehicleProfileRearSuspension", "Rear Suspension", inspectedVehicleConfig_.rearSuspension, accentSecondary);
                     ImGui::EndTable();
                 }
+
+                renderGroundContactSection();
+                renderTireGripSection();
 
                 beginCard("vehicleProfileDifferentialCard", "Differential", "Axle split and lock response", accentPrimary);
                 applyDragFloatEdit("Torque Split (0-1)", "##vehicleProfileDiffTorqueSplit", inspectedVehicleConfig_.differential.torqueSplit, 0.01f, 0.0f, 1.0f);

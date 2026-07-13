@@ -32,10 +32,6 @@ namespace irrklang { class ISound; }
 
 namespace raceman {
 
-namespace physics {
-class VehiclePhysics;
-}
-
 class Renderer;
 class Console;
 class PhysicsWorld;
@@ -214,6 +210,7 @@ private:
     void RestoreFromPlayModeSnapshot();
     void TickPlayModeLoading();
     void RenderPlayModeLoadingPopup();
+    int HotReloadRuntimeVehiclesForConfig(const std::string& configPath, const physics::VehicleConfig& config);
     void StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs, std::string title);
     bool TryBuildMeshColliderBakeJob(const SceneObject& object, PhysicsColliderDesc& outCollider, std::string& outLabel) const;
     void StartMeshColliderAutoBake(const SceneObject& object, const std::string& title);
@@ -313,6 +310,8 @@ private:
     int ClampPhysicsLayerIndex(int layer) const;
     const char* GetPhysicsLayerName(int layer) const;
     void ResetPhysicsLayerSettings();
+    void ResetTrackSurfaceSettings();
+    const ColliderSurfaceConfig& GetProjectTrackSurfaceSettings(TrackSurfaceType type) const;
     void EnsureProjectTags();
     bool AddProjectTag(const std::string& tag);
     bool RemoveProjectTag(int index);
@@ -339,6 +338,7 @@ private:
     std::string savePath_{"assets/scenes/EditorScene.scene.json"};
     PhysicsLayerNames physicsLayerNames_{};
     PhysicsLayerCollisionMatrix physicsLayerCollisionMatrix_{};
+    TrackSurfaceSettings trackSurfaceSettings_{};
     std::vector<std::string> projectTags_{"Untagged"};
     std::vector<InputProfile> inputProfiles_{};
     std::vector<WheelSettingsProfile> wheelSettingsProfiles_{};
@@ -449,6 +449,21 @@ private:
     std::vector<RuntimeScriptInstance> runtimeScripts_;
 
     struct RuntimeVehicleInstance {
+        struct WheelContact {
+            bool grounded{false};
+            glm::vec3 contactPosition{0.0f};
+            glm::vec3 wheelCenterPosition{0.0f};
+            glm::vec3 normal{0.0f, 1.0f, 0.0f};
+            float suspensionTravel{0.0f};
+            float normalForce{0.0f};
+            float angularVelocity{0.0f};
+            TrackSurfaceType surfaceType{TrackSurfaceType::Asphalt};
+            float surfaceGripMultiplier{1.0f};
+            float surfaceRollingDrag{0.08f};
+            float slipAngle{0.0f};
+            float tractionScale{1.0f};
+        };
+
         std::string objectId;
         int objectIndex{-1};
         std::string chassisBodyObjectId;
@@ -464,7 +479,26 @@ private:
         bool pendingNeutral{false};
         bool pendingReverse{false};
         float autoShiftCooldown{0.0f};
-        std::unique_ptr<physics::VehiclePhysics> instance;
+        physics::VehicleConfig config;
+        int manualGear{0};
+        bool arcadeInitialized{false};
+        Transform arcadePreviousChassisWorld{};
+        Transform arcadeChassisWorld{};
+        float arcadeSpeed{0.0f};
+        float arcadeLateralSpeed{0.0f};
+        float arcadeEngineRPM{900.0f};
+        float arcadePreviousWheelSpin{0.0f};
+        float arcadeWheelSpin{0.0f};
+        float arcadeThrottle{0.0f};
+        float arcadeBrake{0.0f};
+        float arcadeSteering{0.0f};
+        float arcadeHandbrake{0.0f};
+        float arcadeVerticalVelocity{0.0f};
+        float arcadeSlipAngle{0.0f};
+        float arcadeTractionScale{1.0f};
+        float arcadeSurfaceGrip{1.0f};
+        int arcadeGear{1};
+        std::vector<WheelContact> arcadeWheelContacts;
     };
     std::vector<RuntimeVehicleInstance> runtimeVehicles_;
 

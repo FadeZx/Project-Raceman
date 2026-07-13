@@ -786,6 +786,7 @@ SceneEditor::SceneEditor() {
     inputProfiles_ = defaultInputManager.GetInputProfiles();
     wheelSettingsProfiles_ = defaultInputManager.GetWheelSettingsProfiles();
     ResetPhysicsLayerSettings();
+    ResetTrackSurfaceSettings();
     // Load materials at startup
     std::cout << "[Player] SceneEditor: loading materials..." << std::endl;
     materialManager_.LoadAll();
@@ -4070,6 +4071,7 @@ void SceneEditor::Load(const std::string& path) {
                                     so.meshCollider.mode = MeshColliderModeFromString(meshMode);
                                 }
                             }
+                            ReadColliderSurfaceConfig(component, so.colliderSurface);
                         }
                     } else if (componentType == "BoxCollider") {
                         SetActiveColliderType(so, SceneColliderType::Box);
@@ -4348,6 +4350,7 @@ void SceneEditor::LoadProject() {
     selectedProjectDirectory_ = "assets";
     activeViewport_ = SceneEditorActiveViewport::Scene;
     ResetPhysicsLayerSettings();
+    ResetTrackSurfaceSettings();
     projectTags_ = {"Untagged"};
 
     const fs::path assetsRoot = FindAssetsRoot();
@@ -4430,6 +4433,31 @@ void SceneEditor::LoadProject() {
                                 physicsLayerCollisionMatrix_[static_cast<std::size_t>(row)] = rowValues;
                             }
                         }
+                    }
+
+                    auto surfacesIt = physicsSettings.find("trackSurfaces");
+                    if (surfacesIt != physicsSettings.end() && surfacesIt->second.is_array()) {
+                        for (const Value& surfaceValue : surfacesIt->second.as_array()) {
+                            if (!surfaceValue.is_object()) {
+                                continue;
+                            }
+                            const auto& surfaceObject = surfaceValue.as_object();
+                            std::string typeName;
+                            if (!ReadString(surfaceObject, "type", typeName)) {
+                                continue;
+                            }
+                            const TrackSurfaceType surfaceType = TrackSurfaceTypeFromString(typeName);
+                            ColliderSurfaceConfig& surface = trackSurfaceSettings_[static_cast<std::size_t>(TrackSurfaceTypeIndex(surfaceType))];
+                            surface.type = surfaceType;
+                            if (auto gripIt = surfaceObject.find("gripMultiplier"); gripIt != surfaceObject.end() && gripIt->second.is_number()) {
+                                surface.gripMultiplier = (std::max)(0.0f, static_cast<float>(gripIt->second.as_number()));
+                            }
+                            if (auto dragIt = surfaceObject.find("rollingDrag"); dragIt != surfaceObject.end() && dragIt->second.is_number()) {
+                                surface.rollingDrag = (std::max)(0.0f, static_cast<float>(dragIt->second.as_number()));
+                            }
+                        }
+                    } else {
+                        shouldSaveProject = true;
                     }
                 }
 
@@ -4667,6 +4695,16 @@ void SceneEditor::SaveProject() {
             }
             out << "]\n";
             out << "      }" << (row + 1 < kPhysicsLayerCount ? ",\n" : "\n");
+        }
+        out << "    ],\n";
+        out << "    \"trackSurfaces\": [\n";
+        for (int surfaceIndex = 0; surfaceIndex < kTrackSurfaceTypeCount; ++surfaceIndex) {
+            const ColliderSurfaceConfig& surface = trackSurfaceSettings_[static_cast<std::size_t>(surfaceIndex)];
+            out << "      {\n";
+            out << "        \"type\": \"" << TrackSurfaceTypeLabel(surface.type) << "\",\n";
+            out << "        \"gripMultiplier\": " << surface.gripMultiplier << ",\n";
+            out << "        \"rollingDrag\": " << surface.rollingDrag << "\n";
+            out << "      }" << (surfaceIndex + 1 < kTrackSurfaceTypeCount ? ",\n" : "\n");
         }
         out << "    ]\n";
         out << "  },\n";
@@ -4961,9 +4999,13 @@ void SceneEditor::SaveActiveAsset() {
         std::string error;
         const fs::path configPath = ProjectAssetPathToAbsolute(inspectedVehicleConfigPath_);
         if (physics::VehicleConfigLoader::saveToFile(configPath.string(), inspectedVehicleConfig_, &error)) {
+            const int hotReloadedCount = HotReloadRuntimeVehiclesForConfig(inspectedVehicleConfigPath_, inspectedVehicleConfig_);
             inspectedVehicleConfigLoaded_ = false;
             if (console_) {
                 console_->AddLog("Saved vehicle config: " + inspectedVehicleConfigPath_);
+                if (hotReloadedCount > 0) {
+                    console_->AddLog("Hot-reloaded vehicle config for " + std::to_string(hotReloadedCount) + " runtime vehicle(s).");
+                }
             }
         } else if (console_) {
             console_->AddError(error.empty() ? ("Failed to save vehicle config: " + inspectedVehicleConfigPath_) : error);
@@ -5594,6 +5636,14 @@ const char* SceneEditor::GetPhysicsLayerName(int layer) const {
 void SceneEditor::ResetPhysicsLayerSettings() {
     physicsLayerNames_ = MakeDefaultPhysicsLayerNames();
     physicsLayerCollisionMatrix_ = MakeDefaultPhysicsLayerCollisionMatrix();
+}
+
+void SceneEditor::ResetTrackSurfaceSettings() {
+    trackSurfaceSettings_ = MakeDefaultTrackSurfaceSettings();
+}
+
+const ColliderSurfaceConfig& SceneEditor::GetProjectTrackSurfaceSettings(TrackSurfaceType type) const {
+    return scene_editor_internal::GetTrackSurfaceSettings(trackSurfaceSettings_, type);
 }
 
 void SceneEditor::EnsureProjectTags() {

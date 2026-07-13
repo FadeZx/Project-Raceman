@@ -45,6 +45,30 @@
     "reverseRatio": -10.750,
     "shiftTime": 0.140
   },
+  "groundContact": {
+    "enabled": true,
+    "probeUp": 0.750,
+    "extraProbeLength": 0.750,
+    "rideHeightOffset": 0.000,
+    "heightSmoothing": 18.000,
+    "tiltSmoothing": 12.000,
+    "minGroundNormalY": 0.200,
+    "obstacleProbeHeight": 0.450,
+    "obstacleSkin": 0.750,
+    "wallNormalYMax": 0.450,
+    "airborneGravity": 18.000
+  },
+  "tireGrip": {
+    "enabled": true,
+    "lateralGrip": 5.000,
+    "longitudinalGrip": 1.000,
+    "slipAngleLimit": 12.000,
+    "slideGripLoss": 0.600,
+    "recoveryRate": 7.500,
+    "handbrakeGripScale": 0.350,
+    "downforceGripScale": 0.350,
+    "minTractionScale": 0.350
+  },
   "assists": {
     "enabled": true,
     "steeringSmoothingRate": 7.500,

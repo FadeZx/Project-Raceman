@@ -3,7 +3,6 @@
 #include "../audio/VehicleSoundProfile.h"
 #include "../input/InputManager.h"
 #include "../physics/PhysicsWorld.h"
-#include "../physics/VehiclePhysics.h"
 #include "../scripting/ScriptRegistry.h"
 
 #include <irrKlang/irrKlang.h>
@@ -24,6 +23,8 @@ using namespace scene_editor_internal;
 
 namespace {
 
+constexpr float kRuntimeFixedStep = 1.0f / 60.0f;
+
 bool IsEnvironmentFlagEnabled(const char* name) {
 #if defined(_WIN32)
     char* value = nullptr;
@@ -37,16 +38,100 @@ bool IsEnvironmentFlagEnabled(const char* name) {
 #endif
 }
 
+raceman::physics::VehicleConfig BuildDefaultJoltVehicleConfig() {
+    raceman::physics::VehicleConfig config;
+    config.name = "Default Jolt Vehicle";
+    config.chassis.mass = 1200.0f;
+    config.chassis.centerOfMassOffset = {0.0f, 0.0f, -0.25f};
+    config.engine.idleRPM = 900.0f;
+    config.engine.redlineRPM = 6000.0f;
+    config.engine.torqueCurve = {{900.0f, 260.0f}, {3500.0f, 420.0f}, {6000.0f, 360.0f}};
+    config.transmission.mode = raceman::physics::TransmissionConfig::Mode::Automatic;
+    config.transmission.gearRatios = {2.8f, 1.9f, 1.35f, 1.0f, 0.8f};
+    config.transmission.finalDriveRatio = 3.42f;
+    config.transmission.reverseRatio = -2.9f;
+    config.transmission.shiftTime = 0.25f;
+    config.frontSuspension.restLength = 0.35f;
+    config.rearSuspension.restLength = 0.35f;
+
+    auto makeWheel = [](std::string name, float x, float y, bool front, bool driven) {
+        raceman::physics::WheelConfig wheel;
+        wheel.name = std::move(name);
+        wheel.mountPosition = {x, y, 0.0f};
+        wheel.radius = 0.35f;
+        wheel.width = 0.22f;
+        wheel.inertia = 1.0f;
+        wheel.maxSteerAngle = front ? 0.55f : 0.0f;
+        wheel.maxBrakingTorque = front ? 3200.0f : 2800.0f;
+        wheel.driven = driven;
+        wheel.hasBrake = true;
+        return wheel;
+    };
+
+    config.wheels = {
+        makeWheel("Front Left", -0.82f, 1.25f, true, false),
+        makeWheel("Front Right", 0.82f, 1.25f, true, false),
+        makeWheel("Rear Left", -0.82f, -1.25f, false, true),
+        makeWheel("Rear Right", 0.82f, -1.25f, false, true),
+    };
+    return config;
+}
+
+void EnsureDrivableVehicleConfig(raceman::physics::VehicleConfig& config) {
+    if (!config.wheels.empty()) {
+        return;
+    }
+    raceman::physics::VehicleConfig fallback = BuildDefaultJoltVehicleConfig();
+    fallback.name = config.name.empty() ? fallback.name : config.name;
+    fallback.chassis = config.chassis;
+    fallback.engine = config.engine;
+    fallback.transmission = config.transmission;
+    fallback.frontSuspension = config.frontSuspension;
+    fallback.rearSuspension = config.rearSuspension;
+    fallback.groundContact = config.groundContact;
+    fallback.tireGrip = config.tireGrip;
+    config = std::move(fallback);
+}
+
+PhysicsColliderDesc BuildDefaultVehicleChassisCollider(const raceman::physics::VehicleConfig& config) {
+    (void)config;
+
+    PhysicsColliderDesc collider;
+    collider.type = PhysicsColliderType::Box;
+    collider.center = glm::vec3(0.0f, -0.2f, 0.0f);
+    collider.size = glm::vec3(1.8f, 0.4f, 4.0f);
+    return collider;
+}
+
 struct WheelForceFeedbackSample {
     float torque{0.0f};
     float damper{0.0f};
     float vibration{0.0f};
 };
 
-WheelForceFeedbackSample BuildWheelForceFeedbackSample(const raceman::physics::VehiclePhysics& vehicle) {
+struct ArcadeVehicleInput {
+    float throttle{0.0f};
+    float brake{0.0f};
+    float steering{0.0f};
+    float handbrake{0.0f};
+};
+
+struct ArcadeVehicleWheelTelemetry {
+    float normalForce{0.0f};
+};
+
+struct ArcadeVehicleTelemetry {
+    float longitudinalSpeed{0.0f};
+    float lateralSpeed{0.0f};
+    float slipAngle{0.0f};
+    float tractionScale{1.0f};
+    float steering{0.0f};
+    std::vector<ArcadeVehicleWheelTelemetry> wheels;
+};
+
+WheelForceFeedbackSample BuildWheelForceFeedbackSample(const ArcadeVehicleTelemetry& telemetry,
+                                                       const raceman::physics::VehicleConfig& config) {
     WheelForceFeedbackSample sample;
-    const raceman::physics::VehicleTelemetry& telemetry = vehicle.getTelemetry();
-    const raceman::physics::VehicleConfig& config = vehicle.getConfig();
     if (config.wheels.empty()) {
         return sample;
     }
@@ -64,12 +149,13 @@ WheelForceFeedbackSample BuildWheelForceFeedbackSample(const raceman::physics::V
     const float speedAbs = std::fabs(telemetry.longitudinalSpeed);
     const float speedFactor = (std::clamp)(speedAbs / 25.0f, 0.0f, 1.0f);
     const float loadFactor = (std::clamp)(averageFrontNormal / 4000.0f, 0.0f, 1.0f);
+    const float slipFactor = (std::clamp)(std::fabs(telemetry.slipAngle) / 25.0f, 0.0f, 1.0f);
 
     // Keep the first-pass model intentionally simple: center the wheel against the current steer input,
     // then add a small speed-based damper. This avoids the previous odd slip-pull behavior.
-    sample.torque = (std::clamp)(-telemetry.steering * (0.08f + speedFactor * 0.42f + loadFactor * 0.28f), -1.0f, 1.0f);
-    sample.damper = (std::clamp)(0.03f + speedFactor * 0.08f, 0.0f, 1.0f);
-    sample.vibration = 0.0f;
+    sample.torque = (std::clamp)(-telemetry.steering * (0.08f + speedFactor * 0.42f + loadFactor * 0.28f) * telemetry.tractionScale, -1.0f, 1.0f);
+    sample.damper = (std::clamp)(0.03f + speedFactor * 0.08f + slipFactor * 0.08f, 0.0f, 1.0f);
+    sample.vibration = (std::clamp)(slipFactor * (1.0f - telemetry.tractionScale) * 0.35f, 0.0f, 1.0f);
     return sample;
 }
 
@@ -78,6 +164,59 @@ float MoveTowards(float current, float target, float maxDelta) {
         return (std::min)(current + maxDelta, target);
     }
     return (std::max)(current - maxDelta, target);
+}
+
+float ShortestAngleDeltaDegrees(float from, float to) {
+    float delta = std::fmod(to - from, 360.0f);
+    if (delta > 180.0f) {
+        delta -= 360.0f;
+    } else if (delta < -180.0f) {
+        delta += 360.0f;
+    }
+    return delta;
+}
+
+glm::vec3 InterpolateEulerDegrees(const glm::vec3& from, const glm::vec3& to, float alpha) {
+    return {
+        from.x + ShortestAngleDeltaDegrees(from.x, to.x) * alpha,
+        from.y + ShortestAngleDeltaDegrees(from.y, to.y) * alpha,
+        from.z + ShortestAngleDeltaDegrees(from.z, to.z) * alpha,
+    };
+}
+
+Transform InterpolateTransform(const Transform& from, const Transform& to, float alpha) {
+    Transform result;
+    result.position = glm::mix(from.position, to.position, alpha);
+    result.rotationEuler = InterpolateEulerDegrees(from.rotationEuler, to.rotationEuler, alpha);
+    result.scale = glm::mix(from.scale, to.scale, alpha);
+    return result;
+}
+
+float SmoothingAlpha(float smoothing, float deltaTime) {
+    if (smoothing <= 0.0f) {
+        return 1.0f;
+    }
+    return (std::clamp)(1.0f - std::exp(-smoothing * deltaTime), 0.0f, 1.0f);
+}
+
+std::unordered_set<std::string> BuildVehicleRaycastIgnoreSet(const SceneObject& vehicleObject,
+                                                             const std::string& chassisBodyObjectId) {
+    std::unordered_set<std::string> ignored;
+    ignored.insert(vehicleObject.id);
+    if (!chassisBodyObjectId.empty()) {
+        ignored.insert(chassisBodyObjectId);
+    }
+    for (const std::string& chassisObjectId : vehicleObject.vehicle.chassisObjectIds) {
+        if (!chassisObjectId.empty()) {
+            ignored.insert(chassisObjectId);
+        }
+    }
+    for (const VehicleWheelBinding& binding : vehicleObject.vehicle.wheelBindings) {
+        if (!binding.objectId.empty()) {
+            ignored.insert(binding.objectId);
+        }
+    }
+    return ignored;
 }
 
 float NormalizeKeyboardSensitivity(float value) {
@@ -186,7 +325,6 @@ void SceneEditor::UpdateRuntimeSystems(float deltaTime) {
 
     UpdateScripts(deltaTime);
 
-    constexpr float kFixedStep = 1.0f / 60.0f;
     constexpr float kMaxAccumulatedFrameTime = 0.10f;
     constexpr int kMaxFixedStepsPerFrame = 4;
 
@@ -236,14 +374,14 @@ void SceneEditor::UpdateRuntimeSystems(float deltaTime) {
         runtimeSimulationAccumulator_ += (std::min)(deltaTime, kMaxAccumulatedFrameTime);
 
         int fixedSteps = 0;
-        while (runtimeSimulationAccumulator_ >= kFixedStep && fixedSteps < kMaxFixedStepsPerFrame) {
-            UpdateVehiclePhysics(kFixedStep);
-            UpdatePhysics(kFixedStep);
-            runtimeSimulationAccumulator_ -= kFixedStep;
+        while (runtimeSimulationAccumulator_ >= kRuntimeFixedStep && fixedSteps < kMaxFixedStepsPerFrame) {
+            UpdateVehiclePhysics(kRuntimeFixedStep);
+            UpdatePhysics(kRuntimeFixedStep);
+            runtimeSimulationAccumulator_ -= kRuntimeFixedStep;
             ++fixedSteps;
         }
 
-        if (fixedSteps >= kMaxFixedStepsPerFrame && runtimeSimulationAccumulator_ >= kFixedStep) {
+        if (fixedSteps >= kMaxFixedStepsPerFrame && runtimeSimulationAccumulator_ >= kRuntimeFixedStep) {
             runtimeSimulationAccumulator_ = 0.0f;
         }
     }
@@ -439,97 +577,16 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         inputManager_->SetWheelForceFeedbackActive(wheelFfbAllowed);
     }
 
-    bool anyEnabledCollider = false;
-    bool anyEnabledPlaneCollider = false;
-    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-        if (!IsObjectEffectivelyEnabled(objectIndex)) {
-            continue;
-        }
-        if (HasEnabledColliderComponent(objects_[objectIndex])) {
-            anyEnabledCollider = true;
-            if (GetEnabledColliderType(objects_[objectIndex]) == SceneColliderType::Plane) {
-                anyEnabledPlaneCollider = true;
-            }
-            break;
-        }
-    }
-
     float strongestTorque = 0.0f;
     float strongestDamper = 0.0f;
     float strongestVibration = 0.0f;
 
     for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
-        if (!runtimeVehicle.instance || runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
+        if (runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
             continue;
         }
         if (!IsObjectEffectivelyEnabled(runtimeVehicle.objectIndex)) {
             continue;
-        }
-
-        const bool hasPhysicsChassis = physicsWorld_ != nullptr &&
-            !runtimeVehicle.chassisBodyObjectId.empty() &&
-            physicsWorld_->HasBody(runtimeVehicle.chassisBodyObjectId);
-        runtimeVehicle.instance->setExternalBodySimulation(hasPhysicsChassis);
-
-        const bool canRaycast = physicsWorld_ != nullptr;
-        if (canRaycast) {
-            std::unordered_set<std::string> ignoredVehicleObjectIds;
-            if (!runtimeVehicle.chassisBodyObjectId.empty()) {
-                ignoredVehicleObjectIds.insert(runtimeVehicle.chassisBodyObjectId);
-            }
-            const SceneObject& vehicleObject = objects_[runtimeVehicle.objectIndex];
-            ignoredVehicleObjectIds.insert(vehicleObject.id);
-            for (const std::string& chassisObjectId : vehicleObject.vehicle.chassisObjectIds) {
-                if (!chassisObjectId.empty()) {
-                    ignoredVehicleObjectIds.insert(chassisObjectId);
-                }
-            }
-            for (const VehicleWheelBinding& binding : vehicleObject.vehicle.wheelBindings) {
-                if (!binding.objectId.empty()) {
-                    ignoredVehicleObjectIds.insert(binding.objectId);
-                }
-            }
-
-            runtimeVehicle.instance->setGroundRaycastCallback([this, ignoredVehicleObjectIds = std::move(ignoredVehicleObjectIds)](
-                                                                                      const raceman::physics::Vector3 &origin,
-                                                                                      const raceman::physics::Vector3 &direction,
-                                                                                      float maxDistance,
-                                                                                      raceman::physics::VehicleRaycastHit &outHit) {
-                if (!physicsWorld_) {
-                    return false;
-                }
-                PhysicsRaycastHit sceneHit;
-                const glm::vec3 sceneOrigin = VehicleVectorToScene(origin);
-                const glm::vec3 sceneDirection = VehicleVectorToScene(direction);
-                if (!physicsWorld_->RaycastIgnoring(sceneOrigin, sceneDirection, maxDistance, sceneHit, ignoredVehicleObjectIds)) {
-                    return false;
-                }
-                if (!sceneHit.hit) {
-                    return false;
-                }
-                outHit.position = SceneVectorToVehicle(sceneHit.position);
-                outHit.normal = SceneVectorToVehicle(sceneHit.normal);
-                outHit.distance = sceneHit.distance;
-                return true;
-            });
-        } else {
-            runtimeVehicle.instance->setGroundRaycastCallback({});
-        }
-
-        const bool allowGroundPlane = !canRaycast && anyEnabledPlaneCollider && anyEnabledCollider;
-        runtimeVehicle.instance->setUseGroundPlane(allowGroundPlane);
-
-        raceman::physics::VehicleRigidBodyState currentRigidBodyState = runtimeVehicle.instance->getRigidBodyState();
-
-        if (hasPhysicsChassis) {
-            PhysicsBodyState chassisState;
-            if (physicsWorld_->GetBodyState(runtimeVehicle.chassisBodyObjectId, chassisState)) {
-                currentRigidBodyState.transform.position = SceneVectorToVehicle(chassisState.position);
-                currentRigidBodyState.transform.rotation = SceneQuatToVehicle(glm::quat(glm::radians(chassisState.rotationEuler)));
-                currentRigidBodyState.linearVelocity = SceneVectorToVehicle(chassisState.velocity);
-                currentRigidBodyState.angularVelocity = ScenePseudoVectorToVehicle(chassisState.angularVelocity);
-                runtimeVehicle.instance->setRigidBodyState(currentRigidBodyState);
-            }
         }
 
         const SceneObject& vehicleObject = objects_[runtimeVehicle.objectIndex];
@@ -546,7 +603,7 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         runtimeVehicle.pendingShiftDown = false;
         runtimeVehicle.pendingNeutral = false;
         runtimeVehicle.pendingReverse = false;
-        raceman::physics::VehicleControlInput baseInput{};
+        ArcadeVehicleInput baseInput{};
         if (routeInput) {
             baseInput.steering = inputManager_->GetAxisForProfile(profileId, "steer",
                 vehicleObject.vehicle.preferredInputDevice,
@@ -616,121 +673,385 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         const float brakeAmount = baseInput.brake;
         const bool wantsForward = routeInput && throttleAmount > kDriveIntentInputThreshold;
         const bool wantsReverseOrBrake = routeInput && brakeAmount > kDriveIntentInputThreshold;
-
-        const raceman::physics::VehicleTelemetry& telemetry = runtimeVehicle.instance->getTelemetry();
-        const float longitudinalSpeed = VehicleLongitudinalSpeed(currentRigidBodyState);
-        constexpr float kReverseEngageSpeed = 0.75f;
-        const bool manualTransmission = runtimeVehicle.instance->getConfig().transmission.mode ==
-            raceman::physics::TransmissionConfig::Mode::Manual;
-
-        raceman::physics::VehicleControlInput input = baseInput;
-        bool reverseActive = telemetry.isReverse;
-        runtimeVehicle.autoShiftCooldown = (std::max)(0.0f, runtimeVehicle.autoShiftCooldown - deltaTime);
-
-        if (manualTransmission) {
-            if (manualReversePressed) {
-                if (std::fabs(longitudinalSpeed) <= kReverseEngageSpeed) {
-                    if (telemetry.isReverse) {
-                        runtimeVehicle.instance->setNeutral(true);
-                    } else {
-                        runtimeVehicle.instance->setNeutral(false);
-                        runtimeVehicle.instance->setReverse(true);
-                    }
-                }
-            } else if (manualNeutralPressed) {
-                runtimeVehicle.instance->setNeutral(!telemetry.isNeutral);
-            } else if (manualShiftUpPressed) {
-                runtimeVehicle.instance->shiftUp();
-            } else if (manualShiftDownPressed &&
-                !(telemetry.isNeutral && std::fabs(longitudinalSpeed) > kReverseEngageSpeed)) {
-                runtimeVehicle.instance->shiftDown();
+        float contactGripMultiplier = 0.0f;
+        float contactRollingDrag = 0.0f;
+        float contactWheelGripFactor = 0.0f;
+        int surfaceContactCount = 0;
+        for (std::size_t contactIndex = 0; contactIndex < runtimeVehicle.arcadeWheelContacts.size(); ++contactIndex) {
+            const RuntimeVehicleInstance::WheelContact& contact = runtimeVehicle.arcadeWheelContacts[contactIndex];
+            if (!contact.grounded) {
+                continue;
             }
+            contactGripMultiplier += contact.surfaceGripMultiplier;
+            contactRollingDrag += contact.surfaceRollingDrag;
+            if (contactIndex < runtimeVehicle.config.wheels.size()) {
+                contactWheelGripFactor += (std::max)(0.1f, runtimeVehicle.config.wheels[contactIndex].gripFactor);
+            } else {
+                contactWheelGripFactor += 1.0f;
+            }
+            ++surfaceContactCount;
+        }
+        if (surfaceContactCount > 0) {
+            const float count = static_cast<float>(surfaceContactCount);
+            contactGripMultiplier = (std::max)(0.0f, contactGripMultiplier / count);
+            contactRollingDrag = (std::max)(0.0f, contactRollingDrag / count);
+            contactWheelGripFactor = (std::max)(0.1f, contactWheelGripFactor / count);
+        } else {
+            const ColliderSurfaceConfig& defaultSurface = GetProjectTrackSurfaceSettings(TrackSurfaceType::Asphalt);
+            contactGripMultiplier = (std::max)(0.0f, defaultSurface.gripMultiplier);
+            contactRollingDrag = (std::max)(0.0f, defaultSurface.rollingDrag);
+            contactWheelGripFactor = 1.0f;
+        }
 
-            if (wantsForward && wantsReverseOrBrake) {
-                input.throttle = 0.0f;
+        ArcadeVehicleTelemetry telemetry;
+        if (!runtimeVehicle.arcadeInitialized) {
+            runtimeVehicle.arcadeChassisWorld = TransformFromMatrix(GetObjectWorldMatrix(runtimeVehicle.objectIndex));
+            runtimeVehicle.arcadePreviousChassisWorld = runtimeVehicle.arcadeChassisWorld;
+            runtimeVehicle.arcadeInitialized = true;
+        }
+        runtimeVehicle.arcadePreviousChassisWorld = runtimeVehicle.arcadeChassisWorld;
+        runtimeVehicle.arcadePreviousWheelSpin = runtimeVehicle.arcadeWheelSpin;
+
+        constexpr float kMaxForwardSpeed = 55.0f;
+        constexpr float kMaxReverseSpeed = 12.0f;
+        constexpr float kAcceleration = 18.0f;
+        constexpr float kReverseAcceleration = 10.0f;
+        constexpr float kBrakeDeceleration = 36.0f;
+        constexpr float kCoastDeceleration = 2.5f;
+        constexpr float kHandbrakeDeceleration = 48.0f;
+        constexpr float kSteerDegreesPerSecond = 85.0f;
+        constexpr float kIdleRPM = 900.0f;
+        constexpr float kRedlineRPM = 6000.0f;
+
+        float& speed = runtimeVehicle.arcadeSpeed;
+        float& lateralSpeed = runtimeVehicle.arcadeLateralSpeed;
+        const raceman::physics::VehicleTireGripConfig& tireGrip = runtimeVehicle.config.tireGrip;
+        const float absSpeedBeforeDrive = std::fabs(speed);
+        const float speedFactorBeforeDrive = (std::clamp)(absSpeedBeforeDrive / kMaxForwardSpeed, 0.0f, 1.0f);
+        const float handbrakeGripScale = 1.0f - baseInput.handbrake * (1.0f - (std::clamp)(tireGrip.handbrakeGripScale, 0.0f, 1.0f));
+        const float downforceGripScale = 1.0f + speedFactorBeforeDrive * speedFactorBeforeDrive * (std::max)(0.0f, tireGrip.downforceGripScale);
+        const float effectiveSurfaceGrip = tireGrip.enabled ? (std::max)(0.05f, contactGripMultiplier) : 1.0f;
+        const float effectiveWheelGrip = tireGrip.enabled ? (std::clamp)(contactWheelGripFactor, 0.2f, 4.0f) : 1.0f;
+        const float effectiveLateralGrip =
+            (std::max)(0.0f, tireGrip.lateralGrip) * effectiveSurfaceGrip * effectiveWheelGrip * downforceGripScale * handbrakeGripScale;
+        const float slipAngle = glm::degrees(std::atan2(lateralSpeed, (std::max)(0.5f, absSpeedBeforeDrive)));
+        const float slipLimit = (std::max)(0.1f, tireGrip.slipAngleLimit);
+        const float slipOverLimit = tireGrip.enabled
+            ? (std::max)(0.0f, (std::fabs(slipAngle) - slipLimit) / slipLimit)
+            : 0.0f;
+        const float cornerDemand = tireGrip.enabled
+            ? std::fabs(baseInput.steering) * speedFactorBeforeDrive * speedFactorBeforeDrive
+            : 0.0f;
+        const float availableCornerGrip = tireGrip.enabled
+            ? (std::max)(0.05f, effectiveLateralGrip / 5.0f)
+            : 1.0f;
+        const float cornerOverLimit = tireGrip.enabled
+            ? (std::max)(0.0f, (cornerDemand - availableCornerGrip) / availableCornerGrip)
+            : 0.0f;
+        float tractionScale = 1.0f - (std::max)(slipOverLimit, cornerOverLimit) * (std::clamp)(tireGrip.slideGripLoss, 0.0f, 1.0f);
+        tractionScale = (std::clamp)(tractionScale, (std::clamp)(tireGrip.minTractionScale, 0.0f, 1.0f), 1.0f);
+        const float driveGripScale = tireGrip.enabled
+            ? effectiveSurfaceGrip * (std::max)(0.0f, tireGrip.longitudinalGrip) * tractionScale
+            : contactGripMultiplier;
+        if (wantsForward && wantsReverseOrBrake) {
+                speed = MoveTowards(speed, 0.0f, kBrakeDeceleration * driveGripScale * brakeAmount * deltaTime);
+        } else if (wantsForward) {
+            if (speed < -0.1f) {
+                speed = MoveTowards(speed, 0.0f, kBrakeDeceleration * driveGripScale * throttleAmount * deltaTime);
+            } else {
+                speed += throttleAmount * kAcceleration * driveGripScale * deltaTime;
+            }
+        } else if (wantsReverseOrBrake) {
+            if (speed > 0.75f) {
+                speed = MoveTowards(speed, 0.0f, kBrakeDeceleration * driveGripScale * brakeAmount * deltaTime);
+            } else {
+                speed -= brakeAmount * kReverseAcceleration * driveGripScale * deltaTime;
             }
         } else {
-            if (wantsForward && wantsReverseOrBrake) {
-                input.throttle = 0.0f;
-                input.brake = brakeAmount;
-            } else if (wantsForward) {
-                reverseActive = false;
-                if (telemetry.isNeutral || telemetry.isReverse) {
-                    runtimeVehicle.instance->setForwardGear(0);
-                    runtimeVehicle.autoShiftCooldown = runtimeVehicle.instance->getConfig().transmission.shiftTime;
-                } else {
-                    runtimeVehicle.instance->setReverse(false);
-                    runtimeVehicle.instance->setNeutral(false);
-                }
-                input.throttle = throttleAmount;
-                input.brake = 0.0f;
-            } else if (wantsReverseOrBrake) {
-                if (reverseActive || longitudinalSpeed <= kReverseEngageSpeed) {
-                    reverseActive = true;
-                    runtimeVehicle.instance->setNeutral(false);
-                    input.throttle = brakeAmount;
-                    input.brake = 0.0f;
-                } else {
-                    input.throttle = 0.0f;
-                    input.brake = brakeAmount;
-                }
-            }
+            speed = MoveTowards(speed, 0.0f, kCoastDeceleration * deltaTime);
+        }
 
-            runtimeVehicle.instance->setReverse(reverseActive);
+        if (baseInput.handbrake > 0.0f) {
+            speed = MoveTowards(speed, 0.0f, kHandbrakeDeceleration * driveGripScale * baseInput.handbrake * deltaTime);
+        }
+        speed = MoveTowards(speed, 0.0f, contactRollingDrag * deltaTime);
+        speed = (std::clamp)(speed, -kMaxReverseSpeed, kMaxForwardSpeed);
 
-            const auto& vehicleConfig = runtimeVehicle.instance->getConfig();
-            const int gearCount = static_cast<int>(vehicleConfig.transmission.gearRatios.size());
-            if (wantsForward &&
-                !wantsReverseOrBrake &&
-                !reverseActive &&
-                gearCount > 1 &&
-                runtimeVehicle.autoShiftCooldown <= 0.0f) {
-                const raceman::physics::VehicleTelemetry& shiftTelemetry = runtimeVehicle.instance->getTelemetry();
-                const int currentGear = (shiftTelemetry.currentGear <= 0) ? 1 : shiftTelemetry.currentGear;
-                const float upshiftRPM = vehicleConfig.engine.redlineRPM * 0.88f;
-                const float downshiftRPM = (std::max)(vehicleConfig.engine.idleRPM * 1.35f, vehicleConfig.engine.redlineRPM * 0.38f);
-                if (shiftTelemetry.engineRPM >= upshiftRPM && currentGear < gearCount) {
-                    runtimeVehicle.instance->setForwardGear(currentGear);
-                    runtimeVehicle.autoShiftCooldown = vehicleConfig.transmission.shiftTime;
-                } else if (shiftTelemetry.engineRPM <= downshiftRPM && currentGear > 1) {
-                    runtimeVehicle.instance->setForwardGear(currentGear - 2);
-                    runtimeVehicle.autoShiftCooldown = vehicleConfig.transmission.shiftTime;
-                }
+        const float absSpeed = std::fabs(speed);
+        const float speedForSteer = (std::clamp)(absSpeed / 3.0f, 0.0f, 1.0f);
+        const float highSpeedSteerScale = 1.0f - (std::clamp)(absSpeed / kMaxForwardSpeed, 0.0f, 0.75f);
+        const float gripSteerScale = (std::clamp)(effectiveSurfaceGrip * tractionScale, 0.15f, 1.5f);
+        const float directionSign = speed < -0.1f ? -1.0f : 1.0f;
+        runtimeVehicle.arcadeChassisWorld.rotationEuler.y -=
+            baseInput.steering * kSteerDegreesPerSecond * speedForSteer * highSpeedSteerScale * gripSteerScale * directionSign * deltaTime;
+
+        const raceman::physics::VehicleGroundContactConfig& groundContact = runtimeVehicle.config.groundContact;
+        const glm::quat yawRotation = glm::angleAxis(glm::radians(runtimeVehicle.arcadeChassisWorld.rotationEuler.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        const glm::vec3 forward = yawRotation * glm::vec3(0.0f, 0.0f, 1.0f);
+        const glm::vec3 right = yawRotation * glm::vec3(1.0f, 0.0f, 0.0f);
+        const float handbrakeSlipTarget = baseInput.steering * speed * baseInput.handbrake * 0.55f;
+        const float surfaceSlipBoost = tireGrip.enabled ? (std::clamp)(1.2f - effectiveSurfaceGrip, 0.0f, 1.0f) : 0.0f;
+        const float cornerSlipTarget = baseInput.steering * speed * cornerOverLimit * 0.18f;
+        const float targetLateralSpeed = tireGrip.enabled
+            ? (cornerSlipTarget + handbrakeSlipTarget) * (1.0f + surfaceSlipBoost)
+            : 0.0f;
+        const float lateralApproach = (std::max)(0.0f, tireGrip.recoveryRate) * (std::max)(0.25f, effectiveLateralGrip) * deltaTime;
+        lateralSpeed = MoveTowards(lateralSpeed, targetLateralSpeed, lateralApproach);
+        if (std::fabs(speed) < 0.1f && std::fabs(targetLateralSpeed) < 0.1f) {
+            lateralSpeed = MoveTowards(lateralSpeed, 0.0f, effectiveLateralGrip * deltaTime);
+        }
+
+        runtimeVehicle.arcadeSlipAngle = glm::degrees(std::atan2(lateralSpeed, (std::max)(0.5f, std::fabs(speed))));
+        runtimeVehicle.arcadeTractionScale = tractionScale;
+        runtimeVehicle.arcadeSurfaceGrip = effectiveSurfaceGrip;
+
+        glm::vec3 moveDelta = (forward * speed + right * lateralSpeed) * deltaTime;
+        if (physicsWorld_ != nullptr && glm::length(moveDelta) > 0.0001f) {
+            const std::unordered_set<std::string> ignoredVehicleObjectIds =
+                BuildVehicleRaycastIgnoreSet(vehicleObject, runtimeVehicle.chassisBodyObjectId);
+            const glm::vec3 moveDir = glm::normalize(moveDelta);
+            const float obstacleSkin = (std::max)(0.0f, groundContact.obstacleSkin);
+            PhysicsRaycastHit obstacleHit;
+            if (physicsWorld_->RaycastIgnoring(
+                    runtimeVehicle.arcadeChassisWorld.position + glm::vec3(0.0f, groundContact.obstacleProbeHeight, 0.0f),
+                    moveDir,
+                    glm::length(moveDelta) + obstacleSkin,
+                    obstacleHit,
+                    ignoredVehicleObjectIds) &&
+                obstacleHit.hit &&
+                obstacleHit.normal.y < groundContact.wallNormalYMax) {
+                moveDelta = moveDir * (std::max)(0.0f, obstacleHit.distance - obstacleSkin);
+                speed = 0.0f;
+                lateralSpeed = 0.0f;
             }
         }
 
-        runtimeVehicle.instance->setInput(input);
+        runtimeVehicle.arcadeChassisWorld.position += moveDelta;
+        runtimeVehicle.arcadeWheelContacts.resize(runtimeVehicle.config.wheels.size());
+        if (groundContact.enabled && physicsWorld_ != nullptr && !runtimeVehicle.config.wheels.empty()) {
+            const std::unordered_set<std::string> ignoredVehicleObjectIds =
+                BuildVehicleRaycastIgnoreSet(vehicleObject, runtimeVehicle.chassisBodyObjectId);
+            struct WheelHitSample {
+                bool hit{false};
+                glm::vec3 contactPosition{0.0f};
+                glm::vec3 normal{0.0f, 1.0f, 0.0f};
+                ColliderSurfaceConfig surface{MakeDefaultTrackSurfaceConfig(TrackSurfaceType::Asphalt)};
+                float restLength{0.35f};
+                float radius{0.35f};
+                glm::vec3 localScene{0.0f};
+                float targetMountY{0.0f};
+            };
 
-        runtimeVehicle.instance->update(deltaTime);
+            std::vector<WheelHitSample> wheelHits(runtimeVehicle.config.wheels.size());
+            float targetChassisYSum = 0.0f;
+            int groundedWheelCount = 0;
+            float frontHeightSum = 0.0f;
+            float rearHeightSum = 0.0f;
+            float leftHeightSum = 0.0f;
+            float rightHeightSum = 0.0f;
+            float frontLongitudinalSum = 0.0f;
+            float rearLongitudinalSum = 0.0f;
+            float leftLateralSum = 0.0f;
+            float rightLateralSum = 0.0f;
+            int frontCount = 0;
+            int rearCount = 0;
+            int leftCount = 0;
+            int rightCount = 0;
 
-        const WheelForceFeedbackSample ffbSample = BuildWheelForceFeedbackSample(*runtimeVehicle.instance);
+            for (std::size_t wheelIndex = 0; wheelIndex < runtimeVehicle.config.wheels.size(); ++wheelIndex) {
+                const raceman::physics::WheelConfig& wheel = runtimeVehicle.config.wheels[wheelIndex];
+                WheelHitSample& sample = wheelHits[wheelIndex];
+                sample.restLength = wheel.mountPosition.y >= 0.0f
+                    ? runtimeVehicle.config.frontSuspension.restLength
+                    : runtimeVehicle.config.rearSuspension.restLength;
+                sample.restLength = (std::max)(0.01f, sample.restLength);
+                sample.radius = (std::max)(0.05f, wheel.radius);
+                sample.localScene = VehicleVectorToScene(wheel.mountPosition);
+
+                const glm::vec3 wheelLocalWorld = yawRotation * sample.localScene;
+                const glm::vec3 mountWorld = runtimeVehicle.arcadeChassisWorld.position + wheelLocalWorld;
+                const float probeUp = (std::max)(0.0f, groundContact.probeUp);
+                const float probeDistance = (std::max)(0.1f, probeUp + sample.restLength + sample.radius + (std::max)(0.0f, groundContact.extraProbeLength));
+
+                PhysicsRaycastHit hit;
+                if (!physicsWorld_->RaycastIgnoring(
+                        mountWorld + glm::vec3(0.0f, probeUp, 0.0f),
+                        glm::vec3(0.0f, -1.0f, 0.0f),
+                        probeDistance,
+                        hit,
+                        ignoredVehicleObjectIds) ||
+                    !hit.hit ||
+                    hit.normal.y < groundContact.minGroundNormalY) {
+                    continue;
+                }
+
+                sample.hit = true;
+                sample.contactPosition = hit.position;
+                sample.normal = glm::normalize(hit.normal);
+                const int hitObjectIndex = FindObjectIndexById(hit.objectId);
+                if (hitObjectIndex >= 0 && hitObjectIndex < static_cast<int>(objects_.size())) {
+                    sample.surface = GetProjectTrackSurfaceSettings(objects_[hitObjectIndex].colliderSurface.type);
+                }
+                sample.targetMountY = hit.position.y + sample.radius + sample.restLength + groundContact.rideHeightOffset;
+                targetChassisYSum += sample.targetMountY - wheelLocalWorld.y;
+                ++groundedWheelCount;
+
+                if (wheel.mountPosition.y >= 0.0f) {
+                    frontHeightSum += sample.targetMountY;
+                    frontLongitudinalSum += sample.localScene.z;
+                    ++frontCount;
+                } else {
+                    rearHeightSum += sample.targetMountY;
+                    rearLongitudinalSum += sample.localScene.z;
+                    ++rearCount;
+                }
+
+                if (wheel.mountPosition.x >= 0.0f) {
+                    rightHeightSum += sample.targetMountY;
+                    rightLateralSum += sample.localScene.x;
+                    ++rightCount;
+                } else {
+                    leftHeightSum += sample.targetMountY;
+                    leftLateralSum += sample.localScene.x;
+                    ++leftCount;
+                }
+            }
+
+            if (groundedWheelCount > 0) {
+                const float heightAlpha = SmoothingAlpha(groundContact.heightSmoothing, deltaTime);
+                const float targetChassisY = targetChassisYSum / static_cast<float>(groundedWheelCount);
+                runtimeVehicle.arcadeChassisWorld.position.y =
+                    runtimeVehicle.arcadeChassisWorld.position.y + (targetChassisY - runtimeVehicle.arcadeChassisWorld.position.y) * heightAlpha;
+                runtimeVehicle.arcadeVerticalVelocity = 0.0f;
+
+                float targetPitch = 0.0f;
+                float targetRoll = 0.0f;
+                if (frontCount > 0 && rearCount > 0) {
+                    const float frontHeight = frontHeightSum / static_cast<float>(frontCount);
+                    const float rearHeight = rearHeightSum / static_cast<float>(rearCount);
+                    const float frontZ = frontLongitudinalSum / static_cast<float>(frontCount);
+                    const float rearZ = rearLongitudinalSum / static_cast<float>(rearCount);
+                    targetPitch = -glm::degrees(std::atan2(frontHeight - rearHeight, (std::max)(0.01f, std::fabs(frontZ - rearZ))));
+                }
+                if (leftCount > 0 && rightCount > 0) {
+                    const float leftHeight = leftHeightSum / static_cast<float>(leftCount);
+                    const float rightHeight = rightHeightSum / static_cast<float>(rightCount);
+                    const float leftX = leftLateralSum / static_cast<float>(leftCount);
+                    const float rightX = rightLateralSum / static_cast<float>(rightCount);
+                    targetRoll = glm::degrees(std::atan2(rightHeight - leftHeight, (std::max)(0.01f, std::fabs(rightX - leftX))));
+                }
+
+                const float tiltAlpha = SmoothingAlpha(groundContact.tiltSmoothing, deltaTime);
+                runtimeVehicle.arcadeChassisWorld.rotationEuler.x += ShortestAngleDeltaDegrees(runtimeVehicle.arcadeChassisWorld.rotationEuler.x, targetPitch) * tiltAlpha;
+                runtimeVehicle.arcadeChassisWorld.rotationEuler.z += ShortestAngleDeltaDegrees(runtimeVehicle.arcadeChassisWorld.rotationEuler.z, targetRoll) * tiltAlpha;
+            } else {
+                runtimeVehicle.arcadeVerticalVelocity -= (std::max)(0.0f, groundContact.airborneGravity) * deltaTime;
+                runtimeVehicle.arcadeChassisWorld.position.y += runtimeVehicle.arcadeVerticalVelocity * deltaTime;
+                const float tiltAlpha = SmoothingAlpha(groundContact.tiltSmoothing, deltaTime);
+                runtimeVehicle.arcadeChassisWorld.rotationEuler.x += ShortestAngleDeltaDegrees(runtimeVehicle.arcadeChassisWorld.rotationEuler.x, 0.0f) * tiltAlpha;
+                runtimeVehicle.arcadeChassisWorld.rotationEuler.z += ShortestAngleDeltaDegrees(runtimeVehicle.arcadeChassisWorld.rotationEuler.z, 0.0f) * tiltAlpha;
+            }
+
+            const glm::quat finalYawRotation = glm::angleAxis(glm::radians(runtimeVehicle.arcadeChassisWorld.rotationEuler.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            for (std::size_t wheelIndex = 0; wheelIndex < runtimeVehicle.config.wheels.size(); ++wheelIndex) {
+                const WheelHitSample& sample = wheelHits[wheelIndex];
+                RuntimeVehicleInstance::WheelContact& contact = runtimeVehicle.arcadeWheelContacts[wheelIndex];
+                const glm::vec3 wheelLocalWorld = finalYawRotation * sample.localScene;
+                const glm::vec3 mountWorld = runtimeVehicle.arcadeChassisWorld.position + wheelLocalWorld;
+                contact.grounded = sample.hit;
+                contact.normal = sample.hit ? sample.normal : glm::vec3(0.0f, 1.0f, 0.0f);
+                contact.surfaceType = sample.surface.type;
+                const ColliderSurfaceConfig& defaultSurface = GetProjectTrackSurfaceSettings(TrackSurfaceType::Asphalt);
+                contact.surfaceGripMultiplier = sample.hit ? (std::max)(0.0f, sample.surface.gripMultiplier) : (std::max)(0.0f, defaultSurface.gripMultiplier);
+                contact.surfaceRollingDrag = sample.hit ? (std::max)(0.0f, sample.surface.rollingDrag) : (std::max)(0.0f, defaultSurface.rollingDrag);
+                contact.slipAngle = runtimeVehicle.arcadeSlipAngle;
+                contact.tractionScale = runtimeVehicle.arcadeTractionScale;
+                if (sample.hit) {
+                    const float suspensionLength = (std::max)(0.0f, mountWorld.y - sample.contactPosition.y - sample.radius);
+                    contact.suspensionTravel = (std::clamp)(sample.restLength - suspensionLength, 0.0f, sample.restLength);
+                    contact.contactPosition = sample.contactPosition;
+                    contact.wheelCenterPosition = sample.contactPosition + contact.normal * sample.radius;
+                    const float compression = sample.restLength > 0.0f ? contact.suspensionTravel / sample.restLength : 0.0f;
+                    contact.normalForce = 2500.0f + compression * 2500.0f;
+                } else {
+                    contact.suspensionTravel = 0.0f;
+                    contact.normalForce = 0.0f;
+                    contact.wheelCenterPosition = mountWorld + glm::vec3(0.0f, -(sample.restLength + sample.radius), 0.0f);
+                    contact.contactPosition = contact.wheelCenterPosition - glm::vec3(0.0f, sample.radius, 0.0f);
+                }
+                contact.angularVelocity = speed / (std::max)(0.05f, sample.radius);
+            }
+        } else {
+            runtimeVehicle.arcadeVerticalVelocity = 0.0f;
+            for (std::size_t wheelIndex = 0; wheelIndex < runtimeVehicle.config.wheels.size(); ++wheelIndex) {
+                const raceman::physics::WheelConfig& wheel = runtimeVehicle.config.wheels[wheelIndex];
+                RuntimeVehicleInstance::WheelContact& contact = runtimeVehicle.arcadeWheelContacts[wheelIndex];
+                const float restLength = wheel.mountPosition.y >= 0.0f
+                    ? runtimeVehicle.config.frontSuspension.restLength
+                    : runtimeVehicle.config.rearSuspension.restLength;
+                const float radius = (std::max)(0.05f, wheel.radius);
+                const glm::vec3 wheelLocalScene = VehicleVectorToScene(wheel.mountPosition);
+                const glm::vec3 mountWorld = runtimeVehicle.arcadeChassisWorld.position + yawRotation * wheelLocalScene;
+                contact.grounded = false;
+                contact.normal = glm::vec3(0.0f, 1.0f, 0.0f);
+                contact.surfaceType = TrackSurfaceType::Asphalt;
+                const ColliderSurfaceConfig& defaultSurface = GetProjectTrackSurfaceSettings(TrackSurfaceType::Asphalt);
+                contact.surfaceGripMultiplier = (std::max)(0.0f, defaultSurface.gripMultiplier);
+                contact.surfaceRollingDrag = (std::max)(0.0f, defaultSurface.rollingDrag);
+                contact.slipAngle = runtimeVehicle.arcadeSlipAngle;
+                contact.tractionScale = runtimeVehicle.arcadeTractionScale;
+                contact.suspensionTravel = 0.0f;
+                contact.normalForce = 0.0f;
+                contact.wheelCenterPosition = mountWorld + glm::vec3(0.0f, -(restLength + radius), 0.0f);
+                contact.contactPosition = contact.wheelCenterPosition - glm::vec3(0.0f, radius, 0.0f);
+                contact.angularVelocity = speed / radius;
+            }
+        }
+        const float finalAbsSpeed = std::fabs(speed);
+        runtimeVehicle.arcadeWheelSpin += (speed / 0.3f) * deltaTime;
+        runtimeVehicle.arcadeEngineRPM = (std::clamp)(kIdleRPM + (finalAbsSpeed / kMaxForwardSpeed) * (kRedlineRPM - kIdleRPM) * (0.45f + throttleAmount * 0.55f),
+                                                      kIdleRPM,
+                                                      kRedlineRPM);
+        runtimeVehicle.arcadeThrottle = throttleAmount;
+        runtimeVehicle.arcadeBrake = brakeAmount;
+        runtimeVehicle.arcadeSteering = baseInput.steering;
+        runtimeVehicle.arcadeHandbrake = baseInput.handbrake;
+        if (speed < -0.5f) {
+            runtimeVehicle.arcadeGear = -1;
+        } else if (finalAbsSpeed < 0.2f) {
+            runtimeVehicle.arcadeGear = 0;
+        } else {
+            const int gearCount = (std::max)(1, static_cast<int>(runtimeVehicle.config.transmission.gearRatios.size()));
+            const float normalizedSpeed = (std::clamp)(finalAbsSpeed / kMaxForwardSpeed, 0.0f, 0.999f);
+            runtimeVehicle.arcadeGear = (std::clamp)(1 + static_cast<int>(normalizedSpeed * static_cast<float>(gearCount)), 1, gearCount);
+        }
+
+        if (physicsWorld_ != nullptr && !runtimeVehicle.chassisBodyObjectId.empty() && physicsWorld_->HasBody(runtimeVehicle.chassisBodyObjectId)) {
+            physicsWorld_->MoveBodyKinematic(
+                runtimeVehicle.chassisBodyObjectId,
+                runtimeVehicle.arcadeChassisWorld.position,
+                runtimeVehicle.arcadeChassisWorld.rotationEuler,
+                deltaTime);
+        }
+
+        telemetry.steering = runtimeVehicle.arcadeSteering;
+        telemetry.longitudinalSpeed = speed;
+        telemetry.lateralSpeed = lateralSpeed;
+        telemetry.slipAngle = runtimeVehicle.arcadeSlipAngle;
+        telemetry.tractionScale = runtimeVehicle.arcadeTractionScale;
+        telemetry.wheels.resize((std::max<std::size_t>)(4, runtimeVehicle.config.wheels.size()));
+        for (std::size_t wheelIndex = 0; wheelIndex < telemetry.wheels.size(); ++wheelIndex) {
+            ArcadeVehicleWheelTelemetry& wheelState = telemetry.wheels[wheelIndex];
+            wheelState.normalForce = wheelIndex < runtimeVehicle.arcadeWheelContacts.size()
+                ? runtimeVehicle.arcadeWheelContacts[wheelIndex].normalForce
+                : 0.0f;
+        }
+
+        const WheelForceFeedbackSample ffbSample = BuildWheelForceFeedbackSample(telemetry, runtimeVehicle.config);
         if (std::fabs(ffbSample.torque) >= std::fabs(strongestTorque)) {
             strongestTorque = ffbSample.torque;
             strongestDamper = ffbSample.damper;
             strongestVibration = ffbSample.vibration;
-        }
-
-        if (hasPhysicsChassis) {
-            const raceman::physics::VehicleTelemetry& appliedTelemetry = runtimeVehicle.instance->getTelemetry();
-            bool appliedWheelForces = false;
-            for (const raceman::physics::WheelTelemetry& wheel : appliedTelemetry.wheels) {
-                if (raceman::physics::dot(wheel.force, wheel.force) <= 0.000001f) {
-                    continue;
-                }
-                physicsWorld_->AddBodyForceAtPosition(
-                    runtimeVehicle.chassisBodyObjectId,
-                    VehicleVectorToScene(wheel.force),
-                    VehicleVectorToScene(wheel.contactPosition));
-                appliedWheelForces = true;
-            }
-            if (!appliedWheelForces) {
-                physicsWorld_->AddBodyForce(
-                    runtimeVehicle.chassisBodyObjectId,
-                    VehicleVectorToScene(runtimeVehicle.instance->getPendingChassisForce()));
-                physicsWorld_->AddBodyTorque(
-                    runtimeVehicle.chassisBodyObjectId,
-                    VehiclePseudoVectorToScene(runtimeVehicle.instance->getPendingChassisTorque()));
-            }
         }
     }
 
@@ -750,34 +1071,27 @@ void SceneEditor::UpdateVehicles(float deltaTime) {
         return;
     }
 
+    const float renderAlpha = (std::clamp)(runtimeSimulationAccumulator_ / kRuntimeFixedStep, 0.0f, 1.0f);
+
     for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
-        if (!runtimeVehicle.instance) {
-            continue;
-        }
         if (runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
             continue;
         }
         if (!IsObjectEffectivelyEnabled(runtimeVehicle.objectIndex)) {
             continue;
         }
-
-        const bool hasPhysicsChassis = physicsWorld_ != nullptr &&
-            !runtimeVehicle.chassisBodyObjectId.empty() &&
-            physicsWorld_->HasBody(runtimeVehicle.chassisBodyObjectId);
-
-        if (hasPhysicsChassis) {
-            PhysicsBodyState chassisState;
-            if (physicsWorld_->GetBodyState(runtimeVehicle.chassisBodyObjectId, chassisState)) {
-                raceman::physics::VehicleRigidBodyState rigidBodyState;
-                rigidBodyState.transform.position = SceneVectorToVehicle(chassisState.position);
-                rigidBodyState.transform.rotation = SceneQuatToVehicle(glm::quat(glm::radians(chassisState.rotationEuler)));
-                rigidBodyState.linearVelocity = SceneVectorToVehicle(chassisState.velocity);
-                rigidBodyState.angularVelocity = ScenePseudoVectorToVehicle(chassisState.angularVelocity);
-                runtimeVehicle.instance->setRigidBodyState(rigidBodyState);
-            }
+        if (physicsWorld_ == nullptr) {
+            continue;
         }
+        (void)physicsWorld_;
 
-        const Transform runtimeChassisWorldTransform = TransformFromVehicleTransform(runtimeVehicle.instance->getChassisTransform());
+        Transform runtimeChassisWorldTransform = InterpolateTransform(
+            runtimeVehicle.arcadePreviousChassisWorld,
+            runtimeVehicle.arcadeChassisWorld,
+            renderAlpha);
+        runtimeChassisWorldTransform.scale = glm::vec3(1.0f);
+        const float renderWheelSpin = runtimeVehicle.arcadePreviousWheelSpin +
+            (runtimeVehicle.arcadeWheelSpin - runtimeVehicle.arcadePreviousWheelSpin) * renderAlpha;
 
         ApplyWorldTransformToSceneObject(
             objects_,
@@ -788,16 +1102,35 @@ void SceneEditor::UpdateVehicles(float deltaTime) {
             true);
 
         const glm::mat4 authoredVehicleWorldMatrix = GetObjectWorldMatrix(runtimeVehicle.objectIndex);
+        Transform currentArcadeChassisWorld = runtimeVehicle.arcadeChassisWorld;
+        currentArcadeChassisWorld.scale = glm::vec3(1.0f);
+        const glm::mat4 currentArcadeChassisWorldMatrix = BuildTransformMatrix(currentArcadeChassisWorld);
+        const glm::mat4 runtimeChassisWorldMatrix = BuildTransformMatrix(runtimeChassisWorldTransform);
 
-        const std::vector<raceman::physics::Transform>& wheelTransforms = runtimeVehicle.instance->getWheelTransforms();
-        const std::size_t wheelCount = (std::min)(wheelTransforms.size(), runtimeVehicle.wheelObjectIndices.size());
+        const std::size_t wheelCount = (std::min)(runtimeVehicle.config.wheels.size(), runtimeVehicle.wheelObjectIndices.size());
         for (std::size_t wheelIndex = 0; wheelIndex < wheelCount; ++wheelIndex) {
             const int objectIndex = runtimeVehicle.wheelObjectIndices[wheelIndex];
             if (objectIndex < 0 || objectIndex >= static_cast<int>(objects_.size())) {
                 continue;
             }
 
-            Transform wheelWorldTransform = TransformFromVehicleTransform(wheelTransforms[wheelIndex]);
+            Transform wheelWorldTransform;
+            const raceman::physics::WheelConfig& wheelConfig = runtimeVehicle.config.wheels[wheelIndex];
+            const float suspensionRestLength = wheelConfig.mountPosition.y >= 0.0f
+                ? runtimeVehicle.config.frontSuspension.restLength
+                : runtimeVehicle.config.rearSuspension.restLength;
+            const raceman::physics::Vector3 wheelCenterVehicle =
+                wheelConfig.mountPosition + raceman::physics::Vector3{0.0f, 0.0f, -suspensionRestLength};
+            const glm::vec3 wheelLocalScene = VehicleVectorToScene(wheelCenterVehicle);
+            wheelWorldTransform.position = glm::vec3(authoredVehicleWorldMatrix * glm::vec4(wheelLocalScene, 1.0f));
+            if (wheelIndex < runtimeVehicle.arcadeWheelContacts.size()) {
+                const glm::vec3 contactRelative =
+                    glm::vec3(glm::inverse(currentArcadeChassisWorldMatrix) * glm::vec4(runtimeVehicle.arcadeWheelContacts[wheelIndex].wheelCenterPosition, 1.0f));
+                wheelWorldTransform.position = glm::vec3(runtimeChassisWorldMatrix * glm::vec4(contactRelative, 1.0f));
+            }
+            wheelWorldTransform.rotationEuler = runtimeChassisWorldTransform.rotationEuler;
+            wheelWorldTransform.rotationEuler.x += glm::degrees(renderWheelSpin);
+            wheelWorldTransform.scale = glm::vec3(1.0f);
             if (wheelIndex < runtimeVehicle.wheelBindings.size() && wheelIndex < runtimeVehicle.wheelAuthoredLocalTransforms.size()) {
                 wheelWorldTransform = BuildWheelWorldTransformFromAuthoredLocal(
                     authoredVehicleWorldMatrix,
@@ -883,6 +1216,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
         std::fflush(stdout);
 
         // scriptsRunning_ is set to true by TickPlayModeLoading once the background build completes.
+        RebuildVehicleRuntime();
         std::vector<PhysicsBodyDesc> physicsBodies;
         std::vector<PhysicsCharacterDesc> physicsCharacters;
         std::unordered_map<std::string, PhysicsBodyDesc> vehicleChassisBodies;
@@ -890,40 +1224,37 @@ void SceneEditor::SetScriptsRunning(bool running) {
 
         for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
             const SceneObject& object = objects_[objectIndex];
-            if (!IsObjectEffectivelyEnabled(objectIndex) || !object.hasVehicle || !object.vehicle.enabled || !HasVehicleChassisBindings(object)) {
+            if (!IsObjectEffectivelyEnabled(objectIndex) || !object.hasVehicle || !object.vehicle.enabled) {
                 continue;
             }
 
             const Transform worldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
-            raceman::physics::VehicleConfig chassisConfig{};
+            raceman::physics::VehicleConfig chassisConfig = BuildDefaultJoltVehicleConfig();
             if (!object.vehicle.configPath.empty()) {
                 try {
                     chassisConfig = raceman::physics::VehicleConfigLoader::loadFromFile(ProjectAssetPathToAbsolute(object.vehicle.configPath).string());
                 } catch (...) {
                 }
             }
+            EnsureDrivableVehicleConfig(chassisConfig);
+            chassisConfig.transmission.mode = raceman::physics::TransmissionConfig::Mode::Automatic;
             PhysicsBodyDesc body;
             body.objectId = MakeVehicleChassisBodyObjectId(object.id);
             body.collisionLayer = ClampPhysicsLayerIndex(object.physicsLayer);
             body.position = worldTransform.position;
             body.rotationEuler = worldTransform.rotationEuler;
             body.scale = worldTransform.scale;
-            body.bodyType = PhysicsBodyType::Dynamic;
-            body.mass = object.hasRigidbody ? object.rigidbody.mass : (std::max)(1.0f, chassisConfig.chassis.mass);
-            body.useGravity = true;
-            body.friction = object.hasRigidbody ? object.rigidbody.friction : 0.8f;
-            body.restitution = object.hasRigidbody ? object.rigidbody.restitution : 0.0f;
-            body.linearDamping = object.hasRigidbody ? object.rigidbody.linearDamping : 0.0f;
+            body.bodyType = PhysicsBodyType::Kinematic;
+            body.mass = 1500.0f;
+            body.useGravity = false;
+            body.friction = 0.8f;
+            body.restitution = 0.0f;
+            body.linearDamping = 0.0f;
             // Allow roll/pitch tilt momentum — use moderate damping to prevent wild oscillation
-            body.angularDamping = object.hasRigidbody ? object.rigidbody.angularDamping : 0.4f;
+            body.angularDamping = 0.05f;
             body.motionQuality = PhysicsMotionQuality::Continuous;  // prevent tunneling at high speed
-            body.overrideCenterOfMass = true;
-            body.centerOfMassOffset = VehicleVectorToScene(chassisConfig.chassis.centerOfMassOffset);
-            body.overrideMassProperties = true;
-            body.inertiaDiagonal = glm::vec3(
-                (std::max)(0.001f, chassisConfig.chassis.rollInertia),
-                (std::max)(0.001f, chassisConfig.chassis.yawInertia),
-                (std::max)(0.001f, chassisConfig.chassis.pitchInertia));
+            body.overrideCenterOfMass = false;
+            body.overrideMassProperties = false;
 
             const glm::mat4 vehicleWorldMatrix = GetObjectWorldMatrix(objectIndex);
             if (AppendSupportedVehicleChassisColliders(object, glm::mat4(1.0f), body.colliders)) {
@@ -950,9 +1281,14 @@ void SceneEditor::SetScriptsRunning(bool running) {
                 }
             }
 
-            if (!body.colliders.empty()) {
-                vehicleChassisBodies[object.id] = std::move(body);
+            if (body.colliders.empty()) {
+                body.colliders.push_back(BuildDefaultVehicleChassisCollider(chassisConfig));
+                std::fprintf(stdout,
+                             "[VehicleDebug] Vehicle '%s' has no chassis collider; using generated default box chassis.\n",
+                             object.id.c_str());
+                std::fflush(stdout);
             }
+            vehicleChassisBodies[object.id] = std::move(body);
         }
 
         for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
@@ -1075,7 +1411,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
             }
         }
         // Launch async build on background thread.
-        std::fprintf(stdout, "[Play] Runtime physics descriptors: %zu bodies, %zu characters.\n",
+        std::fprintf(stdout, "[Play] Runtime physics descriptors: %zu bodies, %zu characters, 0 Jolt vehicles (arcade vehicle runtime).\n",
                      physicsBodies.size(),
                      physicsCharacters.size());
         std::fflush(stdout);
@@ -1503,26 +1839,41 @@ void SceneEditor::RebuildVehicleRuntime() {
 
     for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
         const SceneObject& object = objects_[objectIndex];
-        if (!object.hasVehicle || !object.vehicle.enabled || object.vehicle.configPath.empty() || !IsObjectEffectivelyEnabled(objectIndex)) {
+        if (!object.hasVehicle || !object.vehicle.enabled || !IsObjectEffectivelyEnabled(objectIndex)) {
             continue;
         }
         ++candidateCount;
 
         try {
-            const fs::path configPath = ProjectAssetPathToAbsolute(object.vehicle.configPath);
-            raceman::physics::VehicleConfig config = raceman::physics::VehicleConfigLoader::loadFromFile(configPath.string());
+            raceman::physics::VehicleConfig config = BuildDefaultJoltVehicleConfig();
+            if (!object.vehicle.configPath.empty()) {
+                try {
+                    const fs::path configPath = ProjectAssetPathToAbsolute(object.vehicle.configPath);
+                    config = raceman::physics::VehicleConfigLoader::loadFromFile(configPath.string());
+                } catch (const std::exception& ex) {
+                    if (console_) {
+                        console_->AddWarning("Vehicle config load failed for '" + object.name + "', using default Jolt vehicle: " + ex.what());
+                    }
+                    std::fprintf(stdout,
+                                 "[VehicleDebug] Config load failed for '%s' path='%s'; using default Jolt vehicle: %s\n",
+                                 object.name.c_str(),
+                                 object.vehicle.configPath.c_str(),
+                                 ex.what());
+                    std::fflush(stdout);
+                }
+            }
+            EnsureDrivableVehicleConfig(config);
+            config.transmission.mode = raceman::physics::TransmissionConfig::Mode::Automatic;
             RuntimeVehicleInstance runtimeVehicle;
             runtimeVehicle.objectId = object.id;
             runtimeVehicle.objectIndex = objectIndex;
-            runtimeVehicle.chassisBodyObjectId = HasVehicleChassisBindings(object) ? MakeVehicleChassisBodyObjectId(object.id) : std::string{};
-            runtimeVehicle.instance = std::make_unique<raceman::physics::VehiclePhysics>(config);
-
-            raceman::physics::Transform chassisTransform;
-            const Transform sceneWorldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
-            chassisTransform.position = SceneVectorToVehicle(sceneWorldTransform.position);
-            const glm::quat rotation = glm::quat(glm::radians(sceneWorldTransform.rotationEuler));
-            chassisTransform.rotation = SceneQuatToVehicle(rotation);
-            runtimeVehicle.instance->setChassisTransform(chassisTransform);
+            runtimeVehicle.chassisBodyObjectId = MakeVehicleChassisBodyObjectId(object.id);
+            runtimeVehicle.manualGear = 0;
+            runtimeVehicle.arcadeChassisWorld = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
+            runtimeVehicle.arcadePreviousChassisWorld = runtimeVehicle.arcadeChassisWorld;
+            runtimeVehicle.arcadePreviousWheelSpin = runtimeVehicle.arcadeWheelSpin;
+            runtimeVehicle.arcadeInitialized = true;
+            runtimeVehicle.arcadeWheelContacts.resize(config.wheels.size());
 
             runtimeVehicle.wheelObjectIndices.reserve(config.wheels.size());
             runtimeVehicle.wheelBindings.reserve(config.wheels.size());
@@ -1561,11 +1912,13 @@ void SceneEditor::RebuildVehicleRuntime() {
                 runtimeVehicle.wheelAuthoredLocalTransforms.push_back(authoredLocalTransform);
                 runtimeVehicle.wheelAuthoredRotationEuler.push_back(authoredRotationEuler);
             }
+            runtimeVehicle.config = config;
 
             runtimeVehicles_.push_back(std::move(runtimeVehicle));
             std::fprintf(stdout,
-                         "[Vehicle] Loaded '%s' with %zu wheels, chassisBody=%s\n",
+                         "[Vehicle] Loaded '%s' config='%s' with %zu wheels, chassisBody=%s\n",
                          object.name.c_str(),
+                         object.vehicle.configPath.empty() ? "<default>" : object.vehicle.configPath.c_str(),
                          config.wheels.size(),
                          runtimeVehicles_.back().chassisBodyObjectId.empty() ? "<none>" : runtimeVehicles_.back().chassisBodyObjectId.c_str());
             std::fflush(stdout);
@@ -1580,6 +1933,96 @@ void SceneEditor::RebuildVehicleRuntime() {
 
     std::fprintf(stdout, "[Vehicle] Runtime vehicles: %zu/%d\n", runtimeVehicles_.size(), candidateCount);
     std::fflush(stdout);
+}
+
+int SceneEditor::HotReloadRuntimeVehiclesForConfig(const std::string& configPath, const physics::VehicleConfig& config) {
+    if (!scriptsRunning_ || runtimeVehicles_.empty()) {
+        return 0;
+    }
+
+    const std::string normalizedConfigPath = NormalizeSlashes(configPath);
+    int reloadedCount = 0;
+    for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
+        if (runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
+            continue;
+        }
+
+        const SceneObject& object = objects_[runtimeVehicle.objectIndex];
+        if (!object.hasVehicle || NormalizeSlashes(object.vehicle.configPath) != normalizedConfigPath) {
+            continue;
+        }
+
+        physics::VehicleConfig runtimeConfig = config;
+        EnsureDrivableVehicleConfig(runtimeConfig);
+        runtimeConfig.transmission.mode = physics::TransmissionConfig::Mode::Automatic;
+
+        std::vector<int> wheelObjectIndices;
+        std::vector<VehicleWheelBinding> wheelBindings;
+        std::vector<Transform> wheelAuthoredLocalTransforms;
+        std::vector<glm::vec3> wheelAuthoredRotationEuler;
+        wheelObjectIndices.reserve(runtimeConfig.wheels.size());
+        wheelBindings.reserve(runtimeConfig.wheels.size());
+        wheelAuthoredLocalTransforms.reserve(runtimeConfig.wheels.size());
+        wheelAuthoredRotationEuler.reserve(runtimeConfig.wheels.size());
+
+        const glm::mat4 vehicleWorldMatrix = GetObjectWorldMatrix(runtimeVehicle.objectIndex);
+        for (std::size_t wheelConfigIndex = 0; wheelConfigIndex < runtimeConfig.wheels.size(); ++wheelConfigIndex) {
+            physics::WheelConfig& wheelConfig = runtimeConfig.wheels[wheelConfigIndex];
+            int wheelObjectIndex = -1;
+            VehicleWheelBinding runtimeBinding;
+            runtimeBinding.wheelName = wheelConfig.name;
+            Transform authoredLocalTransform;
+            glm::vec3 authoredRotationEuler{0.0f};
+
+            const auto bindingIt = std::find_if(object.vehicle.wheelBindings.begin(), object.vehicle.wheelBindings.end(),
+                [&](const VehicleWheelBinding& binding) {
+                    return binding.wheelName == wheelConfig.name;
+                });
+            if (bindingIt != object.vehicle.wheelBindings.end()) {
+                wheelObjectIndex = FindObjectIndexById(bindingIt->objectId);
+                runtimeBinding = *bindingIt;
+            }
+
+            if (wheelObjectIndex >= 0 && wheelObjectIndex < static_cast<int>(objects_.size())) {
+                const glm::mat4 wheelRelativeMatrix = glm::inverse(vehicleWorldMatrix) * GetObjectWorldMatrix(wheelObjectIndex);
+                const Transform wheelRelativeTransform = TransformFromMatrix(wheelRelativeMatrix);
+                authoredLocalTransform = wheelRelativeTransform;
+                authoredRotationEuler = wheelRelativeTransform.rotationEuler;
+
+                const physics::Vector3 wheelCenterVehicle = SceneVectorToVehicle(wheelRelativeTransform.position);
+                const float suspensionRestLength = wheelCenterVehicle.y >= 0.0f
+                    ? runtimeConfig.frontSuspension.restLength
+                    : runtimeConfig.rearSuspension.restLength;
+                wheelConfig.mountPosition = wheelCenterVehicle + physics::Vector3{0.0f, 0.0f, suspensionRestLength};
+            }
+
+            wheelObjectIndices.push_back(wheelObjectIndex);
+            wheelBindings.push_back(std::move(runtimeBinding));
+            wheelAuthoredLocalTransforms.push_back(authoredLocalTransform);
+            wheelAuthoredRotationEuler.push_back(authoredRotationEuler);
+        }
+
+        runtimeVehicle.config = std::move(runtimeConfig);
+        runtimeVehicle.wheelObjectIndices = std::move(wheelObjectIndices);
+        runtimeVehicle.wheelBindings = std::move(wheelBindings);
+        runtimeVehicle.wheelAuthoredLocalTransforms = std::move(wheelAuthoredLocalTransforms);
+        runtimeVehicle.wheelAuthoredRotationEuler = std::move(wheelAuthoredRotationEuler);
+        runtimeVehicle.arcadeWheelContacts.resize(runtimeVehicle.config.wheels.size());
+        runtimeVehicle.arcadeGear = (std::clamp)(
+            runtimeVehicle.arcadeGear,
+            -1,
+            (std::max)(1, static_cast<int>(runtimeVehicle.config.transmission.gearRatios.size())));
+        ++reloadedCount;
+    }
+
+    if (reloadedCount > 0) {
+        std::fprintf(stdout,
+                     "[Vehicle] Hot-reloaded config '%s' for %d runtime vehicle(s).\n",
+                     normalizedConfigPath.c_str(),
+                     reloadedCount);
+        std::fflush(stdout);
+    }
+    return reloadedCount;
 }
 
 bool SceneEditor::SyncAttachmentScriptFields(ObjectScriptAttachment& attachment) {
@@ -1785,12 +2228,11 @@ void SceneEditor::UpdateAudio(float deltaTime) {
         for (const auto& v : runtimeVehicles_) {
             if (v.objectId == inst.vehicleObjectId) { rv = &v; break; }
         }
-        if (!rv || !rv->instance) continue;
+        if (!rv) continue;
 
-        const raceman::physics::VehicleTelemetry& tel = rv->instance->getTelemetry();
-        const float rpm      = tel.engineRPM;
-        const float throttle = tel.throttle;
-        const float latSpd   = std::abs(tel.lateralSpeed);
+        const float rpm      = rv->arcadeEngineRPM;
+        const float throttle = rv->arcadeThrottle;
+        const float latSpd   = std::abs(rv->arcadeLateralSpeed);
 
         // 3D position — follow the vehicle
         const int vIdx = FindObjectIndexById(inst.vehicleObjectId);
@@ -1824,7 +2266,7 @@ void SceneEditor::UpdateAudio(float deltaTime) {
         }
 
         // Trigger detection
-        const int curGear = tel.currentGear;
+        const int curGear = rv->arcadeGear;
         if (curGear != inst.lastGear && inst.lastGear != 0) {
             const bool up = curGear > inst.lastGear;
             const VehicleSoundTrigger want = up ? VehicleSoundTrigger::GearUp : VehicleSoundTrigger::GearDown;

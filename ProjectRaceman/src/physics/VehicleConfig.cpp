@@ -174,6 +174,100 @@ SuspensionConfig readSuspension(const json::Value &value)
     return suspension;
 }
 
+VehicleGroundContactConfig readGroundContact(const json::Value &value)
+{
+    VehicleGroundContactConfig groundContact{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end())
+    {
+        groundContact.enabled = it->second.as_bool();
+    }
+    if (auto it = obj.find("probeUp"); it != obj.end())
+    {
+        groundContact.probeUp = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("extraProbeLength"); it != obj.end())
+    {
+        groundContact.extraProbeLength = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("rideHeightOffset"); it != obj.end())
+    {
+        groundContact.rideHeightOffset = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("heightSmoothing"); it != obj.end())
+    {
+        groundContact.heightSmoothing = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("tiltSmoothing"); it != obj.end())
+    {
+        groundContact.tiltSmoothing = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("minGroundNormalY"); it != obj.end())
+    {
+        groundContact.minGroundNormalY = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("obstacleProbeHeight"); it != obj.end())
+    {
+        groundContact.obstacleProbeHeight = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("obstacleSkin"); it != obj.end())
+    {
+        groundContact.obstacleSkin = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("wallNormalYMax"); it != obj.end())
+    {
+        groundContact.wallNormalYMax = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("airborneGravity"); it != obj.end())
+    {
+        groundContact.airborneGravity = static_cast<float>(it->second.as_number());
+    }
+    return groundContact;
+}
+
+VehicleTireGripConfig readTireGrip(const json::Value &value)
+{
+    VehicleTireGripConfig tireGrip{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end())
+    {
+        tireGrip.enabled = it->second.as_bool();
+    }
+    if (auto it = obj.find("lateralGrip"); it != obj.end())
+    {
+        tireGrip.lateralGrip = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("longitudinalGrip"); it != obj.end())
+    {
+        tireGrip.longitudinalGrip = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("slipAngleLimit"); it != obj.end())
+    {
+        tireGrip.slipAngleLimit = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("slideGripLoss"); it != obj.end())
+    {
+        tireGrip.slideGripLoss = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("recoveryRate"); it != obj.end())
+    {
+        tireGrip.recoveryRate = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("handbrakeGripScale"); it != obj.end())
+    {
+        tireGrip.handbrakeGripScale = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("downforceGripScale"); it != obj.end())
+    {
+        tireGrip.downforceGripScale = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("minTractionScale"); it != obj.end())
+    {
+        tireGrip.minTractionScale = static_cast<float>(it->second.as_number());
+    }
+    return tireGrip;
+}
+
 DifferentialConfig readDifferential(const json::Value &value)
 {
     DifferentialConfig differential{};
@@ -298,6 +392,14 @@ VehicleConfig readVehicle(const json::Value &value)
     {
         config.rearSuspension = readSuspension(it->second);
     }
+    if (auto it = obj.find("groundContact"); it != obj.end())
+    {
+        config.groundContact = readGroundContact(it->second);
+    }
+    if (auto it = obj.find("tireGrip"); it != obj.end())
+    {
+        config.tireGrip = readTireGrip(it->second);
+    }
     if (auto it = obj.find("differential"); it != obj.end())
     {
         config.differential = readDifferential(it->second);
@@ -403,6 +505,30 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
     stream << "    \"compressionDamping\": " << config.rearSuspension.compressionDamping << ",\n";
     stream << "    \"reboundDamping\": " << config.rearSuspension.reboundDamping << ",\n";
     stream << "    \"antiRollStiffness\": " << config.rearSuspension.antiRollStiffness << "\n";
+    stream << "  },\n";
+    stream << "  \"groundContact\": {\n";
+    stream << "    \"enabled\": " << (config.groundContact.enabled ? "true" : "false") << ",\n";
+    stream << "    \"probeUp\": " << config.groundContact.probeUp << ",\n";
+    stream << "    \"extraProbeLength\": " << config.groundContact.extraProbeLength << ",\n";
+    stream << "    \"rideHeightOffset\": " << config.groundContact.rideHeightOffset << ",\n";
+    stream << "    \"heightSmoothing\": " << config.groundContact.heightSmoothing << ",\n";
+    stream << "    \"tiltSmoothing\": " << config.groundContact.tiltSmoothing << ",\n";
+    stream << "    \"minGroundNormalY\": " << config.groundContact.minGroundNormalY << ",\n";
+    stream << "    \"obstacleProbeHeight\": " << config.groundContact.obstacleProbeHeight << ",\n";
+    stream << "    \"obstacleSkin\": " << config.groundContact.obstacleSkin << ",\n";
+    stream << "    \"wallNormalYMax\": " << config.groundContact.wallNormalYMax << ",\n";
+    stream << "    \"airborneGravity\": " << config.groundContact.airborneGravity << "\n";
+    stream << "  },\n";
+    stream << "  \"tireGrip\": {\n";
+    stream << "    \"enabled\": " << (config.tireGrip.enabled ? "true" : "false") << ",\n";
+    stream << "    \"lateralGrip\": " << config.tireGrip.lateralGrip << ",\n";
+    stream << "    \"longitudinalGrip\": " << config.tireGrip.longitudinalGrip << ",\n";
+    stream << "    \"slipAngleLimit\": " << config.tireGrip.slipAngleLimit << ",\n";
+    stream << "    \"slideGripLoss\": " << config.tireGrip.slideGripLoss << ",\n";
+    stream << "    \"recoveryRate\": " << config.tireGrip.recoveryRate << ",\n";
+    stream << "    \"handbrakeGripScale\": " << config.tireGrip.handbrakeGripScale << ",\n";
+    stream << "    \"downforceGripScale\": " << config.tireGrip.downforceGripScale << ",\n";
+    stream << "    \"minTractionScale\": " << config.tireGrip.minTractionScale << "\n";
     stream << "  },\n";
     stream << "  \"differential\": {\n";
     stream << "    \"torqueSplit\": " << config.differential.torqueSplit << ",\n";

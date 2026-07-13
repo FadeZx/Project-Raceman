@@ -6,6 +6,8 @@
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
 
+#include <cfloat>
+
 namespace fs = std::filesystem;
 
 namespace raceman {
@@ -3767,17 +3769,51 @@ void SceneEditor::RenderProjectPhysicsSettings() {
         ImGui::EndTable();
     }
 
-    if (projectSettingsChanged) {
-        for (int layerIndex = 0; layerIndex < kPhysicsLayerCount; ++layerIndex) {
-            if (physicsLayerNames_[static_cast<std::size_t>(layerIndex)].empty()) {
-                physicsLayerNames_[static_cast<std::size_t>(layerIndex)] = layerIndex == 0 ? "Default" : ("Layer" + std::to_string(layerIndex));
-            }
-        }
-        SaveProject();
-    }
-
     ImGui::Spacing();
     ImGui::TextDisabled("Assign each object's physics layer in the Inspector. This matrix controls which layers collide.");
+    ImGui::Spacing();
+    ImGui::SeparatorText("Track Surface Layers");
+    if (ImGui::BeginTable("ProjectTrackSurfaceSettings", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Surface");
+        ImGui::TableSetupColumn("Grip");
+        ImGui::TableSetupColumn("Rolling Drag");
+        ImGui::TableHeadersRow();
+
+        for (int surfaceIndex = 0; surfaceIndex < kTrackSurfaceTypeCount; ++surfaceIndex) {
+            ColliderSurfaceConfig& surface = trackSurfaceSettings_[static_cast<std::size_t>(surfaceIndex)];
+            surface.type = kTrackSurfaceTypes[static_cast<std::size_t>(surfaceIndex)];
+
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted(TrackSurfaceTypeLabel(surface.type));
+
+            ImGui::TableSetColumnIndex(1);
+            ImGui::PushID(("projectTrackSurfaceGrip_" + std::to_string(surfaceIndex)).c_str());
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            float grip = surface.gripMultiplier;
+            if (ImGui::DragFloat("##grip", &grip, 0.01f, 0.0f, 10.0f, "%.2f")) {
+                surface.gripMultiplier = (std::max)(0.0f, grip);
+                projectSettingsChanged = true;
+            }
+            ImGui::PopID();
+
+            ImGui::TableSetColumnIndex(2);
+            ImGui::PushID(("projectTrackSurfaceRollingDrag_" + std::to_string(surfaceIndex)).c_str());
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            float rollingDrag = surface.rollingDrag;
+            if (ImGui::DragFloat("##rollingDrag", &rollingDrag, 0.01f, 0.0f, 20.0f, "%.2f")) {
+                surface.rollingDrag = (std::max)(0.0f, rollingDrag);
+                projectSettingsChanged = true;
+            }
+            ImGui::PopID();
+        }
+
+        ImGui::EndTable();
+    }
+    if (ImGui::Button("Reset Surface Defaults")) {
+        ResetTrackSurfaceSettings();
+        projectSettingsChanged = true;
+    }
     ImGui::Spacing();
     ImGui::SeparatorText("Collision Bake Cache");
     ImGui::TextDisabled("Path: %s", PhysicsWorld::GetCollisionShapeCacheDirectory().c_str());
@@ -3792,6 +3828,19 @@ void SceneEditor::RenderProjectPhysicsSettings() {
                 console_->AddLog("Cleared " + std::to_string(removedCount) + " collision cache files.");
             }
         }
+    }
+
+    if (projectSettingsChanged) {
+        for (int layerIndex = 0; layerIndex < kPhysicsLayerCount; ++layerIndex) {
+            if (physicsLayerNames_[static_cast<std::size_t>(layerIndex)].empty()) {
+                physicsLayerNames_[static_cast<std::size_t>(layerIndex)] = layerIndex == 0 ? "Default" : ("Layer" + std::to_string(layerIndex));
+            }
+        }
+        for (int surfaceIndex = 0; surfaceIndex < kTrackSurfaceTypeCount; ++surfaceIndex) {
+            trackSurfaceSettings_[static_cast<std::size_t>(surfaceIndex)].type =
+                kTrackSurfaceTypes[static_cast<std::size_t>(surfaceIndex)];
+        }
+        SaveProject();
     }
 }
 

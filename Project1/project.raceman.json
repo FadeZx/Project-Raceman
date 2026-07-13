@@ -60,6 +60,38 @@
       {
         "values": [true, true, true, true, true, true, true, true]
       }
+    ],
+    "trackSurfaces": [
+      {
+        "type": "Asphalt",
+        "gripMultiplier": 1,
+        "rollingDrag": 0.08
+      },
+      {
+        "type": "Dirt",
+        "gripMultiplier": 0.58,
+        "rollingDrag": 0.65
+      },
+      {
+        "type": "Grass",
+        "gripMultiplier": 0.36,
+        "rollingDrag": 1.25
+      },
+      {
+        "type": "Curb",
+        "gripMultiplier": 0.82,
+        "rollingDrag": 0.18
+      },
+      {
+        "type": "Wall",
+        "gripMultiplier": 0.05,
+        "rollingDrag": 2.5
+      },
+      {
+        "type": "Custom",
+        "gripMultiplier": 1,
+        "rollingDrag": 0.08
+      }
     ]
   },
   "input": {

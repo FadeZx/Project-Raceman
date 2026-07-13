@@ -40,6 +40,34 @@ struct SuspensionConfig
     float antiRollStiffness{5'000.0f};
 };
 
+struct VehicleGroundContactConfig
+{
+    bool enabled{true};
+    float probeUp{0.75f};
+    float extraProbeLength{0.75f};
+    float rideHeightOffset{0.0f};
+    float heightSmoothing{18.0f};
+    float tiltSmoothing{12.0f};
+    float minGroundNormalY{0.2f};
+    float obstacleProbeHeight{0.45f};
+    float obstacleSkin{0.75f};
+    float wallNormalYMax{0.45f};
+    float airborneGravity{18.0f};
+};
+
+struct VehicleTireGripConfig
+{
+    bool enabled{true};
+    float lateralGrip{5.0f};
+    float longitudinalGrip{1.0f};
+    float slipAngleLimit{12.0f};
+    float slideGripLoss{0.60f};
+    float recoveryRate{7.5f};
+    float handbrakeGripScale{0.35f};
+    float downforceGripScale{0.35f};
+    float minTractionScale{0.35f};
+};
+
 struct DifferentialConfig
 {
     float torqueSplit{0.5f};
@@ -92,6 +120,8 @@ struct VehicleConfig
     VehicleChassisConfig chassis{};
     SuspensionConfig frontSuspension{};
     SuspensionConfig rearSuspension{};
+    VehicleGroundContactConfig groundContact{};
+    VehicleTireGripConfig tireGrip{};
     DifferentialConfig differential{};
     EngineConfig engine{};
     TransmissionConfig transmission{};
