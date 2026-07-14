@@ -23,10 +23,43 @@
     "reboundDamping": 2950.0,
     "antiRollStiffness": 4000.0
   },
+  "arcadeHandling": {
+    "maxForwardSpeed": 55.0,
+    "maxReverseSpeed": 12.0,
+    "acceleration": 18.0,
+    "reverseAcceleration": 10.0,
+    "brakeDeceleration": 36.0,
+    "coastDeceleration": 2.5,
+    "handbrakeDeceleration": 48.0,
+    "fallbackSteerDegreesPerSecond": 85.0,
+    "lowSpeedSteerSpeed": 1.25,
+    "lowSpeedSteerFloor": 0.52,
+    "lowSpeedSteerInputBoost": 0.24,
+    "highSpeedSteerCut": 0.58,
+    "idleRPM": 900.0,
+    "redlineRPM": 6000.0
+  },
   "differential": {
+    "type": "LimitedSlip",
     "torqueSplit": 0.50,
-    "lockingCoefficient": 0.22,
-    "limitedSlip": true
+    "lockStrength": 0.38,
+    "coastLock": 0.22,
+    "powerLock": 0.52
+  },
+  "brakes": {
+    "frontBias": 0.58,
+    "maxBrakeForce": 0.95,
+    "absEnabled": true,
+    "absSlipLimit": 0.62,
+    "absReleaseRate": 8.0,
+    "absRecoverRate": 4.8
+  },
+  "tractionControl": {
+    "enabled": false,
+    "slipLimit": 0.60,
+    "cutStrength": 0.35,
+    "recoveryRate": 3.5,
+    "minThrottleScale": 0.50
   },
   "engine": {
     "idleRPM": 950.0,

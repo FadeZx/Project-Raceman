@@ -26,6 +26,7 @@
 #include <imgui/imgui.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <stb_image.h>
 
 #ifndef GLFW_TRUE
 #define GLFW_TRUE 1
@@ -130,6 +131,217 @@ void PlayerStartupLog(const ApplicationConfig& config, const char* message) {
         std::cout << "[Player] " << message << std::endl;
     }
 }
+
+void ClearRectPixels(int x, int y, int width, int height, const glm::vec4& color) {
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+    glScissor(x, y, width, height);
+    glClearColor(color.r, color.g, color.b, color.a);
+    glClear(GL_COLOR_BUFFER_BIT);
+}
+
+unsigned int LoadStartupLogoTexture(int& width, int& height) {
+    const std::filesystem::path iconPath =
+        FindEngineRootForApplication() / "editor-assets" / "icons" / "ProjectRaceman_icon_full.png";
+    int channels = 0;
+    unsigned char* data = stbi_load(iconPath.string().c_str(), &width, &height, &channels, 4);
+    if (data == nullptr || width <= 0 || height <= 0) {
+        if (data != nullptr) {
+            stbi_image_free(data);
+        }
+        width = 0;
+        height = 0;
+        return 0;
+    }
+
+    unsigned int textureId = 0;
+    glGenTextures(1, &textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(data);
+    return textureId;
+}
+
+constexpr int kStartupSplashWidth = 680;
+constexpr int kStartupSplashHeight = 320;
+
+void CenterWindowOnPrimaryMonitor(GLFWwindow* window, int width, int height) {
+    if (window == nullptr) {
+        return;
+    }
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    if (monitor == nullptr) {
+        return;
+    }
+    int monitorX = 0;
+    int monitorY = 0;
+    glfwGetMonitorPos(monitor, &monitorX, &monitorY);
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    if (mode == nullptr) {
+        return;
+    }
+    glfwSetWindowPos(
+        window,
+        monitorX + (std::max)(0, (mode->width - width) / 2),
+        monitorY + (std::max)(0, (mode->height - height) / 2));
+}
+
+#if defined(_WIN32)
+bool GetWindowMonitorWorkArea(GLFWwindow* window, RECT& workArea) {
+    if (window == nullptr) {
+        return false;
+    }
+    HWND hwnd = glfwGetWin32Window(window);
+    if (hwnd == nullptr) {
+        return false;
+    }
+
+    HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO monitorInfo{};
+    monitorInfo.cbSize = sizeof(monitorInfo);
+    if (monitor == nullptr || !GetMonitorInfoA(monitor, &monitorInfo)) {
+        return false;
+    }
+    workArea = monitorInfo.rcWork;
+    return true;
+}
+
+void FitNativeWindowOuterRectToWorkArea(GLFWwindow* window) {
+    RECT work{};
+    if (!GetWindowMonitorWorkArea(window, work)) {
+        return;
+    }
+    if (HWND hwnd = glfwGetWin32Window(window)) {
+        SetWindowPos(
+            hwnd,
+            nullptr,
+            work.left,
+            work.top,
+            work.right - work.left,
+            work.bottom - work.top,
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    }
+}
+
+void FitCenteredClientSizeToWorkArea(GLFWwindow* window, int desiredClientWidth, int desiredClientHeight) {
+    RECT work{};
+    if (!GetWindowMonitorWorkArea(window, work)) {
+        CenterWindowOnPrimaryMonitor(window, desiredClientWidth, desiredClientHeight);
+        return;
+    }
+
+    HWND hwnd = glfwGetWin32Window(window);
+    if (hwnd == nullptr) {
+        return;
+    }
+
+    const DWORD style = static_cast<DWORD>(GetWindowLongA(hwnd, GWL_STYLE));
+    const DWORD exStyle = static_cast<DWORD>(GetWindowLongA(hwnd, GWL_EXSTYLE));
+    RECT desiredOuter{0, 0, desiredClientWidth, desiredClientHeight};
+    AdjustWindowRectEx(&desiredOuter, style, FALSE, exStyle);
+    const int decorationWidth = (desiredOuter.right - desiredOuter.left) - desiredClientWidth;
+    const int decorationHeight = (desiredOuter.bottom - desiredOuter.top) - desiredClientHeight;
+    const int workWidth = work.right - work.left;
+    const int workHeight = work.bottom - work.top;
+    const int clientWidth = (std::max)(1, (std::min)(desiredClientWidth, workWidth - (std::max)(0, decorationWidth)));
+    const int clientHeight = (std::max)(1, (std::min)(desiredClientHeight, workHeight - (std::max)(0, decorationHeight)));
+
+    RECT fittedOuter{0, 0, clientWidth, clientHeight};
+    AdjustWindowRectEx(&fittedOuter, style, FALSE, exStyle);
+    const int outerWidth = fittedOuter.right - fittedOuter.left;
+    const int outerHeight = fittedOuter.bottom - fittedOuter.top;
+    const int outerX = work.left + (std::max)(0, workWidth - outerWidth) / 2;
+    const int outerY = work.top + (std::max)(0, workHeight - outerHeight) / 2;
+
+    SetWindowPos(
+        hwnd,
+        nullptr,
+        outerX,
+        outerY,
+        outerWidth,
+        outerHeight,
+        SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+}
+
+void ApplyLightNativeTitleBar(HWND hwnd) {
+    using DwmSetWindowAttributeFn = HRESULT(WINAPI*)(HWND, DWORD, LPCVOID, DWORD);
+    HMODULE dwmapi = LoadLibraryA("dwmapi.dll");
+    if (dwmapi == nullptr) {
+        return;
+    }
+
+    auto setAttribute = reinterpret_cast<DwmSetWindowAttributeFn>(
+        GetProcAddress(dwmapi, "DwmSetWindowAttribute"));
+    if (setAttribute != nullptr) {
+        constexpr DWORD kDwmUseImmersiveDarkModeBefore20H1 = 19;
+        constexpr DWORD kDwmUseImmersiveDarkMode = 20;
+        constexpr DWORD kDwmCaptionColor = 35;
+        constexpr DWORD kDwmTextColor = 36;
+        const BOOL lightFrame = FALSE;
+        const COLORREF whiteCaption = RGB(245, 245, 245);
+        const COLORREF darkText = RGB(20, 20, 20);
+        setAttribute(hwnd, kDwmUseImmersiveDarkModeBefore20H1, &lightFrame, sizeof(lightFrame));
+        setAttribute(hwnd, kDwmUseImmersiveDarkMode, &lightFrame, sizeof(lightFrame));
+        setAttribute(hwnd, kDwmCaptionColor, &whiteCaption, sizeof(whiteCaption));
+        setAttribute(hwnd, kDwmTextColor, &darkText, sizeof(darkText));
+    }
+    FreeLibrary(dwmapi);
+}
+#endif
+
+void HideNativeWindowFrame(GLFWwindow* window) {
+    if (window == nullptr) {
+        return;
+    }
+#if (GLFW_VERSION_MAJOR > 3) || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR >= 3)
+    glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+#endif
+#if defined(_WIN32)
+    if (HWND hwnd = glfwGetWin32Window(window)) {
+        LONG style = GetWindowLongA(hwnd, GWL_STYLE);
+        style &= ~(WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME);
+        style |= WS_POPUP;
+        SetWindowLongA(hwnd, GWL_STYLE, style);
+        SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+            SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    }
+#endif
+}
+
+void RestoreNativeWindowFrame(GLFWwindow* window) {
+    if (window == nullptr) {
+        return;
+    }
+#if (GLFW_VERSION_MAJOR > 3) || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR >= 3)
+    glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+#endif
+#if defined(_WIN32)
+    if (HWND hwnd = glfwGetWin32Window(window)) {
+        LONG style = GetWindowLongA(hwnd, GWL_STYLE);
+        style &= ~WS_POPUP;
+        style |= WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_SYSMENU |
+                 WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME;
+        SetWindowLongA(hwnd, GWL_STYLE, style);
+
+        LONG exStyle = GetWindowLongA(hwnd, GWL_EXSTYLE);
+        exStyle &= ~WS_EX_TOOLWINDOW;
+        exStyle |= WS_EX_APPWINDOW;
+        SetWindowLongA(hwnd, GWL_EXSTYLE, exStyle);
+
+        SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+            SWP_NOACTIVATE | SWP_FRAMECHANGED);
+        ApplyLightNativeTitleBar(hwnd);
+    }
+#endif
+}
 } // namespace
 
 Application::Application(const ApplicationConfig& config) : config_(config) {
@@ -137,29 +349,36 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
     InitializeGlfw();
     PlayerStartupLog(config_, "Initializing OpenGL...");
     InitializeGlad();
+    ShowStartupSplash("Initializing OpenGL...", 0.10f);
 
     PlayerStartupLog(config_, "Creating renderer...");
+    ShowStartupSplash("Creating renderer...", 0.18f);
     renderer_ = std::make_shared<Renderer>(RendererConfig{config.width, config.height});
     PlayerStartupLog(config_, "Creating input...");
+    ShowStartupSplash("Initializing input...", 0.28f);
     if (!inputManager_) {
         inputManager_ = std::make_unique<InputManager>();
         inputManager_->AttachToWindow(window_);
     }
     PlayerStartupLog(config_, "Initializing audio...");
+    ShowStartupSplash("Initializing audio...", 0.38f);
     audioManager_ = std::make_unique<AudioManager>();
     audioManager_->Initialize();
     PlayerStartupLog(config_, "Creating editor/player services...");
+    ShowStartupSplash("Creating editor services...", 0.48f);
 
     debugUi_ = std::make_unique<DebugUI>(config.enableImGui);
     menuController_ = std::make_unique<MenuController>();
     console_ = std::make_unique<Console>();
     skyboxController_ = std::make_unique<SkyboxController>();
     PlayerStartupLog(config_, "Loading skybox...");
+    ShowStartupSplash("Loading skybox...", 0.58f);
     skyboxController_->Reload();
     PlayerStartupLog(config_, "Skybox loaded.");
 
     if (config.enableImGui) {
         InitializeImGui();
+        ShowStartupSplash("Preparing editor UI...", 0.66f);
     }
 
     if (config.playerMode && config.enableImGui) {
@@ -180,22 +399,27 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         sceneEditor_->SetInputManager(inputManager_.get());
         sceneEditor_->SetAudioManager(audioManager_.get());
         consoleLog("Loading project metadata...");
+        ShowStartupSplash("Loading project metadata...", 0.76f);
         sceneEditor_->SetProjectRoot(config.projectRoot);
         const std::string loadingTitle = config_.windowTitle + " - Loading...";
         glfwSetWindowTitle(window_, loadingTitle.c_str());
         consoleLog("Startup complete; runtime will begin after first frame.");
+        ShowStartupSplash("Runtime startup ready...", 0.92f);
     } else if (config.enableImGui) {
         // Editor mode: open the most recent project, or show the launcher.
+        ShowStartupSplash("Loading recent projects...", 0.72f);
         const auto recent = ProjectLauncher::LoadRegistry();
         if (!recent.empty() && std::filesystem::exists(recent.front().path)) {
             InitializeEditor(recent.front().path);
         } else {
+            ShowStartupSplash("Opening project launcher...", 0.90f);
             launcher_ = std::make_unique<ProjectLauncher>();
         }
     }
 
     lastFrameTime_ = glfwGetTime();
     baseTitle_ = config_.windowTitle;
+    FinishStartupSplash();
 }
 
 void Application::InitializeEditor(const std::string& projectPath) {
@@ -250,13 +474,15 @@ void Application::InitializeEditor(const std::string& projectPath) {
 }
 
 void Application::FitEditorWindowToScreen() {
-    if (window_ == nullptr || config_.playerMode) {
+    if (window_ == nullptr || config_.playerMode || startupSplashActive_) {
         return;
     }
 
 #if defined(_WIN32)
     HWND hwnd = glfwGetWin32Window(window_);
     if (hwnd != nullptr) {
+        RestoreNativeWindowFrame(window_);
+        ShowWindow(hwnd, SW_RESTORE);
         ShowWindow(hwnd, SW_MAXIMIZE);
     }
 #else
@@ -347,6 +573,10 @@ Application::~Application() {
     }
     sceneEditor_.reset(); // stop audio sources before audio engine shuts down
     launcher_.reset();
+    if (startupLogoTexture_ != 0) {
+        glDeleteTextures(1, &startupLogoTexture_);
+        startupLogoTexture_ = 0;
+    }
     if (config_.enableImGui) {
         ShutdownImGui();
     }
@@ -435,6 +665,171 @@ std::shared_ptr<Renderer> Application::GetRendererPtr() { return renderer_; }
 InputManager& Application::GetInputManager() { return *inputManager_; }
 DebugUI& Application::GetDebugUI() { return *debugUi_; }
 
+void Application::ShowStartupSplash(const std::string& message, float progress, bool showWindow) {
+    if (window_ == nullptr) {
+        return;
+    }
+
+    startupSplashActive_ = true;
+    startupSplashMessage_ = message;
+    startupSplashProgress_ = (std::clamp)(progress, 0.0f, 1.0f);
+
+    const std::string title = config_.windowTitle + " - " + message;
+    glfwSetWindowTitle(window_, title.c_str());
+    if (console_) {
+        console_->AddLog("[Startup] " + message);
+    }
+    if (config_.playerMode) {
+        std::cout << "[Player] " << message << std::endl;
+    }
+
+    if (!startupWindowShown_) {
+        HideNativeWindowFrame(window_);
+        glfwSetWindowSize(window_, kStartupSplashWidth, kStartupSplashHeight);
+        CenterWindowOnPrimaryMonitor(window_, kStartupSplashWidth, kStartupSplashHeight);
+    }
+
+    int framebufferWidth = 0;
+    int framebufferHeight = 0;
+    glfwGetFramebufferSize(window_, &framebufferWidth, &framebufferHeight);
+    if (framebufferWidth <= 0 || framebufferHeight <= 0) {
+        return;
+    }
+
+    glfwMakeContextCurrent(window_);
+    glViewport(0, 0, framebufferWidth, framebufferHeight);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(0.015f, 0.017f, 0.021f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    if (startupLogoTexture_ == 0) {
+        startupLogoTexture_ = LoadStartupLogoTexture(startupLogoWidth_, startupLogoHeight_);
+    }
+
+    if (config_.enableImGui && debugUi_ && ImGui::GetCurrentContext() != nullptr) {
+        debugUi_->BeginFrame();
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->Pos, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(viewport->Size, ImGuiCond_Always);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.015f, 0.017f, 0.021f, 1.0f));
+        if (ImGui::Begin("##StartupSplash", nullptr,
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoBringToFrontOnFocus)) {
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            const ImVec2 windowMin = viewport->Pos;
+            const ImVec2 windowMax(windowMin.x + viewport->Size.x, windowMin.y + viewport->Size.y);
+            drawList->AddRectFilled(windowMin, windowMax, IM_COL32(8, 10, 14, 255));
+
+            if (startupLogoTexture_ != 0) {
+                const float windowWidth = (std::max)(1.0f, viewport->Size.x);
+                const float windowHeight = (std::max)(1.0f, viewport->Size.y);
+                const float imageAspect = startupLogoHeight_ > 0
+                    ? static_cast<float>(startupLogoWidth_) / static_cast<float>(startupLogoHeight_)
+                    : 1.0f;
+                const float windowAspect = windowWidth / windowHeight;
+                ImVec2 imageMin = windowMin;
+                ImVec2 imageMax = windowMax;
+                if (imageAspect > windowAspect) {
+                    const float drawWidth = windowHeight * imageAspect;
+                    imageMin.x = windowMin.x - (drawWidth - windowWidth) * 0.5f;
+                    imageMax.x = imageMin.x + drawWidth;
+                } else {
+                    const float drawHeight = windowWidth / imageAspect;
+                    imageMin.y = windowMin.y - (drawHeight - windowHeight) * 0.5f;
+                    imageMax.y = imageMin.y + drawHeight;
+                }
+                drawList->AddImage(static_cast<ImTextureID>(startupLogoTexture_), imageMin, imageMax, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), IM_COL32(255, 255, 255, 210));
+            } else {
+                drawList->AddRectFilled(ImVec2(windowMin.x + 70.0f, windowMin.y + 28.0f), ImVec2(windowMax.x - 70.0f, windowMax.y - 62.0f), IM_COL32(235, 239, 246, 48), 18.0f);
+            }
+            drawList->AddRectFilled(windowMin, windowMax, IM_COL32(4, 6, 10, 92));
+            drawList->AddText(ImVec2(windowMin.x + 34.0f, windowMin.y + 34.0f), IM_COL32(232, 237, 246, 255), config_.playerMode ? "Player Runtime" : "Editor Startup");
+            drawList->AddText(ImVec2(windowMin.x + 34.0f, windowMin.y + 62.0f), IM_COL32(170, 180, 196, 255), "Loading engine modules");
+
+            drawList->AddText(ImVec2(windowMin.x + 34.0f, windowMax.y - 76.0f), IM_COL32(148, 156, 170, 255), startupSplashMessage_.c_str());
+            const ImVec2 barMin(windowMin.x + 34.0f, windowMax.y - 42.0f);
+            const ImVec2 barMax(windowMax.x - 34.0f, windowMax.y - 34.0f);
+            drawList->AddRectFilled(barMin, barMax, IM_COL32(32, 38, 48, 255), 4.0f);
+            drawList->AddRectFilled(barMin, ImVec2(barMin.x + (barMax.x - barMin.x) * startupSplashProgress_, barMax.y), IM_COL32(42, 157, 240, 255), 4.0f);
+            drawList->AddText(ImVec2(windowMax.x - 82.0f, windowMin.y + 34.0f), IM_COL32(202, 210, 224, 255), "2026.1");
+        }
+        ImGui::End();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(3);
+        debugUi_->EndFrame();
+        debugUi_->RenderDrawData();
+    } else {
+        glEnable(GL_SCISSOR_TEST);
+        ClearRectPixels(0, 0, framebufferWidth, framebufferHeight, glm::vec4(0.03f, 0.04f, 0.055f, 1.0f));
+        const int icon = 54;
+        ClearRectPixels(34, framebufferHeight - 114, icon, icon, glm::vec4(0.92f, 0.94f, 0.97f, 1.0f));
+        ClearRectPixels(42, framebufferHeight - 106, icon - 16, icon - 16, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+        const int barX = 34;
+        const int barY = 34;
+        const int barW = framebufferWidth - 68;
+        ClearRectPixels(barX, barY, barW, 8, glm::vec4(0.12f, 0.14f, 0.18f, 1.0f));
+        ClearRectPixels(barX, barY, static_cast<int>(barW * startupSplashProgress_), 8, glm::vec4(0.16f, 0.62f, 0.94f, 1.0f));
+        glDisable(GL_SCISSOR_TEST);
+    }
+
+    glfwSwapBuffers(window_);
+    glfwPollEvents();
+    if (showWindow && !startupWindowShown_) {
+        glfwShowWindow(window_);
+        startupWindowShown_ = true;
+    }
+}
+
+void Application::FinishStartupSplash() {
+    if (window_ == nullptr) {
+        return;
+    }
+    ShowStartupSplash("Ready.", 1.0f, true);
+    glfwHideWindow(window_);
+    startupWindowShown_ = false;
+    startupSplashActive_ = false;
+
+    RestoreNativeWindowFrame(window_);
+    glfwSetWindowSize(window_, config_.width, config_.height);
+    if (!config_.playerMode && sceneEditor_) {
+#if defined(_WIN32)
+        FitNativeWindowOuterRectToWorkArea(window_);
+#else
+        glfwMaximizeWindow(window_);
+#endif
+    } else {
+#if defined(_WIN32)
+        FitCenteredClientSizeToWorkArea(window_, config_.width, config_.height);
+#else
+        CenterWindowOnPrimaryMonitor(window_, config_.width, config_.height);
+#endif
+    }
+    glfwPollEvents();
+    if (renderer_) {
+        int framebufferWidth = 0;
+        int framebufferHeight = 0;
+        glfwGetFramebufferSize(window_, &framebufferWidth, &framebufferHeight);
+        if (framebufferWidth > 0 && framebufferHeight > 0) {
+            renderer_->Resize(framebufferWidth, framebufferHeight);
+        }
+    }
+    glfwSetWindowTitle(window_, config_.windowTitle.c_str());
+
+    Update(0.0f);
+    Render();
+    if (inputManager_) {
+        inputManager_->EndFrame();
+    }
+
+    glfwShowWindow(window_);
+    startupWindowShown_ = true;
+}
+
 void Application::InitializeGlfw() {
     if (!glfwInit()) {
         throw std::runtime_error("Failed to initialize GLFW");
@@ -447,6 +842,8 @@ void Application::InitializeGlfw() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
 
     window_ = glfwCreateWindow(config_.width, config_.height, config_.windowTitle.c_str(), nullptr, nullptr);
     if (!window_) {

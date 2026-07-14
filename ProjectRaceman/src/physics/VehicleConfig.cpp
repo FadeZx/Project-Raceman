@@ -76,6 +76,30 @@ const char* transmissionModeToString(TransmissionConfig::Mode mode)
     }
 }
 
+DifferentialConfig::Type differentialTypeFromString(const std::string& value)
+{
+    if (value == "Open" || value == "open")
+    {
+        return DifferentialConfig::Type::Open;
+    }
+    if (value == "Locked" || value == "locked")
+    {
+        return DifferentialConfig::Type::Locked;
+    }
+    return DifferentialConfig::Type::LimitedSlip;
+}
+
+const char* differentialTypeToString(DifferentialConfig::Type type)
+{
+    switch (type)
+    {
+    case DifferentialConfig::Type::Open: return "Open";
+    case DifferentialConfig::Type::Locked: return "Locked";
+    case DifferentialConfig::Type::LimitedSlip:
+    default: return "LimitedSlip";
+    }
+}
+
 WheelConfig readWheel(const json::Value &value)
 {
     WheelConfig wheel{};
@@ -268,10 +292,332 @@ VehicleTireGripConfig readTireGrip(const json::Value &value)
     return tireGrip;
 }
 
+VehicleArcadeHandlingConfig readArcadeHandling(const json::Value &value)
+{
+    VehicleArcadeHandlingConfig arcadeHandling{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("maxForwardSpeed"); it != obj.end())
+    {
+        arcadeHandling.maxForwardSpeed = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("maxReverseSpeed"); it != obj.end())
+    {
+        arcadeHandling.maxReverseSpeed = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("acceleration"); it != obj.end())
+    {
+        arcadeHandling.acceleration = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("reverseAcceleration"); it != obj.end())
+    {
+        arcadeHandling.reverseAcceleration = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("brakeDeceleration"); it != obj.end())
+    {
+        arcadeHandling.brakeDeceleration = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("coastDeceleration"); it != obj.end())
+    {
+        arcadeHandling.coastDeceleration = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("handbrakeDeceleration"); it != obj.end())
+    {
+        arcadeHandling.handbrakeDeceleration = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("fallbackSteerDegreesPerSecond"); it != obj.end())
+    {
+        arcadeHandling.fallbackSteerDegreesPerSecond = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("lowSpeedSteerSpeed"); it != obj.end())
+    {
+        arcadeHandling.lowSpeedSteerSpeed = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("lowSpeedSteerFloor"); it != obj.end())
+    {
+        arcadeHandling.lowSpeedSteerFloor = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("lowSpeedSteerInputBoost"); it != obj.end())
+    {
+        arcadeHandling.lowSpeedSteerInputBoost = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("highSpeedSteerCut"); it != obj.end())
+    {
+        arcadeHandling.highSpeedSteerCut = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("idleRPM"); it != obj.end())
+    {
+        arcadeHandling.idleRPM = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("redlineRPM"); it != obj.end())
+    {
+        arcadeHandling.redlineRPM = static_cast<float>(it->second.as_number());
+    }
+    return arcadeHandling;
+}
+
+VehicleTireDynamicsConfig readTireDynamics(const json::Value &value)
+{
+    VehicleTireDynamicsConfig tireDynamics{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("frontGripBias"); it != obj.end())
+    {
+        tireDynamics.frontGripBias = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("rearGripBias"); it != obj.end())
+    {
+        tireDynamics.rearGripBias = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("lateralRelaxationRate"); it != obj.end())
+    {
+        tireDynamics.lateralRelaxationRate = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("gripRecoveryRate"); it != obj.end())
+    {
+        tireDynamics.gripRecoveryRate = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("slideFriction"); it != obj.end())
+    {
+        tireDynamics.slideFriction = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("maxSideSlipSpeedScale"); it != obj.end())
+    {
+        tireDynamics.maxSideSlipSpeedScale = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("liftOffRearGripLoss"); it != obj.end())
+    {
+        tireDynamics.liftOffRearGripLoss = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("brakeRearGripLoss"); it != obj.end())
+    {
+        tireDynamics.brakeRearGripLoss = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("throttleRearGripLoss"); it != obj.end())
+    {
+        tireDynamics.throttleRearGripLoss = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("handbrakeRearGripLoss"); it != obj.end())
+    {
+        tireDynamics.handbrakeRearGripLoss = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("overSpeedGripLoss"); it != obj.end())
+    {
+        tireDynamics.overSpeedGripLoss = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("yawFromRearSlip"); it != obj.end())
+    {
+        tireDynamics.yawFromRearSlip = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("yawFromFrontSlip"); it != obj.end())
+    {
+        tireDynamics.yawFromFrontSlip = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("yawInertiaScale"); it != obj.end())
+    {
+        tireDynamics.yawInertiaScale = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("yawDrag"); it != obj.end())
+    {
+        tireDynamics.yawDrag = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("counterSteerTorque"); it != obj.end())
+    {
+        tireDynamics.counterSteerTorque = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("tireScrub"); it != obj.end())
+    {
+        tireDynamics.tireScrub = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("velocityAlignmentRate"); it != obj.end())
+    {
+        tireDynamics.velocityAlignmentRate = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("rearSlipYawTorque"); it != obj.end())
+    {
+        tireDynamics.rearSlipYawTorque = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("frontSlipYawDamping"); it != obj.end())
+    {
+        tireDynamics.frontSlipYawDamping = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("brakeYawInstability"); it != obj.end())
+    {
+        tireDynamics.brakeYawInstability = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("loadMemory"); it != obj.end())
+    {
+        tireDynamics.loadMemory = static_cast<float>(it->second.as_number());
+    }
+    return tireDynamics;
+}
+
+VehicleLoadTransferConfig readLoadTransfer(const json::Value &value)
+{
+    VehicleLoadTransferConfig loadTransfer{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end())
+    {
+        loadTransfer.enabled = it->second.as_bool();
+    }
+    if (auto it = obj.find("brakePitchAmount"); it != obj.end())
+    {
+        loadTransfer.brakePitchAmount = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("throttleSquatAmount"); it != obj.end())
+    {
+        loadTransfer.throttleSquatAmount = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("lateralRollAmount"); it != obj.end())
+    {
+        loadTransfer.lateralRollAmount = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("loadGripEffect"); it != obj.end())
+    {
+        loadTransfer.loadGripEffect = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("aeroDownforce"); it != obj.end())
+    {
+        loadTransfer.aeroDownforce = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("aeroBalance"); it != obj.end())
+    {
+        loadTransfer.aeroBalance = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("maxAeroGripBoost"); it != obj.end())
+    {
+        loadTransfer.maxAeroGripBoost = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("visualSmoothing"); it != obj.end())
+    {
+        loadTransfer.visualSmoothing = static_cast<float>(it->second.as_number());
+    }
+    return loadTransfer;
+}
+
+VehicleYawDynamicsConfig readYawDynamics(const json::Value &value)
+{
+    VehicleYawDynamicsConfig yawDynamics{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end())
+    {
+        yawDynamics.enabled = it->second.as_bool();
+    }
+    if (auto it = obj.find("minSpeed"); it != obj.end())
+    {
+        yawDynamics.minSpeed = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("steeringYawResponse"); it != obj.end())
+    {
+        yawDynamics.steeringYawResponse = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("slipYawResponse"); it != obj.end())
+    {
+        yawDynamics.slipYawResponse = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("maxYawRate"); it != obj.end())
+    {
+        yawDynamics.maxYawRate = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("yawDamping"); it != obj.end())
+    {
+        yawDynamics.yawDamping = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("counterSteerRecovery"); it != obj.end())
+    {
+        yawDynamics.counterSteerRecovery = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("handbrakeRearSlipBoost"); it != obj.end())
+    {
+        yawDynamics.handbrakeRearSlipBoost = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("throttleRearSlipBoost"); it != obj.end())
+    {
+        yawDynamics.throttleRearSlipBoost = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("spinSlipAngle"); it != obj.end())
+    {
+        yawDynamics.spinSlipAngle = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("spinYawBoost"); it != obj.end())
+    {
+        yawDynamics.spinYawBoost = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("spinRecovery"); it != obj.end())
+    {
+        yawDynamics.spinRecovery = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("sideSlipToYaw"); it != obj.end())
+    {
+        yawDynamics.sideSlipToYaw = static_cast<float>(it->second.as_number());
+    }
+    return yawDynamics;
+}
+
+VehicleBrakeAssistConfig readBrakeAssist(const json::Value &value)
+{
+    VehicleBrakeAssistConfig brakes{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("frontBias"); it != obj.end())
+    {
+        brakes.frontBias = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("maxBrakeForce"); it != obj.end())
+    {
+        brakes.maxBrakeForce = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("absEnabled"); it != obj.end())
+    {
+        brakes.absEnabled = it->second.as_bool();
+    }
+    if (auto it = obj.find("absSlipLimit"); it != obj.end())
+    {
+        brakes.absSlipLimit = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("absReleaseRate"); it != obj.end())
+    {
+        brakes.absReleaseRate = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("absRecoverRate"); it != obj.end())
+    {
+        brakes.absRecoverRate = static_cast<float>(it->second.as_number());
+    }
+    return brakes;
+}
+
+VehicleTractionControlConfig readTractionControl(const json::Value &value)
+{
+    VehicleTractionControlConfig tractionControl{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end())
+    {
+        tractionControl.enabled = it->second.as_bool();
+    }
+    if (auto it = obj.find("slipLimit"); it != obj.end())
+    {
+        tractionControl.slipLimit = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("cutStrength"); it != obj.end())
+    {
+        tractionControl.cutStrength = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("recoveryRate"); it != obj.end())
+    {
+        tractionControl.recoveryRate = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("minThrottleScale"); it != obj.end())
+    {
+        tractionControl.minThrottleScale = static_cast<float>(it->second.as_number());
+    }
+    return tractionControl;
+}
+
 DifferentialConfig readDifferential(const json::Value &value)
 {
     DifferentialConfig differential{};
     const auto &obj = value.as_object();
+    if (auto it = obj.find("type"); it != obj.end())
+    {
+        differential.type = differentialTypeFromString(it->second.as_string());
+    }
     if (auto it = obj.find("torqueSplit"); it != obj.end())
     {
         differential.torqueSplit = static_cast<float>(it->second.as_number());
@@ -283,6 +629,28 @@ DifferentialConfig readDifferential(const json::Value &value)
     if (auto it = obj.find("limitedSlip"); it != obj.end())
     {
         differential.limitedSlip = it->second.as_bool();
+        if (obj.find("type") == obj.end())
+        {
+            differential.type = differential.limitedSlip
+                ? DifferentialConfig::Type::LimitedSlip
+                : DifferentialConfig::Type::Open;
+        }
+    }
+    if (auto it = obj.find("lockStrength"); it != obj.end())
+    {
+        differential.lockStrength = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("coastLock"); it != obj.end())
+    {
+        differential.coastLock = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("powerLock"); it != obj.end())
+    {
+        differential.powerLock = static_cast<float>(it->second.as_number());
+    }
+    if (obj.find("lockStrength") == obj.end())
+    {
+        differential.lockStrength = differential.lockingCoefficient;
     }
     return differential;
 }
@@ -399,6 +767,30 @@ VehicleConfig readVehicle(const json::Value &value)
     if (auto it = obj.find("tireGrip"); it != obj.end())
     {
         config.tireGrip = readTireGrip(it->second);
+    }
+    if (auto it = obj.find("arcadeHandling"); it != obj.end())
+    {
+        config.arcadeHandling = readArcadeHandling(it->second);
+    }
+    if (auto it = obj.find("tireDynamics"); it != obj.end())
+    {
+        config.tireDynamics = readTireDynamics(it->second);
+    }
+    if (auto it = obj.find("loadTransfer"); it != obj.end())
+    {
+        config.loadTransfer = readLoadTransfer(it->second);
+    }
+    if (auto it = obj.find("yawDynamics"); it != obj.end())
+    {
+        config.yawDynamics = readYawDynamics(it->second);
+    }
+    if (auto it = obj.find("brakes"); it != obj.end())
+    {
+        config.brakes = readBrakeAssist(it->second);
+    }
+    if (auto it = obj.find("tractionControl"); it != obj.end())
+    {
+        config.tractionControl = readTractionControl(it->second);
     }
     if (auto it = obj.find("differential"); it != obj.end())
     {
@@ -530,10 +922,93 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
     stream << "    \"downforceGripScale\": " << config.tireGrip.downforceGripScale << ",\n";
     stream << "    \"minTractionScale\": " << config.tireGrip.minTractionScale << "\n";
     stream << "  },\n";
+    stream << "  \"arcadeHandling\": {\n";
+    stream << "    \"maxForwardSpeed\": " << config.arcadeHandling.maxForwardSpeed << ",\n";
+    stream << "    \"maxReverseSpeed\": " << config.arcadeHandling.maxReverseSpeed << ",\n";
+    stream << "    \"acceleration\": " << config.arcadeHandling.acceleration << ",\n";
+    stream << "    \"reverseAcceleration\": " << config.arcadeHandling.reverseAcceleration << ",\n";
+    stream << "    \"brakeDeceleration\": " << config.arcadeHandling.brakeDeceleration << ",\n";
+    stream << "    \"coastDeceleration\": " << config.arcadeHandling.coastDeceleration << ",\n";
+    stream << "    \"handbrakeDeceleration\": " << config.arcadeHandling.handbrakeDeceleration << ",\n";
+    stream << "    \"fallbackSteerDegreesPerSecond\": " << config.arcadeHandling.fallbackSteerDegreesPerSecond << ",\n";
+    stream << "    \"lowSpeedSteerSpeed\": " << config.arcadeHandling.lowSpeedSteerSpeed << ",\n";
+    stream << "    \"lowSpeedSteerFloor\": " << config.arcadeHandling.lowSpeedSteerFloor << ",\n";
+    stream << "    \"lowSpeedSteerInputBoost\": " << config.arcadeHandling.lowSpeedSteerInputBoost << ",\n";
+    stream << "    \"highSpeedSteerCut\": " << config.arcadeHandling.highSpeedSteerCut << ",\n";
+    stream << "    \"idleRPM\": " << config.arcadeHandling.idleRPM << ",\n";
+    stream << "    \"redlineRPM\": " << config.arcadeHandling.redlineRPM << "\n";
+    stream << "  },\n";
+    stream << "  \"tireDynamics\": {\n";
+    stream << "    \"frontGripBias\": " << config.tireDynamics.frontGripBias << ",\n";
+    stream << "    \"rearGripBias\": " << config.tireDynamics.rearGripBias << ",\n";
+    stream << "    \"lateralRelaxationRate\": " << config.tireDynamics.lateralRelaxationRate << ",\n";
+    stream << "    \"gripRecoveryRate\": " << config.tireDynamics.gripRecoveryRate << ",\n";
+    stream << "    \"slideFriction\": " << config.tireDynamics.slideFriction << ",\n";
+    stream << "    \"maxSideSlipSpeedScale\": " << config.tireDynamics.maxSideSlipSpeedScale << ",\n";
+    stream << "    \"liftOffRearGripLoss\": " << config.tireDynamics.liftOffRearGripLoss << ",\n";
+    stream << "    \"brakeRearGripLoss\": " << config.tireDynamics.brakeRearGripLoss << ",\n";
+    stream << "    \"throttleRearGripLoss\": " << config.tireDynamics.throttleRearGripLoss << ",\n";
+    stream << "    \"handbrakeRearGripLoss\": " << config.tireDynamics.handbrakeRearGripLoss << ",\n";
+    stream << "    \"overSpeedGripLoss\": " << config.tireDynamics.overSpeedGripLoss << ",\n";
+    stream << "    \"yawFromRearSlip\": " << config.tireDynamics.yawFromRearSlip << ",\n";
+    stream << "    \"yawFromFrontSlip\": " << config.tireDynamics.yawFromFrontSlip << ",\n";
+    stream << "    \"yawInertiaScale\": " << config.tireDynamics.yawInertiaScale << ",\n";
+    stream << "    \"yawDrag\": " << config.tireDynamics.yawDrag << ",\n";
+    stream << "    \"counterSteerTorque\": " << config.tireDynamics.counterSteerTorque << ",\n";
+    stream << "    \"tireScrub\": " << config.tireDynamics.tireScrub << ",\n";
+    stream << "    \"velocityAlignmentRate\": " << config.tireDynamics.velocityAlignmentRate << ",\n";
+    stream << "    \"rearSlipYawTorque\": " << config.tireDynamics.rearSlipYawTorque << ",\n";
+    stream << "    \"frontSlipYawDamping\": " << config.tireDynamics.frontSlipYawDamping << ",\n";
+    stream << "    \"brakeYawInstability\": " << config.tireDynamics.brakeYawInstability << ",\n";
+    stream << "    \"loadMemory\": " << config.tireDynamics.loadMemory << "\n";
+    stream << "  },\n";
+    stream << "  \"loadTransfer\": {\n";
+    stream << "    \"enabled\": " << (config.loadTransfer.enabled ? "true" : "false") << ",\n";
+    stream << "    \"brakePitchAmount\": " << config.loadTransfer.brakePitchAmount << ",\n";
+    stream << "    \"throttleSquatAmount\": " << config.loadTransfer.throttleSquatAmount << ",\n";
+    stream << "    \"lateralRollAmount\": " << config.loadTransfer.lateralRollAmount << ",\n";
+    stream << "    \"loadGripEffect\": " << config.loadTransfer.loadGripEffect << ",\n";
+    stream << "    \"aeroDownforce\": " << config.loadTransfer.aeroDownforce << ",\n";
+    stream << "    \"aeroBalance\": " << config.loadTransfer.aeroBalance << ",\n";
+    stream << "    \"maxAeroGripBoost\": " << config.loadTransfer.maxAeroGripBoost << ",\n";
+    stream << "    \"visualSmoothing\": " << config.loadTransfer.visualSmoothing << "\n";
+    stream << "  },\n";
+    stream << "  \"yawDynamics\": {\n";
+    stream << "    \"enabled\": " << (config.yawDynamics.enabled ? "true" : "false") << ",\n";
+    stream << "    \"minSpeed\": " << config.yawDynamics.minSpeed << ",\n";
+    stream << "    \"steeringYawResponse\": " << config.yawDynamics.steeringYawResponse << ",\n";
+    stream << "    \"slipYawResponse\": " << config.yawDynamics.slipYawResponse << ",\n";
+    stream << "    \"maxYawRate\": " << config.yawDynamics.maxYawRate << ",\n";
+    stream << "    \"yawDamping\": " << config.yawDynamics.yawDamping << ",\n";
+    stream << "    \"counterSteerRecovery\": " << config.yawDynamics.counterSteerRecovery << ",\n";
+    stream << "    \"handbrakeRearSlipBoost\": " << config.yawDynamics.handbrakeRearSlipBoost << ",\n";
+    stream << "    \"throttleRearSlipBoost\": " << config.yawDynamics.throttleRearSlipBoost << ",\n";
+    stream << "    \"spinSlipAngle\": " << config.yawDynamics.spinSlipAngle << ",\n";
+    stream << "    \"spinYawBoost\": " << config.yawDynamics.spinYawBoost << ",\n";
+    stream << "    \"spinRecovery\": " << config.yawDynamics.spinRecovery << ",\n";
+    stream << "    \"sideSlipToYaw\": " << config.yawDynamics.sideSlipToYaw << "\n";
+    stream << "  },\n";
+    stream << "  \"brakes\": {\n";
+    stream << "    \"frontBias\": " << config.brakes.frontBias << ",\n";
+    stream << "    \"maxBrakeForce\": " << config.brakes.maxBrakeForce << ",\n";
+    stream << "    \"absEnabled\": " << (config.brakes.absEnabled ? "true" : "false") << ",\n";
+    stream << "    \"absSlipLimit\": " << config.brakes.absSlipLimit << ",\n";
+    stream << "    \"absReleaseRate\": " << config.brakes.absReleaseRate << ",\n";
+    stream << "    \"absRecoverRate\": " << config.brakes.absRecoverRate << "\n";
+    stream << "  },\n";
+    stream << "  \"tractionControl\": {\n";
+    stream << "    \"enabled\": " << (config.tractionControl.enabled ? "true" : "false") << ",\n";
+    stream << "    \"slipLimit\": " << config.tractionControl.slipLimit << ",\n";
+    stream << "    \"cutStrength\": " << config.tractionControl.cutStrength << ",\n";
+    stream << "    \"recoveryRate\": " << config.tractionControl.recoveryRate << ",\n";
+    stream << "    \"minThrottleScale\": " << config.tractionControl.minThrottleScale << "\n";
+    stream << "  },\n";
     stream << "  \"differential\": {\n";
+    stream << "    \"type\": " << escapeJsonString(differentialTypeToString(config.differential.type)) << ",\n";
     stream << "    \"torqueSplit\": " << config.differential.torqueSplit << ",\n";
-    stream << "    \"lockingCoefficient\": " << config.differential.lockingCoefficient << ",\n";
-    stream << "    \"limitedSlip\": " << (config.differential.limitedSlip ? "true" : "false") << "\n";
+    stream << "    \"lockStrength\": " << config.differential.lockStrength << ",\n";
+    stream << "    \"coastLock\": " << config.differential.coastLock << ",\n";
+    stream << "    \"powerLock\": " << config.differential.powerLock << "\n";
     stream << "  },\n";
     stream << "  \"engine\": {\n";
     stream << "    \"idleRPM\": " << config.engine.idleRPM << ",\n";

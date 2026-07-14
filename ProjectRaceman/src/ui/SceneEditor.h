@@ -16,6 +16,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include "SceneEditorTypes.h"
+#include "SceneEditorVehicleRuntime.h"
 #include "../input/InputManager.h"
 #include "../physics/PhysicsLayers.h"
 #include "../physics/VehicleConfig.h"
@@ -448,58 +449,6 @@ private:
     };
     std::vector<RuntimeScriptInstance> runtimeScripts_;
 
-    struct RuntimeVehicleInstance {
-        struct WheelContact {
-            bool grounded{false};
-            glm::vec3 contactPosition{0.0f};
-            glm::vec3 wheelCenterPosition{0.0f};
-            glm::vec3 normal{0.0f, 1.0f, 0.0f};
-            float suspensionTravel{0.0f};
-            float normalForce{0.0f};
-            float angularVelocity{0.0f};
-            TrackSurfaceType surfaceType{TrackSurfaceType::Asphalt};
-            float surfaceGripMultiplier{1.0f};
-            float surfaceRollingDrag{0.08f};
-            float slipAngle{0.0f};
-            float tractionScale{1.0f};
-        };
-
-        std::string objectId;
-        int objectIndex{-1};
-        std::string chassisBodyObjectId;
-        std::vector<int> wheelObjectIndices;
-        std::vector<VehicleWheelBinding> wheelBindings;
-        std::vector<Transform> wheelAuthoredLocalTransforms;
-        std::vector<glm::vec3> wheelAuthoredRotationEuler;
-        float smoothedKeyboardSteering{0.0f};
-        float smoothedKeyboardThrottle{0.0f};
-        float smoothedKeyboardBrake{0.0f};
-        bool pendingShiftUp{false};
-        bool pendingShiftDown{false};
-        bool pendingNeutral{false};
-        bool pendingReverse{false};
-        float autoShiftCooldown{0.0f};
-        physics::VehicleConfig config;
-        int manualGear{0};
-        bool arcadeInitialized{false};
-        Transform arcadePreviousChassisWorld{};
-        Transform arcadeChassisWorld{};
-        float arcadeSpeed{0.0f};
-        float arcadeLateralSpeed{0.0f};
-        float arcadeEngineRPM{900.0f};
-        float arcadePreviousWheelSpin{0.0f};
-        float arcadeWheelSpin{0.0f};
-        float arcadeThrottle{0.0f};
-        float arcadeBrake{0.0f};
-        float arcadeSteering{0.0f};
-        float arcadeHandbrake{0.0f};
-        float arcadeVerticalVelocity{0.0f};
-        float arcadeSlipAngle{0.0f};
-        float arcadeTractionScale{1.0f};
-        float arcadeSurfaceGrip{1.0f};
-        int arcadeGear{1};
-        std::vector<WheelContact> arcadeWheelContacts;
-    };
     std::vector<RuntimeVehicleInstance> runtimeVehicles_;
 
     struct RuntimeCinemachineState {

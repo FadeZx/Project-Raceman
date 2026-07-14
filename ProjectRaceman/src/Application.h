@@ -61,6 +61,8 @@ private:
     void InitializeEditor(const std::string& projectPath);
     void FitEditorWindowToScreen();
     void RenderPlayerDebugOverlay(float deltaTime);
+    void ShowStartupSplash(const std::string& message, float progress, bool showWindow = true);
+    void FinishStartupSplash();
 
     ApplicationConfig config_{};
     GLFWwindow* window_{nullptr};
@@ -104,6 +106,13 @@ private:
     std::string baseTitle_{};
     bool vsyncEnabled_{false};
     bool playerRuntimeStarted_{false};
+    bool startupWindowShown_{false};
+    bool startupSplashActive_{false};
+    std::string startupSplashMessage_{};
+    float startupSplashProgress_{0.0f};
+    unsigned int startupLogoTexture_{0};
+    int startupLogoWidth_{0};
+    int startupLogoHeight_{0};
 
     // Editor camera state
     float camPosX_{0.0f}, camPosY_{5.0f}, camPosZ_{10.0f};
