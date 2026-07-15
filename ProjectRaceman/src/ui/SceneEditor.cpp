@@ -3458,32 +3458,6 @@ void SceneEditor::PushUndoState() {
     }
 }
 
-void SceneEditor::PushVehicleConfigUndoState() {
-    if (!showVehicleConfigEditor_ || inspectedVehicleConfigPath_.empty() || !inspectedVehicleConfigLoaded_) {
-        return;
-    }
-
-    vehicleConfigUndoStack_.push_back({inspectedVehicleConfig_});
-    vehicleConfigRedoStack_.clear();
-    constexpr std::size_t maxHistory = 128;
-    if (vehicleConfigUndoStack_.size() > maxHistory) {
-        vehicleConfigUndoStack_.erase(vehicleConfigUndoStack_.begin());
-    }
-}
-
-void SceneEditor::PushVehicleSoundUndoState() {
-    if (!showVehicleSoundEditor_ || inspectedVehicleSoundPath_.empty() || !inspectedVehicleSoundLoaded_) {
-        return;
-    }
-
-    vehicleSoundUndoStack_.push_back({inspectedVehicleSound_});
-    vehicleSoundRedoStack_.clear();
-    constexpr std::size_t maxHistory = 128;
-    if (vehicleSoundUndoStack_.size() > maxHistory) {
-        vehicleSoundUndoStack_.erase(vehicleSoundUndoStack_.begin());
-    }
-}
-
 void SceneEditor::PushMaterialUndoState(const Material& snapshot) {
     if (!inspectMaterial_ || inspectedMaterialId_.empty()) {
         return;
@@ -3537,17 +3511,6 @@ void SceneEditor::UndoMaterial() {
         console_->AddError("Failed to auto-save material undo: " + inspectedMaterialId_);
     }
     materialEditActive_ = false;
-}
-
-void SceneEditor::UndoVehicleConfig() {
-    if (vehicleConfigUndoStack_.empty() || !showVehicleConfigEditor_) {
-        return;
-    }
-
-    vehicleConfigRedoStack_.push_back({inspectedVehicleConfig_});
-    inspectedVehicleConfig_ = vehicleConfigUndoStack_.back().config;
-    vehicleConfigUndoStack_.pop_back();
-    vehicleConfigEditActive_ = false;
 }
 
 void SceneEditor::Redo() {
@@ -4807,17 +4770,6 @@ void SceneEditor::SaveProject() {
 
 #endif
 
-void SceneEditor::RedoVehicleConfig() {
-    if (vehicleConfigRedoStack_.empty() || !showVehicleConfigEditor_) {
-        return;
-    }
-
-    vehicleConfigUndoStack_.push_back({inspectedVehicleConfig_});
-    inspectedVehicleConfig_ = vehicleConfigRedoStack_.back().config;
-    vehicleConfigRedoStack_.pop_back();
-    vehicleConfigEditActive_ = false;
-}
-
 void SceneEditor::RedoMaterial() {
     if (materialRedoStack_.empty() || !inspectMaterial_) {
         return;
@@ -4839,28 +4791,6 @@ void SceneEditor::RedoMaterial() {
         console_->AddError("Failed to auto-save material redo: " + inspectedMaterialId_);
     }
     materialEditActive_ = false;
-}
-
-void SceneEditor::UndoVehicleSound() {
-    if (vehicleSoundUndoStack_.empty() || !showVehicleSoundEditor_) {
-        return;
-    }
-
-    vehicleSoundRedoStack_.push_back({inspectedVehicleSound_});
-    inspectedVehicleSound_ = vehicleSoundUndoStack_.back().profile;
-    vehicleSoundUndoStack_.pop_back();
-    vehicleSoundEditActive_ = false;
-}
-
-void SceneEditor::RedoVehicleSound() {
-    if (vehicleSoundRedoStack_.empty() || !showVehicleSoundEditor_) {
-        return;
-    }
-
-    vehicleSoundUndoStack_.push_back({inspectedVehicleSound_});
-    inspectedVehicleSound_ = vehicleSoundRedoStack_.back().profile;
-    vehicleSoundRedoStack_.pop_back();
-    vehicleSoundEditActive_ = false;
 }
 
 #if 0
@@ -5118,150 +5048,6 @@ bool SceneEditor::CreateSceneAsset(const std::string& requestedName, std::string
         }
         return false;
     }
-}
-
-bool SceneEditor::CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath) {
-    std::string baseName = TrimCopyLocal(requestedName);
-    if (baseName.empty()) {
-        if (console_) {
-            console_->AddError("Vehicle profile name cannot be empty.");
-        }
-        return false;
-    }
-
-    const std::string suffix = ".vehicle.json";
-    const std::string lowerBaseName = ToLowerCopy(baseName);
-    if (EndsWith(lowerBaseName, suffix)) {
-        baseName.resize(baseName.size() - suffix.size());
-    }
-
-    std::string sanitized;
-    sanitized.reserve(baseName.size());
-    for (char& ch : baseName) {
-        const unsigned char uch = static_cast<unsigned char>(ch);
-        if (std::isalnum(uch) || ch == '_' || ch == '-' || ch == ' ') {
-            sanitized.push_back(ch == ' ' ? '_' : ch);
-        }
-    }
-    sanitized = TrimCopyLocal(sanitized);
-    if (sanitized.empty()) {
-        if (console_) {
-            console_->AddError("Vehicle profile name must contain letters or numbers.");
-        }
-        return false;
-    }
-
-    const fs::path assetsRoot = FindAssetsRoot();
-    fs::path targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + sanitized + suffix);
-    if (!IsUnderPath(targetPath, assetsRoot)) {
-        if (console_) {
-            console_->AddError("Vehicle profile creation blocked outside assets: " + sanitized);
-        }
-        return false;
-    }
-
-    int duplicateIndex = 1;
-    while (fs::exists(targetPath)) {
-        targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + sanitized + "_" + std::to_string(duplicateIndex) + suffix);
-        ++duplicateIndex;
-    }
-
-    physics::VehicleConfig config;
-    config.name = sanitized;
-    config.wheels = {
-        {"Front Left",  {-0.85f,  1.35f, 0.0f}, 0.35f, 0.24f, 15.0f, 1.0f, 0.55f, 0.0f, 0.0f, 1.0f, 10000.0f, 8000.0f, 3000.0f, true,  true},
-        {"Front Right", { 0.85f,  1.35f, 0.0f}, 0.35f, 0.24f, 15.0f, 1.0f, 0.55f, 0.0f, 0.0f, 1.0f, 10000.0f, 8000.0f, 3000.0f, true,  true},
-        {"Rear Left",   {-0.85f, -1.35f, 0.0f}, 0.35f, 0.24f, 15.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f, 10000.0f, 8000.0f, 3200.0f, true,  true},
-        {"Rear Right",  { 0.85f, -1.35f, 0.0f}, 0.35f, 0.24f, 15.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f, 10000.0f, 8000.0f, 3200.0f, true,  true}
-    };
-
-    std::string error;
-    fs::create_directories(targetPath.parent_path());
-    if (!physics::VehicleConfigLoader::saveToFile(targetPath.string(), config, &error)) {
-        if (console_) {
-            console_->AddError(error.empty() ? ("Failed to create vehicle profile: " + sanitized) : error);
-        }
-        return false;
-    }
-
-    const std::string createdProjectPath = ToProjectAssetPath(targetPath, assetsRoot);
-    if (outConfigPath) {
-        *outConfigPath = createdProjectPath;
-    }
-    RefreshProjectFiles();
-    if (console_) {
-        console_->AddLog("Created vehicle profile: " + createdProjectPath);
-    }
-    return true;
-}
-
-bool SceneEditor::CreateVehicleSoundAsset(const std::string& requestedName, std::string* outProfilePath) {
-    std::string baseName = TrimCopyLocal(requestedName);
-    if (baseName.empty()) {
-        if (console_) {
-            console_->AddError("Vehicle sound profile name cannot be empty.");
-        }
-        return false;
-    }
-
-    const std::string suffix = ".vehiclesound.json";
-    const std::string lowerBaseName = ToLowerCopy(baseName);
-    if (EndsWith(lowerBaseName, suffix)) {
-        baseName.resize(baseName.size() - suffix.size());
-    }
-
-    std::string sanitized;
-    sanitized.reserve(baseName.size());
-    for (char& ch : baseName) {
-        const unsigned char uch = static_cast<unsigned char>(ch);
-        if (std::isalnum(uch) || ch == '_' || ch == '-' || ch == ' ') {
-            sanitized.push_back(ch == ' ' ? '_' : ch);
-        }
-    }
-    sanitized = TrimCopyLocal(sanitized);
-    if (sanitized.empty()) {
-        if (console_) {
-            console_->AddError("Vehicle sound profile name must contain letters or numbers.");
-        }
-        return false;
-    }
-
-    const fs::path assetsRoot = FindAssetsRoot();
-    fs::path targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + sanitized + suffix);
-    if (!IsUnderPath(targetPath, assetsRoot)) {
-        if (console_) {
-            console_->AddError("Vehicle sound profile creation blocked outside assets: " + sanitized);
-        }
-        return false;
-    }
-
-    int duplicateIndex = 1;
-    while (fs::exists(targetPath)) {
-        targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + sanitized + "_" + std::to_string(duplicateIndex) + suffix);
-        ++duplicateIndex;
-    }
-
-    raceman::VehicleSoundProfile profile = raceman::VehicleSoundProfileLoader::makeDefault();
-    profile.name = sanitized;
-
-    std::string error;
-    fs::create_directories(targetPath.parent_path());
-    if (!raceman::VehicleSoundProfileLoader::saveToFile(targetPath.string(), profile, &error)) {
-        if (console_) {
-            console_->AddError(error.empty() ? ("Failed to create vehicle sound profile: " + sanitized) : error);
-        }
-        return false;
-    }
-
-    const std::string createdProjectPath = ToProjectAssetPath(targetPath, assetsRoot);
-    if (outProfilePath) {
-        *outProfilePath = createdProjectPath;
-    }
-    RefreshProjectFiles();
-    if (console_) {
-        console_->AddLog("Created vehicle sound profile: " + createdProjectPath);
-    }
-    return true;
 }
 
 bool SceneEditor::OpenSceneAsset(const std::string& path) {

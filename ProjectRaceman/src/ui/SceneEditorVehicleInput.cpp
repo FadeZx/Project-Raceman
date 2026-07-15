@@ -1,5 +1,6 @@
 #include "SceneEditorVehicleInput.h"
 
+#include "SceneEditorInternal.h"
 #include "../input/InputManager.h"
 
 #include <algorithm>
@@ -7,6 +8,8 @@
 #include <string_view>
 
 namespace raceman {
+using namespace scene_editor_internal;
+
 namespace {
 
 float MoveTowards(float current, float target, float maxDelta) {
@@ -66,6 +69,42 @@ float ResolveKeyboardAxis(const InputManager& inputManager, const InputProfile& 
 }
 
 } // namespace
+
+void SceneEditor::CaptureVehicleRuntimeInputActions(bool routeInput) {
+    for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
+        if (!routeInput ||
+            inputManager_ == nullptr ||
+            runtimeVehicle.objectIndex < 0 ||
+            runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
+            runtimeVehicle.pendingShiftUp = false;
+            runtimeVehicle.pendingShiftDown = false;
+            runtimeVehicle.pendingNeutral = false;
+            runtimeVehicle.pendingReverse = false;
+            continue;
+        }
+
+        const SceneObject& vehicleObject = objects_[runtimeVehicle.objectIndex];
+        const std::string profileId = vehicleObject.vehicle.inputProfileId.empty()
+            ? std::string("default_vehicle")
+            : vehicleObject.vehicle.inputProfileId;
+        runtimeVehicle.pendingShiftUp = runtimeVehicle.pendingShiftUp ||
+            inputManager_->WasActionPressedForProfile(profileId, "shiftUp",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+        runtimeVehicle.pendingShiftDown = runtimeVehicle.pendingShiftDown ||
+            inputManager_->WasActionPressedForProfile(profileId, "shiftDown",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+        runtimeVehicle.pendingNeutral = runtimeVehicle.pendingNeutral ||
+            inputManager_->WasActionPressedForProfile(profileId, "neutral",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+        runtimeVehicle.pendingReverse = runtimeVehicle.pendingReverse ||
+            inputManager_->WasActionPressedForProfile(profileId, "reverse",
+                vehicleObject.vehicle.preferredInputDevice,
+                vehicleObject.vehicle.preferredInputDeviceId);
+    }
+}
 
 void ConsumePendingVehicleGearActions(RuntimeVehicleInstance& runtimeVehicle) {
     runtimeVehicle.pendingShiftUp = false;

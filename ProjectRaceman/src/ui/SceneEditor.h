@@ -38,6 +38,8 @@ class Console;
 class PhysicsWorld;
 class AudioManager;
 struct PhysicsColliderDesc;
+struct PhysicsBodyDesc;
+struct PhysicsCharacterDesc;
 struct PhysicsBuildProgress;
 
 class SceneEditor {
@@ -189,12 +191,20 @@ private:
     void RenderShaderGraphEditorWindow();
     void RenderVehicleConfigEditorWindow();
     void RenderVehicleSoundEditorWindow();
+    void RenderVehicleComponentInspector(SceneObject& object,
+                                         SceneInspectorComponentType& reorderDraggedType,
+                                         SceneInspectorComponentType& reorderTargetType);
     void RenderMaterialProperties(const std::string& materialId, bool showBackButton);
     void RenderProjectAssetPickerPopup();
     unsigned int GetComponentIconTexture(const std::string& filename);
     void HandleEditorShortcuts();
     void UpdateScripts(float deltaTime);
     void UpdateVehiclePhysics(float deltaTime);
+    void CaptureVehicleRuntimeInputActions(bool routeInput);
+    void BuildVehiclePhysicsBodyDescriptors(std::unordered_map<std::string, PhysicsBodyDesc>& outVehicleChassisBodies,
+                                            std::unordered_set<std::string>& outConsumedVehiclePhysicsObjects);
+    void BuildRuntimePhysicsDescriptors(std::vector<PhysicsBodyDesc>& outPhysicsBodies,
+                                        std::vector<PhysicsCharacterDesc>& outPhysicsCharacters);
     void UpdatePhysics(float deltaTime);
     void UpdateVehicles(float deltaTime);
     void UpdateCinemachine(float deltaTime);
@@ -207,6 +217,10 @@ private:
     void RebuildAudioRuntime();
     void ClearScriptRuntime();
     void ClearAudioRuntime();
+    void ClearVehicleSoundRuntime();
+    void RebuildVehicleSoundRuntime();
+    void UpdateVehicleSoundRuntime(float deltaTime);
+    void PlayVehicleSoundStopTriggers();
     void UpdateAudio(float deltaTime);
     void RestoreFromPlayModeSnapshot();
     void TickPlayModeLoading();

@@ -26,8 +26,26 @@ struct WheelConfig
     float longitudinalStiffness{10'000.0f};
     float lateralStiffness{8'000.0f};
     float maxBrakingTorque{3'000.0f};
+    bool overrideTire{false};
     bool driven{false};
     bool hasBrake{true};
+};
+
+struct VehicleWheelTireConfig
+{
+    bool enabled{true};
+    float gripFactor{1.0f};
+    float longitudinalStiffness{10'000.0f};
+    float lateralStiffness{8'000.0f};
+    float frontGripScale{1.0f};
+    float rearGripScale{1.0f};
+};
+
+struct ResolvedWheelTireConfig
+{
+    float gripFactor{1.0f};
+    float longitudinalStiffness{10'000.0f};
+    float lateralStiffness{8'000.0f};
 };
 
 struct SuspensionConfig
@@ -218,15 +236,27 @@ struct VehicleChassisConfig
     Vector3 centerOfMassOffset{0.0f, 0.0f, -0.2f};
 };
 
+struct VehicleSetupConfig
+{
+    bool enabled{false};
+    std::string tireCompound{"Custom"};
+    std::string drivetrainLayout{"Custom"};
+    std::string handlingBalance{"Custom"};
+    float stabilityAssist{0.35f};
+    std::string simulationLevel{"Simcade"};
+};
+
 struct VehicleConfig
 {
     std::string name{"default"};
+    VehicleSetupConfig setup{};
     VehicleChassisConfig chassis{};
     SuspensionConfig frontSuspension{};
     SuspensionConfig rearSuspension{};
     VehicleGroundContactConfig groundContact{};
     VehicleArcadeHandlingConfig arcadeHandling{};
     VehicleTireGripConfig tireGrip{};
+    VehicleWheelTireConfig wheelTire{};
     VehicleTireDynamicsConfig tireDynamics{};
     VehicleLoadTransferConfig loadTransfer{};
     VehicleYawDynamicsConfig yawDynamics{};
@@ -247,6 +277,8 @@ public:
 };
 
 float sampleTorqueCurve(const EngineConfig &config, float rpm);
+ResolvedWheelTireConfig resolveWheelTire(const VehicleConfig &config, const WheelConfig &wheel);
+void applyVehicleSetupPresets(VehicleConfig &config);
 
 } // namespace raceman::physics
 

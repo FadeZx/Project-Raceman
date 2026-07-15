@@ -1,4 +1,5 @@
 #include "SceneEditorInternal.h"
+#include "SceneEditorVehicleValidation.h"
 #include "../physics/SimpleJson.h"
 
 namespace fs = std::filesystem;
@@ -238,6 +239,7 @@ void SceneEditor::SaveActiveAsset() {
                     console_->AddLog("Hot-reloaded vehicle config for " + std::to_string(hotReloadedCount) + " runtime vehicle(s).");
                 }
             }
+            LogVehicleConfigValidationIssues(console_, inspectedVehicleConfigPath_, inspectedVehicleConfig_);
         } else if (console_) {
             console_->AddError(error.empty() ? ("Failed to save vehicle config: " + inspectedVehicleConfigPath_) : error);
         }

@@ -1,4 +1,5 @@
 #include "SceneEditorInternal.h"
+#include "SceneEditorVehicleValidation.h"
 
 #include <imgui/imgui.h>
 #include <algorithm>
@@ -77,6 +78,7 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
             inspectedVehicleConfig_ = raceman::physics::VehicleConfigLoader::loadFromFile(
                 ProjectAssetPathToAbsolute(inspectedVehicleConfigPath_).string());
             inspectedVehicleConfigLoaded_ = true;
+            LogVehicleConfigValidationIssues(console_, inspectedVehicleConfigPath_, inspectedVehicleConfig_);
         } catch (const std::exception& ex) {
             inspectedVehicleConfigLoaded_ = false;
             inspectedVehicleConfigError_ = ex.what();
@@ -187,6 +189,20 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                         : raceman::physics::DifferentialConfig::Type::LimitedSlip);
             }
         };
+        auto applyStringComboEdit = [&](const char* label, std::string& value, const char* const* options, int optionCount) {
+            int currentIndex = 0;
+            for (int i = 0; i < optionCount; ++i) {
+                if (value == options[i]) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+            if (ImGui::Combo(label, &currentIndex, options, optionCount)) {
+                PushVehicleConfigUndoState();
+                vehicleConfigEditActive_ = false;
+                value = options[currentIndex];
+            }
+        };
         auto beginCard = [&](const char* id, const char* title, const char* subtitle, const ImVec4& accent, float minHeight = 0.0f) {
             ImGui::PushID(id);
             ImGui::PushStyleColor(ImGuiCol_ChildBg, cardBg);
@@ -215,6 +231,39 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
             applyDragFloatEdit("Anti-Roll Stiffness (N/m)", (std::string("##") + idPrefix + "_antiRollStiffness").c_str(), suspension.antiRollStiffness, 10.0f, 0.0f, 1000000.0f);
             endCard();
         };
+        auto renderSetupPresetSection = [&]() {
+            raceman::physics::VehicleSetupConfig& setup = inspectedVehicleConfig_.setup;
+            beginCard("vehicleProfileSetupPresets", "Setup Presets", "Fast car setup mapped into detailed tuning", accentSecondary);
+            applyCheckboxEdit("Enable Setup Presets##vehicleProfileSetupEnabled", setup.enabled);
+            const char* tireOptions[] = {"Custom", "SlickSoft", "SlickMedium", "SlickHard", "Wet", "Street", "Drift"};
+            const char* drivetrainOptions[] = {"Custom", "RWD", "FWD", "AWD"};
+            const char* balanceOptions[] = {"Custom", "Stable", "Neutral", "Loose"};
+            const char* simulationOptions[] = {"Arcade", "Simcade", "Simulation"};
+            if (ImGui::BeginTable("VehicleProfileSetupPresetGrid", 2, ImGuiTableFlags_SizingStretchSame)) {
+                ImGui::TableNextColumn();
+                applyStringComboEdit("Tire Compound##vehicleProfileSetupTireCompound", setup.tireCompound, tireOptions, IM_ARRAYSIZE(tireOptions));
+                ImGui::TableNextColumn();
+                applyStringComboEdit("Drivetrain##vehicleProfileSetupDrivetrain", setup.drivetrainLayout, drivetrainOptions, IM_ARRAYSIZE(drivetrainOptions));
+                ImGui::TableNextColumn();
+                applyStringComboEdit("Handling Balance##vehicleProfileSetupBalance", setup.handlingBalance, balanceOptions, IM_ARRAYSIZE(balanceOptions));
+                ImGui::TableNextColumn();
+                applyStringComboEdit("Simulation Level##vehicleProfileSetupSimulation", setup.simulationLevel, simulationOptions, IM_ARRAYSIZE(simulationOptions));
+                ImGui::TableNextColumn();
+                applyDragFloatEdit("Stability Assist", "##vehicleProfileSetupStabilityAssist", setup.stabilityAssist, 0.01f, 0.0f, 1.0f);
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("0 raw / 1 stable assists");
+                ImGui::EndTable();
+            }
+            ImGui::Spacing();
+            if (ImGui::Button("Apply Setup To Detailed Tuning##vehicleProfileApplySetup")) {
+                PushVehicleConfigUndoState();
+                vehicleConfigEditActive_ = false;
+                raceman::physics::applyVehicleSetupPresets(inspectedVehicleConfig_);
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("Runtime also applies enabled setup on load.");
+            endCard();
+        };
         auto renderGroundContactSection = [&]() {
             raceman::physics::VehicleGroundContactConfig& groundContact = inspectedVehicleConfig_.groundContact;
             beginCard("vehicleProfileGroundContact", "Ground Contact", "Raycast ride and wall probing", accentPrimary);
@@ -233,6 +282,7 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
         };
         auto renderTireGripSection = [&]() {
             raceman::physics::VehicleTireGripConfig& tireGrip = inspectedVehicleConfig_.tireGrip;
+            raceman::physics::VehicleWheelTireConfig& wheelTire = inspectedVehicleConfig_.wheelTire;
             beginCard("vehicleProfileTireGrip", "Tire Grip", "Arcade slip and surface response", accentSecondary);
             applyCheckboxEdit("Enabled##vehicleProfileTireGripEnabled", tireGrip.enabled);
             applyDragFloatEdit("Lateral Grip", "##vehicleProfileTireGripLateralGrip", tireGrip.lateralGrip, 0.05f, 0.0f, 100.0f);
@@ -243,6 +293,24 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
             applyDragFloatEdit("Handbrake Grip Scale", "##vehicleProfileTireGripHandbrakeGripScale", tireGrip.handbrakeGripScale, 0.01f, 0.0f, 1.0f);
             applyDragFloatEdit("Downforce Grip Scale", "##vehicleProfileTireGripDownforceGripScale", tireGrip.downforceGripScale, 0.01f, 0.0f, 10.0f);
             applyDragFloatEdit("Min Traction Scale", "##vehicleProfileTireGripMinTractionScale", tireGrip.minTractionScale, 0.01f, 0.0f, 1.0f);
+            ImGui::Separator();
+            ImGui::TextDisabled("Shared Wheel Tire");
+            applyCheckboxEdit("Use Shared Tire##vehicleProfileWheelTireEnabled", wheelTire.enabled);
+            if (ImGui::BeginTable("VehicleProfileWheelTireGrid", 2, ImGuiTableFlags_SizingStretchSame)) {
+                ImGui::TableNextColumn();
+                applyDragFloatEdit("Wheel Grip (x normal)", "##vehicleProfileWheelTireGripFactor", wheelTire.gripFactor, 0.01f, 0.0f, 1000.0f);
+                ImGui::TableNextColumn();
+                applyDragFloatEdit("Long Stiffness (N)", "##vehicleProfileWheelTireLongitudinalStiffness", wheelTire.longitudinalStiffness, 10.0f, 0.0f, 1000000.0f);
+                ImGui::TableNextColumn();
+                applyDragFloatEdit("Lat Stiffness (N/rad)", "##vehicleProfileWheelTireLateralStiffness", wheelTire.lateralStiffness, 10.0f, 0.0f, 1000000.0f);
+                ImGui::TableNextColumn();
+                applyDragFloatEdit("Front Grip Scale", "##vehicleProfileWheelTireFrontScale", wheelTire.frontGripScale, 0.01f, 0.0f, 10.0f);
+                ImGui::TableNextColumn();
+                applyDragFloatEdit("Rear Grip Scale", "##vehicleProfileWheelTireRearScale", wheelTire.rearGripScale, 0.01f, 0.0f, 10.0f);
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("Wheels use this unless Override Shared Tire is enabled.");
+                ImGui::EndTable();
+            }
             endCard();
         };
         auto renderArcadeHandlingSection = [&]() {
@@ -432,12 +500,28 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
             return;
         }
 
+        const std::vector<VehicleConfigValidationIssue> validationIssues = ValidateVehicleConfigForTuning(inspectedVehicleConfig_);
+        if (!validationIssues.empty()) {
+            beginCard("vehicleProfileValidation", "Validation", "Current setup warnings", accentSecondary);
+            for (const VehicleConfigValidationIssue& issue : validationIssues) {
+                const ImVec4 issueColor = issue.severity == VehicleConfigValidationSeverity::Error
+                    ? ImVec4(1.0f, 0.28f, 0.24f, 1.0f)
+                    : ImVec4(1.0f, 0.72f, 0.24f, 1.0f);
+                ImGui::PushStyleColor(ImGuiCol_Text, issueColor);
+                ImGui::BulletText("%s", issue.message.c_str());
+                ImGui::PopStyleColor();
+            }
+            endCard();
+        }
+
         if (ImGui::BeginTabBar("VehicleProfileEditorTabs")) {
             if (ImGui::BeginTabItem("Setup")) {
                 beginCard("vehicleProfileSetupCard", "Profile Identity", "Asset metadata", accentPrimary);
                 applyTextEdit("Name", "##vehicleProfileName", inspectedVehicleConfig_.name);
                 RenderInspectorWrappedValue("Asset:", inspectedVehicleConfigPath_);
                 endCard();
+
+                renderSetupPresetSection();
 
                 beginCard("vehicleProfileChassisCard", "Chassis", "Mass, inertia and balance", accentSecondary);
                 applyDragFloatEdit("Mass (kg)", "##vehicleProfileChassisMass", inspectedVehicleConfig_.chassis.mass, 1.0f, 0.001f, 100000.0f);
@@ -728,10 +812,29 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                     }
 
                     ImGui::TextDisabled("Tire");
-                    renderWheelScalarPair("Grip (x normal)", "##vehicleProfileWheelGripFactor", wheel.gripFactor, 0.01f, 0.0f, 1000.0f,
-                                          "Brake Torque (Nm)", "##vehicleProfileWheelMaxBrakingTorque", wheel.maxBrakingTorque, 10.0f, 0.0f, 1000000.0f);
+                    applyCheckboxEdit("Override Shared Tire##vehicleProfileWheelOverrideTire", wheel.overrideTire);
+                    const bool editingWheelTire = wheel.overrideTire || !inspectedVehicleConfig_.wheelTire.enabled;
+                    if (!editingWheelTire) {
+                        const raceman::physics::ResolvedWheelTireConfig resolvedTire =
+                            raceman::physics::resolveWheelTire(inspectedVehicleConfig_, wheel);
+                        ImGui::TextDisabled("Using shared tire: grip %.2f, long %.0f, lat %.0f",
+                                            resolvedTire.gripFactor,
+                                            resolvedTire.longitudinalStiffness,
+                                            resolvedTire.lateralStiffness);
+                    }
+                    if (ImGui::BeginTable("##wheelTireAndBrakeRow", 2, ImGuiTableFlags_SizingStretchSame)) {
+                        ImGui::TableNextColumn();
+                        ImGui::BeginDisabled(!editingWheelTire);
+                        applyDragFloatEdit("Grip (x normal)", "##vehicleProfileWheelGripFactor", wheel.gripFactor, 0.01f, 0.0f, 1000.0f);
+                        ImGui::EndDisabled();
+                        ImGui::TableNextColumn();
+                        applyDragFloatEdit("Brake Torque (Nm)", "##vehicleProfileWheelMaxBrakingTorque", wheel.maxBrakingTorque, 10.0f, 0.0f, 1000000.0f);
+                        ImGui::EndTable();
+                    }
+                    ImGui::BeginDisabled(!editingWheelTire);
                     renderWheelScalarPair("Long Stiffness (N)", "##vehicleProfileWheelLongitudinalStiffness", wheel.longitudinalStiffness, 10.0f, 0.0f, 1000000.0f,
                                           "Lat Stiffness (N/rad)", "##vehicleProfileWheelLateralStiffness", wheel.lateralStiffness, 10.0f, 0.0f, 1000000.0f);
+                    ImGui::EndDisabled();
 
                     if (ImGui::BeginTable("##wheelFlagsRow", 3, ImGuiTableFlags_SizingStretchProp)) {
                         ImGui::TableNextColumn();

@@ -1,5 +1,13 @@
 {
   "name": "BMW M8 GTE",
+  "setup": {
+    "enabled": true,
+    "tireCompound": "SlickMedium",
+    "drivetrainLayout": "RWD",
+    "handlingBalance": "Neutral",
+    "stabilityAssist": 0.450,
+    "simulationLevel": "Simcade"
+  },
   "chassis": {
     "mass": 979.000,
     "yawInertia": 2450.000,
@@ -38,8 +46,8 @@
   },
   "tireGrip": {
     "enabled": true,
-    "lateralGrip": 6.650,
-    "longitudinalGrip": 0.900,
+    "lateralGrip": 7.150,
+    "longitudinalGrip": 0.580,
     "slipAngleLimit": 16.000,
     "slideGripLoss": 0.480,
     "recoveryRate": 10.500,
@@ -47,24 +55,32 @@
     "downforceGripScale": 0.320,
     "minTractionScale": 0.580
   },
+  "wheelTire": {
+    "enabled": true,
+    "gripFactor": 3.250,
+    "longitudinalStiffness": 16800.000,
+    "lateralStiffness": 12500.000,
+    "frontGripScale": 1.060,
+    "rearGripScale": 0.970
+  },
   "arcadeHandling": {
-    "maxForwardSpeed": 55.000,
+    "maxForwardSpeed": 78.000,
     "maxReverseSpeed": 12.000,
-    "acceleration": 18.000,
-    "reverseAcceleration": 10.000,
-    "brakeDeceleration": 36.000,
-    "coastDeceleration": 2.500,
-    "handbrakeDeceleration": 48.000,
-    "fallbackSteerDegreesPerSecond": 85.000,
-    "lowSpeedSteerSpeed": 1.250,
-    "lowSpeedSteerFloor": 0.520,
-    "lowSpeedSteerInputBoost": 0.240,
-    "highSpeedSteerCut": 0.580,
+    "acceleration": 4.200,
+    "reverseAcceleration": 5.500,
+    "brakeDeceleration": 14.500,
+    "coastDeceleration": 1.600,
+    "handbrakeDeceleration": 28.000,
+    "fallbackSteerDegreesPerSecond": 108.000,
+    "lowSpeedSteerSpeed": 1.100,
+    "lowSpeedSteerFloor": 0.660,
+    "lowSpeedSteerInputBoost": 0.320,
+    "highSpeedSteerCut": 0.380,
     "idleRPM": 900.000,
-    "redlineRPM": 6000.000
+    "redlineRPM": 7000.000
   },
   "tireDynamics": {
-    "frontGripBias": 1.100,
+    "frontGripBias": 1.180,
     "rearGripBias": 1.060,
     "lateralRelaxationRate": 2.650,
     "gripRecoveryRate": 1.800,
@@ -77,11 +93,11 @@
     "overSpeedGripLoss": 0.320,
     "yawFromRearSlip": 66.000,
     "yawFromFrontSlip": 28.000,
-    "yawInertiaScale": 0.620,
-    "yawDrag": 2.950,
+    "yawInertiaScale": 0.540,
+    "yawDrag": 2.450,
     "counterSteerTorque": 0.680,
     "tireScrub": 3.600,
-    "velocityAlignmentRate": 1.450,
+    "velocityAlignmentRate": 1.650,
     "rearSlipYawTorque": 1.050,
     "frontSlipYawDamping": 0.900,
     "brakeYawInstability": 0.350,
@@ -101,10 +117,10 @@
   "yawDynamics": {
     "enabled": true,
     "minSpeed": 5.500,
-    "steeringYawResponse": 145.000,
+    "steeringYawResponse": 168.000,
     "slipYawResponse": 50.000,
     "maxYawRate": 165.000,
-    "yawDamping": 7.500,
+    "yawDamping": 6.200,
     "counterSteerRecovery": 2.000,
     "handbrakeRearSlipBoost": 1.250,
     "throttleRearSlipBoost": 0.220,
@@ -123,38 +139,38 @@
   },
   "tractionControl": {
     "enabled": true,
-    "slipLimit": 0.420,
-    "cutStrength": 0.520,
+    "slipLimit": 0.380,
+    "cutStrength": 0.650,
     "recoveryRate": 6.500,
     "minThrottleScale": 0.550
   },
   "differential": {
-    "type": "LimitedSlip",
+    "type": "Open",
     "torqueSplit": 1.000,
     "lockStrength": 0.320,
     "coastLock": 0.160,
     "powerLock": 0.420
   },
   "engine": {
-    "idleRPM": 520.000,
-    "redlineRPM": 6170.000,
-    "stallRPM": 550.000,
-    "inertia": 0.220,
+    "idleRPM": 900.000,
+    "redlineRPM": 7000.000,
+    "stallRPM": 650.000,
+    "inertia": 0.320,
     "torqueCurve": [
-      {"rpm": 1200.000, "torque": 360.000},
-      {"rpm": 2500.000, "torque": 560.000},
-      {"rpm": 3800.000, "torque": 685.000},
-      {"rpm": 5200.000, "torque": 700.000},
-      {"rpm": 6500.000, "torque": 625.000},
-      {"rpm": 7200.000, "torque": 520.000}
+      {"rpm": 1200.000, "torque": 300.000},
+      {"rpm": 2500.000, "torque": 470.000},
+      {"rpm": 3800.000, "torque": 560.000},
+      {"rpm": 5200.000, "torque": 585.000},
+      {"rpm": 6500.000, "torque": 545.000},
+      {"rpm": 7000.000, "torque": 470.000}
     ]
   },
   "transmission": {
     "mode": "Manual",
-    "gearRatios": [2.917, 2.067, 1.556, 1.250, 1.034, 0.885],
-    "finalDriveRatio": 3.730,
+    "gearRatios": [3.250, 2.250, 1.650, 1.280, 1.030, 0.840],
+    "finalDriveRatio": 3.650,
     "reverseRatio": -2.615,
-    "shiftTime": 0.120
+    "shiftTime": 0.300
   },
   "wheels": [
     {
@@ -164,13 +180,14 @@
       "width": 0.449,
       "mass": 18.000,
       "inertia": 1.160,
-      "maxSteerAngle": 0.520,
+      "maxSteerAngle": 0.580,
       "camber": -2.800,
       "toe": 0.040,
-      "gripFactor": 3.300,
+      "gripFactor": 3.450,
       "longitudinalStiffness": 17800.000,
       "lateralStiffness": 13800.000,
       "maxBrakingTorque": 8200.000,
+      "overrideTire": false,
       "driven": false,
       "hasBrake": true
     },
@@ -181,13 +198,14 @@
       "width": 0.449,
       "mass": 18.000,
       "inertia": 1.160,
-      "maxSteerAngle": 0.520,
+      "maxSteerAngle": 0.580,
       "camber": -2.800,
       "toe": -0.040,
-      "gripFactor": 3.300,
+      "gripFactor": 3.450,
       "longitudinalStiffness": 17800.000,
       "lateralStiffness": 13800.000,
       "maxBrakingTorque": 8200.000,
+      "overrideTire": false,
       "driven": false,
       "hasBrake": true
     },
@@ -205,6 +223,7 @@
       "longitudinalStiffness": 16000.000,
       "lateralStiffness": 11800.000,
       "maxBrakingTorque": 7800.000,
+      "overrideTire": false,
       "driven": true,
       "hasBrake": true
     },
@@ -222,6 +241,7 @@
       "longitudinalStiffness": 16000.000,
       "lateralStiffness": 11800.000,
       "maxBrakingTorque": 7800.000,
+      "overrideTire": false,
       "driven": true,
       "hasBrake": true
     }

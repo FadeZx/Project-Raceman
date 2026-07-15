@@ -163,6 +163,9 @@
     <ClInclude Include="src\ui\SceneEditorVehicleTelemetry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\ui\SceneEditorVehicleValidation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\ui\SceneEditorVehicleVisuals.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -246,10 +249,19 @@
     <ClCompile Include="src\ui\SceneEditor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\SceneEditorPhysicsRuntime.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\ui\SceneEditorRuntime.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ui\SceneEditorProjectPhysicsSettings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\SceneEditorVehicleAssetService.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\SceneEditorVehicleComponentInspector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ui\SceneEditorVehicleDebug.cpp">
@@ -267,13 +279,25 @@
     <ClCompile Include="src\ui\SceneEditorVehicleInput.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\SceneEditorVehiclePhysicsBuild.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\ui\SceneEditorVehicleRuntime.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ui\SceneEditorVehicleRuntimeBuild.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\SceneEditorVehicleSoundEditor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\SceneEditorVehicleSoundRuntime.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\ui\SceneEditorVehicleTelemetry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\SceneEditorVehicleValidation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ui\SceneEditorVehicleVisuals.cpp">

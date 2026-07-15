@@ -1,8 +1,10 @@
 #include "SceneEditorInternal.h"
 #include "SceneEditorVehicleBuilder.h"
+#include "SceneEditorVehicleValidation.h"
 
 #include <algorithm>
 #include <cstdio>
+#include <unordered_set>
 
 namespace fs = std::filesystem;
 
@@ -11,6 +13,7 @@ using namespace scene_editor_internal;
 void SceneEditor::RebuildVehicleRuntime() {
     runtimeVehicles_.clear();
     int candidateCount = 0;
+    std::unordered_set<std::string> validatedConfigKeys;
 
     for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
         const SceneObject& object = objects_[objectIndex];
@@ -38,6 +41,13 @@ void SceneEditor::RebuildVehicleRuntime() {
                 }
             }
             EnsureDrivableVehicleConfig(config);
+            const std::string validationKey = object.vehicle.configPath.empty() ? std::string("<default>") : NormalizeSlashes(object.vehicle.configPath);
+            if (validatedConfigKeys.insert(validationKey).second) {
+                LogVehicleConfigValidationIssues(
+                    console_,
+                    object.vehicle.configPath.empty() ? std::string("runtime default vehicle config") : ("runtime '" + object.vehicle.configPath + "'"),
+                    config);
+            }
             config.transmission.mode = raceman::physics::TransmissionConfig::Mode::Automatic;
             RuntimeVehicleInstance runtimeVehicle;
             runtimeVehicle.objectId = object.id;
@@ -87,6 +97,10 @@ int SceneEditor::HotReloadRuntimeVehiclesForConfig(const std::string& configPath
     }
 
     const std::string normalizedConfigPath = NormalizeSlashes(configPath);
+    physics::VehicleConfig validatedConfig = config;
+    EnsureDrivableVehicleConfig(validatedConfig);
+    LogVehicleConfigValidationIssues(console_, "hot reload '" + normalizedConfigPath + "'", validatedConfig);
+
     int reloadedCount = 0;
     for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
         if (runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
@@ -98,8 +112,7 @@ int SceneEditor::HotReloadRuntimeVehiclesForConfig(const std::string& configPath
             continue;
         }
 
-        physics::VehicleConfig runtimeConfig = config;
-        EnsureDrivableVehicleConfig(runtimeConfig);
+        physics::VehicleConfig runtimeConfig = validatedConfig;
         runtimeConfig.transmission.mode = physics::TransmissionConfig::Mode::Automatic;
 
         const glm::mat4 vehicleWorldMatrix = GetObjectWorldMatrix(runtimeVehicle.objectIndex);

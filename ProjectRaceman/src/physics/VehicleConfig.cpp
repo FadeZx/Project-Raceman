@@ -4,6 +4,8 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
+#include <cctype>
 
 namespace raceman::physics
 {
@@ -28,6 +30,20 @@ std::string escapeJsonString(const std::string &value)
     }
     result.push_back('"');
     return result;
+}
+
+std::string lowercaseCopy(std::string value)
+{
+    for (char &ch : value)
+    {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    return value;
+}
+
+bool presetEquals(const std::string &value, const char *name)
+{
+    return lowercaseCopy(value) == lowercaseCopy(name);
 }
 
 Vector3 readVector3(const json::Value &value)
@@ -100,6 +116,37 @@ const char* differentialTypeToString(DifferentialConfig::Type type)
     }
 }
 
+VehicleSetupConfig readSetup(const json::Value &value)
+{
+    VehicleSetupConfig setup{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end())
+    {
+        setup.enabled = it->second.as_bool();
+    }
+    if (auto it = obj.find("tireCompound"); it != obj.end())
+    {
+        setup.tireCompound = it->second.as_string();
+    }
+    if (auto it = obj.find("drivetrainLayout"); it != obj.end())
+    {
+        setup.drivetrainLayout = it->second.as_string();
+    }
+    if (auto it = obj.find("handlingBalance"); it != obj.end())
+    {
+        setup.handlingBalance = it->second.as_string();
+    }
+    if (auto it = obj.find("stabilityAssist"); it != obj.end())
+    {
+        setup.stabilityAssist = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("simulationLevel"); it != obj.end())
+    {
+        setup.simulationLevel = it->second.as_string();
+    }
+    return setup;
+}
+
 WheelConfig readWheel(const json::Value &value)
 {
     WheelConfig wheel{};
@@ -155,6 +202,10 @@ WheelConfig readWheel(const json::Value &value)
     if (auto it = obj.find("maxBrakingTorque"); it != obj.end())
     {
         wheel.maxBrakingTorque = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("overrideTire"); it != obj.end())
+    {
+        wheel.overrideTire = it->second.as_bool();
     }
     if (auto it = obj.find("driven"); it != obj.end())
     {
@@ -290,6 +341,37 @@ VehicleTireGripConfig readTireGrip(const json::Value &value)
         tireGrip.minTractionScale = static_cast<float>(it->second.as_number());
     }
     return tireGrip;
+}
+
+VehicleWheelTireConfig readWheelTire(const json::Value &value)
+{
+    VehicleWheelTireConfig wheelTire{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end())
+    {
+        wheelTire.enabled = it->second.as_bool();
+    }
+    if (auto it = obj.find("gripFactor"); it != obj.end())
+    {
+        wheelTire.gripFactor = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("longitudinalStiffness"); it != obj.end())
+    {
+        wheelTire.longitudinalStiffness = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("lateralStiffness"); it != obj.end())
+    {
+        wheelTire.lateralStiffness = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("frontGripScale"); it != obj.end())
+    {
+        wheelTire.frontGripScale = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("rearGripScale"); it != obj.end())
+    {
+        wheelTire.rearGripScale = static_cast<float>(it->second.as_number());
+    }
+    return wheelTire;
 }
 
 VehicleArcadeHandlingConfig readArcadeHandling(const json::Value &value)
@@ -748,6 +830,10 @@ VehicleConfig readVehicle(const json::Value &value)
     {
         config.name = it->second.as_string();
     }
+    if (auto it = obj.find("setup"); it != obj.end())
+    {
+        config.setup = readSetup(it->second);
+    }
     if (auto it = obj.find("chassis"); it != obj.end())
     {
         config.chassis = readChassis(it->second);
@@ -767,6 +853,11 @@ VehicleConfig readVehicle(const json::Value &value)
     if (auto it = obj.find("tireGrip"); it != obj.end())
     {
         config.tireGrip = readTireGrip(it->second);
+    }
+    const bool hasWheelTire = obj.find("wheelTire") != obj.end();
+    if (hasWheelTire)
+    {
+        config.wheelTire = readWheelTire(obj.at("wheelTire"));
     }
     if (auto it = obj.find("arcadeHandling"); it != obj.end())
     {
@@ -812,6 +903,14 @@ VehicleConfig readVehicle(const json::Value &value)
             config.wheels.push_back(readWheel(wheelValue));
         }
     }
+    if (!hasWheelTire)
+    {
+        for (WheelConfig &wheel : config.wheels)
+        {
+            wheel.overrideTire = true;
+        }
+    }
+    applyVehicleSetupPresets(config);
     return config;
 }
 } // namespace
@@ -875,6 +974,14 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
     stream << std::fixed << std::setprecision(3);
     stream << "{\n";
     stream << "  \"name\": " << escapeJsonString(config.name) << ",\n";
+    stream << "  \"setup\": {\n";
+    stream << "    \"enabled\": " << (config.setup.enabled ? "true" : "false") << ",\n";
+    stream << "    \"tireCompound\": " << escapeJsonString(config.setup.tireCompound) << ",\n";
+    stream << "    \"drivetrainLayout\": " << escapeJsonString(config.setup.drivetrainLayout) << ",\n";
+    stream << "    \"handlingBalance\": " << escapeJsonString(config.setup.handlingBalance) << ",\n";
+    stream << "    \"stabilityAssist\": " << config.setup.stabilityAssist << ",\n";
+    stream << "    \"simulationLevel\": " << escapeJsonString(config.setup.simulationLevel) << "\n";
+    stream << "  },\n";
     stream << "  \"chassis\": {\n";
     stream << "    \"mass\": " << config.chassis.mass << ",\n";
     stream << "    \"yawInertia\": " << config.chassis.yawInertia << ",\n";
@@ -921,6 +1028,14 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
     stream << "    \"handbrakeGripScale\": " << config.tireGrip.handbrakeGripScale << ",\n";
     stream << "    \"downforceGripScale\": " << config.tireGrip.downforceGripScale << ",\n";
     stream << "    \"minTractionScale\": " << config.tireGrip.minTractionScale << "\n";
+    stream << "  },\n";
+    stream << "  \"wheelTire\": {\n";
+    stream << "    \"enabled\": " << (config.wheelTire.enabled ? "true" : "false") << ",\n";
+    stream << "    \"gripFactor\": " << config.wheelTire.gripFactor << ",\n";
+    stream << "    \"longitudinalStiffness\": " << config.wheelTire.longitudinalStiffness << ",\n";
+    stream << "    \"lateralStiffness\": " << config.wheelTire.lateralStiffness << ",\n";
+    stream << "    \"frontGripScale\": " << config.wheelTire.frontGripScale << ",\n";
+    stream << "    \"rearGripScale\": " << config.wheelTire.rearGripScale << "\n";
     stream << "  },\n";
     stream << "  \"arcadeHandling\": {\n";
     stream << "    \"maxForwardSpeed\": " << config.arcadeHandling.maxForwardSpeed << ",\n";
@@ -1055,6 +1170,7 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
         stream << "      \"longitudinalStiffness\": " << wheel.longitudinalStiffness << ",\n";
         stream << "      \"lateralStiffness\": " << wheel.lateralStiffness << ",\n";
         stream << "      \"maxBrakingTorque\": " << wheel.maxBrakingTorque << ",\n";
+        stream << "      \"overrideTire\": " << (wheel.overrideTire ? "true" : "false") << ",\n";
         stream << "      \"driven\": " << (wheel.driven ? "true" : "false") << ",\n";
         stream << "      \"hasBrake\": " << (wheel.hasBrake ? "true" : "false") << "\n";
         stream << "    }" << (i + 1 < config.wheels.size() ? ",\n" : "\n");
@@ -1071,6 +1187,245 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
         return false;
     }
     return true;
+}
+
+void applyVehicleSetupPresets(VehicleConfig &config)
+{
+    if (!config.setup.enabled)
+    {
+        return;
+    }
+
+    const std::string tireCompound = lowercaseCopy(config.setup.tireCompound);
+    if (tireCompound != "custom")
+    {
+        config.tireGrip.enabled = true;
+        config.wheelTire.enabled = true;
+        for (WheelConfig &wheel : config.wheels)
+        {
+            wheel.overrideTire = false;
+        }
+
+        if (presetEquals(tireCompound, "SlickSoft"))
+        {
+            config.wheelTire.gripFactor = 3.55f;
+            config.wheelTire.longitudinalStiffness = 18500.0f;
+            config.wheelTire.lateralStiffness = 15000.0f;
+            config.wheelTire.frontGripScale = 1.03f;
+            config.wheelTire.rearGripScale = 1.00f;
+            config.tireGrip.lateralGrip = 7.8f;
+            config.tireGrip.longitudinalGrip = 0.72f;
+            config.tireGrip.slipAngleLimit = 15.0f;
+            config.tireGrip.slideGripLoss = 0.42f;
+            config.tireGrip.recoveryRate = 8.5f;
+            config.tireGrip.minTractionScale = 0.62f;
+            config.tireDynamics.slideFriction = 3.7f;
+            config.tireDynamics.tireScrub = 4.1f;
+        }
+        else if (presetEquals(tireCompound, "SlickHard"))
+        {
+            config.wheelTire.gripFactor = 2.95f;
+            config.wheelTire.longitudinalStiffness = 15000.0f;
+            config.wheelTire.lateralStiffness = 11200.0f;
+            config.wheelTire.frontGripScale = 1.02f;
+            config.wheelTire.rearGripScale = 1.00f;
+            config.tireGrip.lateralGrip = 6.4f;
+            config.tireGrip.longitudinalGrip = 0.62f;
+            config.tireGrip.slipAngleLimit = 14.0f;
+            config.tireGrip.slideGripLoss = 0.48f;
+            config.tireGrip.recoveryRate = 7.0f;
+            config.tireGrip.minTractionScale = 0.55f;
+            config.tireDynamics.slideFriction = 3.1f;
+            config.tireDynamics.tireScrub = 3.4f;
+        }
+        else if (presetEquals(tireCompound, "Wet"))
+        {
+            config.wheelTire.gripFactor = 2.35f;
+            config.wheelTire.longitudinalStiffness = 12000.0f;
+            config.wheelTire.lateralStiffness = 9400.0f;
+            config.wheelTire.frontGripScale = 1.04f;
+            config.wheelTire.rearGripScale = 0.98f;
+            config.tireGrip.lateralGrip = 4.8f;
+            config.tireGrip.longitudinalGrip = 0.48f;
+            config.tireGrip.slipAngleLimit = 12.5f;
+            config.tireGrip.slideGripLoss = 0.58f;
+            config.tireGrip.recoveryRate = 5.2f;
+            config.tireGrip.minTractionScale = 0.42f;
+            config.tireDynamics.slideFriction = 2.4f;
+            config.tireDynamics.tireScrub = 2.8f;
+        }
+        else if (presetEquals(tireCompound, "Street"))
+        {
+            config.wheelTire.gripFactor = 2.10f;
+            config.wheelTire.longitudinalStiffness = 10500.0f;
+            config.wheelTire.lateralStiffness = 8500.0f;
+            config.wheelTire.frontGripScale = 1.00f;
+            config.wheelTire.rearGripScale = 1.00f;
+            config.tireGrip.lateralGrip = 4.2f;
+            config.tireGrip.longitudinalGrip = 0.55f;
+            config.tireGrip.slipAngleLimit = 11.5f;
+            config.tireGrip.slideGripLoss = 0.55f;
+            config.tireGrip.recoveryRate = 5.8f;
+            config.tireGrip.minTractionScale = 0.45f;
+            config.tireDynamics.slideFriction = 2.5f;
+            config.tireDynamics.tireScrub = 2.7f;
+        }
+        else if (presetEquals(tireCompound, "Drift"))
+        {
+            config.wheelTire.gripFactor = 1.65f;
+            config.wheelTire.longitudinalStiffness = 9000.0f;
+            config.wheelTire.lateralStiffness = 7000.0f;
+            config.wheelTire.frontGripScale = 1.08f;
+            config.wheelTire.rearGripScale = 0.84f;
+            config.tireGrip.lateralGrip = 3.2f;
+            config.tireGrip.longitudinalGrip = 0.55f;
+            config.tireGrip.slipAngleLimit = 24.0f;
+            config.tireGrip.slideGripLoss = 0.34f;
+            config.tireGrip.recoveryRate = 3.0f;
+            config.tireGrip.minTractionScale = 0.35f;
+            config.tireDynamics.slideFriction = 1.9f;
+            config.tireDynamics.tireScrub = 2.1f;
+        }
+        else
+        {
+            config.wheelTire.gripFactor = 3.25f;
+            config.wheelTire.longitudinalStiffness = 16800.0f;
+            config.wheelTire.lateralStiffness = 12500.0f;
+            config.wheelTire.frontGripScale = 1.04f;
+            config.wheelTire.rearGripScale = 1.00f;
+            config.tireGrip.lateralGrip = 7.15f;
+            config.tireGrip.longitudinalGrip = 0.58f;
+            config.tireGrip.slipAngleLimit = 16.0f;
+            config.tireGrip.slideGripLoss = 0.48f;
+            config.tireGrip.recoveryRate = 8.0f;
+            config.tireGrip.minTractionScale = 0.58f;
+            config.tireDynamics.slideFriction = 3.25f;
+            config.tireDynamics.tireScrub = 3.6f;
+        }
+    }
+
+    const std::string drivetrainLayout = lowercaseCopy(config.setup.drivetrainLayout);
+    if (drivetrainLayout != "custom")
+    {
+        for (WheelConfig &wheel : config.wheels)
+        {
+            const bool front = wheel.mountPosition.y >= 0.0f;
+            if (presetEquals(drivetrainLayout, "FWD"))
+            {
+                wheel.driven = front;
+            }
+            else if (presetEquals(drivetrainLayout, "AWD"))
+            {
+                wheel.driven = true;
+            }
+            else
+            {
+                wheel.driven = !front;
+            }
+        }
+
+        if (presetEquals(drivetrainLayout, "FWD"))
+        {
+            config.differential.type = DifferentialConfig::Type::LimitedSlip;
+            config.differential.torqueSplit = 1.0f;
+        }
+        else if (presetEquals(drivetrainLayout, "AWD"))
+        {
+            config.differential.type = DifferentialConfig::Type::LimitedSlip;
+            config.differential.torqueSplit = 0.50f;
+        }
+        else
+        {
+            config.differential.type = DifferentialConfig::Type::LimitedSlip;
+            config.differential.torqueSplit = 0.0f;
+        }
+    }
+
+    const std::string handlingBalance = lowercaseCopy(config.setup.handlingBalance);
+    if (presetEquals(handlingBalance, "Stable"))
+    {
+        config.tireDynamics.frontGripBias = 1.00f;
+        config.tireDynamics.rearGripBias = 1.13f;
+        config.tireDynamics.yawFromRearSlip = 54.0f;
+        config.tireDynamics.yawFromFrontSlip = 36.0f;
+        config.tireDynamics.yawInertiaScale = 0.82f;
+        config.tireDynamics.yawDrag = 3.1f;
+        config.yawDynamics.slipYawResponse = 38.0f;
+        config.yawDynamics.yawDamping = 6.7f;
+        config.yawDynamics.spinYawBoost = 1.1f;
+    }
+    else if (presetEquals(handlingBalance, "Loose"))
+    {
+        config.tireDynamics.frontGripBias = 1.12f;
+        config.tireDynamics.rearGripBias = 0.94f;
+        config.tireDynamics.yawFromRearSlip = 78.0f;
+        config.tireDynamics.yawFromFrontSlip = 26.0f;
+        config.tireDynamics.yawInertiaScale = 0.68f;
+        config.tireDynamics.yawDrag = 2.1f;
+        config.yawDynamics.slipYawResponse = 54.0f;
+        config.yawDynamics.yawDamping = 4.8f;
+        config.yawDynamics.spinYawBoost = 1.6f;
+    }
+    else if (presetEquals(handlingBalance, "Neutral"))
+    {
+        config.tireDynamics.frontGripBias = 1.05f;
+        config.tireDynamics.rearGripBias = 1.04f;
+        config.tireDynamics.yawFromRearSlip = 66.0f;
+        config.tireDynamics.yawFromFrontSlip = 30.0f;
+        config.tireDynamics.yawInertiaScale = 0.74f;
+        config.tireDynamics.yawDrag = 2.55f;
+        config.yawDynamics.slipYawResponse = 46.0f;
+        config.yawDynamics.yawDamping = 5.6f;
+        config.yawDynamics.spinYawBoost = 1.35f;
+    }
+
+    const float assist = std::clamp(config.setup.stabilityAssist, 0.0f, 1.0f);
+    config.brakes.absEnabled = assist > 0.08f;
+    config.tractionControl.enabled = assist > 0.08f;
+    config.tractionControl.cutStrength = 0.25f + assist * 0.55f;
+    config.tractionControl.minThrottleScale = 0.25f + assist * 0.45f;
+    config.tractionControl.recoveryRate = 3.0f + assist * 6.0f;
+    config.brakes.absReleaseRate = 5.0f + assist * 7.0f;
+    config.brakes.absRecoverRate = 4.0f + assist * 5.0f;
+    config.tireDynamics.frontSlipYawDamping = 0.55f + assist * 0.60f;
+    config.tireDynamics.counterSteerTorque = 0.42f + assist * 0.52f;
+    config.yawDynamics.spinRecovery = 2.8f + assist * 3.6f;
+
+    const std::string simulationLevel = lowercaseCopy(config.setup.simulationLevel);
+    if (presetEquals(simulationLevel, "Arcade"))
+    {
+        config.tireDynamics.gripRecoveryRate = (std::max)(config.tireDynamics.gripRecoveryRate, 2.8f);
+        config.tireDynamics.velocityAlignmentRate = (std::max)(config.tireDynamics.velocityAlignmentRate, 2.3f);
+        config.tireGrip.minTractionScale = (std::max)(config.tireGrip.minTractionScale, 0.62f);
+        config.yawDynamics.maxYawRate = (std::min)(config.yawDynamics.maxYawRate, 145.0f);
+    }
+    else if (presetEquals(simulationLevel, "Simulation"))
+    {
+        config.tireDynamics.gripRecoveryRate = (std::min)(config.tireDynamics.gripRecoveryRate, 1.6f);
+        config.tireDynamics.velocityAlignmentRate = (std::min)(config.tireDynamics.velocityAlignmentRate, 1.25f);
+        config.tireGrip.minTractionScale = (std::min)(config.tireGrip.minTractionScale, 0.50f);
+        config.yawDynamics.maxYawRate = (std::max)(config.yawDynamics.maxYawRate, 170.0f);
+    }
+}
+
+ResolvedWheelTireConfig resolveWheelTire(const VehicleConfig &config, const WheelConfig &wheel)
+{
+    if (!config.wheelTire.enabled || wheel.overrideTire)
+    {
+        return ResolvedWheelTireConfig{
+            wheel.gripFactor,
+            wheel.longitudinalStiffness,
+            wheel.lateralStiffness};
+    }
+
+    const float axleGripScale = wheel.mountPosition.y >= 0.0f
+        ? config.wheelTire.frontGripScale
+        : config.wheelTire.rearGripScale;
+    const float scale = axleGripScale > 0.0f ? axleGripScale : 0.0f;
+    return ResolvedWheelTireConfig{
+        config.wheelTire.gripFactor * scale,
+        config.wheelTire.longitudinalStiffness * scale,
+        config.wheelTire.lateralStiffness * scale};
 }
 
 float sampleTorqueCurve(const EngineConfig &config, float rpm)

@@ -1,7 +1,5 @@
 #include "SceneEditorInternal.h"
-#include "SceneEditorVehicleBuilder.h"
 #include "../audio/AudioManager.h"
-#include "../audio/VehicleSoundProfile.h"
 #include "../input/InputManager.h"
 #include "../physics/PhysicsWorld.h"
 #include "../scripting/ScriptRegistry.h"
@@ -15,7 +13,6 @@
 #include <cstdlib>
 #include <cstdio>
 #include <thread>
-#include <unordered_set>
 
 namespace fs = std::filesystem;
 
@@ -38,17 +35,6 @@ bool IsEnvironmentFlagEnabled(const char* name) {
     return value != nullptr && std::string(value) == "1";
 #endif
 }
-
-PhysicsColliderDesc BuildDefaultVehicleChassisCollider(const raceman::physics::VehicleConfig& config) {
-    (void)config;
-
-    PhysicsColliderDesc collider;
-    collider.type = PhysicsColliderType::Box;
-    collider.center = glm::vec3(0.0f, -0.2f, 0.0f);
-    collider.size = glm::vec3(1.8f, 0.4f, 4.0f);
-    return collider;
-}
-
 
 } // namespace
 
@@ -112,46 +98,10 @@ void SceneEditor::UpdateRuntimeSystems(float deltaTime) {
 
     if (scriptsPaused_) {
         runtimeSimulationAccumulator_ = 0.0f;
-        for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
-            runtimeVehicle.pendingShiftUp = false;
-            runtimeVehicle.pendingShiftDown = false;
-            runtimeVehicle.pendingNeutral = false;
-            runtimeVehicle.pendingReverse = false;
-        }
+        CaptureVehicleRuntimeInputActions(false);
     } else {
         const bool routeInput = ShouldRouteInputToGame() && inputManager_ != nullptr;
-        for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
-            if (!routeInput ||
-                runtimeVehicle.objectIndex < 0 ||
-                runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
-                runtimeVehicle.pendingShiftUp = false;
-                runtimeVehicle.pendingShiftDown = false;
-                runtimeVehicle.pendingNeutral = false;
-                runtimeVehicle.pendingReverse = false;
-                continue;
-            }
-
-            const SceneObject& vehicleObject = objects_[runtimeVehicle.objectIndex];
-            const std::string profileId = vehicleObject.vehicle.inputProfileId.empty()
-                ? std::string("default_vehicle")
-                : vehicleObject.vehicle.inputProfileId;
-            runtimeVehicle.pendingShiftUp = runtimeVehicle.pendingShiftUp ||
-                inputManager_->WasActionPressedForProfile(profileId, "shiftUp",
-                    vehicleObject.vehicle.preferredInputDevice,
-                    vehicleObject.vehicle.preferredInputDeviceId);
-            runtimeVehicle.pendingShiftDown = runtimeVehicle.pendingShiftDown ||
-                inputManager_->WasActionPressedForProfile(profileId, "shiftDown",
-                    vehicleObject.vehicle.preferredInputDevice,
-                    vehicleObject.vehicle.preferredInputDeviceId);
-            runtimeVehicle.pendingNeutral = runtimeVehicle.pendingNeutral ||
-                inputManager_->WasActionPressedForProfile(profileId, "neutral",
-                    vehicleObject.vehicle.preferredInputDevice,
-                    vehicleObject.vehicle.preferredInputDeviceId);
-            runtimeVehicle.pendingReverse = runtimeVehicle.pendingReverse ||
-                inputManager_->WasActionPressedForProfile(profileId, "reverse",
-                    vehicleObject.vehicle.preferredInputDevice,
-                    vehicleObject.vehicle.preferredInputDeviceId);
-        }
+        CaptureVehicleRuntimeInputActions(routeInput);
 
         runtimeSimulationAccumulator_ += (std::min)(deltaTime, kMaxAccumulatedFrameTime);
 
@@ -214,145 +164,6 @@ void SceneEditor::UpdateScripts(float deltaTime) {
     }
 }
 
-void SceneEditor::UpdatePhysics(float deltaTime) {
-    if (!scriptsRunning_ || scriptsPaused_ || deltaTime <= 0.0f) {
-        return;
-    }
-
-    if (!physicsWorld_) {
-        return;
-    }
-
-    for (const SceneObject& object : objects_) {
-        if (object.hasRigidbody &&
-            object.rigidbody.enabled &&
-            !(object.hasVehicle && object.vehicle.enabled) &&
-            object.rigidbody.bodyType != RigidbodyBodyType::Static) {
-            physicsWorld_->SetBodyVelocity(object.id, object.rigidbody.velocity);
-            physicsWorld_->SetBodyAngularVelocity(object.id, object.rigidbody.angularVelocity);
-        }
-    }
-
-    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-        const SceneObject& object = objects_[objectIndex];
-        if (!object.hasCharacterController || !object.characterController.enabled || !physicsWorld_->HasCharacter(object.id)) {
-            continue;
-        }
-
-        const Transform worldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
-        physicsWorld_->SetCharacterTransform(object.id, worldTransform.position, worldTransform.rotationEuler);
-        physicsWorld_->SetCharacterDesiredVelocity(object.id, object.characterController.moveInput);
-        if (object.characterController.pendingJumpImpulse > 0.0f) {
-            physicsWorld_->AddCharacterJumpImpulse(object.id, object.characterController.pendingJumpImpulse);
-        }
-    }
-
-    // Feed activator positions to the spatial culling system.
-    // Vehicles and characters are the "hot" objects that keep nearby dynamic props awake.
-    {
-        std::vector<glm::vec3> activatorPositions;
-        for (const RuntimeVehicleInstance& rv : runtimeVehicles_) {
-            if (!rv.chassisBodyObjectId.empty()) {
-                PhysicsBodyState s;
-                if (physicsWorld_->GetBodyState(rv.chassisBodyObjectId, s)) {
-                    activatorPositions.push_back(s.position);
-                }
-            }
-        }
-        for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-            const SceneObject& object = objects_[objectIndex];
-            if (object.hasCharacterController && object.characterController.enabled && physicsWorld_->HasCharacter(object.id)) {
-                activatorPositions.push_back(TransformFromMatrix(GetObjectWorldMatrix(objectIndex)).position);
-            }
-        }
-        if (!enablePhysicsCulling_) {
-            activatorPositions.clear();
-        }
-        physicsWorld_->SetActivatorPositions(activatorPositions, 80.0f, 120.0f);
-    }
-
-    physicsWorld_->Step(deltaTime);
-
-    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-        SceneObject& object = objects_[objectIndex];
-        if (!object.hasRigidbody || (object.hasVehicle && object.vehicle.enabled) || object.rigidbody.bodyType == RigidbodyBodyType::Static) {
-            continue;
-        }
-
-        PhysicsBodyState state;
-        if (!physicsWorld_->GetBodyState(object.id, state)) {
-            continue;
-        }
-
-        object.rigidbody.velocity = state.velocity;
-        object.rigidbody.angularVelocity = state.angularVelocity;
-        const Transform previousLocal = object.transform;
-        Transform worldTransform;
-        worldTransform.position = state.position;
-        worldTransform.rotationEuler = state.rotationEuler;
-        worldTransform.scale = glm::vec3(1.0f);
-
-        glm::mat4 worldMatrix = BuildTransformMatrix(worldTransform);
-        worldMatrix = glm::scale(worldMatrix, previousLocal.scale);
-        const int parentIndex = FindObjectIndexById(object.parentId);
-        if (parentIndex >= 0 && parentIndex != objectIndex) {
-            object.transform = TransformFromMatrix(glm::inverse(GetObjectWorldMatrix(parentIndex)) * worldMatrix);
-        } else {
-            object.transform = TransformFromMatrix(worldMatrix);
-        }
-        object.transform.scale = previousLocal.scale;
-    }
-
-    for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-        SceneObject& object = objects_[objectIndex];
-        if (!object.hasCharacterController || !physicsWorld_->HasCharacter(object.id)) {
-            continue;
-        }
-
-        PhysicsCharacterState state;
-        if (!physicsWorld_->GetCharacterState(object.id, state)) {
-            continue;
-        }
-
-        object.characterController.velocity = state.velocity;
-        object.characterController.groundVelocity = state.groundVelocity;
-        object.characterController.grounded = state.grounded;
-        object.characterController.pendingJumpImpulse = 0.0f;
-
-        const Transform previousLocal = object.transform;
-        Transform worldTransform;
-        worldTransform.position = state.position;
-        worldTransform.rotationEuler = state.rotationEuler;
-        worldTransform.scale = glm::vec3(1.0f);
-
-        glm::mat4 worldMatrix = BuildTransformMatrix(worldTransform);
-        worldMatrix = glm::scale(worldMatrix, previousLocal.scale);
-        const int parentIndex = FindObjectIndexById(object.parentId);
-        if (parentIndex >= 0 && parentIndex != objectIndex) {
-            object.transform = TransformFromMatrix(glm::inverse(GetObjectWorldMatrix(parentIndex)) * worldMatrix);
-        } else {
-            object.transform = TransformFromMatrix(worldMatrix);
-        }
-        object.transform.scale = previousLocal.scale;
-    }
-}
-
-void SceneEditor::ResetPhysicsVelocities() {
-    for (SceneObject& object : objects_) {
-        if (object.hasRigidbody) {
-            object.rigidbody.velocity = {0.0f, 0.0f, 0.0f};
-            object.rigidbody.angularVelocity = {0.0f, 0.0f, 0.0f};
-        }
-        if (object.hasCharacterController) {
-            object.characterController.velocity = {0.0f, 0.0f, 0.0f};
-            object.characterController.groundVelocity = {0.0f, 0.0f, 0.0f};
-            object.characterController.moveInput = {0.0f, 0.0f, 0.0f};
-            object.characterController.pendingJumpImpulse = 0.0f;
-            object.characterController.grounded = false;
-        }
-    }
-}
-
 void SceneEditor::SetScriptsRunning(bool running) {
     if (scriptsRunning_ == running) {
         return;
@@ -405,197 +216,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
         RebuildVehicleRuntime();
         std::vector<PhysicsBodyDesc> physicsBodies;
         std::vector<PhysicsCharacterDesc> physicsCharacters;
-        std::unordered_map<std::string, PhysicsBodyDesc> vehicleChassisBodies;
-        std::unordered_set<std::string> consumedVehiclePhysicsObjects;
-
-        for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-            const SceneObject& object = objects_[objectIndex];
-            if (!IsObjectEffectivelyEnabled(objectIndex) || !object.hasVehicle || !object.vehicle.enabled) {
-                continue;
-            }
-
-            const Transform worldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
-            raceman::physics::VehicleConfig chassisConfig = BuildDefaultJoltVehicleConfig();
-            if (!object.vehicle.configPath.empty()) {
-                try {
-                    chassisConfig = raceman::physics::VehicleConfigLoader::loadFromFile(ProjectAssetPathToAbsolute(object.vehicle.configPath).string());
-                } catch (...) {
-                }
-            }
-            EnsureDrivableVehicleConfig(chassisConfig);
-            chassisConfig.transmission.mode = raceman::physics::TransmissionConfig::Mode::Automatic;
-            PhysicsBodyDesc body;
-            body.objectId = MakeVehicleChassisBodyObjectId(object.id);
-            body.collisionLayer = ClampPhysicsLayerIndex(object.physicsLayer);
-            body.position = worldTransform.position;
-            body.rotationEuler = worldTransform.rotationEuler;
-            body.scale = worldTransform.scale;
-            body.bodyType = PhysicsBodyType::Kinematic;
-            body.mass = 1500.0f;
-            body.useGravity = false;
-            body.friction = 0.8f;
-            body.restitution = 0.0f;
-            body.linearDamping = 0.0f;
-            // Allow roll/pitch tilt momentum — use moderate damping to prevent wild oscillation
-            body.angularDamping = 0.05f;
-            body.motionQuality = PhysicsMotionQuality::Continuous;  // prevent tunneling at high speed
-            body.overrideCenterOfMass = false;
-            body.overrideMassProperties = false;
-
-            const glm::mat4 vehicleWorldMatrix = GetObjectWorldMatrix(objectIndex);
-            if (AppendSupportedVehicleChassisColliders(object, glm::mat4(1.0f), body.colliders)) {
-                consumedVehiclePhysicsObjects.insert(object.id);
-            }
-
-            for (const std::string& chassisObjectId : object.vehicle.chassisObjectIds) {
-                const int candidateIndex = FindObjectIndexById(chassisObjectId);
-                if (candidateIndex < 0 || candidateIndex == objectIndex) {
-                    continue;
-                }
-                const SceneObject& candidate = objects_[candidateIndex];
-                if (!IsObjectEffectivelyEnabled(candidateIndex) || !IsDescendantOf(candidate.id, object.id)) {
-                    continue;
-                }
-                if (IsVehicleWheelHelperObject(object.vehicle, candidate.id)) {
-                    consumedVehiclePhysicsObjects.insert(candidate.id);
-                    continue;
-                }
-
-                const glm::mat4 relativeMatrix = glm::inverse(vehicleWorldMatrix) * GetObjectWorldMatrix(candidateIndex);
-                if (AppendSupportedVehicleChassisColliders(candidate, relativeMatrix, body.colliders)) {
-                    consumedVehiclePhysicsObjects.insert(candidate.id);
-                }
-            }
-
-            if (body.colliders.empty()) {
-                body.colliders.push_back(BuildDefaultVehicleChassisCollider(chassisConfig));
-                std::fprintf(stdout,
-                             "[VehicleDebug] Vehicle '%s' has no chassis collider; using generated default box chassis.\n",
-                             object.id.c_str());
-                std::fflush(stdout);
-            }
-            vehicleChassisBodies[object.id] = std::move(body);
-        }
-
-        for (int objectIndex = 0; objectIndex < static_cast<int>(objects_.size()); ++objectIndex) {
-            const SceneObject& object = objects_[objectIndex];
-            if (!IsObjectEffectivelyEnabled(objectIndex)) {
-                continue;
-            }
-
-            if (consumedVehiclePhysicsObjects.find(object.id) != consumedVehiclePhysicsObjects.end() &&
-                !(object.hasVehicle && object.vehicle.enabled)) {
-                continue;
-            }
-
-            const Transform worldTransform = TransformFromMatrix(GetObjectWorldMatrix(objectIndex));
-            if (object.hasCharacterController && object.characterController.enabled) {
-                PhysicsCharacterDesc character;
-                character.objectId = object.id;
-                character.position = worldTransform.position;
-                character.rotationEuler = worldTransform.rotationEuler;
-                character.height = object.characterController.height;
-                character.radius = object.characterController.radius;
-                character.center = object.characterController.center;
-                character.stepHeight = object.characterController.stepHeight;
-                character.slopeLimitDegrees = object.characterController.slopeLimitDegrees;
-                character.maxStrength = object.characterController.maxStrength;
-                character.mass = object.characterController.mass;
-                physicsCharacters.push_back(std::move(character));
-                continue;
-            }
-
-            if (object.hasVehicle && object.vehicle.enabled) {
-                auto chassisIt = vehicleChassisBodies.find(object.id);
-                if (chassisIt != vehicleChassisBodies.end()) {
-                    physicsBodies.push_back(chassisIt->second);
-                }
-                continue;
-            }
-
-            PhysicsBodyDesc body;
-            body.objectId = object.id;
-            body.collisionLayer = ClampPhysicsLayerIndex(object.physicsLayer);
-            body.position = worldTransform.position;
-            body.rotationEuler = worldTransform.rotationEuler;
-            body.scale = worldTransform.scale;
-            body.bodyType = PhysicsBodyType::Static;
-            if (object.hasRigidbody && object.rigidbody.enabled && !(object.hasVehicle && object.vehicle.enabled)) {
-                body.bodyType = object.rigidbody.bodyType == RigidbodyBodyType::Dynamic
-                    ? PhysicsBodyType::Dynamic
-                    : (object.rigidbody.bodyType == RigidbodyBodyType::Kinematic ? PhysicsBodyType::Kinematic : PhysicsBodyType::Static);
-            }
-            body.mass = object.hasRigidbody ? object.rigidbody.mass : 1.0f;
-            body.useGravity = object.hasRigidbody ? object.rigidbody.useGravity : false;
-            body.linearDamping = object.hasRigidbody ? object.rigidbody.linearDamping : 0.05f;
-            body.angularDamping = object.hasRigidbody ? object.rigidbody.angularDamping : 0.05f;
-            body.friction = object.hasRigidbody ? object.rigidbody.friction : 0.2f;
-            body.restitution = object.hasRigidbody ? object.rigidbody.restitution : 0.0f;
-            body.velocity = object.hasRigidbody ? object.rigidbody.velocity : glm::vec3{0.0f};
-            body.angularVelocity = object.hasRigidbody ? object.rigidbody.angularVelocity : glm::vec3{0.0f};
-            body.freezePositionX = object.hasRigidbody ? object.rigidbody.freezePositionX : false;
-            body.freezePositionY = object.hasRigidbody ? object.rigidbody.freezePositionY : false;
-            body.freezePositionZ = object.hasRigidbody ? object.rigidbody.freezePositionZ : false;
-            body.freezeRotationX = object.hasRigidbody ? object.rigidbody.freezeRotationX : false;
-            body.freezeRotationY = object.hasRigidbody ? object.rigidbody.freezeRotationY : false;
-            body.freezeRotationZ = object.hasRigidbody ? object.rigidbody.freezeRotationZ : false;
-            // Enable CCD for dynamic bodies so fast-moving objects don't tunnel through colliders
-            if (body.bodyType == PhysicsBodyType::Dynamic) {
-                body.motionQuality = PhysicsMotionQuality::Continuous;
-            }
-
-            const SceneColliderType colliderType = GetEnabledColliderType(object);
-            if (colliderType == SceneColliderType::Box && object.boxCollider.enabled) {
-                PhysicsColliderDesc collider;
-                collider.type = PhysicsColliderType::Box;
-                collider.isTrigger = object.boxCollider.isTrigger;
-                collider.center = object.boxCollider.center;
-                collider.size = object.boxCollider.size;
-                body.colliders.push_back(collider);
-            }
-            if (colliderType == SceneColliderType::Sphere && object.sphereCollider.enabled) {
-                PhysicsColliderDesc collider;
-                collider.type = PhysicsColliderType::Sphere;
-                collider.isTrigger = object.sphereCollider.isTrigger;
-                collider.center = object.sphereCollider.center;
-                collider.radius = object.sphereCollider.radius;
-                body.colliders.push_back(collider);
-            }
-            if (colliderType == SceneColliderType::Capsule && object.capsuleCollider.enabled) {
-                PhysicsColliderDesc collider;
-                collider.type = PhysicsColliderType::Capsule;
-                collider.isTrigger = object.capsuleCollider.isTrigger;
-                collider.center = object.capsuleCollider.center;
-                collider.radius = object.capsuleCollider.radius;
-                collider.height = object.capsuleCollider.height;
-                body.colliders.push_back(collider);
-            }
-            if (colliderType == SceneColliderType::Plane && object.planeCollider.enabled) {
-                PhysicsColliderDesc collider;
-                collider.type = PhysicsColliderType::Plane;
-                collider.isTrigger = object.planeCollider.isTrigger;
-                collider.normal = object.planeCollider.normal;
-                collider.offset = object.planeCollider.offset;
-                collider.infinite = object.planeCollider.infinite;
-                collider.halfExtent = object.planeCollider.halfExtent;
-                body.colliders.push_back(collider);
-            }
-            if (colliderType == SceneColliderType::Mesh && object.meshCollider.enabled && object.hasMeshFilter && !object.meshFilter.sourcePath.empty()) {
-                PhysicsColliderDesc collider;
-                collider.type = PhysicsColliderType::Mesh;
-                collider.isTrigger = object.meshCollider.isTrigger;
-                collider.meshAssetPath = object.meshFilter.sourcePath;
-                collider.meshIndex = object.meshFilter.meshIndex;
-                collider.meshName = object.meshFilter.meshName;
-                collider.meshPivotOffset = object.meshFilter.pivotOffset;
-                collider.meshBuildQuality = object.meshCollider.buildQuality;
-                collider.meshMode = object.meshCollider.mode;
-                body.colliders.push_back(collider);
-            }
-            if (!body.colliders.empty()) {
-                physicsBodies.push_back(std::move(body));
-            }
-        }
+        BuildRuntimePhysicsDescriptors(physicsBodies, physicsCharacters);
         // Launch async build on background thread.
         std::fprintf(stdout, "[Play] Runtime physics descriptors: %zu bodies, %zu characters, 0 Jolt vehicles (arcade vehicle runtime).\n",
                      physicsBodies.size(),
@@ -645,19 +266,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
         scriptsRunning_ = false;
         scriptsPaused_ = false;
         playModeScriptAssemblyReady_ = false;
-        // Play EngineStop triggers before clearing audio runtime.
-        if (audioManager_ && audioManager_->IsInitialized()) {
-            for (auto& inst : runtimeVehicleSounds_) {
-                for (const auto& trig : inst.profile.triggerSounds) {
-                    if (trig.trigger == VehicleSoundTrigger::EngineStop && !trig.clipPath.empty()) {
-                        const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
-                        irrklang::ISound* s = audioManager_->Play2D(p, false, false);
-                        if (s) { s->setVolume(trig.volume); s->drop(); }
-                        break;
-                    }
-                }
-            }
-        }
+        PlayVehicleSoundStopTriggers();
         ClearAudioRuntime();
         ClearScriptRuntime();
         UnloadScriptAssembly();
@@ -1071,8 +680,6 @@ void SceneEditor::RebuildScriptRuntime() {
 // Audio runtime
 // ---------------------------------------------------------------------------
 
-static float lerp(float a, float b, float t) { return a + (b - a) * t; }
-static float clamp01(float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
 
 void SceneEditor::ClearAudioRuntime() {
     // Stop and drop all audio source sounds.
@@ -1085,17 +692,7 @@ void SceneEditor::ClearAudioRuntime() {
     }
     runtimeAudioSources_.clear();
 
-    // Stop and drop all vehicle sound layers.
-    for (auto& inst : runtimeVehicleSounds_) {
-        for (auto& layer : inst.layers) {
-            if (layer.sound) {
-                layer.sound->stop();
-                layer.sound->drop();
-                layer.sound = nullptr;
-            }
-        }
-    }
-    runtimeVehicleSounds_.clear();
+    ClearVehicleSoundRuntime();
 }
 
 void SceneEditor::RebuildAudioRuntime() {
@@ -1127,59 +724,7 @@ void SceneEditor::RebuildAudioRuntime() {
         }
     }
 
-    // -- Vehicle sound profiles --
-    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
-        const SceneObject& obj = objects_[i];
-        if (!IsObjectEffectivelyEnabled(i) || !obj.hasVehicleSound || !obj.vehicleSound.enabled) continue;
-        if (obj.vehicleSound.profilePath.empty()) continue;
-        // Must also have a Vehicle component to get telemetry.
-        if (!obj.hasVehicle || !obj.vehicle.enabled) continue;
-
-        const std::string absPath = ProjectAssetPathToAbsolute(obj.vehicleSound.profilePath).string();
-        VehicleSoundProfile profile = VehicleSoundProfileLoader::loadFromFile(absPath);
-
-        RuntimeVehicleSoundInstance inst;
-        inst.objectId        = obj.id;
-        inst.vehicleObjectId = obj.id;
-        inst.profile         = profile;
-        inst.lastGear        = 0;
-        inst.lastThrottleHigh = false;
-        inst.lastLateralSpeed = 0.0f;
-
-        // Start all engine layers looping but paused/silent.
-        const glm::vec3 pos = GetObjectWorldPosition(i);
-        for (const auto& layer : profile.engineLayers) {
-            RuntimeVehicleSoundLayerState ls;
-            ls.smoothVolume = 0.0f;
-            ls.smoothPitch  = layer.pitchAtRpmMin;
-            if (!layer.clipPath.empty()) {
-                const std::string lPath = ProjectAssetPathToAbsolute(layer.clipPath).string();
-                ls.sound = (profile.spatialBlend > 0.5f)
-                    ? audioManager_->Play3D(lPath, pos, /*loop=*/true, /*paused=*/false)
-                    : audioManager_->Play2D(lPath, /*loop=*/true, /*paused=*/false);
-                if (ls.sound) {
-                    ls.sound->setVolume(0.0f);
-                    ls.sound->setPlaybackSpeed(ls.smoothPitch);
-                    if (profile.spatialBlend > 0.5f) {
-                        ls.sound->setMinDistance(profile.minDistance);
-                    }
-                }
-            }
-            inst.layers.push_back(std::move(ls));
-        }
-        runtimeVehicleSounds_.push_back(std::move(inst));
-    }
-
-    // Play EngineStart triggers
-    for (auto& inst : runtimeVehicleSounds_) {
-        for (const auto& trig : inst.profile.triggerSounds) {
-            if (trig.trigger == VehicleSoundTrigger::EngineStart && !trig.clipPath.empty()) {
-                const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
-                irrklang::ISound* s = audioManager_->Play2D(p, false, false);
-                if (s) { s->setVolume(trig.volume); s->drop(); }
-            }
-        }
-    }
+    RebuildVehicleSoundRuntime();
 }
 
 void SceneEditor::UpdateAudio(float deltaTime) {
@@ -1213,100 +758,7 @@ void SceneEditor::UpdateAudio(float deltaTime) {
         }
     }
 
-    // -- Update vehicle sound layers --
-    const float smoothRate = 8.0f * deltaTime; // slew rate
-
-    for (auto& inst : runtimeVehicleSounds_) {
-        // Find the RuntimeVehicleInstance for this vehicle.
-        const RuntimeVehicleInstance* rv = nullptr;
-        for (const auto& v : runtimeVehicles_) {
-            if (v.objectId == inst.vehicleObjectId) { rv = &v; break; }
-        }
-        if (!rv) continue;
-
-        const float rpm      = rv->arcadeEngineRPM;
-        const float throttle = rv->arcadeThrottle;
-        const float latSpd   = std::abs(rv->arcadeLateralSpeed);
-
-        // 3D position — follow the vehicle
-        const int vIdx = FindObjectIndexById(inst.vehicleObjectId);
-        if (vIdx >= 0 && inst.profile.spatialBlend > 0.5f) {
-            const glm::vec3 pos = GetObjectWorldPosition(vIdx);
-            const irrklang::vec3df ipos(pos.x, pos.y, pos.z);
-            for (auto& ls : inst.layers) {
-                if (ls.sound) ls.sound->setPosition(ipos);
-            }
-        }
-
-        // Update each engine layer
-        for (std::size_t li = 0; li < inst.layers.size() && li < inst.profile.engineLayers.size(); ++li) {
-            const VehicleSoundEngineLayer& def = inst.profile.engineLayers[li];
-            RuntimeVehicleSoundLayerState& ls  = inst.layers[li];
-            if (!ls.sound) continue;
-
-            const float range = def.rpmMax - def.rpmMin;
-            const float t     = (range > 0.0f) ? clamp01((rpm - def.rpmMin) / range) : 0.0f;
-
-            const float targetPitch  = lerp(def.pitchAtRpmMin, def.pitchAtRpmMax, t);
-            float       targetVolume = lerp(def.volumeAtRpmMin, def.volumeAtRpmMax, t);
-            targetVolume += throttle * def.volumeThrottleScale;
-            targetVolume  = clamp01(targetVolume) * inst.profile.masterVolume;
-
-            ls.smoothPitch  = lerp(ls.smoothPitch,  targetPitch,  smoothRate);
-            ls.smoothVolume = lerp(ls.smoothVolume, targetVolume, smoothRate);
-
-            ls.sound->setPlaybackSpeed(ls.smoothPitch);
-            ls.sound->setVolume(ls.smoothVolume);
-        }
-
-        // Trigger detection
-        const int curGear = rv->arcadeGear;
-        if (curGear != inst.lastGear && inst.lastGear != 0) {
-            const bool up = curGear > inst.lastGear;
-            const VehicleSoundTrigger want = up ? VehicleSoundTrigger::GearUp : VehicleSoundTrigger::GearDown;
-            for (const auto& trig : inst.profile.triggerSounds) {
-                if (trig.trigger == want && !trig.clipPath.empty()) {
-                    const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
-                    irrklang::ISound* s = audioManager_->Play2D(p, false, false);
-                    if (s) { s->setVolume(trig.volume); s->drop(); }
-                    break;
-                }
-            }
-        }
-
-        const bool throttleHigh = throttle > 0.7f;
-        if (inst.lastThrottleHigh && !throttleHigh && rpm > 0.0f) {
-            for (const auto& trig : inst.profile.triggerSounds) {
-                if (trig.trigger == VehicleSoundTrigger::Backfire &&
-                    rpm >= trig.minRpmForBackfire && !trig.clipPath.empty()) {
-                    const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
-                    irrklang::ISound* s = audioManager_->Play2D(p, false, false);
-                    if (s) { s->setVolume(trig.volume); s->drop(); }
-                    break;
-                }
-            }
-        }
-
-        if (latSpd > 0.0f) {
-            const bool squealNow  = latSpd > 2.0f;
-            const bool squealPrev = inst.lastLateralSpeed > 2.0f;
-            if (squealNow && !squealPrev) {
-                for (const auto& trig : inst.profile.triggerSounds) {
-                    if (trig.trigger == VehicleSoundTrigger::TireSqueal &&
-                        latSpd >= trig.minLateralSpeedForSqueal && !trig.clipPath.empty()) {
-                        const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
-                        irrklang::ISound* s = audioManager_->Play2D(p, false, false);
-                        if (s) { s->setVolume(trig.volume); s->drop(); }
-                        break;
-                    }
-                }
-            }
-        }
-
-        inst.lastGear         = curGear;
-        inst.lastThrottleHigh = throttleHigh;
-        inst.lastLateralSpeed = latSpd;
-    }
+    UpdateVehicleSoundRuntime(deltaTime);
 }
 
 void SceneEditor::HandleConsoleCommand(const std::string& command) {

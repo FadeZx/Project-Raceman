@@ -52,7 +52,9 @@ VehicleSurfaceSample SampleVehicleSurface(const RuntimeVehicleInstance& runtimeV
         contactGripMultiplier += contact.surfaceGripMultiplier;
         contactRollingDrag += contact.surfaceRollingDrag;
         if (contactIndex < runtimeVehicle.config.wheels.size()) {
-            contactWheelGripFactor += (std::max)(0.1f, runtimeVehicle.config.wheels[contactIndex].gripFactor);
+            const raceman::physics::ResolvedWheelTireConfig tire =
+                raceman::physics::resolveWheelTire(runtimeVehicle.config, runtimeVehicle.config.wheels[contactIndex]);
+            contactWheelGripFactor += (std::max)(0.1f, tire.gripFactor);
         } else {
             contactWheelGripFactor += 1.0f;
         }
@@ -71,6 +73,102 @@ VehicleSurfaceSample SampleVehicleSurface(const RuntimeVehicleInstance& runtimeV
         sample.wheelGripFactor = 1.0f;
     }
     return sample;
+}
+
+float GearRatioAbs(const raceman::physics::VehicleConfig& config, int gear) {
+    if (config.transmission.gearRatios.empty()) {
+        return 1.0f;
+    }
+    const int index = (std::clamp)(gear - 1, 0, static_cast<int>(config.transmission.gearRatios.size()) - 1);
+    return (std::max)(0.01f, std::fabs(config.transmission.gearRatios[static_cast<std::size_t>(index)]));
+}
+
+float TopGearRatioAbs(const raceman::physics::VehicleConfig& config) {
+    if (config.transmission.gearRatios.empty()) {
+        return 1.0f;
+    }
+    return (std::max)(0.01f, std::fabs(config.transmission.gearRatios.back()));
+}
+
+float GearTopSpeed(const raceman::physics::VehicleConfig& config, int gear, float maxForwardSpeed) {
+    return (std::max)(1.0f, maxForwardSpeed * TopGearRatioAbs(config) / GearRatioAbs(config, gear));
+}
+
+float GearSpeedToRpm(const raceman::physics::VehicleConfig& config,
+                     float absSpeed,
+                     int gear,
+                     float idleRPM,
+                     float redlineRPM,
+                     float maxForwardSpeed) {
+    if (gear <= 0) {
+        return idleRPM;
+    }
+    const float gearTopSpeed = GearTopSpeed(config, gear, maxForwardSpeed);
+    const float gearFraction = (std::clamp)(absSpeed / gearTopSpeed, 0.0f, 1.15f);
+    return (std::clamp)(idleRPM + gearFraction * (redlineRPM - idleRPM), idleRPM, redlineRPM);
+}
+
+float GearShiftCooldown(const raceman::physics::VehicleConfig& config, int fromGear, int gearCount) {
+    const float baseShiftTime = (std::max)(0.02f, config.transmission.shiftTime);
+    const float gearT = gearCount > 1
+        ? (std::clamp)(static_cast<float>((std::max)(1, fromGear) - 1) / static_cast<float>(gearCount - 1), 0.0f, 1.0f)
+        : 0.0f;
+    return baseShiftTime * (0.55f + 0.45f * gearT);
+}
+
+void UpdateArcadeAutomaticGear(RuntimeVehicleInstance& runtimeVehicle,
+                               float absSpeed,
+                               float signedSpeed,
+                               float throttleAmount,
+                               float brakeAmount,
+                               float idleRPM,
+                               float redlineRPM,
+                               float maxForwardSpeed,
+                               float deltaTime) {
+    const int gearCount = (std::max)(1, static_cast<int>(runtimeVehicle.config.transmission.gearRatios.size()));
+    runtimeVehicle.autoShiftCooldown = (std::max)(0.0f, runtimeVehicle.autoShiftCooldown - deltaTime);
+
+    if (signedSpeed < -0.5f) {
+        runtimeVehicle.arcadeGear = -1;
+        runtimeVehicle.arcadeEngineRPM = idleRPM;
+        return;
+    }
+
+    if (absSpeed < 0.2f && throttleAmount < 0.05f && brakeAmount < 0.05f) {
+        runtimeVehicle.arcadeGear = 0;
+        runtimeVehicle.arcadeEngineRPM = idleRPM;
+        return;
+    }
+
+    if (runtimeVehicle.arcadeGear <= 0) {
+        runtimeVehicle.arcadeGear = 1;
+    }
+
+    runtimeVehicle.arcadeGear = (std::clamp)(runtimeVehicle.arcadeGear, 1, gearCount);
+    const int currentGear = runtimeVehicle.arcadeGear;
+    const float rpm = GearSpeedToRpm(runtimeVehicle.config, absSpeed, currentGear, idleRPM, redlineRPM, maxForwardSpeed);
+    const float gearT = gearCount > 1
+        ? static_cast<float>(currentGear - 1) / static_cast<float>(gearCount - 1)
+        : 0.0f;
+    const float upshiftRpm = idleRPM + (redlineRPM - idleRPM) * (0.68f + 0.16f * gearT);
+    const float downshiftRpm = idleRPM + (redlineRPM - idleRPM) * (0.34f + 0.07f * gearT);
+
+    if (runtimeVehicle.autoShiftCooldown <= 0.0f) {
+        if (currentGear < gearCount && throttleAmount > 0.03f && rpm >= upshiftRpm) {
+            runtimeVehicle.arcadeGear = currentGear + 1;
+            runtimeVehicle.autoShiftCooldown = GearShiftCooldown(runtimeVehicle.config, currentGear, gearCount);
+        } else if (currentGear > 1 && rpm <= downshiftRpm && throttleAmount < 0.85f) {
+            runtimeVehicle.arcadeGear = currentGear - 1;
+            runtimeVehicle.autoShiftCooldown = GearShiftCooldown(runtimeVehicle.config, currentGear - 1, gearCount) * 0.85f;
+        }
+    }
+
+    const float targetRpm = GearSpeedToRpm(runtimeVehicle.config, absSpeed, runtimeVehicle.arcadeGear, idleRPM, redlineRPM, maxForwardSpeed);
+    const float shiftBlend = runtimeVehicle.autoShiftCooldown > 0.0f ? 0.45f : 1.0f;
+    runtimeVehicle.arcadeEngineRPM = (std::clamp)(
+        runtimeVehicle.arcadeEngineRPM + (targetRpm - runtimeVehicle.arcadeEngineRPM) * shiftBlend,
+        idleRPM,
+        redlineRPM);
 }
 
 } // namespace
@@ -164,9 +262,6 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         lateralSpeed = runtimeVehicle.arcadeLateralSpeed;
         const float finalAbsSpeed = std::fabs(speed);
         runtimeVehicle.arcadeWheelSpin += (speed / 0.3f) * deltaTime;
-        runtimeVehicle.arcadeEngineRPM = (std::clamp)(idleRPM + (finalAbsSpeed / maxForwardSpeed) * (redlineRPM - idleRPM) * (0.45f + throttleAmount * 0.55f),
-                                                      idleRPM,
-                                                      redlineRPM);
         runtimeVehicle.arcadePreviousThrottle = previousThrottleInput;
         runtimeVehicle.arcadeRawThrottle = rawThrottleAmount;
         runtimeVehicle.arcadeRawBrake = rawBrakeAmount;
@@ -174,15 +269,16 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         runtimeVehicle.arcadeBrake = brakeAmount;
         runtimeVehicle.arcadeSteering = baseInput.steering;
         runtimeVehicle.arcadeHandbrake = baseInput.handbrake;
-        if (speed < -0.5f) {
-            runtimeVehicle.arcadeGear = -1;
-        } else if (finalAbsSpeed < 0.2f) {
-            runtimeVehicle.arcadeGear = 0;
-        } else {
-            const int gearCount = (std::max)(1, static_cast<int>(runtimeVehicle.config.transmission.gearRatios.size()));
-            const float normalizedSpeed = (std::clamp)(finalAbsSpeed / maxForwardSpeed, 0.0f, 0.999f);
-            runtimeVehicle.arcadeGear = (std::clamp)(1 + static_cast<int>(normalizedSpeed * static_cast<float>(gearCount)), 1, gearCount);
-        }
+        UpdateArcadeAutomaticGear(
+            runtimeVehicle,
+            finalAbsSpeed,
+            speed,
+            throttleAmount,
+            brakeAmount,
+            idleRPM,
+            redlineRPM,
+            maxForwardSpeed,
+            deltaTime);
 
         if (physicsWorld_ != nullptr && !runtimeVehicle.chassisBodyObjectId.empty() && physicsWorld_->HasBody(runtimeVehicle.chassisBodyObjectId)) {
             physicsWorld_->MoveBodyKinematic(

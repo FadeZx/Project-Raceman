@@ -1,7 +1,5 @@
 #include "ProjectLauncher.h"
-
 #include "NativeDialogs.h"
-
 #include <glad/glad.h>
 #include <imgui/imgui.h>
 #include <stb_image.h>
