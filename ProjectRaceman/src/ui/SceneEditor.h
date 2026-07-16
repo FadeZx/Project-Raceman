@@ -129,6 +129,7 @@ public:
     void NewScene(const std::string& sceneName);
     void SaveActiveAsset();
     void SaveCurrentScene();
+    void RequestSaveCurrentScene();
     void SaveCurrentSceneAs();
     bool OpenSceneAsset(const std::string& path);
     void SaveProject();
@@ -142,6 +143,8 @@ public:
     const std::string& GetProjectName() const { return projectName_; }
     const SkyboxFaces& GetSkyboxFaces() const { return skyboxFaces_; }
     void SetSkyboxFaces(const SkyboxFaces& faces) { skyboxFaces_ = faces; }
+    const GraphicsProfile& GetGraphicsProfile() const { return graphicsProfile_; }
+    void SetGraphicsProfile(const GraphicsProfile& profile) { graphicsProfile_ = profile; }
     const PhysicsWorld* GetPhysicsWorld() const { return physicsWorld_.get(); }
     // Returns the active physics build progress if cooking is in progress, nullptr otherwise.
     const PhysicsBuildProgress* GetPhysicsBuildProgress() const;
@@ -225,6 +228,8 @@ private:
     void RestoreFromPlayModeSnapshot();
     void TickPlayModeLoading();
     void RenderPlayModeLoadingPopup();
+    void TickPendingSceneSave();
+    void RenderSceneSavePopup();
     int HotReloadRuntimeVehiclesForConfig(const std::string& configPath, const physics::VehicleConfig& config);
     void StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs, std::string title);
     bool TryBuildMeshColliderBakeJob(const SceneObject& object, PhysicsColliderDesc& outCollider, std::string& outLabel) const;
@@ -346,6 +351,7 @@ private:
     // persistence
     std::string projectPath_{"project.raceman.json"};
     SkyboxFaces skyboxFaces_{};
+    GraphicsProfile graphicsProfile_{};
     std::string projectName_{"Project Raceman"};
     std::string assetsRootSetting_{"assets"};
     std::string defaultScenePath_{"assets/scenes/EditorScene.scene.json"};
@@ -384,6 +390,9 @@ private:
 
     std::vector<std::string> projectDirectories_;
     std::vector<std::string> projectFiles_;
+    std::unordered_map<std::string, std::vector<std::string>> projectDirectoryChildren_;
+    std::unordered_map<std::string, std::vector<std::string>> projectFilesByDirectory_;
+    std::vector<std::string> projectRootDirectories_;
     std::string selectedProjectDirectory_{"assets"};
     std::string selectedProjectFile_;
     int selectedModelChildMeshIndex_{-1};
@@ -471,6 +480,22 @@ private:
         bool initialized{false};
     };
     std::unordered_map<std::string, RuntimeCinemachineState> runtimeCinemachineStates_;
+    struct RuntimeCameraBrainState {
+        std::string activeVirtualCameraId;
+        glm::vec3 position{0.0f};
+        glm::quat rotation{1.0f, 0.0f, 0.0f, 0.0f};
+        glm::vec3 blendStartPosition{0.0f};
+        glm::quat blendStartRotation{1.0f, 0.0f, 0.0f, 0.0f};
+        float fieldOfView{60.0f};
+        float blendStartFieldOfView{60.0f};
+        float nearClip{0.1f};
+        float farClip{500.0f};
+        glm::vec4 clearColor{0.02f, 0.02f, 0.02f, 1.0f};
+        float blendElapsed{0.0f};
+        float blendDuration{0.0f};
+        bool initialized{false};
+    };
+    RuntimeCameraBrainState runtimeCameraBrainState_{};
 
     // Audio source runtime (one per AudioSource component)
     struct RuntimeAudioSourceInstance {
@@ -639,6 +664,7 @@ private:
         std::string error;
         std::shared_ptr<::Model> model;
         std::vector<ImportedMeshInfo> infos;
+        std::vector<std::string> materialIds;
         bool loaded{false};
     };
     ModelAssetInspectorCache modelAssetInspectorCache_;
@@ -706,6 +732,10 @@ private:
     std::string lastPhysicsCacheStatus_{"Ready"};
 
     bool sceneDirty_{false};
+    bool sceneSaveRequested_{false};
+    bool sceneSavePopupRendered_{false};
+    bool sceneSavePopupClosing_{false};
+    double sceneSaveAnimationStart_{0.0};
     std::function<void()> onDirty_{};
     std::function<void(const glm::vec3&, float)> onFocusObject_{};
     std::function<void(const glm::mat4&)> onEditorCameraViewChanged_{};

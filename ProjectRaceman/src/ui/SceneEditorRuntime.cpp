@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include <limits>
 #include <thread>
 
 namespace fs = std::filesystem;
@@ -272,6 +273,7 @@ void SceneEditor::SetScriptsRunning(bool running) {
         UnloadScriptAssembly();
         runtimeVehicles_.clear();
         runtimeCinemachineStates_.clear();
+        runtimeCameraBrainState_ = {};
         if (physicsWorld_) {
             physicsWorld_->Clear();
             physicsWorld_.reset();
@@ -286,6 +288,17 @@ void SceneEditor::SetScriptsRunning(bool running) {
         } else {
             ResetPhysicsVelocities();
         }
+
+        // Runtime shutdown unloads the DLL so the next Play build can replace it.
+        // Reload it afterward for editor metadata; otherwise the Inspector loses
+        // all registered field definitions until the editor is restarted.
+        std::string editorScriptLoadError;
+        if (!LoadScriptAssembly(&editorScriptLoadError) && console_ != nullptr) {
+            console_->AddWarning(editorScriptLoadError.empty()
+                ? "Script fields are unavailable because ProjectScripts.dll could not be reloaded."
+                : editorScriptLoadError);
+        }
+
         activeViewport_ = SceneEditorActiveViewport::Scene;
         activeGizmoAxis_ = -1;
         hoveredGizmoAxis_ = -1;
@@ -837,19 +850,34 @@ void SceneEditor::UpdateCinemachine(float deltaTime) {
         if (!camObj.hasCamera || !camObj.camera.enabled) {
             continue;
         }
-        if (!camObj.hasCinemachine || !camObj.cinemachine.enabled) {
+        if (!camObj.hasCinemachine) {
             continue;
         }
 
         const CinemachineCameraComponent& cine = camObj.cinemachine;
 
         glm::mat4 desiredWorld(1.0f);
-        if (!ComputeCinemachineDesiredWorldMatrix(cine, camIdx, objects_, findById, getMatrix, desiredWorld)) {
-            continue;
+        const bool hasFollowOrLookAtTarget = cine.enabled && ComputeCinemachineDesiredWorldMatrix(
+            cine, camIdx, objects_, findById, getMatrix, desiredWorld);
+        if (!hasFollowOrLookAtTarget) {
+            // Targetless virtual cameras are valid static/parented cameras.
+            // Their hierarchy world transform is already the desired pose.
+            desiredWorld = getMatrix(camIdx);
         }
+
+        const glm::vec3 desiredPos = glm::vec3(desiredWorld[3]);
+        const glm::quat desiredRot = glm::normalize(glm::quat_cast(desiredWorld));
 
         // Seed smoothing state on first touch
         RuntimeCinemachineState& state = runtimeCinemachineStates_[camObj.id];
+        if (!hasFollowOrLookAtTarget) {
+            // A child cockpit/hood camera must remain rigidly attached to its
+            // parent. Damping here would make it lag behind the vehicle.
+            state.smoothedPosition = desiredPos;
+            state.smoothedRotation = desiredRot;
+            state.initialized = true;
+            continue;
+        }
         if (!state.initialized) {
             const glm::mat4 camWorldMatrix = getMatrix(camIdx);
             state.smoothedPosition = glm::vec3(camWorldMatrix[3]);
@@ -860,11 +888,66 @@ void SceneEditor::UpdateCinemachine(float deltaTime) {
         const float posT = 1.0f - std::exp(-cine.positionDamping * deltaTime);
         const float rotT = 1.0f - std::exp(-cine.rotationDamping * deltaTime);
 
-        const glm::vec3 desiredPos = glm::vec3(desiredWorld[3]);
-        const glm::quat desiredRot = glm::normalize(glm::quat_cast(desiredWorld));
-
         state.smoothedPosition = glm::mix(state.smoothedPosition, desiredPos, posT);
         state.smoothedRotation = glm::normalize(glm::slerp(state.smoothedRotation, desiredRot, rotT));
+    }
+
+    // The main Camera acts as the brain. It renders the enabled virtual camera
+    // with the highest priority and blends whenever that selection changes.
+    int activeVirtualIndex = -1;
+    int activePriority = (std::numeric_limits<int>::min)();
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& candidate = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !candidate.hasCamera || !candidate.camera.enabled ||
+            !candidate.hasCinemachine) {
+            continue;
+        }
+        const auto stateIt = runtimeCinemachineStates_.find(candidate.id);
+        if (stateIt == runtimeCinemachineStates_.end() || !stateIt->second.initialized) {
+            continue;
+        }
+        if (activeVirtualIndex < 0 || candidate.cinemachine.priority > activePriority) {
+            activeVirtualIndex = i;
+            activePriority = candidate.cinemachine.priority;
+        }
+    }
+
+    if (activeVirtualIndex >= 0) {
+        const SceneObject& active = objects_[activeVirtualIndex];
+        const RuntimeCinemachineState& target = runtimeCinemachineStates_.at(active.id);
+        RuntimeCameraBrainState& brain = runtimeCameraBrainState_;
+        const bool selectionChanged = brain.activeVirtualCameraId != active.id;
+        if (!brain.initialized) {
+            brain.position = target.smoothedPosition;
+            brain.rotation = target.smoothedRotation;
+            brain.fieldOfView = active.camera.fieldOfViewDegrees;
+            brain.initialized = true;
+        } else if (selectionChanged) {
+            brain.blendStartPosition = brain.position;
+            brain.blendStartRotation = brain.rotation;
+            brain.blendStartFieldOfView = brain.fieldOfView;
+            brain.blendElapsed = 0.0f;
+            brain.blendDuration = (std::max)(0.0f, active.cinemachine.blendDuration);
+        }
+        brain.activeVirtualCameraId = active.id;
+        brain.nearClip = active.camera.nearClip;
+        brain.farClip = active.camera.farClip;
+        brain.clearColor = active.camera.clearColor;
+
+        if (brain.blendElapsed < brain.blendDuration && brain.blendDuration > 0.0001f) {
+            brain.blendElapsed = (std::min)(brain.blendDuration, brain.blendElapsed + deltaTime);
+            const float linearT = brain.blendElapsed / brain.blendDuration;
+            const float blendT = linearT * linearT * (3.0f - 2.0f * linearT);
+            brain.position = glm::mix(brain.blendStartPosition, target.smoothedPosition, blendT);
+            brain.rotation = glm::normalize(glm::slerp(brain.blendStartRotation, target.smoothedRotation, blendT));
+            brain.fieldOfView = glm::mix(brain.blendStartFieldOfView, active.camera.fieldOfViewDegrees, blendT);
+        } else {
+            brain.position = target.smoothedPosition;
+            brain.rotation = target.smoothedRotation;
+            brain.fieldOfView = active.camera.fieldOfViewDegrees;
+        }
+    } else {
+        runtimeCameraBrainState_ = {};
     }
 
     // Clear states for cameras that no longer exist

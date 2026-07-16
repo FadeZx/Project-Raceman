@@ -13,7 +13,7 @@
         {
           "type": "Transform",
           "position": [-2.31907, 3.14599, 3.95966],
-          "rotationEuler": [-37.008, -0.506, -46.128],
+          "rotationEuler": [-32, 47, 0],
           "scale": [1, 1, 1]
         },
         {
@@ -26,8 +26,8 @@
           "type": "Light",
           "enabled": true,
           "lightType": "Directional",
-          "color": [0.995327, 0.94234, 0.888353],
-          "intensity": 1.2,
+          "color": [0.878505, 0.801236, 0.722509],
+          "intensity": 2.95,
           "range": 100,
           "spotAngleDegrees": 30
         }
@@ -36,12 +36,12 @@
     {
       "id": "camera_1",
       "parentId": "",
-      "name": "Camera",
+      "name": "OrbitCamera",
       "tag": "Untagged",
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Camera", "MeshRenderer", "Cinemachine", "AudioListener"],
+      "componentOrder": ["Transform", "Camera", "Cinemachine", "AudioListener", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -50,10 +50,52 @@
           "scale": [1, 1, 1]
         },
         {
-          "type": "MeshRenderer",
+          "type": "Script",
           "enabled": true,
-          "materialId": "pbr_default",
-          "color": [1, 1, 1, 1]
+          "attachments": [
+            {
+              "enabled": true,
+              "scriptName": "CameraOrbit",
+              "scriptPath": "assets/scripts/CameraOrbit.cpp",
+              "fields": [
+                {
+                  "name": "targetPosition",
+                  "type": "Vec3",
+                "value": [0, 0, 0]
+                },
+                {
+                  "name": "mouseSensitivity",
+                  "type": "Float",
+                "value": 0.18
+                },
+                {
+                  "name": "returnSpeed",
+                  "type": "Float",
+                "value": 5
+                },
+                {
+                  "name": "minPitch",
+                  "type": "Float",
+                "value": -20
+                },
+                {
+                  "name": "maxPitch",
+                  "type": "Float",
+                "value": 75
+                },
+                {
+                  "name": "invertY",
+                  "type": "Bool",
+                "value": false
+                },
+                {
+                  "name": "returnOnRelease",
+                  "type": "Bool",
+                "value": true
+                }
+              ]
+            }
+          ]
         },
         {
           "type": "Camera",
@@ -73,12 +115,55 @@
           "followOffset": [-1.84774e-06, 2.005, -3.932],
           "pitchOffset": 0,
           "yawOffset": 0.500002,
-          "positionDamping": 20,
-          "rotationDamping": 20
+          "positionDamping": 47.1,
+          "rotationDamping": 20,
+          "priority": 10,
+          "blendDuration": 0.25
         },
         {
           "type": "AudioListener",
           "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "camera_2",
+      "parentId": "",
+      "name": "TopDownCamera",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Camera", "Cinemachine"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.4, 102.888, -52.3],
+          "rotationEuler": [-340, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": false,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.1,
+          "farClip": 500,
+          "clearColor": [0.02, 0.02, 0.02, 1]
+        },
+        {
+          "type": "Cinemachine",
+          "enabled": true,
+          "cameraType": "FollowAndLookAt",
+          "followTargetId": "",
+          "lookAtTargetId": "gameobject_64",
+          "followOffset": [-0.4, 102.888, -52.3],
+          "pitchOffset": -340,
+          "yawOffset": 0,
+          "positionDamping": 5,
+          "rotationDamping": 5,
+          "priority": 10,
+          "blendDuration": 0.6
         }
       ]
     },
@@ -769,46 +854,6 @@
           "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
           "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#16",
           "meshIndex": 16,
-          "importedMaterialName": "Mesh_0002.rip.001",
-          "diffuseTexturePath": "*6"
-        },
-        {
-          "type": "MeshRenderer",
-          "enabled": true,
-          "materialId": "bmw_mesh_0002rip001",
-          "color": [1, 1, 1, 1]
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "attachments": [
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mesh_21",
-      "parentId": "gameobject_1",
-      "name": "BMW_17",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [0, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "MeshFilter",
-          "enabled": true,
-          "meshType": "Mesh",
-          "sourcePath": "assets/car/2018-bmw-m8-gte/source/BMW.glb",
-          "assetId": "assets/car/2018-bmw-m8-gte/source/BMW.glb#17",
-          "meshIndex": 17,
           "importedMaterialName": "Mesh_0002.rip.001",
           "diffuseTexturePath": "*6"
         },
@@ -2514,7 +2559,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Vehicle", "MeshRenderer"],
+      "componentOrder": ["Transform", "Vehicle", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -2527,6 +2572,49 @@
           "enabled": true,
           "materialId": "pbr_default",
           "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+            {
+              "enabled": true,
+              "scriptName": "VirtualCameraSwitcher",
+              "scriptPath": "assets/scripts/VirtualCameraSwitcher.cpp",
+              "fields": [
+                {
+                  "name": "cameras",
+                  "type": "ObjectRefList",
+                "value": ["camera_1", "gameobject_12", "gameobject_9", "camera_2"]
+                },
+                {
+                  "name": "switchKey",
+                  "type": "Key",
+                "value": 76
+                },
+                {
+                  "name": "startIndex",
+                  "type": "Int",
+                "value": 0
+                },
+                {
+                  "name": "activePriority",
+                  "type": "Int",
+                "value": 100
+                },
+                {
+                  "name": "inactivePriority",
+                  "type": "Int",
+                "value": 0
+                },
+                {
+                  "name": "cameraNames",
+                  "type": "String",
+                "value": "Chase Camera, Cockpit Camera"
+                }
+              ]
+            }
+          ]
         },
         {
           "type": "Vehicle",
@@ -2660,7 +2748,7 @@
           "assetId": "assets/car/formula 1/F1_chasis.fbx#0",
           "meshIndex": 0,
           "importedMaterialName": "Mat",
-          "diffuseTexturePath": "",
+          "diffuseTexturePath": "Substance SpecGloss/Right ones/formula1_DefaultMaterial_Diffuse.png",
           "pivotOffset": [-0.683868, 53.4748, -0.00106049]
         },
         {
@@ -17402,8 +17490,90 @@
           }
         }
       ]
+    },
+    {
+      "id": "gameobject_9",
+      "parentId": "gameobject_64",
+      "name": "CockpitCamera",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Camera", "Cinemachine"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.3, 0.9, 0],
+          "rotationEuler": [0, -180, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": false,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.1,
+          "farClip": 500,
+          "clearColor": [0.02, 0.02, 0.02, 1]
+        },
+        {
+          "type": "Cinemachine",
+          "enabled": true,
+          "cameraType": "Follow",
+          "followTargetId": "",
+          "lookAtTargetId": "",
+          "followOffset": [-0.3, 0.9, 0],
+          "pitchOffset": 0,
+          "yawOffset": -180,
+          "positionDamping": 0,
+          "rotationDamping": 0,
+          "priority": 10,
+          "blendDuration": 0
+        }
+      ]
+    },
+    {
+      "id": "gameobject_12",
+      "parentId": "gameobject_64",
+      "name": "HoodCamera",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Camera", "Cinemachine"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 1, 0.7],
+          "rotationEuler": [-8.5, 180, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": false,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.1,
+          "farClip": 500,
+          "clearColor": [0.02, 0.02, 0.02, 1]
+        },
+        {
+          "type": "Cinemachine",
+          "enabled": true,
+          "cameraType": "Follow",
+          "followTargetId": "",
+          "lookAtTargetId": "",
+          "followOffset": [0, 1, 0.7],
+          "pitchOffset": -8.5,
+          "yawOffset": 180,
+          "positionDamping": 0,
+          "rotationDamping": 0,
+          "priority": 10,
+          "blendDuration": 0
+        }
+      ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_7", "gameobject_1635", "gameobject_8", "gameobject_11", "gameobject_145"],
-  "inspectorComponentsClosed": ["mesh_393|Collider", "gameobject_11|Vehicle", "camera_1|Cinemachine"]
+  "hierarchyClosed": ["gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_8", "gameobject_11"],
+  "inspectorComponentsClosed": ["mesh_393|Collider", "gameobject_64|Vehicle", "gameobject_11|Vehicle", "camera_1|Cinemachine", "gameobject_64|MeshRenderer", "mesh_146|MeshFilter"]
 }

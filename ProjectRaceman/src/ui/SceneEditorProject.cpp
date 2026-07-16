@@ -62,10 +62,12 @@ fs::path ResolvePreviewTexturePath(const std::string& value) {
 
 unsigned int LoadPreviewTextureCached(const std::string& texturePath,
                                       std::unordered_map<std::string, unsigned int>& cache,
-                                      Console* console) {
+                                      Console* console,
+                                      bool srgb = false) {
     const fs::path absolutePath = ResolvePreviewTexturePath(texturePath);
     if (absolutePath.empty()) return 0;
-    const std::string key = NormalizeSlashes(absolutePath.lexically_normal().string());
+    const std::string pathKey = NormalizeSlashes(absolutePath.lexically_normal().string());
+    const std::string key = pathKey + (srgb ? "#srgb" : "#linear");
     if (auto existing = cache.find(key); existing != cache.end()) {
         return existing->second;
     }
@@ -73,10 +75,10 @@ unsigned int LoadPreviewTextureCached(const std::string& texturePath,
     int width = 0;
     int height = 0;
     int channels = 0;
-    unsigned char* data = stbi_load(key.c_str(), &width, &height, &channels, 4);
+    unsigned char* data = stbi_load(pathKey.c_str(), &width, &height, &channels, 4);
     if (data == nullptr || width <= 0 || height <= 0) {
         cache[key] = 0;
-        if (console) console->AddError("Failed to load material texture: " + key);
+        if (console) console->AddError("Failed to load material texture: " + pathKey);
         return 0;
     }
 
@@ -87,7 +89,7 @@ unsigned int LoadPreviewTextureCached(const std::string& texturePath,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
     stbi_image_free(data);
@@ -1629,10 +1631,21 @@ unsigned int SceneEditor::GetModelChildThumbnailTexture(const std::string& impor
         };
         cmd.metallic = material->metallic;
         cmd.roughness = material->roughness;
+        cmd.clearCoat = material->clearCoat;
+        cmd.clearCoatRoughness = material->clearCoatRoughness;
+        cmd.anisotropy = material->anisotropy;
+        cmd.transmission = material->transmission;
+        const std::string alphaMode = ToLowerCopy(material->alphaMode);
+        cmd.alphaCutoff = alphaMode == "mask" ? material->alphaCutoff : 0.0f;
+        cmd.doubleSided = material->doubleSided;
+        cmd.transparent = alphaMode == "blend";
+        cmd.transparentSortPriority = material->transparentSortPriority;
+        cmd.transparentSortCenter = glm::vec3(cmd.modelMatrix[3]);
+        cmd.hasTransparentSortBounds = true;
         cmd.uvTiling = {material->uvTiling[0], material->uvTiling[1]};
         cmd.uvOffset = {material->uvOffset[0], material->uvOffset[1]};
         cmd.unlit = ToLowerCopy(material->shader) == "unlit";
-        cmd.materialTextureIds[0] = LoadPreviewTextureCached(material->texAlbedo, materialTextureCache_, console_);
+        cmd.materialTextureIds[0] = LoadPreviewTextureCached(material->texAlbedo, materialTextureCache_, console_, true);
         cmd.materialTextureIds[1] = LoadPreviewTextureCached(material->texNormal, materialTextureCache_, console_);
         cmd.materialTextureIds[2] = LoadPreviewTextureCached(material->texMetallic, materialTextureCache_, console_);
         cmd.materialTextureIds[3] = LoadPreviewTextureCached(material->texRoughness, materialTextureCache_, console_);
@@ -1815,10 +1828,21 @@ unsigned int SceneEditor::GetModelPackageThumbnailTexture(const std::string& imp
             };
             cmd.metallic = material->metallic;
             cmd.roughness = material->roughness;
+            cmd.clearCoat = material->clearCoat;
+            cmd.clearCoatRoughness = material->clearCoatRoughness;
+            cmd.anisotropy = material->anisotropy;
+            cmd.transmission = material->transmission;
+            const std::string alphaMode = ToLowerCopy(material->alphaMode);
+            cmd.alphaCutoff = alphaMode == "mask" ? material->alphaCutoff : 0.0f;
+            cmd.doubleSided = material->doubleSided;
+            cmd.transparent = alphaMode == "blend";
+            cmd.transparentSortPriority = material->transparentSortPriority;
+            cmd.transparentSortCenter = glm::vec3(cmd.modelMatrix[3]);
+            cmd.hasTransparentSortBounds = true;
             cmd.uvTiling = {material->uvTiling[0], material->uvTiling[1]};
             cmd.uvOffset = {material->uvOffset[0], material->uvOffset[1]};
             cmd.unlit = ToLowerCopy(material->shader) == "unlit";
-            cmd.materialTextureIds[0] = LoadPreviewTextureCached(material->texAlbedo, materialTextureCache_, console_);
+            cmd.materialTextureIds[0] = LoadPreviewTextureCached(material->texAlbedo, materialTextureCache_, console_, true);
             cmd.materialTextureIds[1] = LoadPreviewTextureCached(material->texNormal, materialTextureCache_, console_);
             cmd.materialTextureIds[2] = LoadPreviewTextureCached(material->texMetallic, materialTextureCache_, console_);
             cmd.materialTextureIds[3] = LoadPreviewTextureCached(material->texRoughness, materialTextureCache_, console_);
@@ -2782,23 +2806,9 @@ void SceneEditor::RenderProjectPanel() {
                 ImGui::TextUnformatted("Directories");
                 ImGui::Separator();
 
-                std::unordered_map<std::string, std::vector<std::string>> directoryChildren;
-                std::unordered_set<std::string> directorySet;
-                directoryChildren.reserve(projectDirectories_.size() + 1);
-                directorySet.reserve(projectDirectories_.size() + 1);
-                for (const std::string& directory : projectDirectories_) {
-                    directorySet.insert(directory);
-                }
-                for (const std::string& directory : projectDirectories_) {
-                    if (directory == "assets") {
-                        continue;
-                    }
-                    directoryChildren[ParentProjectDirectory(directory)].push_back(directory);
-                }
-
                 auto renderDirectoryTree = [&](auto&& self, const std::string& directory) -> void {
-                    const auto childIt = directoryChildren.find(directory);
-                    const bool hasChildFolders = childIt != directoryChildren.end() && !childIt->second.empty();
+                    const auto childIt = projectDirectoryChildren_.find(directory);
+                    const bool hasChildFolders = childIt != projectDirectoryChildren_.end() && !childIt->second.empty();
 
                     ImGui::PushID(directory.c_str());
                     const bool selected = (directory == selectedProjectDirectory_);
@@ -2840,11 +2850,8 @@ void SceneEditor::RenderProjectPanel() {
                     }
                     ImGui::PopID();
                 };
-                renderDirectoryTree(renderDirectoryTree, "assets");
-                for (const std::string& directory : projectDirectories_) {
-                    if (directory != "assets" && directorySet.find(ParentProjectDirectory(directory)) == directorySet.end()) {
-                        renderDirectoryTree(renderDirectoryTree, directory);
-                    }
+                for (const std::string& directory : projectRootDirectories_) {
+                    renderDirectoryTree(renderDirectoryTree, directory);
                 }
                 ImGui::EndChild();
 
@@ -3017,9 +3024,9 @@ void SceneEditor::RenderProjectPanel() {
                     return clicked || doubleClicked;
                 };
 
-                const auto selectedDirectoryChildrenIt = directoryChildren.find(selectedProjectDirectory_);
+                const auto selectedDirectoryChildrenIt = projectDirectoryChildren_.find(selectedProjectDirectory_);
                 const std::vector<std::string> emptyChildFolders;
-                const std::vector<std::string>& childFolders = selectedDirectoryChildrenIt != directoryChildren.end()
+                const std::vector<std::string>& childFolders = selectedDirectoryChildrenIt != projectDirectoryChildren_.end()
                     ? selectedDirectoryChildrenIt->second
                     : emptyChildFolders;
 
@@ -3082,10 +3089,36 @@ void SceneEditor::RenderProjectPanel() {
                     }
                 }
                 if (!breakTileLoop) {
-                for (const std::string& file : projectFiles_) {
-                    if (ParentProjectDirectory(file) != selectedProjectDirectory_) {
-                        continue;
+                const auto selectedFilesIt = projectFilesByDirectory_.find(selectedProjectDirectory_);
+                const std::vector<std::string> emptyProjectFiles;
+                const std::vector<std::string>& selectedFiles = selectedFilesIt != projectFilesByDirectory_.end()
+                    ? selectedFilesIt->second
+                    : emptyProjectFiles;
+                auto ensureBrowserModelPackage = [&](const std::string& file, ModelAssetInspectorCache& packageCache) {
+                    if (packageCache.selectedPath == file) {
+                        return packageCache.loaded && packageCache.error.empty();
                     }
+                    packageCache = ModelAssetInspectorCache{};
+                    packageCache.selectedPath = file;
+                    if (!TryLoadMeshAsset(file, packageCache.importPath, packageCache.model, packageCache.infos)) {
+                        packageCache.error = "Failed to load model package.";
+                        return false;
+                    }
+                    packageCache.loaded = true;
+
+                    std::string packageBaseName;
+                    try { packageBaseName = fs::path(packageCache.importPath).stem().string(); } catch (...) { packageBaseName = "Model"; }
+                    ModelImportSettings packageSettings;
+                    LoadModelImportSettings(packageCache.importPath, packageSettings);
+                    ReconcileModelImportSettings(packageSettings, packageCache.importPath, packageBaseName, packageCache.infos);
+                    packageCache.materialIds.reserve(packageCache.infos.size());
+                    for (const ImportedMeshInfo& info : packageCache.infos) {
+                        ModelMaterialMapping& mapping = EnsureModelMaterialMapping(packageSettings, packageCache.importPath, packageBaseName, info);
+                        packageCache.materialIds.push_back(mapping.materialId);
+                    }
+                    return true;
+                };
+                for (const std::string& file : selectedFiles) {
 
                     hasTiles = true;
                     const bool isMesh = IsMeshAssetPath(file);
@@ -3103,28 +3136,8 @@ void SceneEditor::RenderProjectPanel() {
                         const bool tileVisible = tilePos.y + tileHeight >= visibleTileMinY && tilePos.y <= visibleTileMaxY;
                         if (tileVisible) {
                             ModelAssetInspectorCache& packageCache = browserModelPackageCaches_[file];
-                            if (packageCache.selectedPath != file) {
-                                packageCache = ModelAssetInspectorCache{};
-                                packageCache.selectedPath = file;
-                                if (!TryLoadMeshAsset(file, packageCache.importPath, packageCache.model, packageCache.infos)) {
-                                    packageCache.error = "Failed to load model package.";
-                                } else {
-                                    packageCache.loaded = true;
-                                }
-                            }
-                            if (packageCache.loaded && packageCache.error.empty()) {
-                                std::string packageBaseName;
-                                try { packageBaseName = fs::path(packageCache.importPath).stem().string(); } catch (...) { packageBaseName = "Model"; }
-                                ModelImportSettings packageSettings;
-                                LoadModelImportSettings(packageCache.importPath, packageSettings);
-                                ReconcileModelImportSettings(packageSettings, packageCache.importPath, packageBaseName, packageCache.infos);
-                                std::vector<std::string> packageMaterialIds;
-                                packageMaterialIds.reserve(packageCache.infos.size());
-                                for (const ImportedMeshInfo& info : packageCache.infos) {
-                                    ModelMaterialMapping& mapping = EnsureModelMaterialMapping(packageSettings, packageCache.importPath, packageBaseName, info);
-                                    packageMaterialIds.push_back(mapping.materialId);
-                                }
-                                packagePreviewTexture = GetModelPackageThumbnailTexture(packageCache.importPath, packageCache.infos, packageMaterialIds,
+                            if (ensureBrowserModelPackage(file, packageCache)) {
+                                packagePreviewTexture = GetModelPackageThumbnailTexture(packageCache.importPath, packageCache.infos, packageCache.materialIds,
                                                                                        static_cast<int>(iconSize), static_cast<int>(iconSize));
                             }
                         }
@@ -3370,25 +3383,13 @@ void SceneEditor::RenderProjectPanel() {
                         }
                         if (isMesh && expandedModelPackages_.find(file) != expandedModelPackages_.end()) {
                             ModelAssetInspectorCache& packageCache = browserModelPackageCaches_[file];
-                            if (packageCache.selectedPath != file) {
-                                packageCache = ModelAssetInspectorCache{};
-                                packageCache.selectedPath = file;
-                                if (!TryLoadMeshAsset(file, packageCache.importPath, packageCache.model, packageCache.infos)) {
-                                    packageCache.error = "Failed to load model package.";
-                                } else {
-                                    packageCache.loaded = true;
-                                }
-                            }
-                            if (packageCache.loaded && packageCache.error.empty()) {
-                                std::string childBaseName;
-                                try { childBaseName = fs::path(packageCache.importPath).stem().string(); } catch (...) { childBaseName = "Model"; }
-                                ModelImportSettings childSettings;
-                                LoadModelImportSettings(packageCache.importPath, childSettings);
-                                ReconcileModelImportSettings(childSettings, packageCache.importPath, childBaseName, packageCache.infos);
-
-                                for (const ImportedMeshInfo& info : packageCache.infos) {
-                                    ModelMaterialMapping& childMaterial = EnsureModelMaterialMapping(childSettings, packageCache.importPath, childBaseName, info);
-                                    const unsigned int thumb = GetModelChildThumbnailTexture(packageCache.importPath, info, childMaterial.materialId,
+                            if (ensureBrowserModelPackage(file, packageCache)) {
+                                for (std::size_t infoIndex = 0; infoIndex < packageCache.infos.size(); ++infoIndex) {
+                                    const ImportedMeshInfo& info = packageCache.infos[infoIndex];
+                                    const std::string& materialId = infoIndex < packageCache.materialIds.size()
+                                        ? packageCache.materialIds[infoIndex]
+                                        : std::string{};
+                                    const unsigned int thumb = GetModelChildThumbnailTexture(packageCache.importPath, info, materialId,
                                                                                             static_cast<int>(iconSize), static_cast<int>(iconSize));
                                     const bool childSelected = selectedProjectFile_ == file && selectedModelChildMeshIndex_ == static_cast<int>(info.meshIndex);
                                     const std::string childId = file + "#mesh:" + std::to_string(info.meshIndex);
@@ -5335,6 +5336,10 @@ bool SceneEditor::CopyProjectFileTo(const std::string& sourcePath, const std::st
 void SceneEditor::RefreshProjectFiles() {
     projectDirectories_.clear();
     projectFiles_.clear();
+    projectDirectoryChildren_.clear();
+    projectFilesByDirectory_.clear();
+    projectRootDirectories_.clear();
+    browserModelPackageCaches_.clear();
     materialManager_.LoadAll();
 
     try {
@@ -5373,6 +5378,26 @@ void SceneEditor::RefreshProjectFiles() {
             return ToLowerCopy(a) < ToLowerCopy(b);
         });
 
+        std::unordered_set<std::string> directorySet;
+        directorySet.reserve(projectDirectories_.size());
+        for (const std::string& directory : projectDirectories_) {
+            directorySet.insert(directory);
+        }
+        for (const std::string& directory : projectDirectories_) {
+            if (directory == "assets") {
+                projectRootDirectories_.push_back(directory);
+                continue;
+            }
+            const std::string parent = ParentProjectDirectory(directory);
+            projectDirectoryChildren_[parent].push_back(directory);
+            if (directorySet.find(parent) == directorySet.end()) {
+                projectRootDirectories_.push_back(directory);
+            }
+        }
+        for (const std::string& file : projectFiles_) {
+            projectFilesByDirectory_[ParentProjectDirectory(file)].push_back(file);
+        }
+
         if (std::find(projectDirectories_.begin(), projectDirectories_.end(), selectedProjectDirectory_) == projectDirectories_.end()) {
             selectedProjectDirectory_ = "assets";
         }
@@ -5384,6 +5409,10 @@ void SceneEditor::RefreshProjectFiles() {
     } catch (...) {
         projectDirectories_.clear();
         projectFiles_.clear();
+        projectDirectoryChildren_.clear();
+        projectFilesByDirectory_.clear();
+        projectRootDirectories_.clear();
+        browserModelPackageCaches_.clear();
         selectedProjectDirectory_ = "assets";
         selectedProjectFile_.clear();
     }

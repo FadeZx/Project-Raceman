@@ -106,11 +106,17 @@ void Renderer::EnsureViewportRenderTarget(ViewportRenderTarget target, int width
     if (renderTarget.framebuffer == 0) {
         glGenFramebuffers(1, &renderTarget.framebuffer);
     }
-    if (renderTarget.colorTexture == 0) {
-        glGenTextures(1, &renderTarget.colorTexture);
+    if (renderTarget.hdrColorTexture == 0) {
+        glGenTextures(1, &renderTarget.hdrColorTexture);
     }
     if (renderTarget.depthRenderbuffer == 0) {
         glGenRenderbuffers(1, &renderTarget.depthRenderbuffer);
+    }
+    if (renderTarget.outputFramebuffer == 0) {
+        glGenFramebuffers(1, &renderTarget.outputFramebuffer);
+    }
+    if (renderTarget.colorTexture == 0) {
+        glGenTextures(1, &renderTarget.colorTexture);
     }
 
     if (renderTarget.width == width && renderTarget.height == height) {
@@ -120,8 +126,8 @@ void Renderer::EnsureViewportRenderTarget(ViewportRenderTarget target, int width
     renderTarget.width = width;
     renderTarget.height = height;
 
-    glBindTexture(GL_TEXTURE_2D, renderTarget.colorTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glBindTexture(GL_TEXTURE_2D, renderTarget.hdrColorTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -131,8 +137,17 @@ void Renderer::EnsureViewportRenderTarget(ViewportRenderTarget target, int width
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
 
     glBindFramebuffer(GL_FRAMEBUFFER, renderTarget.framebuffer);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTarget.colorTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTarget.hdrColorTexture, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderTarget.depthRenderbuffer);
+
+    glBindTexture(GL_TEXTURE_2D, renderTarget.colorTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindFramebuffer(GL_FRAMEBUFFER, renderTarget.outputFramebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTarget.colorTexture, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -149,10 +164,29 @@ void Renderer::BeginFrameToViewportTarget(ViewportRenderTarget target, const glm
     glEnable(GL_DEPTH_TEST);
     glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    activeViewportTarget_ = target;
+    viewportTargetActive_ = true;
 }
 
 void Renderer::EndFrameToViewportTarget() {
     Flush();
+    if (viewportTargetActive_) {
+        ResolveViewportTarget(GetViewportTarget(activeViewportTarget_));
+    }
+    viewportTargetActive_ = false;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::PresentViewportTarget(ViewportRenderTarget target, const RendererViewport& destination) {
+    const ViewportTarget& renderTarget = GetViewportTarget(target);
+    if (renderTarget.outputFramebuffer == 0) return;
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, renderTarget.outputFramebuffer);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    const int destinationY = (std::max)(0, config_.height - destination.y - destination.height);
+    glBlitFramebuffer(0, 0, renderTarget.width, renderTarget.height,
+                      destination.x, destinationY,
+                      destination.x + destination.width, destinationY + destination.height,
+                      GL_COLOR_BUFFER_BIT, GL_LINEAR);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -215,9 +249,17 @@ void Renderer::DestroyViewportTarget(ViewportTarget& target) {
         glDeleteRenderbuffers(1, &target.depthRenderbuffer);
         target.depthRenderbuffer = 0;
     }
+    if (target.outputFramebuffer != 0) {
+        glDeleteFramebuffers(1, &target.outputFramebuffer);
+        target.outputFramebuffer = 0;
+    }
     if (target.colorTexture != 0) {
         glDeleteTextures(1, &target.colorTexture);
         target.colorTexture = 0;
+    }
+    if (target.hdrColorTexture != 0) {
+        glDeleteTextures(1, &target.hdrColorTexture);
+        target.hdrColorTexture = 0;
     }
     if (target.framebuffer != 0) {
         glDeleteFramebuffers(1, &target.framebuffer);
@@ -225,6 +267,31 @@ void Renderer::DestroyViewportTarget(ViewportTarget& target) {
     }
     target.width = 0;
     target.height = 0;
+}
+
+void Renderer::ResolveViewportTarget(ViewportTarget& target) {
+    if (target.outputFramebuffer == 0 || target.hdrColorTexture == 0 || toneMapShader_ == nullptr) {
+        return;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, target.outputFramebuffer);
+    glViewport(0, 0, target.width, target.height);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_BLEND);
+
+    toneMapShader_->use();
+    toneMapShader_->setInt("uHdrScene", 0);
+    toneMapShader_->setFloat("uExposure", (std::max)(0.01f, settings_.profile.exposure));
+    toneMapShader_->setBool("uEnableFxaa", settings_.profile.antiAliasing == AntiAliasingMode::FXAA);
+    toneMapShader_->setVec2("uInverseResolution",
+        1.0f / static_cast<float>((std::max)(1, target.width)),
+        1.0f / static_cast<float>((std::max)(1, target.height)));
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, target.hdrColorTexture);
+    glBindVertexArray(fullscreenQuad_);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
 }
 
 Renderer::ViewportTarget& Renderer::GetViewportTarget(ViewportRenderTarget target) {
@@ -315,12 +382,14 @@ void Renderer::Flush() {
     const glm::vec3 cameraPosition = glm::vec3(glm::inverse(view_)[3]);
     auto commandIsTransparent = [](const MeshDrawCommand& cmd) {
         const std::string shaderId = cmd.unlit ? std::string("unlit") : ShaderRegistry::NormalizeShaderId(cmd.shaderId);
-        return ShaderRegistry::Resolve(shaderId).transparent || cmd.color.a < 0.999f;
+        return cmd.transparent || ShaderRegistry::Resolve(shaderId).transparent || cmd.color.a < 0.999f;
     };
-    auto commandDistanceSq = [&](const MeshDrawCommand& cmd) {
-        const glm::vec3 position = glm::vec3(cmd.modelMatrix[3]);
-        const glm::vec3 delta = position - cameraPosition;
-        return glm::dot(delta, delta);
+    auto commandViewDepth = [&](const MeshDrawCommand& cmd) {
+        const glm::vec3 sortCenter = cmd.hasTransparentSortBounds
+            ? cmd.transparentSortCenter
+            : glm::vec3(cmd.modelMatrix[3]);
+        const glm::vec4 viewCenter = view_ * glm::vec4(sortCenter, 1.0f);
+        return -viewCenter.z + (std::max)(0.0f, cmd.transparentSortRadius);
     };
 
     std::vector<const MeshDrawCommand*> opaqueCommands;
@@ -346,7 +415,10 @@ void Renderer::Flush() {
     }
     if (transparentCommands.size() > 1) {
         std::stable_sort(transparentCommands.begin(), transparentCommands.end(), [&](const MeshDrawCommand* a, const MeshDrawCommand* b) {
-            return commandDistanceSq(*a) > commandDistanceSq(*b);
+            if (a->transparentSortPriority != b->transparentSortPriority) {
+                return a->transparentSortPriority < b->transparentSortPriority;
+            }
+            return commandViewDepth(*a) > commandViewDepth(*b);
         });
     }
 
@@ -360,6 +432,9 @@ void Renderer::Flush() {
         shader.setInt("uMaterialAoTexture", 4);
         shader.setVec3("uAmbientColor", settings_.ambientColor);
         shader.setVec3("uCameraPosition", cameraPosition);
+        shader.setBool("uStylized", settings_.profile.style == RenderStyle::Stylized);
+        shader.setFloat("uStylizedBands", (std::max)(2.0f, settings_.profile.stylizedBands));
+        shader.setFloat("uStylizedRimStrength", (std::max)(0.0f, settings_.profile.stylizedRimStrength));
     };
     const int lightCount = static_cast<int>((std::min)(lightDrawList_.size(), static_cast<std::size_t>(8)));
     auto bindLights = [&](Shader& shader) {
@@ -397,7 +472,7 @@ void Renderer::Flush() {
             activeShader->use();
         }
 
-        const bool transparent = ShaderRegistry::Resolve(currentShaderId).transparent || cmd.color.a < 0.999f;
+        const bool transparent = cmd.transparent || ShaderRegistry::Resolve(currentShaderId).transparent || cmd.color.a < 0.999f;
         if (transparent) {
             glEnable(GL_BLEND);
             glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
@@ -407,6 +482,7 @@ void Renderer::Flush() {
             glDisable(GL_BLEND);
             glDepthMask(GL_TRUE);
         }
+        if (cmd.doubleSided) glDisable(GL_CULL_FACE); else glEnable(GL_CULL_FACE);
 
         // A mirrored object or parent transform reverses triangle winding. Match the
         // front-face state to the submitted model matrix so back-face culling and
@@ -423,6 +499,11 @@ void Renderer::Flush() {
         activeShader->setVec3("uEmissiveColor", cmd.emissiveColor);
         activeShader->setFloat("uMetallic", (std::max)(0.0f, (std::min)(1.0f, cmd.metallic)));
         activeShader->setFloat("uRoughness", (std::max)(0.02f, (std::min)(1.0f, cmd.roughness)));
+        activeShader->setFloat("uClearCoat", (std::clamp)(cmd.clearCoat, 0.0f, 1.0f));
+        activeShader->setFloat("uClearCoatRoughness", (std::clamp)(cmd.clearCoatRoughness, 0.02f, 1.0f));
+        activeShader->setFloat("uAnisotropy", (std::clamp)(cmd.anisotropy, -1.0f, 1.0f));
+        activeShader->setFloat("uTransmission", (std::clamp)(cmd.transmission, 0.0f, 1.0f));
+        activeShader->setFloat("uAlphaCutoff", (std::max)(0.0f, cmd.alphaCutoff));
         activeShader->setVec2("uUvTiling", cmd.uvTiling);
         activeShader->setVec2("uUvOffset", cmd.uvOffset);
         activeShader->setBool("uUseDiffuseTexture", cmd.useDiffuseTexture && cmd.diffuseTextureId != 0);
@@ -476,8 +557,19 @@ void Renderer::Flush() {
         }
 
         glBindVertexArray(cmd.vao);
-        glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, nullptr);
-        ++frameStats_.drawCallCount;
+        if (transparent && cmd.doubleSided) {
+            // Alpha blending cannot correctly compose both sides of a glass shell
+            // in one unordered draw. Render back faces first, then front faces.
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_FRONT);
+            glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, nullptr);
+            glCullFace(GL_BACK);
+            glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, nullptr);
+            frameStats_.drawCallCount += 2;
+        } else {
+            glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, nullptr);
+            ++frameStats_.drawCallCount;
+        }
     };
 
     for (const MeshDrawCommand* cmd : opaqueCommands) {
@@ -617,6 +709,7 @@ void Renderer::SetCamera(const glm::mat4& view, const glm::mat4& proj) {
 
 void Renderer::InitializePipelines() {
     materialShaders_["pbr"] = std::make_unique<Shader>("src/shaders/default/default.vs", "src/shaders/default/pbr.fs");
+    toneMapShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/tonemap.fs");
 }
 
 void Renderer::InitializeQuad() {

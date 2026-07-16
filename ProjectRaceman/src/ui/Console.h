@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include <mutex>
 
@@ -44,6 +45,7 @@ private:
     std::function<bool(const std::string&)> commandHandler_;
     std::mutex mtx_;
     Tab currentTab_{Tab::Log};
+    std::unordered_set<std::size_t> selectedEntryIndices_;
 };
 
 } // namespace raceman

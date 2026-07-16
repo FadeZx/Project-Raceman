@@ -186,6 +186,49 @@ private:
             for (unsigned int j = 0; j < face.mNumIndices; j++)
                 indices.push_back(face.mIndices[j]);
         }
+
+        // Some exported assets contain valid triangle winding but vertex normals
+        // pointing inward. Physically based lighting exposes this much more than
+        // simple/stylized shading. Detect a consistently inverted normal basis
+        // per mesh and repair it without affecting correctly exported models.
+        std::size_t alignedNormalTriangles = 0;
+        std::size_t opposedNormalTriangles = 0;
+        for (std::size_t index = 0; index + 2 < indices.size(); index += 3) {
+            const unsigned int i0 = indices[index];
+            const unsigned int i1 = indices[index + 1];
+            const unsigned int i2 = indices[index + 2];
+            if (i0 >= vertices.size() || i1 >= vertices.size() || i2 >= vertices.size()) {
+                continue;
+            }
+            const glm::vec3 edgeA = vertices[i1].Position - vertices[i0].Position;
+            const glm::vec3 edgeB = vertices[i2].Position - vertices[i0].Position;
+            const glm::vec3 geometricNormal = glm::cross(edgeA, edgeB);
+            const glm::vec3 averageNormal = vertices[i0].Normal + vertices[i1].Normal + vertices[i2].Normal;
+            const float geometricLengthSq = glm::dot(geometricNormal, geometricNormal);
+            const float averageLengthSq = glm::dot(averageNormal, averageNormal);
+            if (geometricLengthSq <= 1.0e-12f || averageLengthSq <= 1.0e-12f) {
+                continue;
+            }
+            if (glm::dot(geometricNormal, averageNormal) < 0.0f) {
+                ++opposedNormalTriangles;
+            } else {
+                ++alignedNormalTriangles;
+            }
+        }
+        const std::size_t comparedNormalTriangles = alignedNormalTriangles + opposedNormalTriangles;
+        if (comparedNormalTriangles >= 8 &&
+            opposedNormalTriangles * 4 > comparedNormalTriangles * 3) {
+            for (Vertex& vertex : vertices) {
+                vertex.Normal = -vertex.Normal;
+                // Preserve the tangent-space handedness after reversing N.
+                vertex.Bitangent = -vertex.Bitangent;
+            }
+            std::cout << "Repaired inverted vertex normals for mesh: "
+                      << mesh->mName.C_Str() << " ("
+                      << opposedNormalTriangles << "/" << comparedNormalTriangles
+                      << " triangles opposed)." << std::endl;
+        }
+
         // process materials
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
         aiString matName;
@@ -304,7 +347,7 @@ private:
                             const int byteCount = static_cast<int>(embeddedTexture->mWidth);
                             const unsigned char* bytes = reinterpret_cast<const unsigned char*>(embeddedTexture->pcData);
                             texture.embeddedData.assign(bytes, bytes + byteCount);
-                            texture.id = TextureFromMemory(texture.embeddedData.data(), byteCount);
+                            texture.id = TextureFromMemory(texture.embeddedData.data(), byteCount, typeName == "texture_albedo");
                         } else {
                             const int byteCount = static_cast<int>(embeddedTexture->mWidth * embeddedTexture->mHeight * sizeof(aiTexel));
                             const unsigned char* bytes = reinterpret_cast<const unsigned char*>(embeddedTexture->pcData);
@@ -315,7 +358,7 @@ private:
                     }
                 }
                 if (texture.id == 0 && texture.embeddedData.empty()) {
-                    texture.id = TextureFromFile(texturePath.c_str(), this->directory);  // Assuming TextureFromFile is your custom function
+                    texture.id = TextureFromFile(texturePath.c_str(), this->directory, typeName == "texture_albedo");
                 }
                 if (texture.id == 0) {
                     if (!texture.embeddedData.empty()) {
@@ -342,7 +385,6 @@ private:
 
 unsigned int TextureFromFile(const char* path, const string& directory, bool gamma)
 {
-    (void)gamma;
     std::filesystem::path texturePath(path);
     if (texturePath.is_relative()) {
         texturePath = std::filesystem::path(directory) / texturePath;
@@ -394,7 +436,6 @@ unsigned int TextureFromFile(const char* path, const string& directory, bool gam
 
 unsigned int TextureFromMemory(const unsigned char* bytes, int dataSize, bool gamma)
 {
-    (void)gamma;
     if (bytes == nullptr || dataSize <= 0) {
         return 0;
     }
@@ -420,7 +461,10 @@ unsigned int TextureFromMemory(const unsigned char* bytes, int dataSize, bool ga
         }
 
         glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        const GLenum internalFormat = gamma && format == GL_RGB ? GL_SRGB8
+            : gamma && format == GL_RGBA ? GL_SRGB8_ALPHA8
+            : format;
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);

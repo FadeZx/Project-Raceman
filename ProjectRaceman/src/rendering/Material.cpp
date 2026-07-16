@@ -172,12 +172,24 @@ bool MaterialManager::LoadOne(const std::string& path, Material& out) {
 
         gets(obj, "name", out.name);
         gets(obj, "shader", out.shader);
+        if (auto it = obj.find("version"); it != obj.end() && it->second.is_number()) {
+            out.version = static_cast<int>(it->second.as_number());
+        }
         out.shader = ShaderRegistry::NormalizeShaderId(out.shader);
         if (!ShaderRegistry::IsKnownShader(out.shader) && !ShaderRegistry::IsGraphShaderId(out.shader)) {
             out.shader = "pbr";
         }
         getf(obj, "metallic", out.metallic);
         getf(obj, "roughness", out.roughness);
+        getf(obj, "clearCoat", out.clearCoat);
+        getf(obj, "clearCoatRoughness", out.clearCoatRoughness);
+        getf(obj, "anisotropy", out.anisotropy);
+        getf(obj, "transmission", out.transmission);
+        getf(obj, "alphaCutoff", out.alphaCutoff);
+        gets(obj, "alphaMode", out.alphaMode);
+        if (auto it = obj.find("doubleSided"); it != obj.end() && it->second.is_bool()) out.doubleSided = it->second.as_bool();
+        if (auto it = obj.find("transparentSortPriority"); it != obj.end() && it->second.is_number()) out.transparentSortPriority = static_cast<int>(it->second.as_number());
+        out.version = 2;
         getv4(obj, "albedoColor", out.albedoColor);
         getv3(obj, "emissiveColor", out.emissiveColor);
         getv2(obj, "uvTiling", out.uvTiling);
@@ -271,13 +283,21 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
     if (!out.good()) return false;
 
     out << "{\n";
-    out << "  \"version\": 1,\n";
+    out << "  \"version\": 2,\n";
     out << "  \"name\": \"" << JsonEscape(m.name.empty() ? id : m.name) << "\",\n";
     const std::string shaderId = ShaderRegistry::NormalizeShaderId(m.shader.empty() ? std::string("pbr") : m.shader);
     out << "  \"shader\": \"" << JsonEscape((ShaderRegistry::IsKnownShader(shaderId) || ShaderRegistry::IsGraphShaderId(shaderId)) ? shaderId : std::string("pbr")) << "\",\n";
     out << "  \"albedoColor\": [" << m.albedoColor[0] << ", " << m.albedoColor[1] << ", " << m.albedoColor[2] << ", " << m.albedoColor[3] << "],\n";
     out << "  \"metallic\": " << m.metallic << ",\n";
     out << "  \"roughness\": " << m.roughness << ",\n";
+    out << "  \"clearCoat\": " << m.clearCoat << ",\n";
+    out << "  \"clearCoatRoughness\": " << m.clearCoatRoughness << ",\n";
+    out << "  \"anisotropy\": " << m.anisotropy << ",\n";
+    out << "  \"transmission\": " << m.transmission << ",\n";
+    out << "  \"alphaMode\": \"" << JsonEscape(m.alphaMode) << "\",\n";
+    out << "  \"alphaCutoff\": " << m.alphaCutoff << ",\n";
+    out << "  \"doubleSided\": " << (m.doubleSided ? "true" : "false") << ",\n";
+    out << "  \"transparentSortPriority\": " << m.transparentSortPriority << ",\n";
     out << "  \"emissiveColor\": [" << m.emissiveColor[0] << ", " << m.emissiveColor[1] << ", " << m.emissiveColor[2] << "],\n";
     out << "  \"uvTiling\": [" << m.uvTiling[0] << ", " << m.uvTiling[1] << "],\n";
     out << "  \"uvOffset\": [" << m.uvOffset[0] << ", " << m.uvOffset[1] << "],\n";

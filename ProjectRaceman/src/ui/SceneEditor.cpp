@@ -69,10 +69,12 @@ fs::path ResolveProjectTexturePath(const std::string& value) {
 
 unsigned int LoadMaterialTextureCached(const std::string& texturePath,
                                        std::unordered_map<std::string, unsigned int>& cache,
-                                       Console* console) {
+                                       Console* console,
+                                       bool srgb = false) {
     const fs::path absolutePath = ResolveProjectTexturePath(texturePath);
     if (absolutePath.empty()) return 0;
-    const std::string key = NormalizeSlashes(absolutePath.lexically_normal().string());
+    const std::string pathKey = NormalizeSlashes(absolutePath.lexically_normal().string());
+    const std::string key = pathKey + (srgb ? "#srgb" : "#linear");
     if (auto existing = cache.find(key); existing != cache.end()) {
         return existing->second;
     }
@@ -80,10 +82,10 @@ unsigned int LoadMaterialTextureCached(const std::string& texturePath,
     int width = 0;
     int height = 0;
     int channels = 0;
-    unsigned char* data = stbi_load(key.c_str(), &width, &height, &channels, 4);
+    unsigned char* data = stbi_load(pathKey.c_str(), &width, &height, &channels, 4);
     if (data == nullptr || width <= 0 || height <= 0) {
         cache[key] = 0;
-        if (console) console->AddError("Failed to load material texture: " + key);
+        if (console) console->AddError("Failed to load material texture: " + pathKey);
         return 0;
     }
 
@@ -94,7 +96,7 @@ unsigned int LoadMaterialTextureCached(const std::string& texturePath,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
     stbi_image_free(data);
@@ -658,6 +660,9 @@ std::string BuildScriptRegistrySource(const std::vector<ScriptSourceInfo>& scrip
     }
     registry += "};\n\n";
     registry += "} // namespace\n\n";
+    registry += "extern \"C\" __declspec(dllexport) int RacemanGetScriptApiVersion() {\n";
+    registry += "    return kObjectScriptApiVersion;\n";
+    registry += "}\n\n";
     registry += "extern \"C\" __declspec(dllexport) int RacemanGetScriptCount() {\n";
     registry += "    return static_cast<int>(sizeof(kScripts) / sizeof(kScripts[0]));\n";
     registry += "}\n\n";
@@ -812,8 +817,10 @@ SceneEditor::SceneEditor() {
     playerMode = playerModeValue != nullptr && std::string(playerModeValue) == "1";
 #endif
     if (!playerMode) {
-        std::cout << "[Player] SceneEditor: loading scripts..." << std::endl;
-        LoadScriptAssembly(&scriptLoadError);
+        std::cout << "[Player] SceneEditor: building and loading scripts..." << std::endl;
+        if (!BuildAndLoadScriptAssembly(&scriptLoadError) && !scriptLoadError.empty()) {
+            std::cerr << "[Scripts] " << scriptLoadError << std::endl;
+        }
     } else {
         std::cout << "[Player] SceneEditor: deferred script load for player runtime." << std::endl;
     }
@@ -944,10 +951,22 @@ bool SceneEditor::TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float
     const CameraComponent& camera = fallbackCamera->camera;
     const int cameraIndex = static_cast<int>(fallbackCamera - objects_.data());
     glm::mat4 worldMatrix = GetObjectDisplayWorldMatrix(cameraIndex);
+    float cameraFov = camera.fieldOfViewDegrees;
+    float cameraNearClip = camera.nearClip;
+    float cameraFarClip = camera.farClip;
+    glm::vec4 cameraClearColor = camera.clearColor;
+    if (scriptsRunning_ && runtimeCameraBrainState_.initialized) {
+        worldMatrix = glm::translate(glm::mat4(1.0f), runtimeCameraBrainState_.position) *
+                      glm::toMat4(runtimeCameraBrainState_.rotation);
+        cameraFov = runtimeCameraBrainState_.fieldOfView;
+        cameraNearClip = runtimeCameraBrainState_.nearClip;
+        cameraFarClip = runtimeCameraBrainState_.farClip;
+        cameraClearColor = runtimeCameraBrainState_.clearColor;
+    }
     const float safeAspect = aspect > 0.0001f ? aspect : 1.0f;
-    const float fov = (std::max)(1.0f, (std::min)(camera.fieldOfViewDegrees, 179.0f));
-    const float nearClip = (std::max)(0.001f, camera.nearClip);
-    const float farClip = (std::max)(nearClip + 0.001f, camera.farClip);
+    const float fov = (std::max)(1.0f, (std::min)(cameraFov, 179.0f));
+    const float nearClip = (std::max)(0.001f, cameraNearClip);
+    const float farClip = (std::max)(nearClip + 0.001f, cameraFarClip);
     const glm::vec3 position = glm::vec3(worldMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     const glm::vec3 forward = glm::normalize(glm::vec3(worldMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
     const glm::vec3 up = glm::normalize(glm::vec3(worldMatrix * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
@@ -955,7 +974,7 @@ bool SceneEditor::TryGetGameCamera(glm::mat4& outView, glm::mat4& outProj, float
     outView = glm::lookAt(position, position + forward, up);
     outProj = glm::perspective(glm::radians(fov), safeAspect, nearClip, farClip);
     if (outClearColor) {
-        *outClearColor = camera.clearColor;
+        *outClearColor = cameraClearColor;
     }
     return true;
 }
@@ -984,6 +1003,47 @@ void SceneEditor::AddEmptyObject() {
     if (onDirty_) onDirty_();
 }
 
+void SceneEditor::TickPendingSceneSave() {
+    if (!sceneSaveRequested_ || !sceneSavePopupRendered_) {
+        return;
+    }
+
+    SaveCurrentScene();
+    sceneSaveRequested_ = false;
+    sceneSavePopupClosing_ = true;
+}
+
+void SceneEditor::RenderSceneSavePopup() {
+    constexpr const char* popupId = "Saving Scene...###SceneSaveProgress";
+    if (sceneSaveRequested_) {
+        if (!sceneSavePopupRendered_) {
+            sceneSaveAnimationStart_ = glfwGetTime();
+        }
+        const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(420.0f, 112.0f), ImGuiCond_Always);
+        ImGui::OpenPopup(popupId);
+    }
+
+    if (ImGui::BeginPopupModal(popupId, nullptr,
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+        if (sceneSavePopupClosing_) {
+            ImGui::CloseCurrentPopup();
+            sceneSavePopupClosing_ = false;
+            sceneSavePopupRendered_ = false;
+        } else {
+            const double elapsed = glfwGetTime() - sceneSaveAnimationStart_;
+            const float pulse = static_cast<float>(std::fmod(elapsed * 0.65, 1.0));
+            ImGui::TextUnformatted("Saving scene and refreshing project assets...");
+            ImGui::ProgressBar(pulse, ImVec2(-1.0f, 0.0f), "Please wait");
+            ImGui::TextDisabled("%s", NormalizeSlashes(savePath_).c_str());
+            sceneSavePopupRendered_ = true;
+        }
+        ImGui::EndPopup();
+    }
+}
+
 void SceneEditor::RenderUI(float deltaTime) {
     auto elapsedMs = [](double start) {
         return static_cast<float>((glfwGetTime() - start) * 1000.0);
@@ -996,6 +1056,8 @@ void SceneEditor::RenderUI(float deltaTime) {
     frameTimings_.shortcutsMs = elapsedMs(timingStart);
 
     timingStart = glfwGetTime();
+    TickPendingSceneSave();
+    RenderSceneSavePopup();
     TickPlayModeLoading();          // check if async physics build is done; finalize on main thread
     RenderPlayModeLoadingPopup();   // show modal progress UI while building (before dockspace so ID stack is clean)
     TickCollisionBake();
@@ -1629,7 +1691,7 @@ void SceneEditor::RenderStatusBar(float deltaTime) {
 void SceneEditor::HandleEditorShortcuts() {
     ImGuiIO& io = ImGui::GetIO();
     if (IsCtrlSPressed()) {
-        SaveCurrentScene();
+        RequestSaveCurrentScene();
         return;
     }
     if (io.WantTextInput) {
@@ -1643,6 +1705,18 @@ void SceneEditor::HandleEditorShortcuts() {
         (shaderGraphEditorFocused_ || shaderGraphEditorHovered_);
     const bool materialShortcutTarget = inspectMaterial_ &&
         (inspectorPanelFocused_ || inspectorPanelHovered_);
+    if (io.KeyCtrl && !io.KeyAlt && ImGui::IsKeyPressed(ImGuiKey_D) &&
+        selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size()) &&
+        !shaderGraphShortcutTarget && !vehicleConfigShortcutTarget && !vehicleSoundShortcutTarget) {
+        // Duplicate through the existing hierarchy-aware copy/paste path so
+        // children and component object references receive fresh IDs. Preserve
+        // the user's clipboard because Duplicate should not replace Copy.
+        ObjectClipboardState savedClipboard = objectClipboard_;
+        CopySelectedObjectsToClipboard();
+        PasteObjectsFromClipboard();
+        objectClipboard_ = std::move(savedClipboard);
+        return;
+    }
     if (IsCtrlZPressed()) {
         if (shaderGraphShortcutTarget) {
             UndoShaderGraph();
@@ -2056,6 +2130,15 @@ void SceneEditor::PasteObjectsFromClipboard() {
             pastedRootIds.push_back(copy.id);
         }
         RemapVehicleObjectReferences(copy, idRemap);
+        RemapScriptObjectReferences(copy, idRemap);
+        if (copy.hasCinemachine) {
+            if (const auto followIt = idRemap.find(copy.cinemachine.followTargetId); followIt != idRemap.end()) {
+                copy.cinemachine.followTargetId = followIt->second;
+            }
+            if (const auto lookAtIt = idRemap.find(copy.cinemachine.lookAtTargetId); lookAtIt != idRemap.end()) {
+                copy.cinemachine.lookAtTargetId = lookAtIt->second;
+            }
+        }
         objects_.push_back(std::move(copy));
     }
 
@@ -4156,6 +4239,12 @@ void SceneEditor::Load(const std::string& path) {
                         if (rotDampIt != component.end() && rotDampIt->second.is_number()) {
                             so.cinemachine.rotationDamping = (std::max)(0.0f, static_cast<float>(rotDampIt->second.as_number()));
                         }
+                        if (auto priorityIt = component.find("priority"); priorityIt != component.end() && priorityIt->second.is_number()) {
+                            so.cinemachine.priority = static_cast<int>(priorityIt->second.as_number());
+                        }
+                        if (auto blendIt = component.find("blendDuration"); blendIt != component.end() && blendIt->second.is_number()) {
+                            so.cinemachine.blendDuration = (std::max)(0.0f, static_cast<float>(blendIt->second.as_number()));
+                        }
                     } else if (componentType == "Light") {
                         so.hasLight = true;
                         ReadBool(component, "enabled", so.light.enabled);
@@ -5298,27 +5387,27 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
             cmd.modelMatrix = m;
         }
 
+        const glm::vec3& localBoundsMin = o.meshFilter.localBoundsMin;
+        const glm::vec3& localBoundsMax = o.meshFilter.localBoundsMax;
+        const glm::vec3 boundsCorners[8] = {
+            {localBoundsMin.x, localBoundsMin.y, localBoundsMin.z}, {localBoundsMax.x, localBoundsMin.y, localBoundsMin.z},
+            {localBoundsMax.x, localBoundsMax.y, localBoundsMin.z}, {localBoundsMin.x, localBoundsMax.y, localBoundsMin.z},
+            {localBoundsMin.x, localBoundsMin.y, localBoundsMax.z}, {localBoundsMax.x, localBoundsMin.y, localBoundsMax.z},
+            {localBoundsMax.x, localBoundsMax.y, localBoundsMax.z}, {localBoundsMin.x, localBoundsMax.y, localBoundsMax.z}
+        };
+        glm::vec3 worldMin = glm::vec3(cmd.modelMatrix * glm::vec4(boundsCorners[0], 1.0f));
+        glm::vec3 worldMax = worldMin;
+        for (int cornerIndex = 1; cornerIndex < 8; ++cornerIndex) {
+            const glm::vec3 worldCorner = glm::vec3(cmd.modelMatrix * glm::vec4(boundsCorners[cornerIndex], 1.0f));
+            worldMin = (glm::min)(worldMin, worldCorner);
+            worldMax = (glm::max)(worldMax, worldCorner);
+        }
+        cmd.transparentSortCenter = (worldMin + worldMax) * 0.5f;
+        cmd.transparentSortRadius = glm::length((worldMax - worldMin) * 0.5f);
+        cmd.hasTransparentSortBounds = true;
+
         // Frustum culling: test world-space AABB against all 6 planes
         if (enableFrustumCulling_) {
-            const glm::vec3& lMin = o.meshFilter.localBoundsMin;
-            const glm::vec3& lMax = o.meshFilter.localBoundsMax;
-            const glm::vec3 corners[8] = {
-                {lMin.x, lMin.y, lMin.z}, {lMax.x, lMin.y, lMin.z},
-                {lMax.x, lMax.y, lMin.z}, {lMin.x, lMax.y, lMin.z},
-                {lMin.x, lMin.y, lMax.z}, {lMax.x, lMin.y, lMax.z},
-                {lMax.x, lMax.y, lMax.z}, {lMin.x, lMax.y, lMax.z}
-            };
-            glm::vec3 worldMin = glm::vec3(cmd.modelMatrix * glm::vec4(corners[0], 1.0f));
-            glm::vec3 worldMax = worldMin;
-            for (int c = 1; c < 8; ++c) {
-                const glm::vec3 wp = glm::vec3(cmd.modelMatrix * glm::vec4(corners[c], 1.0f));
-                if (wp.x < worldMin.x) worldMin.x = wp.x;
-                if (wp.y < worldMin.y) worldMin.y = wp.y;
-                if (wp.z < worldMin.z) worldMin.z = wp.z;
-                if (wp.x > worldMax.x) worldMax.x = wp.x;
-                if (wp.y > worldMax.y) worldMax.y = wp.y;
-                if (wp.z > worldMax.z) worldMax.z = wp.z;
-            }
             bool culled = false;
             for (int p = 0; p < 6; ++p) {
                 const glm::vec4& plane = frustumPlanes[p];
@@ -5357,10 +5446,19 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
             };
             cmd.metallic = material->metallic;
             cmd.roughness = material->roughness;
+            cmd.clearCoat = material->clearCoat;
+            cmd.clearCoatRoughness = material->clearCoatRoughness;
+            cmd.anisotropy = material->anisotropy;
+            cmd.transmission = material->transmission;
+            const std::string alphaMode = ToLowerCopy(material->alphaMode);
+            cmd.alphaCutoff = alphaMode == "mask" ? material->alphaCutoff : 0.0f;
+            cmd.doubleSided = material->doubleSided;
+            cmd.transparent = alphaMode == "blend";
+            cmd.transparentSortPriority = material->transparentSortPriority;
             cmd.uvTiling = {material->uvTiling[0], material->uvTiling[1]};
             cmd.uvOffset = {material->uvOffset[0], material->uvOffset[1]};
             cmd.unlit = ToLowerCopy(material->shader) == "unlit";
-            cmd.materialTextureIds[0] = LoadMaterialTextureCached(material->texAlbedo, materialTextureCache_, console_);
+            cmd.materialTextureIds[0] = LoadMaterialTextureCached(material->texAlbedo, materialTextureCache_, console_, true);
             cmd.materialTextureIds[1] = LoadMaterialTextureCached(material->texNormal, materialTextureCache_, console_);
             cmd.materialTextureIds[2] = LoadMaterialTextureCached(material->texMetallic, materialTextureCache_, console_);
             cmd.materialTextureIds[3] = LoadMaterialTextureCached(material->texRoughness, materialTextureCache_, console_);

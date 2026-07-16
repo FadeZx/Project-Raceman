@@ -29,6 +29,7 @@ struct EditorProjectMenu {
     std::function<void()> renderInputSettings;
     std::function<void()> renderProjectSettings;
     std::function<void()> renderTagsAndLayersSettings;
+    std::function<void()> onGraphicsSettingsChanged;
 };
 
 class MenuController {

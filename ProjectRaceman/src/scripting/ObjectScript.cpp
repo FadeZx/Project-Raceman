@@ -237,6 +237,30 @@ void ObjectScriptContext::ObjectHandle::SetEnabled(bool value) const {
     }
 }
 
+bool ObjectScriptContext::ObjectHandle::HasVirtualCamera() const {
+    return object_ != nullptr && object_->hasCinemachine;
+}
+
+bool ObjectScriptContext::ObjectHandle::IsVirtualCameraEnabled() const {
+    return HasVirtualCamera() && object_->cinemachine.enabled;
+}
+
+void ObjectScriptContext::ObjectHandle::SetVirtualCameraEnabled(bool value) const {
+    if (HasVirtualCamera()) {
+        object_->cinemachine.enabled = value;
+    }
+}
+
+int ObjectScriptContext::ObjectHandle::GetVirtualCameraPriority() const {
+    return HasVirtualCamera() ? object_->cinemachine.priority : 0;
+}
+
+void ObjectScriptContext::ObjectHandle::SetVirtualCameraPriority(int value) const {
+    if (HasVirtualCamera()) {
+        object_->cinemachine.priority = value;
+    }
+}
+
 const std::string& ObjectScriptContext::GetObjectId() const {
     return object_.id;
 }
@@ -745,6 +769,10 @@ glm::vec2 ObjectScriptContext::GetMouseDelta() const {
     return inputManager_ != nullptr ? inputManager_->GetMouseDelta() : glm::vec2(0.0f);
 }
 
+bool ObjectScriptContext::WasKeyPressed(int key) const {
+    return inputManager_ != nullptr && inputManager_->WasKeyPressed(key);
+}
+
 float ObjectScriptContext::GetMouseWheelDelta() const {
     return inputManager_ != nullptr ? inputManager_->GetMouseWheelDelta() : 0.0f;
 }
@@ -789,6 +817,24 @@ glm::vec4 ObjectScriptContext::GetVec4Field(const std::string& name, const glm::
     return GetTypedFieldValue<glm::vec4>(attachment_, name, fallback);
 }
 
+ObjectScriptContext::ObjectHandle ObjectScriptContext::GetObjectField(const std::string& name) const {
+    return FindObjectById(GetTypedFieldValue<std::string>(attachment_, name, {}));
+}
+
+std::vector<ObjectScriptContext::ObjectHandle> ObjectScriptContext::GetObjectListField(const std::string& name) const {
+    std::vector<ObjectHandle> result;
+    const std::vector<std::string> ids = GetTypedFieldValue<std::vector<std::string>>(attachment_, name, {});
+    result.reserve(ids.size());
+    for (const std::string& id : ids) {
+        result.push_back(FindObjectById(id));
+    }
+    return result;
+}
+
+int ObjectScriptContext::GetKeyField(const std::string& name, int fallback) const {
+    return GetTypedFieldValue<int>(attachment_, name, fallback);
+}
+
 void ObjectScriptContext::SetBoolField(const std::string& name, bool value) {
     SetTypedFieldValue<bool>(attachment_, name, ScriptFieldType::Bool, value);
 }
@@ -815,6 +861,23 @@ void ObjectScriptContext::SetVec3Field(const std::string& name, const glm::vec3&
 
 void ObjectScriptContext::SetVec4Field(const std::string& name, const glm::vec4& value) {
     SetTypedFieldValue<glm::vec4>(attachment_, name, ScriptFieldType::Vec4, value);
+}
+
+void ObjectScriptContext::SetObjectField(const std::string& name, const ObjectHandle& value) {
+    SetTypedFieldValue<std::string>(attachment_, name, ScriptFieldType::ObjectRef, value.IsValid() ? value.GetObjectId() : std::string{});
+}
+
+void ObjectScriptContext::SetObjectListField(const std::string& name, const std::vector<ObjectHandle>& values) {
+    std::vector<std::string> ids;
+    ids.reserve(values.size());
+    for (const ObjectHandle& value : values) {
+        ids.push_back(value.IsValid() ? value.GetObjectId() : std::string{});
+    }
+    SetTypedFieldValue<std::vector<std::string>>(attachment_, name, ScriptFieldType::ObjectRefList, ids);
+}
+
+void ObjectScriptContext::SetKeyField(const std::string& name, int value) {
+    SetTypedFieldValue<int>(attachment_, name, ScriptFieldType::Key, value);
 }
 
 void ObjectScriptContext::Log(const std::string& message) const {

@@ -5,6 +5,7 @@
 #include "../../../Project1/assets/scripts/CameraOrbit.h"
 #include "../../../Project1/assets/scripts/CharacterControllerTest.h"
 #include "../../../Project1/assets/scripts/TestPlayerMovement.h"
+#include "../../../Project1/assets/scripts/VirtualCameraSwitcher.h"
 
 namespace raceman {
 namespace {
@@ -21,6 +22,10 @@ std::unique_ptr<IObjectScript> CreateTestPlayerMovement() {
     return std::make_unique<scripts::TestPlayerMovement>();
 }
 
+std::unique_ptr<IObjectScript> CreateVirtualCameraSwitcher() {
+    return std::make_unique<scripts::VirtualCameraSwitcher>();
+}
+
 struct ScriptExportEntry {
     const char* name;
     const char* path;
@@ -30,9 +35,14 @@ const ScriptExportEntry kScripts[] = {
     {"CameraOrbit", "assets/scripts/CameraOrbit.cpp"},
     {"CharacterControllerTest", "assets/scripts/CharacterControllerTest.cpp"},
     {"TestPlayerMovement", "assets/scripts/TestPlayerMovement.cpp"},
+    {"VirtualCameraSwitcher", "assets/scripts/VirtualCameraSwitcher.cpp"},
 };
 
 } // namespace
+
+extern "C" __declspec(dllexport) int RacemanGetScriptApiVersion() {
+    return kObjectScriptApiVersion;
+}
 
 extern "C" __declspec(dllexport) int RacemanGetScriptCount() {
     return static_cast<int>(sizeof(kScripts) / sizeof(kScripts[0]));
@@ -53,6 +63,7 @@ extern "C" __declspec(dllexport) raceman::IObjectScript* RacemanCreateScriptByNa
     if (std::strcmp(name, "CameraOrbit") == 0) return new scripts::CameraOrbit();
     if (std::strcmp(name, "CharacterControllerTest") == 0) return new scripts::CharacterControllerTest();
     if (std::strcmp(name, "TestPlayerMovement") == 0) return new scripts::TestPlayerMovement();
+    if (std::strcmp(name, "VirtualCameraSwitcher") == 0) return new scripts::VirtualCameraSwitcher();
     return nullptr;
 }
 
@@ -61,6 +72,7 @@ extern "C" __declspec(dllexport) void RacemanRegisterScripts(std::vector<raceman
     scripts.push_back({"CameraOrbit", "assets/scripts/CameraOrbit.cpp", &CreateCameraOrbit});
     scripts.push_back({"CharacterControllerTest", "assets/scripts/CharacterControllerTest.cpp", &CreateCharacterControllerTest});
     scripts.push_back({"TestPlayerMovement", "assets/scripts/TestPlayerMovement.cpp", &CreateTestPlayerMovement});
+    scripts.push_back({"VirtualCameraSwitcher", "assets/scripts/VirtualCameraSwitcher.cpp", &CreateVirtualCameraSwitcher});
 }
 
 } // namespace raceman

@@ -1059,32 +1059,38 @@ void SceneEditor::UpdateImGuizmo() {
                         object.transform.position = targetPosition;
                     }
 
-                    glm::quat baseRotation = ExtractWorldRotationNoScale(GetObjectWorldMatrix(index));
-                    if (object.cinemachine.type == CinemachineCameraType::Follow && !object.cinemachine.followTargetId.empty()) {
-                        const int followIndex = FindObjectIndexById(object.cinemachine.followTargetId);
-                        if (followIndex >= 0) {
-                            baseRotation = ExtractWorldRotationNoScale(GetObjectWorldMatrix(followIndex));
-                        }
-                    } else if ((object.cinemachine.type == CinemachineCameraType::LookAt || object.cinemachine.type == CinemachineCameraType::FollowAndLookAt)) {
-                        const std::string& lookAtId = object.cinemachine.lookAtTargetId.empty() ? object.cinemachine.followTargetId : object.cinemachine.lookAtTargetId;
-                        const int lookAtIndex = lookAtId.empty() ? -1 : FindObjectIndexById(lookAtId);
-                        if (lookAtIndex >= 0 && lookAtIndex != index) {
-                            const glm::vec3 lookAtPos = glm::vec3(GetObjectWorldMatrix(lookAtIndex)[3]);
-                            const glm::vec3 dir = lookAtPos - targetPosition;
-                            if (glm::length(dir) > 0.001f) {
-                                const glm::vec3 fwd = glm::normalize(dir);
-                                const glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
-                                glm::vec3 right = glm::cross(fwd, worldUp);
-                                right = (glm::length(right) > 0.001f) ? glm::normalize(right) : glm::vec3(1.0f, 0.0f, 0.0f);
-                                const glm::vec3 up = glm::normalize(glm::cross(right, fwd));
-                                baseRotation = glm::quat_cast(glm::mat3(right, up, -fwd));
+                    // Moving a virtual camera must not rewrite its authored
+                    // rotation offset. Look At computes a new world rotation
+                    // from the moved position; changing the offset here makes
+                    // the gizmo and camera fight one another.
+                    if (gizmoMode_ == GizmoMode::Rotate) {
+                        glm::quat baseRotation = ExtractWorldRotationNoScale(GetObjectWorldMatrix(index));
+                        if (object.cinemachine.type == CinemachineCameraType::Follow && !object.cinemachine.followTargetId.empty()) {
+                            const int followIndex = FindObjectIndexById(object.cinemachine.followTargetId);
+                            if (followIndex >= 0) {
+                                baseRotation = ExtractWorldRotationNoScale(GetObjectWorldMatrix(followIndex));
+                            }
+                        } else if ((object.cinemachine.type == CinemachineCameraType::LookAt || object.cinemachine.type == CinemachineCameraType::FollowAndLookAt)) {
+                            const std::string& lookAtId = object.cinemachine.lookAtTargetId.empty() ? object.cinemachine.followTargetId : object.cinemachine.lookAtTargetId;
+                            const int lookAtIndex = lookAtId.empty() ? -1 : FindObjectIndexById(lookAtId);
+                            if (lookAtIndex >= 0 && lookAtIndex != index) {
+                                const glm::vec3 lookAtPos = glm::vec3(GetObjectWorldMatrix(lookAtIndex)[3]);
+                                const glm::vec3 dir = lookAtPos - targetPosition;
+                                if (glm::length(dir) > 0.001f) {
+                                    const glm::vec3 fwd = glm::normalize(dir);
+                                    const glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
+                                    glm::vec3 right = glm::cross(fwd, worldUp);
+                                    right = (glm::length(right) > 0.001f) ? glm::normalize(right) : glm::vec3(1.0f, 0.0f, 0.0f);
+                                    const glm::vec3 up = glm::normalize(glm::cross(right, fwd));
+                                    baseRotation = glm::quat_cast(glm::mat3(right, up, -fwd));
+                                }
                             }
                         }
+                        const glm::quat targetRotation = ExtractWorldRotationNoScale(targetWorld);
+                        object.transform.rotationEuler = NearestEulerEquivalent(
+                            glm::degrees(glm::eulerAngles(glm::normalize(glm::inverse(baseRotation) * targetRotation))),
+                            object.transform.rotationEuler);
                     }
-                    const glm::quat targetRotation = ExtractWorldRotationNoScale(targetWorld);
-                    object.transform.rotationEuler = NearestEulerEquivalent(
-                        glm::degrees(glm::eulerAngles(glm::normalize(glm::inverse(baseRotation) * targetRotation))),
-                        object.transform.rotationEuler);
                     object.cinemachine.followOffset = object.transform.position;
                     object.cinemachine.pitchOffset = object.transform.rotationEuler.x;
                     object.cinemachine.yawOffset = object.transform.rotationEuler.y;

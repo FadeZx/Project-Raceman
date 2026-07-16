@@ -9,6 +9,50 @@ using namespace scene_editor_internal;
 
 namespace {
 
+const char* RenderStyleToStorage(RenderStyle style) {
+    return style == RenderStyle::Stylized ? "Stylized" : "Realistic";
+}
+
+RenderStyle RenderStyleFromStorage(const std::string& value) {
+    return ToLowerCopy(value) == "stylized" ? RenderStyle::Stylized : RenderStyle::Realistic;
+}
+
+const char* GraphicsQualityToStorage(GraphicsQualityTier quality) {
+    switch (quality) {
+    case GraphicsQualityTier::Low: return "Low";
+    case GraphicsQualityTier::Medium: return "Medium";
+    case GraphicsQualityTier::Ultra: return "Ultra";
+    case GraphicsQualityTier::High:
+    default: return "High";
+    }
+}
+
+GraphicsQualityTier GraphicsQualityFromStorage(const std::string& value) {
+    const std::string lower = ToLowerCopy(value);
+    if (lower == "low") return GraphicsQualityTier::Low;
+    if (lower == "medium") return GraphicsQualityTier::Medium;
+    if (lower == "ultra") return GraphicsQualityTier::Ultra;
+    return GraphicsQualityTier::High;
+}
+
+const char* AntiAliasingToStorage(AntiAliasingMode mode) {
+    switch (mode) {
+    case AntiAliasingMode::None: return "None";
+    case AntiAliasingMode::TAA: return "TAA";
+    case AntiAliasingMode::MSAA: return "MSAA";
+    case AntiAliasingMode::FXAA:
+    default: return "FXAA";
+    }
+}
+
+AntiAliasingMode AntiAliasingFromStorage(const std::string& value) {
+    const std::string lower = ToLowerCopy(value);
+    if (lower == "none") return AntiAliasingMode::None;
+    if (lower == "taa") return AntiAliasingMode::TAA;
+    if (lower == "msaa") return AntiAliasingMode::MSAA;
+    return AntiAliasingMode::FXAA;
+}
+
 const char* InputDeviceTypeToStorage(InputDeviceType type) {
     switch (type) {
     case InputDeviceType::Keyboard: return "Keyboard";
@@ -199,6 +243,21 @@ void SceneEditor::SaveCurrentScene() {
     if (console_) {
         console_->AddLog("Scene saved: " + lastScenePath_);
     }
+}
+
+void SceneEditor::RequestSaveCurrentScene() {
+    if (scriptsRunning_) {
+        if (console_) {
+            console_->AddWarning("Stop Play mode before saving the scene.");
+        }
+        return;
+    }
+    if (sceneSaveRequested_) {
+        return;
+    }
+    sceneSaveRequested_ = true;
+    sceneSavePopupRendered_ = false;
+    sceneSavePopupClosing_ = false;
 }
 
 void SceneEditor::SaveActiveAsset() {
@@ -515,7 +574,9 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"pitchOffset\": " << o.transform.rotationEuler.x << ",\n";
             out << "          \"yawOffset\": " << o.transform.rotationEuler.y << ",\n";
             out << "          \"positionDamping\": " << o.cinemachine.positionDamping << ",\n";
-            out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << "\n";
+            out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << ",\n";
+            out << "          \"priority\": " << o.cinemachine.priority << ",\n";
+            out << "          \"blendDuration\": " << o.cinemachine.blendDuration << "\n";
             out << "        }";
         }
         if (o.hasLight) {
@@ -837,7 +898,9 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
             out << "          \"pitchOffset\": " << o.transform.rotationEuler.x << ",\n";
             out << "          \"yawOffset\": " << o.transform.rotationEuler.y << ",\n";
             out << "          \"positionDamping\": " << o.cinemachine.positionDamping << ",\n";
-            out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << "\n";
+            out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << ",\n";
+            out << "          \"priority\": " << o.cinemachine.priority << ",\n";
+            out << "          \"blendDuration\": " << o.cinemachine.blendDuration << "\n";
             out << "        }";
         }
         if (o.hasLight) {
@@ -1042,11 +1105,14 @@ void SceneEditor::Load(const std::string& path) {
                 }
             }
 
+            bool hasLegacyMeshRendererData = false;
+
             // color (optional)
             auto colIt = o.find("color");
             if (colIt != o.end() && colIt->second.is_array()) {
                 const auto& a = colIt->second.as_array();
                 if (a.size() == 4 && a[0].is_number() && a[1].is_number() && a[2].is_number() && a[3].is_number()) {
+                    hasLegacyMeshRendererData = true;
                     so.meshRenderer.color = {
                         static_cast<float>(a[0].as_number()),
                         static_cast<float>(a[1].as_number()),
@@ -1059,6 +1125,7 @@ void SceneEditor::Load(const std::string& path) {
             // materialId (optional)
             auto matIt = o.find("materialId");
             if (matIt != o.end() && matIt->second.is_string()) {
+                hasLegacyMeshRendererData = true;
                 so.meshRenderer.materialId = matIt->second.as_string();
             }
 
@@ -1125,6 +1192,7 @@ void SceneEditor::Load(const std::string& path) {
                     if (!script.scriptName.empty()) {
                         SyncAttachmentScriptFields(script);
                         so.scriptComponent.attachments.push_back(script);
+                        so.hasScriptComponent = true;
                     }
                 }
             }
@@ -1529,6 +1597,12 @@ void SceneEditor::Load(const std::string& path) {
                         if (rotDampingIt != component.end() && rotDampingIt->second.is_number()) {
                             so.cinemachine.rotationDamping = (std::max)(0.0f, static_cast<float>(rotDampingIt->second.as_number()));
                         }
+                        if (auto priorityIt = component.find("priority"); priorityIt != component.end() && priorityIt->second.is_number()) {
+                            so.cinemachine.priority = static_cast<int>(priorityIt->second.as_number());
+                        }
+                        if (auto blendIt = component.find("blendDuration"); blendIt != component.end() && blendIt->second.is_number()) {
+                            so.cinemachine.blendDuration = (std::max)(0.0f, static_cast<float>(blendIt->second.as_number()));
+                        }
                     } else if (componentType == "Light") {
                         so.hasLight = true;
                         ReadBool(component, "enabled", so.light.enabled);
@@ -1636,17 +1710,8 @@ void SceneEditor::Load(const std::string& path) {
                 so.hasMeshFilter = true;
             }
 
-            if (!so.hasMeshRenderer && (!so.meshRenderer.materialId.empty() || so.meshRenderer.color != glm::vec4(1.0f))) {
+            if (!so.hasMeshRenderer && hasLegacyMeshRendererData) {
                 so.hasMeshRenderer = true;
-            }
-
-            if (!so.hasMeshFilter && !so.hasMeshRenderer && !so.hasScriptComponent && !so.hasRigidbody &&
-                !so.hasVehicle && !so.hasCharacterController && !so.hasBoxCollider && !so.hasSphereCollider &&
-                !so.hasCapsuleCollider && !so.hasPlaneCollider && !so.hasMeshCollider && !so.hasCamera && !so.hasCinemachine && !so.hasLight &&
-                !so.hasAudioListener && !so.hasAudioSource && !so.hasVehicleSound && !so.hasTrackGenerator) {
-                so.hasMeshFilter = true;
-                so.hasMeshRenderer = true;
-                so.meshFilter.meshType = "Plane";
             }
 
             if (!so.hasMeshFilter) {
@@ -1727,6 +1792,7 @@ void SceneEditor::Load(const std::string& path) {
                 if (object.parentId == remap.first) {
                     object.parentId = remap.second;
                 }
+                RemapScriptObjectReferences(object, {{remap.first, remap.second}});
             }
         }
 
@@ -2097,6 +2163,8 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                         }
                         if (auto pd = component.find("positionDamping"); pd != component.end() && pd->second.is_number()) so.cinemachine.positionDamping = (std::max)(0.0f, static_cast<float>(pd->second.as_number()));
                         if (auto rd = component.find("rotationDamping"); rd != component.end() && rd->second.is_number()) so.cinemachine.rotationDamping = (std::max)(0.0f, static_cast<float>(rd->second.as_number()));
+                        if (auto priority = component.find("priority"); priority != component.end() && priority->second.is_number()) so.cinemachine.priority = static_cast<int>(priority->second.as_number());
+                        if (auto blend = component.find("blendDuration"); blend != component.end() && blend->second.is_number()) so.cinemachine.blendDuration = (std::max)(0.0f, static_cast<float>(blend->second.as_number()));
                     } else if (componentType == "Light") {
                         so.hasLight = true;
                         ReadBool(component, "enabled", so.light.enabled);
@@ -2178,6 +2246,7 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
         auto parentIt = idRemap.find(so.parentId);
         so.parentId = (parentIt != idRemap.end()) ? parentIt->second : std::string{};
         RemapVehicleObjectReferences(so, idRemap);
+        RemapScriptObjectReferences(so, idRemap);
         if (so.hasCinemachine) {
             auto fi = idRemap.find(so.cinemachine.followTargetId);
             if (fi != idRemap.end()) so.cinemachine.followTargetId = fi->second;
@@ -2242,6 +2311,7 @@ void SceneEditor::LoadProject() {
     ResetPhysicsLayerSettings();
     ResetTrackSurfaceSettings();
     projectTags_ = {"Untagged"};
+    graphicsProfile_ = GraphicsProfile{};
 
     bool shouldSaveProject = false;
 
@@ -2270,6 +2340,31 @@ void SceneEditor::LoadProject() {
                 ReadString(object, "assetsRoot", assetsRootSetting_);
                 ReadString(object, "defaultScene", defaultScenePath_);
                 ReadString(object, "lastScene", lastScenePath_);
+
+                auto graphicsIt = object.find("graphics");
+                if (graphicsIt != object.end() && graphicsIt->second.is_object()) {
+                    const auto& graphics = graphicsIt->second.as_object();
+                    if (auto it = graphics.find("version"); it != graphics.end() && it->second.is_number()) graphicsProfile_.version = static_cast<int>(it->second.as_number());
+                    std::string value;
+                    if (ReadString(graphics, "style", value)) graphicsProfile_.style = RenderStyleFromStorage(value);
+                    if (ReadString(graphics, "quality", value)) graphicsProfile_.quality = GraphicsQualityFromStorage(value);
+                    if (ReadString(graphics, "antiAliasing", value)) graphicsProfile_.antiAliasing = AntiAliasingFromStorage(value);
+                    ReadBool(graphics, "hdr", graphicsProfile_.hdr);
+                    ReadBool(graphics, "bloom", graphicsProfile_.bloom);
+                    ReadBool(graphics, "ssao", graphicsProfile_.ssao);
+                    ReadBool(graphics, "shadows", graphicsProfile_.shadows);
+                    ReadBool(graphics, "reflections", graphicsProfile_.reflections);
+                    ReadBool(graphics, "particles", graphicsProfile_.particles);
+                    ReadBool(graphics, "weather", graphicsProfile_.weather);
+                    ReadBool(graphics, "lod", graphicsProfile_.lod);
+                    ReadBool(graphics, "dynamicResolution", graphicsProfile_.dynamicResolution);
+                    if (auto it = graphics.find("minimumResolutionScale"); it != graphics.end() && it->second.is_number()) graphicsProfile_.minimumResolutionScale = (std::clamp)(static_cast<float>(it->second.as_number()), 0.5f, 1.0f);
+                    if (auto it = graphics.find("exposure"); it != graphics.end() && it->second.is_number()) graphicsProfile_.exposure = (std::max)(0.01f, static_cast<float>(it->second.as_number()));
+                    if (auto it = graphics.find("stylizedBands"); it != graphics.end() && it->second.is_number()) graphicsProfile_.stylizedBands = (std::max)(2.0f, static_cast<float>(it->second.as_number()));
+                    if (auto it = graphics.find("stylizedRimStrength"); it != graphics.end() && it->second.is_number()) graphicsProfile_.stylizedRimStrength = (std::max)(0.0f, static_cast<float>(it->second.as_number()));
+                } else {
+                    shouldSaveProject = true;
+                }
 
                 skyboxFaces_ = {};
                 auto skyboxIt = object.find("skybox");
@@ -2572,6 +2667,25 @@ void SceneEditor::SaveProject() {
         out << "  \"assetsRoot\": \"" << JsonEscape(assetsRootSetting_) << "\",\n";
         out << "  \"defaultScene\": \"" << JsonEscape(NormalizeSlashes(defaultScenePath_)) << "\",\n";
         out << "  \"lastScene\": \"" << JsonEscape(NormalizeSlashes(lastScenePath_)) << "\",\n";
+        out << "  \"graphics\": {\n";
+        out << "    \"version\": " << graphicsProfile_.version << ",\n";
+        out << "    \"style\": \"" << RenderStyleToStorage(graphicsProfile_.style) << "\",\n";
+        out << "    \"quality\": \"" << GraphicsQualityToStorage(graphicsProfile_.quality) << "\",\n";
+        out << "    \"antiAliasing\": \"" << AntiAliasingToStorage(graphicsProfile_.antiAliasing) << "\",\n";
+        out << "    \"hdr\": " << (graphicsProfile_.hdr ? "true" : "false") << ",\n";
+        out << "    \"bloom\": " << (graphicsProfile_.bloom ? "true" : "false") << ",\n";
+        out << "    \"ssao\": " << (graphicsProfile_.ssao ? "true" : "false") << ",\n";
+        out << "    \"shadows\": " << (graphicsProfile_.shadows ? "true" : "false") << ",\n";
+        out << "    \"reflections\": " << (graphicsProfile_.reflections ? "true" : "false") << ",\n";
+        out << "    \"particles\": " << (graphicsProfile_.particles ? "true" : "false") << ",\n";
+        out << "    \"weather\": " << (graphicsProfile_.weather ? "true" : "false") << ",\n";
+        out << "    \"lod\": " << (graphicsProfile_.lod ? "true" : "false") << ",\n";
+        out << "    \"dynamicResolution\": " << (graphicsProfile_.dynamicResolution ? "true" : "false") << ",\n";
+        out << "    \"minimumResolutionScale\": " << graphicsProfile_.minimumResolutionScale << ",\n";
+        out << "    \"exposure\": " << graphicsProfile_.exposure << ",\n";
+        out << "    \"stylizedBands\": " << graphicsProfile_.stylizedBands << ",\n";
+        out << "    \"stylizedRimStrength\": " << graphicsProfile_.stylizedRimStrength << "\n";
+        out << "  },\n";
         out << "  \"skybox\": [\n";
         for (std::size_t fi = 0; fi < skyboxFaces_.size(); ++fi) {
             out << "    \"" << JsonEscape(NormalizeSlashes(skyboxFaces_[fi])) << "\"" << (fi + 1 < skyboxFaces_.size() ? ",\n" : "\n");

@@ -23,13 +23,21 @@ struct MaterialPropertyValue {
 };
 
 struct Material {
-    int version{1};
+    int version{2};
     std::string name{"pbr_default"};
     std::string shader{"pbr"};
 
     // Scalars
     float metallic{0.0f};
     float roughness{1.0f};
+    float clearCoat{0.0f};
+    float clearCoatRoughness{0.1f};
+    float anisotropy{0.0f};
+    float transmission{0.0f};
+    std::string alphaMode{"Opaque"};
+    float alphaCutoff{0.5f};
+    bool doubleSided{false};
+    int transparentSortPriority{0};
 
     // Colors (RGBA / RGB)
     float albedoColor[4]{1.0f, 1.0f, 1.0f, 1.0f};

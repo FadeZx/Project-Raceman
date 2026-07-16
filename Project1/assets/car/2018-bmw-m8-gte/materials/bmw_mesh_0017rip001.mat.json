@@ -1,10 +1,18 @@
 {
-  "version": 1,
+  "version": 2,
   "name": "Mesh_0017.rip.001",
   "shader": "pbr",
   "albedoColor": [1, 1, 1, 1],
-  "metallic": 0,
-  "roughness": 1,
+  "metallic": 0.669,
+  "roughness": 0.763,
+  "clearCoat": 0.703,
+  "clearCoatRoughness": 0.247,
+  "anisotropy": 0.026,
+  "transmission": 0,
+  "alphaMode": "Opaque",
+  "alphaCutoff": 0.5,
+  "doubleSided": false,
+  "transparentSortPriority": 0,
   "emissiveColor": [0, 0, 0],
   "uvTiling": [1, 1],
   "uvOffset": [0, 0],
@@ -16,5 +24,8 @@
     "ao": ""
   },
   "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 },
+    "emissiveIntensity": { "type": "float", "value": 1 },
+    "emissiveTexture": { "type": "texture2D", "value": "" }
   }
 }

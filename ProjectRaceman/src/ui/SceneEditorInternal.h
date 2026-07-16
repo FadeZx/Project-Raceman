@@ -808,6 +808,9 @@ inline std::string ScriptFieldTypeToString(ScriptFieldType type) {
     case ScriptFieldType::Vec2: return "Vec2";
     case ScriptFieldType::Vec3: return "Vec3";
     case ScriptFieldType::Vec4: return "Vec4";
+    case ScriptFieldType::ObjectRef: return "ObjectRef";
+    case ScriptFieldType::ObjectRefList: return "ObjectRefList";
+    case ScriptFieldType::Key: return "Key";
     }
     return "Float";
 }
@@ -819,6 +822,9 @@ inline ScriptFieldType ScriptFieldTypeFromString(const std::string& value) {
     if (value == "Vec2") return ScriptFieldType::Vec2;
     if (value == "Vec3") return ScriptFieldType::Vec3;
     if (value == "Vec4") return ScriptFieldType::Vec4;
+    if (value == "ObjectRef") return ScriptFieldType::ObjectRef;
+    if (value == "ObjectRefList") return ScriptFieldType::ObjectRefList;
+    if (value == "Key") return ScriptFieldType::Key;
     return ScriptFieldType::Float;
 }
 
@@ -828,14 +834,26 @@ inline void WriteScriptFieldValue(std::ostream& out, const ScriptFieldEntry& fie
         out << "                \"value\": " << (std::get<bool>(field.value) ? "true" : "false") << "\n";
         break;
     case ScriptFieldType::Int:
+    case ScriptFieldType::Key:
         out << "                \"value\": " << std::get<int>(field.value) << "\n";
         break;
     case ScriptFieldType::Float:
         out << "                \"value\": " << std::get<float>(field.value) << "\n";
         break;
     case ScriptFieldType::String:
+    case ScriptFieldType::ObjectRef:
         out << "                \"value\": \"" << JsonEscape(std::get<std::string>(field.value)) << "\"\n";
         break;
+    case ScriptFieldType::ObjectRefList: {
+        const std::vector<std::string>& values = std::get<std::vector<std::string>>(field.value);
+        out << "                \"value\": [";
+        for (std::size_t i = 0; i < values.size(); ++i) {
+            if (i > 0) out << ", ";
+            out << "\"" << JsonEscape(values[i]) << "\"";
+        }
+        out << "]\n";
+        break;
+    }
     case ScriptFieldType::Vec2: {
         const glm::vec2 value = std::get<glm::vec2>(field.value);
         out << "                \"value\": [" << value.x << ", " << value.y << "]\n";
@@ -862,7 +880,8 @@ inline bool TryReadScriptFieldValue(const raceman::physics::json::Object& object
         outValue = value;
         return true;
     }
-    case ScriptFieldType::Int: {
+    case ScriptFieldType::Int:
+    case ScriptFieldType::Key: {
         auto it = object.find("value");
         if (it == object.end() || !it->second.is_number()) return false;
         outValue = static_cast<int>(it->second.as_number());
@@ -874,10 +893,23 @@ inline bool TryReadScriptFieldValue(const raceman::physics::json::Object& object
         outValue = static_cast<float>(it->second.as_number());
         return true;
     }
-    case ScriptFieldType::String: {
+    case ScriptFieldType::String:
+    case ScriptFieldType::ObjectRef: {
         std::string value;
         if (!ReadString(object, "value", value)) return false;
         outValue = value;
+        return true;
+    }
+    case ScriptFieldType::ObjectRefList: {
+        auto it = object.find("value");
+        if (it == object.end() || !it->second.is_array()) return false;
+        std::vector<std::string> values;
+        values.reserve(it->second.as_array().size());
+        for (const auto& item : it->second.as_array()) {
+            if (!item.is_string()) return false;
+            values.push_back(item.as_string());
+        }
+        outValue = std::move(values);
         return true;
     }
     case ScriptFieldType::Vec2: {
@@ -1451,6 +1483,36 @@ inline void RemapVehicleObjectReferences(SceneObject& object, const std::unorder
     }
 }
 
+inline void RemapScriptObjectReferences(SceneObject& object, const std::unordered_map<std::string, std::string>& idRemap) {
+    if (!object.hasScriptComponent || idRemap.empty()) {
+        return;
+    }
+
+    for (ObjectScriptAttachment& attachment : object.scriptComponent.attachments) {
+        for (ScriptFieldEntry& field : attachment.fields) {
+            if (field.type == ScriptFieldType::ObjectRef) {
+                auto* objectId = std::get_if<std::string>(&field.value);
+                if (!objectId) {
+                    continue;
+                }
+                if (const auto it = idRemap.find(*objectId); it != idRemap.end()) {
+                    *objectId = it->second;
+                }
+            } else if (field.type == ScriptFieldType::ObjectRefList) {
+                auto* objectIds = std::get_if<std::vector<std::string>>(&field.value);
+                if (!objectIds) {
+                    continue;
+                }
+                for (std::string& objectId : *objectIds) {
+                    if (const auto it = idRemap.find(objectId); it != idRemap.end()) {
+                        objectId = it->second;
+                    }
+                }
+            }
+        }
+    }
+}
+
 inline void RemapVehicleObjectReferences(std::vector<SceneObject>& objects) {
     std::unordered_set<std::string> ids;
     ids.reserve(objects.size());
@@ -1546,6 +1608,9 @@ inline bool IsScriptFieldValueCompatible(ScriptFieldType type, const ScriptField
     case ScriptFieldType::Vec2: return std::holds_alternative<glm::vec2>(value);
     case ScriptFieldType::Vec3: return std::holds_alternative<glm::vec3>(value);
     case ScriptFieldType::Vec4: return std::holds_alternative<glm::vec4>(value);
+    case ScriptFieldType::ObjectRef: return std::holds_alternative<std::string>(value);
+    case ScriptFieldType::ObjectRefList: return std::holds_alternative<std::vector<std::string>>(value);
+    case ScriptFieldType::Key: return std::holds_alternative<int>(value);
     }
     return false;
 }
@@ -1637,12 +1702,12 @@ inline bool ComputeCinemachineDesiredWorldMatrix(
     const std::string& lookAtId = cine.lookAtTargetId.empty() ? cine.followTargetId : cine.lookAtTargetId;
     const int lookAtIdx = lookAtId.empty() ? -1 : findById(lookAtId);
 
-    const bool hasFollow = followIdx >= 0 && followIdx != camIdx;
-    const bool hasLookAt = lookAtIdx >= 0 && lookAtIdx != camIdx;
+      const bool hasFollow = followIdx >= 0 && followIdx != camIdx;
+      const bool hasLookAt = lookAtIdx >= 0 && lookAtIdx != camIdx;
 
-    if (!hasFollow && !hasLookAt) {
-        return false;
-    }
+      if (!hasFollow && !hasLookAt) {
+          return false;
+      }
 
     const glm::mat4 cameraAuthoredWorld = getWorldMatrix(camIdx);
     glm::vec3 desiredPos = glm::vec3(cameraAuthoredWorld[3]);

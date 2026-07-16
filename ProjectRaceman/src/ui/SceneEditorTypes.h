@@ -296,6 +296,8 @@ enum class CinemachineCameraType {
 
 struct CinemachineCameraComponent {
     bool enabled{true};
+    int priority{10};
+    float blendDuration{0.6f};
     CinemachineCameraType type{CinemachineCameraType::FollowAndLookAt};
     std::string followTargetId;
     std::string lookAtTargetId;
@@ -353,9 +355,9 @@ struct SceneObject {
     std::vector<SceneInspectorComponentType> inspectorComponentOrder;
     Transform transform;
     bool enabled{true};
-    bool hasMeshFilter{true};
-    bool hasMeshRenderer{true};
-    bool hasScriptComponent{true};
+    bool hasMeshFilter{false};
+    bool hasMeshRenderer{false};
+    bool hasScriptComponent{false};
     bool hasRigidbody{false};
     bool hasVehicle{false};
     bool hasCharacterController{false};

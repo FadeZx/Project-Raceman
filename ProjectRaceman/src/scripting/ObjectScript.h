@@ -18,6 +18,8 @@
 
 namespace raceman {
 
+inline constexpr int kObjectScriptApiVersion = 2;
+
 class Console;
 class InputManager;
 class PhysicsWorld;
@@ -32,16 +34,21 @@ enum class ScriptFieldType {
     String,
     Vec2,
     Vec3,
-    Vec4
+    Vec4,
+    ObjectRef,
+    ObjectRefList,
+    Key
 };
 
-using ScriptFieldValue = std::variant<bool, int, float, std::string, glm::vec2, glm::vec3, glm::vec4>;
+using ScriptFieldValue = std::variant<bool, int, float, std::string, glm::vec2, glm::vec3, glm::vec4, std::vector<std::string>>;
 
 struct ScriptFieldDefinition {
     std::string name;
     std::string label;
     ScriptFieldType type{ScriptFieldType::Float};
     ScriptFieldValue defaultValue{0.0f};
+    std::string requiredComponent;
+    bool hidden{false};
 };
 
 struct ScriptFieldEntry {
@@ -78,6 +85,24 @@ inline ScriptFieldDefinition MakeVec4ScriptField(std::string name, std::string l
     return {std::move(name), std::move(label), ScriptFieldType::Vec4, defaultValue};
 }
 
+inline ScriptFieldDefinition MakeObjectScriptField(std::string name, std::string label, std::string defaultObjectId = {}, std::string requiredComponent = {}) {
+    return {std::move(name), std::move(label), ScriptFieldType::ObjectRef, std::move(defaultObjectId), std::move(requiredComponent)};
+}
+
+inline ScriptFieldDefinition MakeObjectListScriptField(std::string name, std::string label, std::string requiredComponent = {}) {
+    return {std::move(name), std::move(label), ScriptFieldType::ObjectRefList, std::vector<std::string>{}, std::move(requiredComponent)};
+}
+
+inline ScriptFieldDefinition MakeKeyScriptField(std::string name, std::string label, int defaultKey) {
+    return {std::move(name), std::move(label), ScriptFieldType::Key, defaultKey};
+}
+
+inline ScriptFieldDefinition MakeHiddenStringScriptField(std::string name, std::string defaultValue = {}) {
+    ScriptFieldDefinition definition{std::move(name), {}, ScriptFieldType::String, std::move(defaultValue)};
+    definition.hidden = true;
+    return definition;
+}
+
 #define RACEMAN_SCRIPT_FIELDS_BEGIN() \
     const std::vector<raceman::ScriptFieldDefinition>& GetFieldDefinitions() const override { \
         static const std::vector<raceman::ScriptFieldDefinition> kFields = {
@@ -89,6 +114,10 @@ inline ScriptFieldDefinition MakeVec4ScriptField(std::string name, std::string l
 #define RACEMAN_SCRIPT_FIELD_VEC2(name, label, default_value) raceman::MakeVec2ScriptField(name, label, default_value)
 #define RACEMAN_SCRIPT_FIELD_VEC3(name, label, default_value) raceman::MakeVec3ScriptField(name, label, default_value)
 #define RACEMAN_SCRIPT_FIELD_VEC4(name, label, default_value) raceman::MakeVec4ScriptField(name, label, default_value)
+#define RACEMAN_SCRIPT_FIELD_OBJECT(name, label, default_value, required_component) raceman::MakeObjectScriptField(name, label, default_value, required_component)
+#define RACEMAN_SCRIPT_FIELD_OBJECT_LIST(name, label, required_component) raceman::MakeObjectListScriptField(name, label, required_component)
+#define RACEMAN_SCRIPT_FIELD_KEY(name, label, default_value) raceman::MakeKeyScriptField(name, label, default_value)
+#define RACEMAN_SCRIPT_FIELD_HIDDEN_STRING(name, default_value) raceman::MakeHiddenStringScriptField(name, default_value)
 
 #define RACEMAN_SCRIPT_FIELDS_END() \
         }; \
@@ -148,6 +177,11 @@ public:
         void SetMaterialId(const std::string& value) const;
         bool IsEnabled() const;
         void SetEnabled(bool value) const;
+        bool HasVirtualCamera() const;
+        bool IsVirtualCameraEnabled() const;
+        void SetVirtualCameraEnabled(bool value) const;
+        int GetVirtualCameraPriority() const;
+        void SetVirtualCameraPriority(int value) const;
 
     private:
         SceneObject* object_{nullptr};
@@ -255,6 +289,7 @@ public:
     glm::vec3 GetUpVector() const;
 
     bool IsKeyDown(int key) const;
+    bool WasKeyPressed(int key) const;
     bool IsMouseButtonDown(int button) const;
     bool WasMouseButtonPressed(int button) const;
     glm::vec2 GetMouseDelta() const;
@@ -270,6 +305,9 @@ public:
     glm::vec2 GetVec2Field(const std::string& name, const glm::vec2& fallback = glm::vec2(0.0f)) const;
     glm::vec3 GetVec3Field(const std::string& name, const glm::vec3& fallback = glm::vec3(0.0f)) const;
     glm::vec4 GetVec4Field(const std::string& name, const glm::vec4& fallback = glm::vec4(0.0f)) const;
+    ObjectHandle GetObjectField(const std::string& name) const;
+    std::vector<ObjectHandle> GetObjectListField(const std::string& name) const;
+    int GetKeyField(const std::string& name, int fallback = -1) const;
 
     void SetBoolField(const std::string& name, bool value);
     void SetIntField(const std::string& name, int value);
@@ -278,6 +316,9 @@ public:
     void SetVec2Field(const std::string& name, const glm::vec2& value);
     void SetVec3Field(const std::string& name, const glm::vec3& value);
     void SetVec4Field(const std::string& name, const glm::vec4& value);
+    void SetObjectField(const std::string& name, const ObjectHandle& value);
+    void SetObjectListField(const std::string& name, const std::vector<ObjectHandle>& values);
+    void SetKeyField(const std::string& name, int value);
 
     void Log(const std::string& message) const;
     void Warning(const std::string& message) const;

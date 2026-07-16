@@ -401,6 +401,7 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         consoleLog("Loading project metadata...");
         ShowStartupSplash("Loading project metadata...", 0.76f);
         sceneEditor_->SetProjectRoot(config.projectRoot);
+        renderer_->GetSettings().profile = sceneEditor_->GetGraphicsProfile();
         const std::string loadingTitle = config_.windowTitle + " - Loading...";
         glfwSetWindowTitle(window_, loadingTitle.c_str());
         consoleLog("Startup complete; runtime will begin after first frame.");
@@ -437,6 +438,7 @@ void Application::InitializeEditor(const std::string& projectPath) {
 #endif
 
     sceneEditor_ = std::make_unique<SceneEditor>();
+    renderer_->GetSettings().profile = sceneEditor_->GetGraphicsProfile();
     sceneEditor_->SetRenderer(renderer_.get());
     sceneEditor_->SetConsole(console_.get());
     sceneEditor_->SetInputManager(inputManager_.get());
@@ -1157,7 +1159,7 @@ void Application::Update(float deltaTime) {
                     if (sceneEditor_) sceneEditor_->NewScene(sceneName);
                 },
                 [this]() {
-                    if (sceneEditor_) sceneEditor_->SaveCurrentScene();
+                    if (sceneEditor_) sceneEditor_->RequestSaveCurrentScene();
                 },
                 [this](const std::string& scenePath) {
                     if (sceneEditor_) sceneEditor_->OpenSceneAsset(scenePath);
@@ -1200,6 +1202,11 @@ void Application::Update(float deltaTime) {
                 },
                 [this]() {
                     if (sceneEditor_) sceneEditor_->RenderProjectTagsAndLayersSettings();
+                },
+                [this]() {
+                    if (!sceneEditor_) return;
+                    sceneEditor_->SetGraphicsProfile(renderer_->GetSettings().profile);
+                    sceneEditor_->SaveProject();
                 }
             } : EditorProjectMenu{},
             [this](const SkyboxFaces& faces) {
@@ -1326,13 +1333,15 @@ void Application::Render() {
             if (sceneEditor_->TryGetGameCamera(view, proj, aspect, &gameClearColor)) {
                 RendererSettings& settings = renderer_->GetSettings();
                 settings.clearColor = glm::vec3(gameClearColor.r, gameClearColor.g, gameClearColor.b);
+                renderer_->EnsureViewportRenderTarget(ViewportRenderTarget::Game, cfg.width, cfg.height);
                 renderer_->SetCamera(view, proj);
-                renderer_->BeginFrame();
+                renderer_->BeginFrameToViewportTarget(ViewportRenderTarget::Game, settings.clearColor);
                 if (skyboxController_) {
                     skyboxController_->Draw(view, proj);
                 }
                 sceneEditor_->SubmitDraws(*renderer_, false);
-                renderer_->EndFrame();
+                renderer_->EndFrameToViewportTarget();
+                renderer_->PresentViewportTarget(ViewportRenderTarget::Game, viewport);
                 settings.clearColor = previousClearColor;
             }
         }

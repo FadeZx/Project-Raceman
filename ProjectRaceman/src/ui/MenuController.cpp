@@ -99,8 +99,42 @@ void MenuController::Render(Renderer& renderer,
                 if (ImGui::BeginTabItem("Rendering", nullptr, renderingTabFlags)) {
                     selectedProjectSettingsTab_ = 0;
                     auto& settings = renderer.GetSettings();
-                    ImGui::ColorEdit3("Clear Color", &settings.clearColor.x);
-                    ImGui::ColorEdit3("Ambient Light", &settings.ambientColor.x);
+                    bool graphicsChanged = false;
+                    graphicsChanged |= ImGui::ColorEdit3("Clear Color", &settings.clearColor.x);
+                    graphicsChanged |= ImGui::ColorEdit3("Ambient Light", &settings.ambientColor.x);
+
+                    ImGui::Separator();
+                    ImGui::TextUnformatted("Graphics Profile");
+                    const char* styleNames[] = {"Realistic", "Stylized"};
+                    int styleIndex = settings.profile.style == RenderStyle::Stylized ? 1 : 0;
+                    if (ImGui::Combo("Render Style", &styleIndex, styleNames, 2)) {
+                        settings.profile.style = styleIndex == 1 ? RenderStyle::Stylized : RenderStyle::Realistic;
+                        graphicsChanged = true;
+                    }
+                    const char* qualityNames[] = {"Low", "Medium", "High", "Ultra"};
+                    int qualityIndex = static_cast<int>(settings.profile.quality);
+                    if (ImGui::Combo("Quality Tier", &qualityIndex, qualityNames, 4)) {
+                        settings.profile.quality = static_cast<GraphicsQualityTier>(qualityIndex);
+                        graphicsChanged = true;
+                    }
+                    const char* aaNames[] = {"None", "FXAA", "TAA (planned)", "MSAA (planned)"};
+                    int aaIndex = static_cast<int>(settings.profile.antiAliasing);
+                    if (ImGui::Combo("Anti-Aliasing", &aaIndex, aaNames, 4)) {
+                        settings.profile.antiAliasing = static_cast<AntiAliasingMode>(aaIndex);
+                        graphicsChanged = true;
+                    }
+                    graphicsChanged |= ImGui::DragFloat("Exposure", &settings.profile.exposure, 0.02f, 0.05f, 8.0f, "%.2f");
+                    graphicsChanged |= ImGui::Checkbox("HDR", &settings.profile.hdr);
+                    graphicsChanged |= ImGui::Checkbox("Bloom", &settings.profile.bloom);
+                    graphicsChanged |= ImGui::Checkbox("SSAO", &settings.profile.ssao);
+                    graphicsChanged |= ImGui::Checkbox("Shadows", &settings.profile.shadows);
+                    graphicsChanged |= ImGui::Checkbox("Reflections", &settings.profile.reflections);
+                    graphicsChanged |= ImGui::Checkbox("Weather", &settings.profile.weather);
+                    graphicsChanged |= ImGui::Checkbox("LOD", &settings.profile.lod);
+                    if (settings.profile.style == RenderStyle::Stylized) {
+                        graphicsChanged |= ImGui::DragFloat("Lighting Bands", &settings.profile.stylizedBands, 0.25f, 2.0f, 12.0f, "%.1f");
+                        graphicsChanged |= ImGui::DragFloat("Rim Strength", &settings.profile.stylizedRimStrength, 0.01f, 0.0f, 2.0f, "%.2f");
+                    }
 
                     bool vs = vsyncEnabled;
                     if (ImGui::Checkbox("VSync", &vs)) {
@@ -114,7 +148,7 @@ void MenuController::Render(Renderer& renderer,
                     if (frustumCullingEnabled) {
                         ImGui::Checkbox("Frustum Culling", frustumCullingEnabled);
                     }
-                    ImGui::Checkbox("Draw Call Sorting", &settings.enableDrawCallSorting);
+                    graphicsChanged |= ImGui::Checkbox("Draw Call Sorting", &settings.enableDrawCallSorting);
 
                     ImGui::Separator();
                     ImGui::TextUnformatted("Scene Camera");
@@ -175,6 +209,9 @@ void MenuController::Render(Renderer& renderer,
                         } else {
                             ImGui::TextDisabled("No skybox selected.");
                         }
+                    }
+                    if (graphicsChanged && projectMenu.onGraphicsSettingsChanged) {
+                        projectMenu.onGraphicsSettingsChanged();
                     }
                     ImGui::EndTabItem();
                 }

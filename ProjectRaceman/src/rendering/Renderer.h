@@ -28,10 +28,50 @@ struct RendererViewport {
     int height{1080};
 };
 
+enum class RenderStyle {
+    Realistic,
+    Stylized
+};
+
+enum class GraphicsQualityTier {
+    Low,
+    Medium,
+    High,
+    Ultra
+};
+
+enum class AntiAliasingMode {
+    None,
+    FXAA,
+    TAA,
+    MSAA
+};
+
+struct GraphicsProfile {
+    int version{1};
+    RenderStyle style{RenderStyle::Realistic};
+    GraphicsQualityTier quality{GraphicsQualityTier::High};
+    AntiAliasingMode antiAliasing{AntiAliasingMode::FXAA};
+    bool hdr{true};
+    bool bloom{true};
+    bool ssao{true};
+    bool shadows{true};
+    bool reflections{true};
+    bool particles{true};
+    bool weather{true};
+    bool lod{true};
+    bool dynamicResolution{false};
+    float minimumResolutionScale{0.75f};
+    float exposure{1.0f};
+    float stylizedBands{4.0f};
+    float stylizedRimStrength{0.35f};
+};
+
 struct RendererSettings {
     glm::vec3 clearColor{0.02f, 0.02f, 0.02f};
     glm::vec3 ambientColor{0.08f, 0.08f, 0.08f};
     bool enableDrawCallSorting{true};
+    GraphicsProfile profile{};
 };
 
 struct RendererFrameStats {
@@ -51,6 +91,17 @@ struct MeshDrawCommand {
     glm::vec3 emissiveColor{0.0f};
     float metallic{0.0f};
     float roughness{1.0f};
+    float clearCoat{0.0f};
+    float clearCoatRoughness{0.1f};
+    float anisotropy{0.0f};
+    float transmission{0.0f};
+    float alphaCutoff{0.0f};
+    bool doubleSided{false};
+    bool transparent{false};
+    int transparentSortPriority{0};
+    glm::vec3 transparentSortCenter{0.0f};
+    float transparentSortRadius{0.0f};
+    bool hasTransparentSortBounds{false};
     glm::vec2 uvTiling{1.0f, 1.0f};
     glm::vec2 uvOffset{0.0f, 0.0f};
     std::string shaderId{"pbr"};
@@ -120,6 +171,7 @@ public:
     void EnsureViewportRenderTarget(ViewportRenderTarget target, int width, int height);
     void BeginFrameToViewportTarget(ViewportRenderTarget target, const glm::vec3& clearColor);
     void EndFrameToViewportTarget();
+    void PresentViewportTarget(ViewportRenderTarget target, const RendererViewport& destination);
     unsigned int GetViewportRenderTargetTexture(ViewportRenderTarget target) const;
 
     void SetupEnvironment(const std::string& hdrPath);
@@ -148,14 +200,17 @@ public:
 private:
     struct ViewportTarget {
         unsigned int framebuffer{0};
-        unsigned int colorTexture{0};
+        unsigned int hdrColorTexture{0};
         unsigned int depthRenderbuffer{0};
+        unsigned int outputFramebuffer{0};
+        unsigned int colorTexture{0};
         int width{0};
         int height{0};
     };
 
     void InitializePipelines();
     void InitializeQuad();
+    void ResolveViewportTarget(ViewportTarget& target);
     void DestroyViewportTarget(ViewportTarget& target);
     ViewportTarget& GetViewportTarget(ViewportRenderTarget target);
     const ViewportTarget& GetViewportTarget(ViewportRenderTarget target) const;
@@ -180,7 +235,10 @@ private:
 
     // Simple fallback pipeline state
     std::unique_ptr<Shader> simpleShader_;
+    std::unique_ptr<Shader> toneMapShader_;
     std::unordered_map<std::string, std::unique_ptr<Shader>> materialShaders_;
+    ViewportRenderTarget activeViewportTarget_{ViewportRenderTarget::Scene};
+    bool viewportTargetActive_{false};
     glm::mat4 view_{1.0f};
     glm::mat4 proj_{1.0f};
 };

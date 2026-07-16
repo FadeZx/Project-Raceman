@@ -12,11 +12,13 @@
 
 #include <cstdio>
 #include <cstdint>
+#include <cctype>
 #include <cstring>
 #include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
+#include <GLFW/glfw3.h>
 
 #ifndef GLM_ENABLE_EXPERIMENTAL
 #define GLM_ENABLE_EXPERIMENTAL
@@ -303,7 +305,108 @@ void RenderComponentIcon(unsigned int textureId) {
     ImGui::SameLine();
 }
 
-bool RenderScriptFieldEditor(const ScriptFieldDefinition& definition, ScriptFieldEntry& field) {
+bool ScriptObjectMatchesFilter(const SceneObject& object, const std::string& filter) {
+    if (filter.empty()) return true;
+    if (filter == "VirtualCamera") return object.hasCinemachine;
+    if (filter == "Camera") return object.hasCamera;
+    if (filter == "Rigidbody") return object.hasRigidbody;
+    if (filter == "Vehicle") return object.hasVehicle;
+    if (filter == "Light") return object.hasLight;
+    return true;
+}
+
+const SceneObject* FindScriptFieldObject(const std::vector<SceneObject>& objects, const std::string& id) {
+    auto it = std::find_if(objects.begin(), objects.end(), [&](const SceneObject& object) { return object.id == id; });
+    return it != objects.end() ? &(*it) : nullptr;
+}
+
+std::string ScriptKeyLabel(int key) {
+    if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z) return std::string(1, static_cast<char>('A' + key - GLFW_KEY_A));
+    if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9) return std::string(1, static_cast<char>('0' + key - GLFW_KEY_0));
+    switch (key) {
+    case GLFW_KEY_SPACE: return "Space";
+    case GLFW_KEY_ESCAPE: return "Escape";
+    case GLFW_KEY_ENTER: return "Enter";
+    case GLFW_KEY_TAB: return "Tab";
+    case GLFW_KEY_BACKSPACE: return "Backspace";
+    case GLFW_KEY_INSERT: return "Insert";
+    case GLFW_KEY_DELETE: return "Delete";
+    case GLFW_KEY_RIGHT: return "Right Arrow";
+    case GLFW_KEY_LEFT: return "Left Arrow";
+    case GLFW_KEY_DOWN: return "Down Arrow";
+    case GLFW_KEY_UP: return "Up Arrow";
+    case GLFW_KEY_LEFT_SHIFT: return "Left Shift";
+    case GLFW_KEY_LEFT_CONTROL: return "Left Ctrl";
+    case GLFW_KEY_LEFT_ALT: return "Left Alt";
+    case GLFW_KEY_RIGHT_SHIFT: return "Right Shift";
+    case GLFW_KEY_RIGHT_CONTROL: return "Right Ctrl";
+    case GLFW_KEY_RIGHT_ALT: return "Right Alt";
+    default:
+        if (key >= GLFW_KEY_F1 && key <= GLFW_KEY_F25) return "F" + std::to_string(key - GLFW_KEY_F1 + 1);
+        return "Key " + std::to_string(key);
+    }
+}
+
+const std::vector<int>& ScriptKeyboardKeys() {
+    static const std::vector<int> keys = [] {
+        std::vector<int> result{GLFW_KEY_SPACE, GLFW_KEY_ESCAPE, GLFW_KEY_ENTER, GLFW_KEY_TAB, GLFW_KEY_BACKSPACE,
+                                GLFW_KEY_INSERT, GLFW_KEY_DELETE, GLFW_KEY_LEFT, GLFW_KEY_RIGHT, GLFW_KEY_UP, GLFW_KEY_DOWN};
+        for (int key = GLFW_KEY_A; key <= GLFW_KEY_Z; ++key) result.push_back(key);
+        for (int key = GLFW_KEY_0; key <= GLFW_KEY_9; ++key) result.push_back(key);
+        for (int key = GLFW_KEY_F1; key <= GLFW_KEY_F12; ++key) result.push_back(key);
+        result.insert(result.end(), {GLFW_KEY_LEFT_SHIFT, GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_ALT,
+                                     GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_RIGHT_CONTROL, GLFW_KEY_RIGHT_ALT});
+        return result;
+    }();
+    return keys;
+}
+
+bool RenderScriptObjectPicker(const char* label,
+                              const std::string& id,
+                              std::string& objectId,
+                              const std::string& requiredComponent,
+                              const std::vector<SceneObject>& objects) {
+    bool changed = false;
+    const SceneObject* selected = FindScriptFieldObject(objects, objectId);
+    std::string preview = objectId.empty() ? "(None)" : selected ? selected->name : "Missing";
+    if (preview.empty()) preview = "(unnamed)";
+    if (ImGui::BeginCombo((std::string(label) + id).c_str(), preview.c_str())) {
+        if (ImGui::Selectable("(None)", objectId.empty())) {
+            objectId.clear();
+            changed = true;
+        }
+        for (const SceneObject& object : objects) {
+            if (!ScriptObjectMatchesFilter(object, requiredComponent)) continue;
+            const std::string name = object.name.empty() ? "(unnamed)" : object.name;
+            if (ImGui::Selectable((name + "##scriptObject_" + object.id).c_str(), object.id == objectId)) {
+                objectId = object.id;
+                changed = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kHierarchyObjectPayload)) {
+            if (payload->DataSize == sizeof(int)) {
+                const int index = *static_cast<const int*>(payload->Data);
+                if (index >= 0 && index < static_cast<int>(objects.size()) && ScriptObjectMatchesFilter(objects[index], requiredComponent)) {
+                    objectId = objects[index].id;
+                    changed = true;
+                }
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+    if (!objectId.empty() && selected == nullptr) {
+        ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.3f, 1.0f), "Missing reference");
+    }
+    return changed;
+}
+
+bool RenderScriptFieldEditor(const ScriptFieldDefinition& definition,
+                             ScriptFieldEntry& field,
+                             const std::vector<SceneObject>& objects,
+                             InputManager* inputManager) {
     const char* label = definition.label.empty() ? definition.name.c_str() : definition.label.c_str();
     const std::string id = "##scriptField_" + definition.name;
     switch (definition.type) {
@@ -364,6 +467,101 @@ bool RenderScriptFieldEditor(const ScriptFieldDefinition& definition, ScriptFiel
             return true;
         }
         return false;
+    }
+    case ScriptFieldType::ObjectRef: {
+        std::string value = std::get<std::string>(field.value);
+        if (RenderScriptObjectPicker(label, id, value, definition.requiredComponent, objects)) {
+            field.value = std::move(value);
+            return true;
+        }
+        return false;
+    }
+    case ScriptFieldType::ObjectRefList: {
+        std::vector<std::string> values = std::get<std::vector<std::string>>(field.value);
+        bool changed = false;
+        const std::string header = std::string(label) + " (" + std::to_string(values.size()) + ")##scriptList_" + definition.name;
+        const bool open = ImGui::TreeNodeEx(header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+        if (open) {
+            int removeIndex = -1;
+            int moveFrom = -1;
+            int moveTo = -1;
+            for (int i = 0; i < static_cast<int>(values.size()); ++i) {
+                ImGui::PushID(i);
+                ImGui::SetNextItemWidth((std::max)(80.0f, ImGui::GetContentRegionAvail().x - 92.0f));
+                if (RenderScriptObjectPicker(("Element " + std::to_string(i)).c_str(), "##value", values[i], definition.requiredComponent, objects)) changed = true;
+                ImGui::SameLine();
+                ImGui::BeginDisabled(i == 0);
+                if (ImGui::SmallButton("^")) { moveFrom = i; moveTo = i - 1; }
+                ImGui::EndDisabled();
+                ImGui::SameLine();
+                ImGui::BeginDisabled(i + 1 >= static_cast<int>(values.size()));
+                if (ImGui::SmallButton("v")) { moveFrom = i; moveTo = i + 1; }
+                ImGui::EndDisabled();
+                ImGui::SameLine();
+                if (ImGui::SmallButton("X")) removeIndex = i;
+                ImGui::PopID();
+            }
+            if (moveFrom >= 0 && moveTo >= 0) {
+                std::swap(values[moveFrom], values[moveTo]);
+                changed = true;
+            }
+            if (removeIndex >= 0) {
+                values.erase(values.begin() + removeIndex);
+                changed = true;
+            }
+            if (ImGui::SmallButton(("Add Element##" + definition.name).c_str())) {
+                values.emplace_back();
+                changed = true;
+            }
+            ImGui::TreePop();
+        }
+        if (changed) field.value = std::move(values);
+        return changed;
+    }
+    case ScriptFieldType::Key: {
+        static std::string capturingField;
+        static char keySearch[64]{};
+        int value = std::get<int>(field.value);
+        bool changed = false;
+        const std::string captureId = definition.name + "_" + std::to_string(reinterpret_cast<std::uintptr_t>(&field));
+        ImGui::TextUnformatted(label);
+        ImGui::SameLine();
+        const bool capturing = capturingField == captureId;
+        if (ImGui::Button(capturing ? "Press a key..." : "Listen")) {
+            if (inputManager != nullptr && !inputManager->IsListeningForBinding()) {
+                inputManager->StartListeningForBinding(InputDeviceType::Keyboard, InputBindingSource::Key);
+                capturingField = captureId;
+            }
+        }
+        if (capturing && inputManager != nullptr) {
+            InputBinding captured;
+            if (inputManager->ConsumeCapturedBinding(captured)) {
+                value = captured.key;
+                capturingField.clear();
+                changed = true;
+            }
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(-1.0f);
+        const std::string preview = ScriptKeyLabel(value);
+        if (ImGui::BeginCombo(id.c_str(), preview.c_str())) {
+            ImGui::InputText("Search", keySearch, sizeof(keySearch));
+            std::string search = keySearch;
+            std::transform(search.begin(), search.end(), search.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            for (int key : ScriptKeyboardKeys()) {
+                const std::string keyLabel = ScriptKeyLabel(key);
+                std::string searchable = keyLabel;
+                std::transform(searchable.begin(), searchable.end(), searchable.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                if (!search.empty() && searchable.find(search) == std::string::npos) continue;
+                if (ImGui::Selectable((keyLabel + "##key_" + std::to_string(key)).c_str(), key == value)) {
+                    value = key;
+                    changed = true;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        if (changed) field.value = value;
+        return changed;
     }
     }
     return false;
@@ -437,7 +635,7 @@ ImVec4 ComponentHeaderAccent(const char* label) {
     if (std::strcmp(label, "Collider") == 0 || std::strcmp(label, "Character Controller") == 0) {
         return ImVec4(0.34f, 0.28f, 0.48f, 1.0f);
     }
-    if (std::strcmp(label, "Camera") == 0 || std::strcmp(label, "Cinemachine Camera") == 0) {
+    if (std::strcmp(label, "Camera") == 0 || std::strcmp(label, "Virtual Camera") == 0) {
         return ImVec4(0.22f, 0.40f, 0.46f, 1.0f);
     }
     if (std::strcmp(label, "Light") == 0) {
@@ -1024,8 +1222,13 @@ void SceneEditor::RenderInspectorPanel() {
                 }
                 if (!obj.hasCinemachine) {
                     anyAvailable = true;
-                    if (ImGui::MenuItem("Cinemachine Camera")) {
+                    if (ImGui::MenuItem("Virtual Camera")) {
                         PushUndoState();
+                        if (!obj.hasCamera) {
+                            obj.hasCamera = true;
+                            obj.camera = CameraComponent{};
+                            obj.camera.isMain = false;
+                        }
                         obj.hasCinemachine = true;
                         obj.cinemachine = CinemachineCameraComponent{};
                         if (onDirty_) onDirty_();
@@ -1467,6 +1670,9 @@ void SceneEditor::RenderInspectorPanel() {
                                 ImGui::Separator();
                                 ImGui::TextUnformatted("Fields");
                                 for (const ScriptFieldDefinition& definition : fieldDefinitions) {
+                                    if (definition.hidden) {
+                                        continue;
+                                    }
                                     auto fieldIt = std::find_if(script.fields.begin(), script.fields.end(), [&](const ScriptFieldEntry& field) {
                                         return field.name == definition.name;
                                     });
@@ -1474,7 +1680,7 @@ void SceneEditor::RenderInspectorPanel() {
                                         continue;
                                     }
                                     const ScriptFieldEntry fieldBefore = *fieldIt;
-                                    if (RenderScriptFieldEditor(definition, *fieldIt)) {
+                                    if (RenderScriptFieldEditor(definition, *fieldIt, objects_, inputManager_)) {
                                         const ScriptFieldEntry fieldAfter = *fieldIt;
                                         *fieldIt = fieldBefore;
                                         PushUndoState();
@@ -2167,7 +2373,7 @@ void SceneEditor::RenderInspectorPanel() {
             if (obj.hasCinemachine) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Cinemachine;
                 const std::string cinemachineComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Cinemachine);
-                cinemachineOpen = RenderRemovableComponentHeader("Cinemachine Camera", "CinemachineHeader", GetComponentIconTexture("component-cinemachine.png"), &obj.cinemachine.enabled, cinemachineEnabledChanged, removeCinemachine, &componentType, &reorderDraggedType, &reorderTargetType, &cinemachineHeaderActive, &cinemachineHeaderToggledOpen);
+                cinemachineOpen = RenderRemovableComponentHeader("Virtual Camera", "CinemachineHeader", GetComponentIconTexture("component-cinemachine.png"), &obj.cinemachine.enabled, cinemachineEnabledChanged, removeCinemachine, &componentType, &reorderDraggedType, &reorderTargetType, &cinemachineHeaderActive, &cinemachineHeaderToggledOpen);
                 finishComponentHeaderState(cinemachineComponentKey, SceneInspectorComponentType::Cinemachine, cinemachineHeaderActive, cinemachineHeaderToggledOpen, cinemachineOpen);
             }
             if (removeCinemachine) {
@@ -2183,6 +2389,22 @@ void SceneEditor::RenderInspectorPanel() {
                 if (onDirty_) onDirty_();
             }
             if (obj.hasCinemachine && cinemachineOpen) {
+                int priority = obj.cinemachine.priority;
+                if (ImGui::DragInt("Priority", &priority, 1.0f, -1000, 1000)) {
+                    beginInspectorContinuousEdit();
+                    obj.cinemachine.priority = priority;
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
+                float blendDuration = obj.cinemachine.blendDuration;
+                if (ImGui::DragFloat("Blend Duration", &blendDuration, 0.05f, 0.0f, 10.0f, "%.2f s")) {
+                    beginInspectorContinuousEdit();
+                    obj.cinemachine.blendDuration = (std::max)(0.0f, blendDuration);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+
                 // Camera type combo
                 const char* cineTypeNames[] = {"Follow", "Look At", "Follow & Look At"};
                 int cineTypeIndex = static_cast<int>(obj.cinemachine.type);
@@ -3054,10 +3276,15 @@ void SceneEditor::RenderMultiSelectionInspector() {
         }
         if (anySelected([](const SceneObject& object) { return !object.hasCinemachine; })) {
             anyAvailable = true;
-            if (ImGui::MenuItem("Cinemachine Camera")) {
+            if (ImGui::MenuItem("Virtual Camera")) {
                 PushUndoState();
                 forEachSelected([&](SceneObject& object) {
                     if (!object.hasCinemachine) {
+                        if (!object.hasCamera) {
+                            object.hasCamera = true;
+                            object.camera = CameraComponent{};
+                            object.camera.isMain = false;
+                        }
                         object.hasCinemachine = true;
                         object.cinemachine = CinemachineCameraComponent{};
                     }
@@ -4139,6 +4366,31 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         } else {
             editDynamicProperty(property);
         }
+    }
+
+    ImGui::Separator();
+    if (ImGui::TreeNodeEx("Advanced Surface", ImGuiTreeNodeFlags_DefaultOpen)) {
+        materialChanged |= ImGui::SliderFloat("Clear Coat", &material->clearCoat, 0.0f, 1.0f);
+        materialChanged |= ImGui::SliderFloat("Clear Coat Roughness", &material->clearCoatRoughness, 0.02f, 1.0f);
+        materialChanged |= ImGui::SliderFloat("Anisotropy", &material->anisotropy, -1.0f, 1.0f);
+        materialChanged |= ImGui::SliderFloat("Transmission", &material->transmission, 0.0f, 1.0f);
+        const char* alphaModes[] = {"Opaque", "Mask", "Blend"};
+        int alphaModeIndex = material->alphaMode == "Mask" ? 1 : material->alphaMode == "Blend" ? 2 : 0;
+        if (ImGui::Combo("Alpha Mode", &alphaModeIndex, alphaModes, 3)) {
+            material->alphaMode = alphaModes[alphaModeIndex];
+            materialChanged = true;
+        }
+        if (material->alphaMode == "Mask") {
+            materialChanged |= ImGui::SliderFloat("Alpha Cutoff", &material->alphaCutoff, 0.0f, 1.0f);
+        }
+        if (material->alphaMode == "Blend") {
+            materialChanged |= ImGui::DragInt("Transparent Sort Priority", &material->transparentSortPriority, 1.0f, -100, 100);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Higher priority renders later and appears in front of lower-priority transparent materials.");
+            }
+        }
+        materialChanged |= ImGui::Checkbox("Double Sided", &material->doubleSided);
+        ImGui::TreePop();
     }
 
     if (materialChanged && !materialEditActive_) {

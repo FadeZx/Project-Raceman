@@ -87,6 +87,7 @@ bool Console::RenderContents() {
         std::lock_guard<std::mutex> lock(mtx_);
         entries_.clear();
         entries.clear();
+        selectedEntryIndices_.clear();
         logCount = warningCount = errorCount = 0;
         changed = true;
     }
@@ -155,8 +156,29 @@ bool Console::RenderContents() {
     }
 
     ImGui::BeginChild("console-scroll", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
+    const bool consoleFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    const ImGuiIO& io = ImGui::GetIO();
+    if (consoleFocused && io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_A, false)) {
+        selectedEntryIndices_.clear();
+        for (std::size_t index = 0; index < entries.size(); ++index) {
+            const MessageType type = entries[index].type;
+            const bool visible =
+                (currentTab_ == Tab::Log && type == MessageType::Log) ||
+                (currentTab_ == Tab::Warning && type == MessageType::Warning) ||
+                (currentTab_ == Tab::Error && type == MessageType::Error);
+            if (visible) selectedEntryIndices_.insert(index);
+        }
+    }
+    if (consoleFocused && io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C, false) && !selectedEntryIndices_.empty()) {
+        std::ostringstream text;
+        for (std::size_t index = 0; index < entries.size(); ++index) {
+            if (selectedEntryIndices_.find(index) != selectedEntryIndices_.end()) text << entries[index].text << '\n';
+        }
+        ImGui::SetClipboardText(text.str().c_str());
+    }
     int visibleIndex = 0;
-    for (const auto& e : entries) {
+    for (std::size_t entryIndex = 0; entryIndex < entries.size(); ++entryIndex) {
+        const ConsoleEntry& e = entries[entryIndex];
         bool show = false;
         if (currentTab_ == Tab::Log) show = (e.type == MessageType::Log);
         else if (currentTab_ == Tab::Warning) show = (e.type == MessageType::Warning);
@@ -167,7 +189,16 @@ bool Console::RenderContents() {
 
         ImGui::PushID(visibleIndex++);
         ImGui::PushStyleColor(ImGuiCol_Text, col);
-        ImGui::Selectable(e.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick);
+        const bool selected = selectedEntryIndices_.find(entryIndex) != selectedEntryIndices_.end();
+        if (ImGui::Selectable(e.text.c_str(), selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+            if (io.KeyCtrl) {
+                if (selected) selectedEntryIndices_.erase(entryIndex);
+                else selectedEntryIndices_.insert(entryIndex);
+            } else {
+                selectedEntryIndices_.clear();
+                selectedEntryIndices_.insert(entryIndex);
+            }
+        }
         ImGui::PopStyleColor();
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
             ImGui::SetClipboardText(e.text.c_str());
@@ -175,6 +206,13 @@ bool Console::RenderContents() {
         if (ImGui::BeginPopupContextItem("ConsoleLineMenu")) {
             if (ImGui::MenuItem("Copy Line")) {
                 ImGui::SetClipboardText(e.text.c_str());
+            }
+            if (ImGui::MenuItem("Copy Selected", "Ctrl+C", false, !selectedEntryIndices_.empty())) {
+                std::ostringstream text;
+                for (std::size_t index = 0; index < entries.size(); ++index) {
+                    if (selectedEntryIndices_.find(index) != selectedEntryIndices_.end()) text << entries[index].text << '\n';
+                }
+                ImGui::SetClipboardText(text.str().c_str());
             }
             ImGui::EndPopup();
         }
@@ -196,6 +234,8 @@ void Console::RenderFlat() {
     if (ImGui::Button("Clear")) {
         std::lock_guard<std::mutex> lock(mtx_);
         entries_.clear();
+        entries.clear();
+        selectedEntryIndices_.clear();
     }
     ImGui::SameLine();
     if (ImGui::Button("Copy All")) {
@@ -209,11 +249,33 @@ void Console::RenderFlat() {
     ImGui::Separator();
 
     ImGui::BeginChild("flat-scroll", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    const bool consoleFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    const ImGuiIO& io = ImGui::GetIO();
+    if (consoleFocused && io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_A, false)) {
+        selectedEntryIndices_.clear();
+        for (std::size_t index = 0; index < entries.size(); ++index) selectedEntryIndices_.insert(index);
+    }
+    if (consoleFocused && io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C, false) && !selectedEntryIndices_.empty()) {
+        std::string text;
+        for (std::size_t index = 0; index < entries.size(); ++index) {
+            if (selectedEntryIndices_.find(index) != selectedEntryIndices_.end()) text += entries[index].text + '\n';
+        }
+        ImGui::SetClipboardText(text.c_str());
+    }
     for (int i = 0; i < static_cast<int>(entries.size()); ++i) {
         const ConsoleEntry& e = entries[i];
         ImGui::PushID(i);
         ImGui::PushStyleColor(ImGuiCol_Text, ConsoleTextColor(e.type));
-        ImGui::Selectable(e.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick);
+        const bool selected = selectedEntryIndices_.find(static_cast<std::size_t>(i)) != selectedEntryIndices_.end();
+        if (ImGui::Selectable(e.text.c_str(), selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+            if (io.KeyCtrl) {
+                if (selected) selectedEntryIndices_.erase(static_cast<std::size_t>(i));
+                else selectedEntryIndices_.insert(static_cast<std::size_t>(i));
+            } else {
+                selectedEntryIndices_.clear();
+                selectedEntryIndices_.insert(static_cast<std::size_t>(i));
+            }
+        }
         ImGui::PopStyleColor();
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
             ImGui::SetClipboardText(e.text.c_str());
@@ -221,6 +283,13 @@ void Console::RenderFlat() {
         if (ImGui::BeginPopupContextItem("##line_ctx")) {
             if (ImGui::MenuItem("Copy Line")) {
                 ImGui::SetClipboardText(e.text.c_str());
+            }
+            if (ImGui::MenuItem("Copy Selected", "Ctrl+C", false, !selectedEntryIndices_.empty())) {
+                std::string text;
+                for (std::size_t index = 0; index < entries.size(); ++index) {
+                    if (selectedEntryIndices_.find(index) != selectedEntryIndices_.end()) text += entries[index].text + '\n';
+                }
+                ImGui::SetClipboardText(text.c_str());
             }
             ImGui::EndPopup();
         }

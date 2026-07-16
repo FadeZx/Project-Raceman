@@ -32,12 +32,14 @@
     <ClInclude Include="..\Project1\assets\scripts\CameraOrbit.h" />
     <ClInclude Include="..\Project1\assets\scripts\CharacterControllerTest.h" />
     <ClInclude Include="..\Project1\assets\scripts\TestPlayerMovement.h" />
+    <ClInclude Include="..\Project1\assets\scripts\VirtualCameraSwitcher.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\scripting\ScriptDllRegistry.cpp" />
     <ClCompile Include="..\Project1\assets\scripts\CameraOrbit.cpp" />
     <ClCompile Include="..\Project1\assets\scripts\CharacterControllerTest.cpp" />
     <ClCompile Include="..\Project1\assets\scripts\TestPlayerMovement.cpp" />
+    <ClCompile Include="..\Project1\assets\scripts\VirtualCameraSwitcher.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

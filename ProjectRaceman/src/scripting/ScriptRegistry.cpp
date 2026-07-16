@@ -19,6 +19,7 @@ namespace raceman {
 namespace {
 
 using RegisterScriptsFn = void (*)(std::vector<ScriptDescriptor>&);
+using GetScriptApiVersionFn = int (*)();
 using GetScriptCountFn = int (*)();
 using GetScriptNameFn = const char* (*)(int);
 using GetScriptPathFn = const char* (*)(int);
@@ -120,19 +121,25 @@ std::string QuoteCommandPath(const std::filesystem::path& path) {
 }
 
 std::string CurrentConfiguration() {
-#if defined(_DEBUG)
-    return "Debug";
-#else
+#if defined(NDEBUG)
     return "Release";
+#else
+    return "Debug";
 #endif
 }
 
 std::filesystem::path ScriptDllPath() {
-    const std::filesystem::path packagedDll = std::filesystem::current_path() / "ProjectScripts.dll";
+    const std::filesystem::path engineDll = EngineRootPath() / "bin" / CurrentConfiguration() / "ProjectScripts.dll";
+    if (std::filesystem::exists(engineDll)) {
+        return engineDll;
+    }
+
+    const std::filesystem::path packagedDll = ExecutableDirectory() / "ProjectScripts.dll";
     if (std::filesystem::exists(packagedDll)) {
         return packagedDll;
     }
-    return EngineRootPath() / "bin" / CurrentConfiguration() / "ProjectScripts.dll";
+
+    return engineDll;
 }
 
 bool FileIsNewerThan(const std::filesystem::path& input, std::filesystem::file_time_type outputTime) {
@@ -271,6 +278,15 @@ bool LoadScriptAssembly(std::string* outError) {
     }
     if (PlayerLoggingEnabled()) {
         std::cout << "[Player] Script DLL loaded." << std::endl;
+    }
+
+    auto getScriptApiVersion = reinterpret_cast<GetScriptApiVersionFn>(GetProcAddress(g_scriptModule, "RacemanGetScriptApiVersion"));
+    if (getScriptApiVersion == nullptr || getScriptApiVersion() != kObjectScriptApiVersion) {
+        if (outError) {
+            *outError = "ProjectScripts.dll uses an incompatible script API. Rebuild the script DLL for this editor version.";
+        }
+        UnloadScriptAssembly();
+        return false;
     }
 
     const bool playerMode = PlayerLoggingEnabled();
