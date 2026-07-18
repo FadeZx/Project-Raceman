@@ -13,7 +13,7 @@
         {
           "type": "Transform",
           "position": [-2.31907, 3.14599, 3.95966],
-          "rotationEuler": [-32, 47, 0],
+          "rotationEuler": [-50.5, -73.5, 5],
           "scale": [1, 1, 1]
         },
         {
@@ -26,10 +26,58 @@
           "type": "Light",
           "enabled": true,
           "lightType": "Directional",
-          "color": [0.878505, 0.801236, 0.722509],
-          "intensity": 2.95,
+          "color": [1, 1, 1],
+          "intensity": 1.1,
           "range": 100,
           "spotAngleDegrees": 30
+        }
+      ]
+    },
+    {
+      "id": "camera_2",
+      "parentId": "",
+      "name": "TopDownCamera",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Camera", "Cinemachine", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.4, 102.888, -52.3],
+          "rotationEuler": [-340, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Camera",
+          "enabled": true,
+          "isMain": false,
+          "fieldOfViewDegrees": 60,
+          "nearClip": 0.1,
+          "farClip": 500,
+          "clearColor": [0.02, 0.02, 0.02, 1]
+        },
+        {
+          "type": "Cinemachine",
+          "enabled": true,
+          "cameraType": "FollowAndLookAt",
+          "followTargetId": "",
+          "lookAtTargetId": "gameobject_64",
+          "followOffset": [-0.4, 102.888, -52.3],
+          "pitchOffset": -340,
+          "yawOffset": 0,
+          "lockTargetPitchRoll": true,
+          "positionDamping": 5,
+          "rotationDamping": 5,
+          "priority": 10,
+          "blendDuration": 0.6
         }
       ]
     },
@@ -41,13 +89,19 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Camera", "Cinemachine", "AudioListener", "Script"],
+      "componentOrder": ["Transform", "Camera", "Cinemachine", "AudioListener", "Script", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
-          "position": [-1.84774e-06, 2.005, -3.932],
-          "rotationEuler": [0, 0.500002, 0],
+          "position": [-1.84774e-06, 1.619, -3.932],
+          "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
         },
         {
           "type": "Script",
@@ -104,7 +158,7 @@
           "fieldOfViewDegrees": 82.5,
           "nearClip": 0.1,
           "farClip": 500,
-          "clearColor": [0.02, 0.02, 0.02, 1]
+          "clearColor": [0, 0, 0, 1]
         },
         {
           "type": "Cinemachine",
@@ -112,58 +166,18 @@
           "cameraType": "FollowAndLookAt",
           "followTargetId": "gameobject_64",
           "lookAtTargetId": "gameobject_64",
-          "followOffset": [-1.84774e-06, 2.005, -3.932],
+          "followOffset": [-1.84774e-06, 1.619, -3.932],
           "pitchOffset": 0,
-          "yawOffset": 0.500002,
-          "positionDamping": 47.1,
-          "rotationDamping": 20,
+          "yawOffset": 0,
+          "lockTargetPitchRoll": true,
+          "positionDamping": 10,
+          "rotationDamping": 12,
           "priority": 10,
-          "blendDuration": 0.25
+          "blendDuration": 0.6
         },
         {
           "type": "AudioListener",
           "enabled": true
-        }
-      ]
-    },
-    {
-      "id": "camera_2",
-      "parentId": "",
-      "name": "TopDownCamera",
-      "tag": "Untagged",
-      "type": "GameObject",
-      "physicsLayer": 0,
-      "enabled": true,
-      "componentOrder": ["Transform", "Camera", "Cinemachine"],
-      "components": [
-        {
-          "type": "Transform",
-          "position": [-0.4, 102.888, -52.3],
-          "rotationEuler": [-340, 0, 0],
-          "scale": [1, 1, 1]
-        },
-        {
-          "type": "Camera",
-          "enabled": true,
-          "isMain": false,
-          "fieldOfViewDegrees": 60,
-          "nearClip": 0.1,
-          "farClip": 500,
-          "clearColor": [0.02, 0.02, 0.02, 1]
-        },
-        {
-          "type": "Cinemachine",
-          "enabled": true,
-          "cameraType": "FollowAndLookAt",
-          "followTargetId": "",
-          "lookAtTargetId": "gameobject_64",
-          "followOffset": [-0.4, 102.888, -52.3],
-          "pitchOffset": -340,
-          "yawOffset": 0,
-          "positionDamping": 5,
-          "rotationDamping": 5,
-          "priority": 10,
-          "blendDuration": 0.6
         }
       ]
     },
@@ -2158,7 +2172,7 @@
       "tag": "Untagged",
       "type": "GameObject",
       "physicsLayer": 0,
-      "enabled": true,
+      "enabled": false,
       "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
@@ -2552,6 +2566,86 @@
       ]
     },
     {
+      "id": "gameobject_14",
+      "parentId": "gameobject_64",
+      "name": "FL",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0.888171, 0.247784, 1.43327],
+          "rotationEuler": [-90, -5.00894e-06, 180],
+          "scale": [0.816993, 0.817, 0.817]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj",
+          "assetId": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj#0",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "chevrolet-nascar-flwheel_wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gameobject_13",
+      "parentId": "gameobject_64",
+      "name": "FR",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.928019, 0.247784, 1.433],
+          "rotationEuler": [-90, -5.00889e-06, -4.0304e-11],
+          "scale": [0.817, 0.817, 0.817]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj",
+          "assetId": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj#0",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "chevrolet-nascar-flwheel_wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
       "id": "gameobject_64",
       "parentId": "",
       "name": "BMW",
@@ -2563,7 +2657,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [-0.0561381, -0.812, 0],
+          "position": [-0.0561381, -1.2605, 0],
           "rotationEuler": [0, -0, 0],
           "scale": [1, 1, 1]
         },
@@ -2585,7 +2679,7 @@
                 {
                   "name": "cameras",
                   "type": "ObjectRefList",
-                "value": ["camera_1", "gameobject_12", "gameobject_9", "camera_2"]
+                "value": ["camera_1", "gameobject_12", "gameobject_9"]
                 },
                 {
                   "name": "switchKey",
@@ -2625,6 +2719,26 @@
           "preferredInputDeviceId": "",
           "chassisObjectIds": ["mesh_64"],
           "wheelBindings": [
+            {
+              "wheelName": "Front Left",
+              "objectId": "gameobject_14",
+              "visualRotationEuler": [0, 0, 0]
+            },
+            {
+              "wheelName": "Front Right",
+              "objectId": "gameobject_13",
+              "visualRotationEuler": [0, 0, 0]
+            },
+            {
+              "wheelName": "Rear Left",
+              "objectId": "gameobject_72",
+              "visualRotationEuler": [0, 0, 0]
+            },
+            {
+              "wheelName": "Rear Right",
+              "objectId": "gameobject_7",
+              "visualRotationEuler": [0, 0, 0]
+            }
           ]
         }
       ]
@@ -2636,14 +2750,54 @@
       "tag": "Untagged",
       "type": "GameObject",
       "physicsLayer": 0,
-      "enabled": false,
+      "enabled": true,
       "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
-          "position": [0.63492, 0.247784, -1.50897],
-          "rotationEuler": [90, -5.00894e-06, 1.89307e-11],
-          "scale": [0.916661, 0.916666, 0.916666]
+          "position": [0.888171, 0.247784, -1.45138],
+          "rotationEuler": [-90, -5.00895e-06, -180],
+          "scale": [0.817, 0.817, 0.817]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj",
+          "assetId": "assets/car/Nascar/Chevrolet-nascar-FLWheel.obj#0",
+          "meshIndex": 0,
+          "importedMaterialName": "wheel",
+          "diffuseTexturePath": "wheel.png"
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "chevrolet-nascar-flwheel_wheel",
+          "color": [1, 1, 1, 1]
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "attachments": [
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gameobject_7",
+      "parentId": "gameobject_64",
+      "name": "RR",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.928019, 0.247784, -1.45138],
+          "rotationEuler": [-90, -5.00892e-06, -1.89307e-11],
+          "scale": [0.816989, 0.817, 0.817]
         },
         {
           "type": "MeshFilter",
@@ -13587,7 +13741,7 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
+          "position": [0, 0, -0.1],
           "rotationEuler": [0, 0, 0],
           "scale": [1, 1, 1]
         },
@@ -17499,13 +17653,19 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Camera", "Cinemachine"],
+      "componentOrder": ["Transform", "Camera", "Cinemachine", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
           "position": [-0.3, 0.9, 0],
           "rotationEuler": [0, -180, 0],
           "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
         },
         {
           "type": "Camera",
@@ -17525,10 +17685,11 @@
           "followOffset": [-0.3, 0.9, 0],
           "pitchOffset": 0,
           "yawOffset": -180,
+          "lockTargetPitchRoll": false,
           "positionDamping": 0,
           "rotationDamping": 0,
           "priority": 10,
-          "blendDuration": 0
+          "blendDuration": 0.6
         }
       ]
     },
@@ -17540,13 +17701,19 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Camera", "Cinemachine"],
+      "componentOrder": ["Transform", "Camera", "Cinemachine", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
           "position": [0, 1, 0.7],
           "rotationEuler": [-8.5, 180, 0],
           "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "pbr_default",
+          "color": [1, 1, 1, 1]
         },
         {
           "type": "Camera",
@@ -17566,14 +17733,15 @@
           "followOffset": [0, 1, 0.7],
           "pitchOffset": -8.5,
           "yawOffset": 180,
+          "lockTargetPitchRoll": false,
           "positionDamping": 0,
           "rotationDamping": 0,
           "priority": 10,
-          "blendDuration": 0
+          "blendDuration": 0.6
         }
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_8", "gameobject_11"],
-  "inspectorComponentsClosed": ["mesh_393|Collider", "gameobject_64|Vehicle", "gameobject_11|Vehicle", "camera_1|Cinemachine", "gameobject_64|MeshRenderer", "mesh_146|MeshFilter"]
+  "hierarchyClosed": ["gameobject_10", "gameobject_1635", "gameobject_7", "gameobject_11", "gameobject_8"],
+  "inspectorComponentsClosed": ["mesh_393|Collider", "gameobject_11|Vehicle", "gameobject_64|Vehicle", "camera_1|Cinemachine", "gameobject_64|MeshRenderer", "mesh_146|MeshFilter"]
 }

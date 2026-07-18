@@ -38,7 +38,13 @@ public:
     glm::vec3 startPosition;
 
     // constructor, expects a filepath to a 3D model.
-    Model(string const& path, bool gamma = false) : gammaCorrection(gamma)
+    Model(string const& path,
+          bool gamma = false,
+          const vector<std::size_t>* cachedNormalRepairs = nullptr,
+          vector<std::size_t>* detectedNormalRepairs = nullptr)
+        : gammaCorrection(gamma),
+          cachedNormalRepairs_(cachedNormalRepairs),
+          detectedNormalRepairs_(detectedNormalRepairs)
     {
         loadModel(path);
     }
@@ -55,6 +61,10 @@ public:
     }
 
 private:
+    const vector<std::size_t>* cachedNormalRepairs_{nullptr};
+    vector<std::size_t>* detectedNormalRepairs_{nullptr};
+    std::size_t processedMeshCount_{0};
+
     string findFirstMtlDiffuseTexture() const
     {
         try {
@@ -130,6 +140,7 @@ private:
 
     Mesh processMesh(aiMesh* mesh, const aiScene* scene)
     {
+        const std::size_t meshIndex = processedMeshCount_++;
         // data to fill
         vector<Vertex> vertices;
         vector<unsigned int> indices;
@@ -187,46 +198,42 @@ private:
                 indices.push_back(face.mIndices[j]);
         }
 
-        // Some exported assets contain valid triangle winding but vertex normals
-        // pointing inward. Physically based lighting exposes this much more than
-        // simple/stylized shading. Detect a consistently inverted normal basis
-        // per mesh and repair it without affecting correctly exported models.
-        std::size_t alignedNormalTriangles = 0;
-        std::size_t opposedNormalTriangles = 0;
-        for (std::size_t index = 0; index + 2 < indices.size(); index += 3) {
-            const unsigned int i0 = indices[index];
-            const unsigned int i1 = indices[index + 1];
-            const unsigned int i2 = indices[index + 2];
-            if (i0 >= vertices.size() || i1 >= vertices.size() || i2 >= vertices.size()) {
-                continue;
+        bool repairNormals = false;
+        if (cachedNormalRepairs_ != nullptr) {
+            repairNormals = std::find(cachedNormalRepairs_->begin(), cachedNormalRepairs_->end(), meshIndex) != cachedNormalRepairs_->end();
+        } else {
+            // Some exported assets contain valid triangle winding but vertex normals
+            // pointing inward. Detect this once; ObjImport persists the decision in
+            // the derived model cache and applies it directly on later loads.
+            std::size_t alignedNormalTriangles = 0;
+            std::size_t opposedNormalTriangles = 0;
+            for (std::size_t index = 0; index + 2 < indices.size(); index += 3) {
+                const unsigned int i0 = indices[index];
+                const unsigned int i1 = indices[index + 1];
+                const unsigned int i2 = indices[index + 2];
+                if (i0 >= vertices.size() || i1 >= vertices.size() || i2 >= vertices.size()) continue;
+                const glm::vec3 edgeA = vertices[i1].Position - vertices[i0].Position;
+                const glm::vec3 edgeB = vertices[i2].Position - vertices[i0].Position;
+                const glm::vec3 geometricNormal = glm::cross(edgeA, edgeB);
+                const glm::vec3 averageNormal = vertices[i0].Normal + vertices[i1].Normal + vertices[i2].Normal;
+                if (glm::dot(geometricNormal, geometricNormal) <= 1.0e-12f ||
+                    glm::dot(averageNormal, averageNormal) <= 1.0e-12f) continue;
+                if (glm::dot(geometricNormal, averageNormal) < 0.0f) ++opposedNormalTriangles;
+                else ++alignedNormalTriangles;
             }
-            const glm::vec3 edgeA = vertices[i1].Position - vertices[i0].Position;
-            const glm::vec3 edgeB = vertices[i2].Position - vertices[i0].Position;
-            const glm::vec3 geometricNormal = glm::cross(edgeA, edgeB);
-            const glm::vec3 averageNormal = vertices[i0].Normal + vertices[i1].Normal + vertices[i2].Normal;
-            const float geometricLengthSq = glm::dot(geometricNormal, geometricNormal);
-            const float averageLengthSq = glm::dot(averageNormal, averageNormal);
-            if (geometricLengthSq <= 1.0e-12f || averageLengthSq <= 1.0e-12f) {
-                continue;
-            }
-            if (glm::dot(geometricNormal, averageNormal) < 0.0f) {
-                ++opposedNormalTriangles;
-            } else {
-                ++alignedNormalTriangles;
-            }
+            const std::size_t comparedNormalTriangles = alignedNormalTriangles + opposedNormalTriangles;
+            repairNormals = comparedNormalTriangles >= 8 && opposedNormalTriangles * 4 > comparedNormalTriangles * 3;
         }
-        const std::size_t comparedNormalTriangles = alignedNormalTriangles + opposedNormalTriangles;
-        if (comparedNormalTriangles >= 8 &&
-            opposedNormalTriangles * 4 > comparedNormalTriangles * 3) {
+
+        if (repairNormals) {
             for (Vertex& vertex : vertices) {
                 vertex.Normal = -vertex.Normal;
                 // Preserve the tangent-space handedness after reversing N.
                 vertex.Bitangent = -vertex.Bitangent;
             }
-            std::cout << "Repaired inverted vertex normals for mesh: "
-                      << mesh->mName.C_Str() << " ("
-                      << opposedNormalTriangles << "/" << comparedNormalTriangles
-                      << " triangles opposed)." << std::endl;
+            if (cachedNormalRepairs_ == nullptr && detectedNormalRepairs_ != nullptr) {
+                detectedNormalRepairs_->push_back(meshIndex);
+            }
         }
 
         // process materials

@@ -1676,14 +1676,30 @@ inline glm::quat ExtractWorldRotationNoScale(const glm::mat4& matrix) {
     return glm::normalize(orientation);
 }
 
-inline glm::vec3 CinemachineOffsetToWorldPosition(const glm::mat4& targetWorld, const glm::vec3& offset) {
-    const glm::vec3 targetPos = glm::vec3(targetWorld[3]);
-    return targetPos + ExtractWorldRotationNoScale(targetWorld) * offset;
+inline glm::quat CinemachineFollowRotation(const glm::mat4& targetWorld, bool lockTargetPitchRoll) {
+    const glm::quat targetRotation = ExtractWorldRotationNoScale(targetWorld);
+    if (!lockTargetPitchRoll) {
+        return targetRotation;
+    }
+
+    glm::vec3 forward = targetRotation * glm::vec3(0.0f, 0.0f, -1.0f);
+    forward.y = 0.0f;
+    if (glm::length(forward) <= 0.0001f) {
+        return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    }
+    forward = glm::normalize(forward);
+    const float yaw = std::atan2(-forward.x, -forward.z);
+    return glm::angleAxis(yaw, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
-inline glm::vec3 CinemachineWorldPositionToOffset(const glm::mat4& targetWorld, const glm::vec3& worldPosition) {
+inline glm::vec3 CinemachineOffsetToWorldPosition(const glm::mat4& targetWorld, const glm::vec3& offset, bool lockTargetPitchRoll = false) {
     const glm::vec3 targetPos = glm::vec3(targetWorld[3]);
-    return glm::inverse(ExtractWorldRotationNoScale(targetWorld)) * (worldPosition - targetPos);
+    return targetPos + CinemachineFollowRotation(targetWorld, lockTargetPitchRoll) * offset;
+}
+
+inline glm::vec3 CinemachineWorldPositionToOffset(const glm::mat4& targetWorld, const glm::vec3& worldPosition, bool lockTargetPitchRoll = false) {
+    const glm::vec3 targetPos = glm::vec3(targetWorld[3]);
+    return glm::inverse(CinemachineFollowRotation(targetWorld, lockTargetPitchRoll)) * (worldPosition - targetPos);
 }
 
 inline bool ComputeCinemachineDesiredWorldMatrix(
@@ -1714,7 +1730,8 @@ inline bool ComputeCinemachineDesiredWorldMatrix(
 
     if (hasFollow && cine.type != CinemachineCameraType::LookAt) {
         const glm::mat4 targetWorld = getWorldMatrix(followIdx);
-        desiredPos = CinemachineOffsetToWorldPosition(targetWorld, objects[camIdx].transform.position);
+        desiredPos = CinemachineOffsetToWorldPosition(
+            targetWorld, objects[camIdx].transform.position, cine.lockTargetPitchRoll);
     }
 
     glm::quat desiredRot = glm::normalize(glm::quat_cast(cameraAuthoredWorld));
@@ -1734,7 +1751,7 @@ inline bool ComputeCinemachineDesiredWorldMatrix(
             }
         }
     } else if (cine.type == CinemachineCameraType::Follow && hasFollow) {
-        desiredRot = ExtractWorldRotationNoScale(getWorldMatrix(followIdx));
+        desiredRot = CinemachineFollowRotation(getWorldMatrix(followIdx), cine.lockTargetPitchRoll);
     }
 
     const glm::vec3 authoredRotation = objects[camIdx].transform.rotationEuler;

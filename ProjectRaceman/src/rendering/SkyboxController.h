@@ -27,6 +27,7 @@ public:
     // Shader program used by Skybox
     void SetShaderPaths(const std::string& vsPath, const std::string& fsPath);
     unsigned int GetProgramId() const;
+    unsigned int GetCubemapTexture() const;
 
     // (Re)create underlying Skybox from current faces/shader
     void Reload();

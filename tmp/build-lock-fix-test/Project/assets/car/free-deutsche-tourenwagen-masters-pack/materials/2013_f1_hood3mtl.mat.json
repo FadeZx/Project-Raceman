@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "Hood3Mtl",
+  "shader": "transparent",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0,
+  "roughness": 1,
+  "emissiveColor": [0, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "assets/car/free-deutsche-tourenwagen-masters-pack/materials/2013_f1_hood3mtl_albedo.png",
+    "normal": "",
+    "metallic": "",
+    "roughness": "",
+    "ao": ""
+  },
+  "properties": {
+  }
+}

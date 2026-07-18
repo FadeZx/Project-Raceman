@@ -31,6 +31,9 @@
     <ClInclude Include="src\Application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\platform\WindowsHdrPresenter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Resource Files</Filter>
     </ClInclude>
@@ -47,6 +50,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ui\DebugUI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ui\EditorProgress.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\includes\imgui\backends\imgui_impl_opengl3_loader.h">
@@ -174,6 +180,9 @@
     <ClCompile Include="src\Application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\platform\WindowsHdrPresenter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\build\BuildSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -190,6 +199,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ui\DebugUI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\EditorProgress.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\includes\imgui\backends\imgui_impl_glfw.cpp">
@@ -211,9 +223,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\includes\imgui\imgui_widgets.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\glad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\audio\AudioManager.cpp">
@@ -372,6 +381,8 @@
     <None Include="src\shaders\UIShader.vs" />
     <None Include="src\shaders\shadow\shadow_dept.vs" />
     <None Include="src\shaders\shadow\shadow_dept.fs" />
+    <None Include="src\shaders\shadow\directional_depth.vs" />
+    <None Include="src\shaders\shadow\directional_depth.fs" />
     <None Include="src\shaders\PBR\background.fs" />
     <None Include="src\shaders\PBR\background.vs" />
     <None Include="src\shaders\PBR\brdf.fs" />
@@ -398,5 +409,10 @@
     <None Include="src\shaders\default\emissive.fs" />
     <None Include="src\shaders\default\normal_debug.fs" />
     <None Include="src\shaders\default\vertex_color.fs" />
+    <None Include="src\shaders\post\bloom_extract.fs" />
+    <None Include="src\shaders\post\bloom_blur.fs" />
+    <None Include="src\shaders\post\ssao.fs" />
+    <None Include="src\shaders\post\ssao_bilateral_blur.fs" />
+    <None Include="src\shaders\post\ssao_composite.fs" />
   </ItemGroup>
 </Project>

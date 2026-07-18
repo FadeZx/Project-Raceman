@@ -12,11 +12,12 @@ public:
 
     void load();
     void draw(glm::mat4 view, glm::mat4 projection);
+    unsigned int GetCubemapTexture() const { return cubemapTexture; }
 
 private:
-    unsigned int cubemapTexture;
-    unsigned int skyboxVAO, skyboxVBO;
-    unsigned int shaderProgram;  // Ensure this is declared
+    unsigned int cubemapTexture{0};
+    unsigned int skyboxVAO{0}, skyboxVBO{0};
+    unsigned int shaderProgram{0};
     std::vector<std::string> faces;
 
     unsigned int loadCubemap(const std::vector<std::string>& faces); // Updated to match implementation

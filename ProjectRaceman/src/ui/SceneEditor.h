@@ -16,6 +16,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include "SceneEditorTypes.h"
+#include "EditorProgress.h"
 #include "SceneEditorVehicleRuntime.h"
 #include "../input/InputManager.h"
 #include "../physics/PhysicsLayers.h"
@@ -109,6 +110,13 @@ public:
     // Fired when the user clicks an axis on the corner orientation cube; lets the camera owner
     // decompose the new view matrix back into yaw/pitch/position.
     void SetOnEditorCameraViewChanged(std::function<void(const glm::mat4&)> cb) { onEditorCameraViewChanged_ = std::move(cb); }
+    void SetProjectSettingsUndoRedo(bool shortcutTarget,
+                                    std::function<void()> undo,
+                                    std::function<void()> redo) {
+        projectSettingsShortcutTarget_ = shortcutTarget;
+        undoProjectSettings_ = std::move(undo);
+        redoProjectSettings_ = std::move(redo);
+    }
 
     // Profiler stats toggle wired from Game View "Stats" button
     void SetProfilerCallbacks(std::function<bool()> getter, std::function<void(bool)> setter) {
@@ -130,6 +138,7 @@ public:
     void SaveActiveAsset();
     void SaveCurrentScene();
     void RequestSaveCurrentScene();
+    void RequestSaveProject();
     void SaveCurrentSceneAs();
     bool OpenSceneAsset(const std::string& path);
     void SaveProject();
@@ -161,6 +170,7 @@ public:
     bool ImportModelChild(const std::string& path, int meshIndex);
     void ScanObjDir(const std::string& dir);
     void SyncScripts() { SyncScriptProjectFiles(false); }
+    std::vector<PhysicsColliderDesc> CollectMeshCollidersNeedingBake() const;
 
 private:
     // UI panels
@@ -477,6 +487,9 @@ private:
     struct RuntimeCinemachineState {
         glm::vec3 smoothedPosition{0.0f};
         glm::quat smoothedRotation{1.0f, 0.0f, 0.0f, 0.0f};
+        glm::vec3 previousFollowTargetPosition{0.0f};
+        std::string followTargetId;
+        bool followTargetInitialized{false};
         bool initialized{false};
     };
     std::unordered_map<std::string, RuntimeCinemachineState> runtimeCinemachineStates_;
@@ -700,6 +713,7 @@ private:
         std::unique_ptr<std::thread> buildThread;
         std::unique_ptr<PhysicsWorld> pendingWorld;
         std::chrono::time_point<std::chrono::high_resolution_clock> buildStart{};
+        EditorProgressTask window;
     };
     PlayModeLoadState playModeLoad_;
     struct CollisionBakeState {
@@ -712,6 +726,7 @@ private:
         std::atomic<int> failedCount{0};
         std::string lastError;
         mutable std::mutex mutex;
+        EditorProgressTask window;
     };
     CollisionBakeState collisionBake_;
     struct MaterialExtractState {
@@ -725,6 +740,7 @@ private:
         std::atomic<int> errorCount{0};
         std::string summary;
         mutable std::mutex mutex;
+        EditorProgressTask window;
     };
     MaterialExtractState materialExtract_;
     SceneProfilerStats profilerStats_{};
@@ -733,12 +749,14 @@ private:
 
     bool sceneDirty_{false};
     bool sceneSaveRequested_{false};
-    bool sceneSavePopupRendered_{false};
-    bool sceneSavePopupClosing_{false};
-    double sceneSaveAnimationStart_{0.0};
+    bool projectSaveRequested_{false};
+    EditorProgressTask saveProgress_{};
     std::function<void()> onDirty_{};
     std::function<void(const glm::vec3&, float)> onFocusObject_{};
     std::function<void(const glm::mat4&)> onEditorCameraViewChanged_{};
+    bool projectSettingsShortcutTarget_{false};
+    std::function<void()> undoProjectSettings_{};
+    std::function<void()> redoProjectSettings_{};
     std::function<bool()> getProfilerVisible_{};
     std::function<void(bool)> setProfilerVisible_{};
 };

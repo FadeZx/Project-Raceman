@@ -14,10 +14,116 @@
 #include "../rendering/model.h"
 #include "../rendering/mesh.h"
 
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <mutex>
+
+namespace fs = std::filesystem;
+
 namespace raceman {
 
+namespace {
+std::mutex& NormalRepairCacheMutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
+std::uint64_t FnvHash64(const std::string& value) {
+    std::uint64_t hash = 14695981039346656037ULL;
+    for (unsigned char ch : value) {
+        hash ^= ch;
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
+fs::path FindOwningProjectRoot(fs::path sourcePath) {
+    std::error_code errorCode;
+    sourcePath = fs::absolute(sourcePath, errorCode).lexically_normal().parent_path();
+    if (errorCode) return {};
+    for (int depth = 0; depth < 16 && !sourcePath.empty(); ++depth) {
+        if (fs::is_regular_file(sourcePath / "project.raceman.json", errorCode)) return sourcePath;
+        const fs::path parent = sourcePath.parent_path();
+        if (parent == sourcePath) break;
+        sourcePath = parent;
+    }
+    return {};
+}
+
+fs::path NormalRepairCachePath(const std::string& sourcePath) {
+    std::error_code errorCode;
+    const fs::path absolutePath = fs::absolute(fs::path(sourcePath), errorCode).lexically_normal();
+    if (errorCode || !fs::is_regular_file(absolutePath, errorCode)) return {};
+    const fs::path projectRoot = FindOwningProjectRoot(absolutePath);
+    if (projectRoot.empty()) return {};
+
+    const std::uintmax_t fileSize = fs::file_size(absolutePath, errorCode);
+    if (errorCode) return {};
+    const auto modifiedTime = fs::last_write_time(absolutePath, errorCode);
+    if (errorCode) return {};
+    const std::uint64_t pathHash = FnvHash64(absolutePath.generic_string());
+    const auto timeValue = modifiedTime.time_since_epoch().count();
+    return projectRoot / ".raceman-cache" / "model-normals" /
+        ("v1_" + std::to_string(pathHash) + "_" + std::to_string(fileSize) + "_" + std::to_string(timeValue) + ".cache");
+}
+
+bool LoadNormalRepairCache(const fs::path& path, std::vector<std::size_t>& repairs) {
+    repairs.clear();
+    if (path.empty()) return false;
+    std::ifstream input(path);
+    std::string signature;
+    int version = 0;
+    std::size_t count = 0;
+    if (!(input >> signature >> version >> count) || signature != "RACEMAN_NORMAL_REPAIRS" || version != 1 || count > 100000) return false;
+    repairs.reserve(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        std::size_t meshIndex = 0;
+        if (!(input >> meshIndex)) {
+            repairs.clear();
+            return false;
+        }
+        repairs.push_back(meshIndex);
+    }
+    return true;
+}
+
+void SaveNormalRepairCache(const fs::path& path, const std::vector<std::size_t>& repairs) {
+    if (path.empty()) return;
+    std::error_code errorCode;
+    fs::create_directories(path.parent_path(), errorCode);
+    if (errorCode) return;
+    std::ofstream output(path, std::ios::trunc);
+    if (!output.good()) return;
+    output << "RACEMAN_NORMAL_REPAIRS 1 " << repairs.size() << '\n';
+    for (std::size_t meshIndex : repairs) output << meshIndex << '\n';
+}
+} // namespace
+
 std::shared_ptr<::Model> LoadModelFromFile(const std::string& path) {
-    return std::make_shared<::Model>(path);
+    const fs::path cachePath = NormalRepairCachePath(path);
+    std::vector<std::size_t> cachedRepairs;
+    bool cacheLoaded = false;
+    {
+        std::lock_guard<std::mutex> lock(NormalRepairCacheMutex());
+        cacheLoaded = LoadNormalRepairCache(cachePath, cachedRepairs);
+    }
+    if (cacheLoaded) {
+        return std::make_shared<::Model>(path, false, &cachedRepairs, nullptr);
+    }
+
+    std::vector<std::size_t> detectedRepairs;
+    auto model = std::make_shared<::Model>(path, false, nullptr, &detectedRepairs);
+    {
+        std::lock_guard<std::mutex> lock(NormalRepairCacheMutex());
+        SaveNormalRepairCache(cachePath, detectedRepairs);
+    }
+    if (!detectedRepairs.empty()) {
+        std::cout << "Cached inverted-normal repairs for " << detectedRepairs.size()
+                  << " mesh(es) in " << fs::path(path).filename().string() << "." << std::endl;
+    }
+    return model;
 }
 
 std::vector<ImportedMeshInfo> GetMeshInfos(const std::shared_ptr<::Model>& model) {

@@ -10,32 +10,13 @@
 #include <cctype>
 #include <cstdio>
 #include <fstream>
+#include <utility>
 
 namespace fs = std::filesystem;
 
 namespace raceman {
 
 namespace {
-fs::path ProjectRootPath() {
-    if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
-        return fs::absolute("ProjectRaceman/Project").lexically_normal();
-    }
-    if (fs::exists("src") && fs::is_directory("src")) {
-        return fs::absolute("Project").lexically_normal();
-    }
-    return fs::absolute("Project").lexically_normal();
-}
-
-fs::path EngineRootPath() {
-    if (fs::exists("ProjectRaceman/src") && fs::is_directory("ProjectRaceman/src")) {
-        return fs::absolute("ProjectRaceman").lexically_normal();
-    }
-    if (fs::exists("src") && fs::is_directory("src")) {
-        return fs::absolute(".").lexically_normal();
-    }
-    return fs::absolute(".").lexically_normal();
-}
-
 std::string SceneDisplayName(const std::string& scenePath) {
     std::string filename = fs::path(scenePath).filename().string();
     const std::string suffix = ".scene.json";
@@ -57,6 +38,77 @@ MenuController::~MenuController() {
     SaveState();
 }
 
+void MenuController::SetProjectSkyboxFaces(const SkyboxFaces& faces) {
+    selectedSkyboxFaces_ = faces;
+    selectedSkyboxFolder_.clear();
+    skyboxSelectionError_.clear();
+
+    bool complete = true;
+    bool filesExist = true;
+    bool haveFolder = false;
+    bool sameFolder = true;
+    fs::path commonFolder;
+    for (const std::string& face : selectedSkyboxFaces_) {
+        if (face.empty()) {
+            complete = false;
+            filesExist = false;
+            continue;
+        }
+
+        const fs::path facePath(face);
+        std::error_code errorCode;
+        if (!fs::is_regular_file(facePath, errorCode)) {
+            filesExist = false;
+        }
+
+        const fs::path folder = facePath.parent_path();
+        if (!haveFolder) {
+            commonFolder = folder;
+            haveFolder = true;
+        } else if (commonFolder != folder) {
+            sameFolder = false;
+        }
+    }
+
+    if (haveFolder && sameFolder) {
+        selectedSkyboxFolder_ = commonFolder.string();
+    }
+    hasSelectedSkyboxFaces_ = complete && filesExist;
+    selectedSkyboxSaved_ = complete;
+    if (complete && !filesExist) {
+        skyboxSelectionError_ = "The saved skybox references one or more missing image files.";
+    } else if (!complete && std::any_of(
+                   selectedSkyboxFaces_.begin(), selectedSkyboxFaces_.end(),
+                   [](const std::string& face) { return !face.empty(); })) {
+        skyboxSelectionError_ = "The saved skybox is incomplete. Assign all six faces.";
+    }
+}
+
+void MenuController::UndoGraphicsSettings(Renderer& renderer) {
+    if (graphicsEditActive_) {
+        graphicsRedoStack_.push_back(renderer.GetSettings());
+        renderer.GetSettings() = graphicsEditStart_;
+        graphicsEditActive_ = false;
+        if (graphicsChangedCallback_) graphicsChangedCallback_();
+        return;
+    }
+    if (graphicsUndoStack_.empty()) return;
+
+    graphicsRedoStack_.push_back(renderer.GetSettings());
+    renderer.GetSettings() = graphicsUndoStack_.back();
+    graphicsUndoStack_.pop_back();
+    if (graphicsChangedCallback_) graphicsChangedCallback_();
+}
+
+void MenuController::RedoGraphicsSettings(Renderer& renderer) {
+    if (graphicsRedoStack_.empty()) return;
+
+    graphicsUndoStack_.push_back(renderer.GetSettings());
+    renderer.GetSettings() = graphicsRedoStack_.back();
+    graphicsRedoStack_.pop_back();
+    if (graphicsChangedCallback_) graphicsChangedCallback_();
+}
+
 void MenuController::Render(Renderer& renderer,
                             bool vsyncEnabled,
                             const std::function<void(bool)>& setVSync,
@@ -70,6 +122,9 @@ void MenuController::Render(Renderer& renderer,
                             bool* physicsCullingEnabled,
                             float* sceneCameraNearClip,
                             float* sceneCameraFarClip) {
+
+    graphicsChangedCallback_ = projectMenu.onGraphicsSettingsChanged;
+    projectSettingsShortcutTarget_ = false;
 
     // Tick async folder picker — fires onBuildProject once user picks a folder
     if (folderPickerState_ && folderPickerState_->isDone.load()) {
@@ -99,9 +154,12 @@ void MenuController::Render(Renderer& renderer,
                 if (ImGui::BeginTabItem("Rendering", nullptr, renderingTabFlags)) {
                     selectedProjectSettingsTab_ = 0;
                     auto& settings = renderer.GetSettings();
+                    const RendererSettings graphicsBeforeFrame = settings;
                     bool graphicsChanged = false;
-                    graphicsChanged |= ImGui::ColorEdit3("Clear Color", &settings.clearColor.x);
-                    graphicsChanged |= ImGui::ColorEdit3("Ambient Light", &settings.ambientColor.x);
+                    graphicsChanged |= ImGui::ColorEdit3("Ambient Light", &settings.profile.ambientColor.x);
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Project-wide ambient light. Game background color is configured on each Camera.");
+                    }
 
                     ImGui::Separator();
                     ImGui::TextUnformatted("Graphics Profile");
@@ -124,11 +182,158 @@ void MenuController::Render(Renderer& renderer,
                         graphicsChanged = true;
                     }
                     graphicsChanged |= ImGui::DragFloat("Exposure", &settings.profile.exposure, 0.02f, 0.05f, 8.0f, "%.2f");
-                    graphicsChanged |= ImGui::Checkbox("HDR", &settings.profile.hdr);
+                    const char* outputModeNames[] = {"SDR (sRGB)", "HDR (scRGB linear)"};
+                    int outputMode = settings.profile.hdr ? 1 : 0;
+                    if (ImGui::Combo("Output Mode", &outputMode, outputModeNames, 2)) {
+                        settings.profile.hdr = outputMode == 1;
+                        graphicsChanged = true;
+                    }
+                    ImGui::BeginDisabled(!settings.profile.hdr);
+                    if (ImGui::SliderFloat("HDR Paper White", &settings.profile.hdrPaperWhiteNits,
+                        80.0f, 500.0f, "%.0f nits")) {
+                        settings.profile.hdrPeakBrightnessNits = (std::max)(
+                            settings.profile.hdrPeakBrightnessNits, settings.profile.hdrPaperWhiteNits);
+                        graphicsChanged = true;
+                    }
+                    graphicsChanged |= ImGui::SliderFloat("HDR Peak Brightness", &settings.profile.hdrPeakBrightnessNits,
+                        settings.profile.hdrPaperWhiteNits, 4000.0f, "%.0f nits", ImGuiSliderFlags_Logarithmic);
+                    ImGui::EndDisabled();
+                    if (settings.profile.hdr) {
+                        ImGui::TextDisabled("Output: RGBA16F linear scRGB (editor shows SDR preview)");
+                    } else {
+                        ImGui::TextDisabled("Output: RGBA8 display-referred sRGB");
+                    }
+                    const DisplayHdrCapabilities& hdrDisplay = renderer.GetDisplayHdrCapabilities();
+                    if (!hdrDisplay.detected) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f),
+                            "Display HDR: capability unavailable");
+                    } else if (!hdrDisplay.hdrSupported) {
+                        ImGui::TextDisabled("Display HDR: unsupported (%d-bit output)",
+                            hdrDisplay.displayBitsPerColor);
+                    } else if (!hdrDisplay.hdrEnabledInWindows) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f),
+                            "Display HDR: supported but disabled in Windows");
+                    } else {
+                        ImGui::TextColored(ImVec4(0.35f, 0.9f, 0.45f, 1.0f),
+                            "Display HDR: enabled (%.0f nits, %d-bit)",
+                            hdrDisplay.maximumLuminanceNits, hdrDisplay.displayBitsPerColor);
+                    }
+                    ImGui::TextDisabled("Window framebuffer: %d-bit; native HDR presenter: %s",
+                        hdrDisplay.windowBitsPerColor,
+                        hdrDisplay.nativePresentationAvailable ? "active" : "requires DXGI backend");
                     graphicsChanged |= ImGui::Checkbox("Bloom", &settings.profile.bloom);
+                    ImGui::BeginDisabled(!settings.profile.bloom);
+                    graphicsChanged |= ImGui::SliderFloat("Bloom Intensity", &settings.profile.bloomIntensity, 0.0f, 3.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderFloat("Bloom Threshold", &settings.profile.bloomThreshold, 0.0f, 8.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderFloat("Bloom Radius", &settings.profile.bloomRadius, 0.25f, 3.0f, "%.2f");
+                    ImGui::EndDisabled();
+                    ImGui::SeparatorText("Post Processing");
+                    graphicsChanged |= ImGui::Checkbox("Motion Blur", &settings.profile.motionBlur);
+                    ImGui::BeginDisabled(!settings.profile.motionBlur);
+                    graphicsChanged |= ImGui::SliderFloat("Shutter Angle", &settings.profile.motionBlurShutterAngle, 0.0f, 360.0f, "%.0f deg");
+                    graphicsChanged |= ImGui::SliderFloat("Motion Blur Intensity", &settings.profile.motionBlurIntensity, 0.0f, 2.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderInt("Motion Blur Samples", &settings.profile.motionBlurSamples, 4, 32);
+                    graphicsChanged |= ImGui::SliderFloat("Maximum Blur Radius", &settings.profile.motionBlurMaxRadius, 1.0f, 64.0f, "%.0f px");
+                    if (ImGui::Checkbox("Motion Vector Debug View", &settings.profile.motionBlurDebugView)) {
+                        if (settings.profile.motionBlurDebugView) {
+                            settings.profile.ssaoDebugView = false;
+                            settings.profile.shadowCascadeDebugView = false;
+                            settings.profile.iblDebugMode = 0;
+                        }
+                        graphicsChanged = true;
+                    }
+                    ImGui::TextDisabled("Uses camera and per-object motion vectors.");
+                    ImGui::EndDisabled();
                     graphicsChanged |= ImGui::Checkbox("SSAO", &settings.profile.ssao);
+                    ImGui::BeginDisabled(!settings.profile.ssao);
+                    graphicsChanged |= ImGui::SliderFloat("SSAO Intensity", &settings.profile.ssaoIntensity, 0.0f, 3.0f, "%.2f");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Scales ambient occlusion darkness. Values above 1 allow a stronger artistic effect.");
+                    }
+                    graphicsChanged |= ImGui::SliderFloat("SSAO Radius", &settings.profile.ssaoRadius, 0.05f, 5.0f, "%.2f m");
+                    graphicsChanged |= ImGui::SliderFloat("SSAO Bias", &settings.profile.ssaoBias, 0.001f, 0.2f, "%.3f m", ImGuiSliderFlags_Logarithmic);
+                    if (ImGui::Checkbox("SSAO Debug View", &settings.profile.ssaoDebugView)) {
+                        if (settings.profile.ssaoDebugView) {
+                            settings.profile.iblDebugMode = 0;
+                            settings.profile.shadowCascadeDebugView = false;
+                            settings.profile.motionBlurDebugView = false;
+                        }
+                        graphicsChanged = true;
+                    }
+                    const int ssaoDivisor = settings.profile.quality == GraphicsQualityTier::Low ? 4
+                        : (settings.profile.quality == GraphicsQualityTier::Ultra ? 1 : 2);
+                    const int ssaoSamples = settings.profile.quality == GraphicsQualityTier::Low ? 8
+                        : (settings.profile.quality == GraphicsQualityTier::Medium ? 16
+                        : (settings.profile.quality == GraphicsQualityTier::Ultra ? 32 : 24));
+                    ImGui::TextDisabled("Active SSAO: 1/%d resolution, %d samples", ssaoDivisor, ssaoSamples);
+                    ImGui::EndDisabled();
                     graphicsChanged |= ImGui::Checkbox("Shadows", &settings.profile.shadows);
+                    const int shadowResolutions[] = {0, 512, 1024, 2048, 4096};
+                    const char* shadowResolutionNames[] = {"Follow Quality Tier", "512", "1024", "2048", "4096"};
+                    int shadowResolutionIndex = 0;
+                    for (int i = 1; i < 5; ++i) {
+                        if (settings.profile.shadowResolution == shadowResolutions[i]) shadowResolutionIndex = i;
+                    }
+                    ImGui::BeginDisabled(!settings.profile.shadows);
+                    if (ImGui::Combo("Shadow Resolution", &shadowResolutionIndex, shadowResolutionNames, 5)) {
+                        settings.profile.shadowResolution = shadowResolutions[shadowResolutionIndex];
+                        graphicsChanged = true;
+                    }
+                    ImGui::EndDisabled();
+                    if (settings.profile.shadows && settings.profile.shadowResolution == 0) {
+                        const int tierResolution = settings.profile.quality == GraphicsQualityTier::Low ? 1024
+                            : (settings.profile.quality == GraphicsQualityTier::Medium ? 1536
+                            : (settings.profile.quality == GraphicsQualityTier::Ultra ? 4096 : 2048));
+                        ImGui::TextDisabled("Active shadow map: %d x %d", tierResolution, tierResolution);
+                    }
+                    ImGui::BeginDisabled(!settings.profile.shadows);
+                    graphicsChanged |= ImGui::SliderFloat("Shadow Softness", &settings.profile.shadowSoftness, 0.0f, 8.0f, "%.1f texels");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("0 produces hard edges. Higher values widen the filtered shadow edge.");
+                    }
+                    const char* cascadeCountNames[] = {"1 (Legacy)", "2", "3", "4"};
+                    int cascadeCountIndex = (std::clamp)(settings.profile.shadowCascadeCount, 1, 4) - 1;
+                    if (ImGui::Combo("Shadow Cascades", &cascadeCountIndex, cascadeCountNames, 4)) {
+                        settings.profile.shadowCascadeCount = cascadeCountIndex + 1;
+                        graphicsChanged = true;
+                    }
+                    graphicsChanged |= ImGui::SliderFloat("Shadow Distance", &settings.profile.shadowDistance,
+                        10.0f, 500.0f, "%.0f m", ImGuiSliderFlags_Logarithmic);
+                    if (ImGui::Checkbox("Shadow Cascade Debug View", &settings.profile.shadowCascadeDebugView)) {
+                        if (settings.profile.shadowCascadeDebugView) {
+                            settings.profile.ssaoDebugView = false;
+                            settings.profile.iblDebugMode = 0;
+                            settings.profile.motionBlurDebugView = false;
+                        }
+                        graphicsChanged = true;
+                    }
+                    ImGui::EndDisabled();
+                    if (settings.profile.shadows) {
+                        ImGui::TextDisabled("Active shadow map: %d cascade layer%s",
+                            settings.profile.shadowCascadeCount,
+                            settings.profile.shadowCascadeCount == 1 ? "" : "s");
+                    }
                     graphicsChanged |= ImGui::Checkbox("Reflections", &settings.profile.reflections);
+                    ImGui::BeginDisabled(!settings.profile.reflections);
+                    graphicsChanged |= ImGui::SliderFloat("Environment Lighting", &settings.profile.environmentIntensity, 0.0f, 4.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderFloat("Reflection Intensity", &settings.profile.reflectionIntensity, 0.0f, 4.0f, "%.2f");
+                    const char* iblDebugNames[] = {"Off", "Diffuse Irradiance", "Raw Environment", "Final Specular"};
+                    if (ImGui::Combo("IBL Debug View", &settings.profile.iblDebugMode, iblDebugNames, 4)) {
+                        if (settings.profile.iblDebugMode != 0) {
+                            settings.profile.ssaoDebugView = false;
+                            settings.profile.shadowCascadeDebugView = false;
+                            settings.profile.motionBlurDebugView = false;
+                        }
+                        graphicsChanged = true;
+                    }
+                    ImGui::EndDisabled();
+                    if (!renderer.HasEnvironmentSource()) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.35f, 1.0f), "IBL status: no valid skybox cubemap");
+                    } else if (renderer.IsEnvironmentBakeReady()) {
+                        ImGui::TextDisabled("IBL status: baked (irradiance %.3f)", renderer.GetEnvironmentAverageLuminance());
+                    } else {
+                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f), "IBL status: using skybox mip fallback");
+                    }
                     graphicsChanged |= ImGui::Checkbox("Weather", &settings.profile.weather);
                     graphicsChanged |= ImGui::Checkbox("LOD", &settings.profile.lod);
                     if (settings.profile.style == RenderStyle::Stylized) {
@@ -172,46 +377,103 @@ void MenuController::Render(Renderer& renderer,
                         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
                     }
                     if (ImGui::CollapsingHeader("Skybox")) {
-                        if (skyboxFolders_.empty()) {
-                            RefreshSkyboxSets();
+                        ImGui::TextWrapped("Browse to any face image in a six-image skybox. The other faces are detected from the same folder.");
+                        ImGui::SetNextItemWidth(-110.0f);
+                        ImGui::InputText("##skybox-folder", selectedSkyboxFolder_.data(), selectedSkyboxFolder_.size() + 1, ImGuiInputTextFlags_ReadOnly);
+                        ImGui::SameLine();
+                        if (ImGui::Button("Browse...##skybox")) {
+                            const std::string selectedFile = PickImageFileDialog(L"Select any skybox face image");
+                            if (!selectedFile.empty()) {
+                                const std::string folder = fs::path(selectedFile).parent_path().string();
+                                SkyboxFaces faces{};
+                                std::string error;
+                                if (TryBuildFacesFromFolder(folder, faces, error)) {
+                                    selectedSkyboxFolder_ = folder;
+                                    selectedSkyboxFaces_ = std::move(faces);
+                                    hasSelectedSkyboxFaces_ = true;
+                                    selectedSkyboxSaved_ = false;
+                                    skyboxSelectionError_.clear();
+                                    if (onSkyboxChosen) {
+                                        onSkyboxChosen(selectedSkyboxFaces_);
+                                        selectedSkyboxSaved_ = true;
+                                    }
+                                } else {
+                                    selectedSkyboxFolder_ = folder;
+                                    selectedSkyboxFaces_ = {};
+                                    hasSelectedSkyboxFaces_ = false;
+                                    selectedSkyboxSaved_ = false;
+                                    skyboxSelectionError_ = std::move(error) + " Assign each face manually below.";
+                                }
+                            }
+                        }
+                        if (!skyboxSelectionError_.empty()) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.35f, 1.0f), "%s", skyboxSelectionError_.c_str());
                         }
 
-                        ImGui::TextUnformatted("Pick a skybox folder (auto-detects px/nx/py/ny/pz/nz or posx/negx/...)");
-                        if (ImGui::BeginListBox("##skybox-folders", ImVec2(0, 200))) {
-                            for (int i = 0; i < static_cast<int>(skyboxFolders_.size()); ++i) {
-                                bool selected = (i == selectedFolder_);
-                                if (ImGui::Selectable(skyboxFolders_[i].c_str(), selected)) {
-                                    selectedFolder_ = i;
-                                    if (selectedFolder_ >= 0) {
-                                        selectedSkyboxFaces_ = BuildFacesFromFolder(skyboxFolders_[selectedFolder_]);
-                                        hasSelectedSkyboxFaces_ = true;
+                        ImGui::SeparatorText("Faces");
+                        const char* labels[6] = {"+X", "-X", "+Y", "-Y", "+Z", "-Z"};
+                        const wchar_t* pickerTitles[6] = {
+                            L"Select +X skybox face", L"Select -X skybox face",
+                            L"Select +Y skybox face", L"Select -Y skybox face",
+                            L"Select +Z skybox face", L"Select -Z skybox face",
+                        };
+                        for (int i = 0; i < 6; ++i) {
+                            ImGui::PushID(i);
+                            ImGui::AlignTextToFramePadding();
+                            ImGui::TextUnformatted(labels[i]);
+                            ImGui::SameLine(30.0f);
+                            ImGui::SetNextItemWidth(-110.0f);
+                            std::string& face = selectedSkyboxFaces_[static_cast<size_t>(i)];
+                            ImGui::InputText("##face", face.data(), face.size() + 1, ImGuiInputTextFlags_ReadOnly);
+                            ImGui::SameLine();
+                            if (ImGui::Button("Browse...##face")) {
+                                const std::string selectedFile = PickImageFileDialog(pickerTitles[i]);
+                                if (!selectedFile.empty()) {
+                                    face = selectedFile;
+                                    selectedSkyboxSaved_ = false;
+                                    hasSelectedSkyboxFaces_ = std::all_of(
+                                        selectedSkyboxFaces_.begin(), selectedSkyboxFaces_.end(),
+                                        [](const std::string& path) {
+                                            std::error_code errorCode;
+                                            return !path.empty() && fs::is_regular_file(fs::path(path), errorCode);
+                                        });
+                                    skyboxSelectionError_ = hasSelectedSkyboxFaces_
+                                        ? std::string{}
+                                        : "Manual selection: assign all six skybox faces.";
+                                    if (hasSelectedSkyboxFaces_ && onSkyboxChosen) {
+                                        onSkyboxChosen(selectedSkyboxFaces_);
+                                        selectedSkyboxSaved_ = true;
                                     }
                                 }
                             }
-                            ImGui::EndListBox();
+                            ImGui::PopID();
                         }
 
-                        if (hasSelectedSkyboxFaces_) {
-                            const auto& faces = selectedSkyboxFaces_;
-                            const char* labels[6] = {"+X","-X","+Y","-Y","+Z","-Z"};
-                            for (int i = 0; i < 6; ++i) {
-                                std::vector<char> buf(faces[i].begin(), faces[i].end());
-                                buf.push_back('\0');
-                                ImGui::InputText(labels[i], buf.data(), buf.size(), ImGuiInputTextFlags_ReadOnly);
-                            }
-                            if (onSkyboxChosen) {
-                                if (ImGui::Button("Apply Skybox")) {
-                                    onSkyboxChosen(faces);
-                                }
-                            } else {
-                                ImGui::TextDisabled("Skybox selection is stored only.");
+                        if (hasSelectedSkyboxFaces_ && selectedSkyboxSaved_) {
+                            ImGui::TextColored(ImVec4(0.35f, 0.85f, 0.45f, 1.0f), "Saved and applied to this project.");
+                        } else if (!hasSelectedSkyboxFaces_) {
+                            if (skyboxSelectionError_.empty()) {
+                                ImGui::TextDisabled("Assign all six faces. The skybox saves automatically when complete.");
                             }
                         } else {
-                            ImGui::TextDisabled("No skybox selected.");
+                            ImGui::TextDisabled("A complete skybox is selected but no project save callback is available.");
                         }
                     }
                     if (graphicsChanged && projectMenu.onGraphicsSettingsChanged) {
                         projectMenu.onGraphicsSettingsChanged();
+                    }
+                    if (graphicsChanged && !graphicsEditActive_) {
+                        graphicsEditStart_ = graphicsBeforeFrame;
+                        graphicsEditActive_ = true;
+                        graphicsRedoStack_.clear();
+                    }
+                    if (graphicsEditActive_ && !ImGui::IsAnyItemActive()) {
+                        graphicsUndoStack_.push_back(graphicsEditStart_);
+                        constexpr size_t kMaxGraphicsHistory = 100;
+                        if (graphicsUndoStack_.size() > kMaxGraphicsHistory) {
+                            graphicsUndoStack_.erase(graphicsUndoStack_.begin());
+                        }
+                        graphicsEditActive_ = false;
                     }
                     ImGui::EndTabItem();
                 }
@@ -255,6 +517,10 @@ void MenuController::Render(Renderer& renderer,
             if (selectedProjectSettingsTab_ != previousProjectSettingsTab) {
                 SaveState();
             }
+            projectSettingsShortcutTarget_ =
+                selectedProjectSettingsTab_ == 0 &&
+                (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) ||
+                 ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows));
         }
         ImGui::End();
         if (!showProjectSettings_) {
@@ -367,118 +633,53 @@ void MenuController::RenderMainMenu(const std::function<void()>& onAddMeshPlane,
     }
 }
 
-bool MenuController::LooksLikeFaceSet(const std::vector<std::string>& names) {
-    // Accept either px/nx/py/ny/pz/nz OR posx/negx/posy/negy/posz/negz
-    const char* a[6] = {"px.jpg","nx.jpg","py.jpg","ny.jpg","pz.jpg","nz.jpg"};
-    const char* b[6] = {"posx.jpg","negx.jpg","posy.jpg","negy.jpg","posz.jpg","negz.jpg"};
-    int countA = 0, countB = 0;
-    for (const auto& n : names) {
-        for (auto s : a) if (n == s) ++countA;
-        for (auto s : b) if (n == s) ++countB;
-    }
-    return (countA == 6) || (countB == 6);
-}
-
-SkyboxFaces MenuController::BuildFacesFromFolder(const std::string& folder) {
-    // Prefer px/nx... else posx/negx...
-    SkyboxFaces faces{};
-    std::array<const char*,6> a = {"px.jpg","nx.jpg","py.jpg","ny.jpg","pz.jpg","nz.jpg"};
-    std::array<const char*,6> b = {"posx.jpg","negx.jpg","posy.jpg","negy.jpg","posz.jpg","negz.jpg"};
-
-    // Read names in folder into a set for quick lookup
-    std::vector<std::string> found;
+bool MenuController::TryBuildFacesFromFolder(const std::string& folder, SkyboxFaces& faces, std::string& error) {
+    const std::array<std::array<const char*, 6>, 2> namingSets = {{
+        {{"px", "nx", "py", "ny", "pz", "nz"}},
+        {{"posx", "negx", "posy", "negy", "posz", "negz"}},
+    }};
+    std::vector<fs::path> images;
     try {
-        for (auto& entry : fs::directory_iterator(folder)) {
+        for (const auto& entry : fs::directory_iterator(folder)) {
             if (entry.is_regular_file()) {
-                auto name = entry.path().filename().string();
-                std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-                if (name.size() >= 4) {
-                    if (name.find(".jpg") != std::string::npos || name.find(".png") != std::string::npos) {
-                        found.push_back(name);
-                    }
-                }
+                std::string extension = entry.path().extension().string();
+                std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                if (extension == ".jpg" || extension == ".jpeg" || extension == ".png" ||
+                    extension == ".bmp" || extension == ".tga" || extension == ".hdr") images.push_back(entry.path());
             }
         }
     } catch (...) {
-        // ignore FS errors
+        error = "The selected folder could not be read.";
+        return false;
     }
-
-    auto has = [&](const std::string& needle){ return std::find(found.begin(), found.end(), needle) != found.end(); };
-
-    bool useA = true;
-    for (auto s : a) if (!has(s)) { useA = false; break; }
-    const auto& order = useA ? a : b;
-
-    for (size_t i = 0; i < 6; ++i) {
-        faces[i] = (fs::path(folder) / order[i]).string();
-    }
-    return faces;
-}
-
-void MenuController::RefreshSkyboxSets() {
-    skyboxFolders_.clear();
-
-    auto scanDir = [&](const fs::path& base) {
-        if (!fs::exists(base)) return;
-        try {
-            for (auto& entry : fs::recursive_directory_iterator(base)) {
-                if (entry.is_directory()) {
-                    std::vector<std::string> names;
-                    for (auto& sub : fs::directory_iterator(entry.path())) {
-                        if (sub.is_regular_file()) {
-                            auto n = sub.path().filename().string();
-                            std::transform(n.begin(), n.end(), n.begin(), ::tolower);
-                            names.push_back(n);
-                        }
-                    }
-                    if (LooksLikeFaceSet(names)) {
-                        skyboxFolders_.push_back(entry.path().string());
-                    }
+    std::sort(images.begin(), images.end());
+    for (const auto& names : namingSets) {
+        SkyboxFaces candidate{};
+        bool complete = true;
+        for (size_t i = 0; i < names.size(); ++i) {
+            for (const fs::path& image : images) {
+                std::string stem = image.stem().string();
+                std::transform(stem.begin(), stem.end(), stem.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                if (stem == names[i]) {
+                    candidate[i] = image.string();
+                    break;
                 }
             }
-        } catch (...) {}
-    };
-
-    // Engine-bundled skyboxes first, then project skyboxes.
-    scanDir(EngineRootPath() / "editor-assets" / "skybox");
-    scanDir(ProjectRootPath() / "assets" / "skybox");
-
-    std::sort(skyboxFolders_.begin(), skyboxFolders_.end());
-    if (!hasSelectedSkyboxFaces_) {
-        for (int i = 0; i < static_cast<int>(skyboxFolders_.size()); ++i) {
-            std::string lower = skyboxFolders_[static_cast<std::size_t>(i)];
-            std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-            if (lower.find("sunset") != std::string::npos) {
-                selectedFolder_ = i;
-                selectedSkyboxFaces_ = BuildFacesFromFolder(skyboxFolders_[static_cast<std::size_t>(i)]);
-                hasSelectedSkyboxFaces_ = true;
-                break;
-            }
+            if (candidate[i].empty()) complete = false;
+        }
+        if (complete) {
+            faces = std::move(candidate);
+            error.clear();
+            return true;
         }
     }
+    error = "No complete skybox found. Expected px/nx/py/ny/pz/nz or posx/negx/posy/negy/posz/negz images.";
+    return false;
 }
 
 void MenuController::RenderSkyboxPanel(const std::function<void(const SkyboxFaces&)>& onSkyboxChosen) {
-    if (skyboxFolders_.empty()) {
-        RefreshSkyboxSets();
-    }
-
     if (ImGui::Begin("Skybox")) {
-        ImGui::TextUnformatted("Pick a skybox folder (auto-detects px/nx/py/ny/pz/nz or posx/negx/...)");
-        if (ImGui::BeginListBox("##skybox-folders", ImVec2(0, 200))) {
-            for (int i = 0; i < static_cast<int>(skyboxFolders_.size()); ++i) {
-                bool selected = (i == selectedFolder_);
-                if (ImGui::Selectable(skyboxFolders_[i].c_str(), selected)) {
-                    selectedFolder_ = i;
-                    if (selectedFolder_ >= 0) {
-                        selectedSkyboxFaces_ = BuildFacesFromFolder(skyboxFolders_[selectedFolder_]);
-                        hasSelectedSkyboxFaces_ = true;
-                    }
-                }
-            }
-            ImGui::EndListBox();
-        }
-
+        ImGui::TextUnformatted("Skybox selection is available in Project Settings > Rendering.");
         if (hasSelectedSkyboxFaces_) {
             const auto& faces = selectedSkyboxFaces_;
             const char* labels[6] = {"+X","-X","+Y","-Y","+Z","-Z"};
@@ -515,7 +716,6 @@ void MenuController::LoadState() {
         else if (key == "showSkybox") showSkybox_ = (val == "1");
         else if (key == "showConsole") showConsole_ = (val == "1");
         else if (key == "selectedProjectSettingsTab") selectedProjectSettingsTab_ = std::clamp(std::stoi(val), 0, 3);
-        else if (key == "selectedFolder") selectedFolder_ = std::stoi(val);
     }
 }
 
@@ -530,7 +730,6 @@ void MenuController::SaveState() const {
     out << "showSkybox=" << (showSkybox_ ? "1" : "0") << "\n";
     out << "showConsole=" << (showConsole_ ? "1" : "0") << "\n";
     out << "selectedProjectSettingsTab=" << selectedProjectSettingsTab_ << "\n";
-    out << "selectedFolder=" << selectedFolder_ << "\n";
 }
 
 } // namespace raceman

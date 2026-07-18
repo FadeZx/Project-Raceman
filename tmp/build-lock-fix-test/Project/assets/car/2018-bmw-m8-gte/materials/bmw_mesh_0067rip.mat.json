@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "name": "Mesh_0067.rip",
+  "shader": "transparent",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0,
+  "roughness": 1,
+  "clearCoat": 0.814,
+  "clearCoatRoughness": 0.768,
+  "anisotropy": 0.404,
+  "transmission": 0.476,
+  "alphaMode": "Opaque",
+  "alphaCutoff": 0.089,
+  "doubleSided": false,
+  "emissiveColor": [0, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "assets/car/2018-bmw-m8-gte/materials/bmw_mesh_0067rip_albedo.png",
+    "normal": "",
+    "metallic": "",
+    "roughness": "",
+    "ao": ""
+  },
+  "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 },
+    "emissiveIntensity": { "type": "float", "value": 1 },
+    "emissiveTexture": { "type": "texture2D", "value": "" }
+  }
+}

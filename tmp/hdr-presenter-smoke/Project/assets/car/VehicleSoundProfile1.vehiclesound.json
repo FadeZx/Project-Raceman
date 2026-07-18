@@ -1,0 +1,55 @@
+{
+  "name": "VehicleSoundProfile1",
+  "masterVolume": 1,
+  "spatialBlend": 1,
+  "minDistance": 1.1,
+  "maxDistance": 179,
+  "engineLayers": [
+    {
+      "clipPath": "assets/audio/engine sound.wav",
+      "rpmMin": 0,
+      "rpmMax": 8000,
+      "pitchAtRpmMin": 0.8,
+      "pitchAtRpmMax": 1.6,
+      "volumeAtRpmMin": 0,
+      "volumeAtRpmMax": 1,
+      "volumeThrottleScale": 0
+    },
+    {
+      "clipPath": "assets/audio/EngineSoundBG.wav",
+      "rpmMin": 0,
+      "rpmMax": 8000,
+      "pitchAtRpmMin": 0.8,
+      "pitchAtRpmMax": 1.6,
+      "volumeAtRpmMin": 0,
+      "volumeAtRpmMax": 1,
+      "volumeThrottleScale": 0
+    },
+    {
+      "clipPath": "assets/audio/EngineSound.wav",
+      "rpmMin": 0,
+      "rpmMax": 8000,
+      "pitchAtRpmMin": 0.8,
+      "pitchAtRpmMax": 1.6,
+      "volumeAtRpmMin": 0,
+      "volumeAtRpmMax": 1,
+      "volumeThrottleScale": 0
+    }
+  ],
+  "triggerSounds": [
+    {
+      "clipPath": "assets/audio/ShiftDownSound.wav",
+      "trigger": "gearUp",
+      "volume": 0.34,
+      "minRpmForBackfire": 4000,
+      "minLateralSpeedForSqueal": 4
+    },
+    {
+      "clipPath": "assets/audio/ShiftUpSound.wav",
+      "trigger": "gearDown",
+      "volume": 0.36,
+      "minRpmForBackfire": 4000,
+      "minLateralSpeedForSqueal": 4
+    }
+  ]
+}

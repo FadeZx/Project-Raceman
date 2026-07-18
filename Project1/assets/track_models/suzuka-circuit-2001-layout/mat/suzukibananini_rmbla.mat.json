@@ -1,10 +1,17 @@
 {
-  "version": 1,
+  "version": 2,
   "name": "RMBLA",
   "shader": "pbr",
   "albedoColor": [1, 1, 1, 1],
-  "metallic": 0,
-  "roughness": 1,
+  "metallic": 0.676,
+  "roughness": 0.711,
+  "clearCoat": 0.078,
+  "clearCoatRoughness": 0.201,
+  "anisotropy": 0,
+  "transmission": 0,
+  "alphaMode": "Opaque",
+  "alphaCutoff": 0.5,
+  "doubleSided": false,
   "emissiveColor": [0, 0, 0],
   "uvTiling": [1, 1],
   "uvOffset": [0, 0],
@@ -16,5 +23,6 @@
     "ao": ""
   },
   "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 }
   }
 }

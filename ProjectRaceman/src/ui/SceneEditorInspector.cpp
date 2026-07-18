@@ -2444,7 +2444,8 @@ void SceneEditor::RenderInspectorPanel() {
                         const glm::vec3 currentWorldPosition = glm::vec3(currentWorld[3]);
                         const int targetIndex = targetId.empty() ? -1 : FindObjectIndexById(targetId);
                         if (targetIndex >= 0) {
-                            obj.transform.position = CinemachineWorldPositionToOffset(GetObjectWorldMatrix(targetIndex), currentWorldPosition);
+                            obj.transform.position = CinemachineWorldPositionToOffset(
+                                GetObjectWorldMatrix(targetIndex), currentWorldPosition, obj.cinemachine.lockTargetPitchRoll);
                         } else {
                             obj.transform.position = currentWorldPosition;
                         }
@@ -2526,6 +2527,18 @@ void SceneEditor::RenderInspectorPanel() {
                             }
                         }
                         ImGui::EndDragDropTarget();
+                    }
+                }
+
+                if (obj.cinemachine.type != CinemachineCameraType::LookAt) {
+                    bool lockTargetPitchRoll = obj.cinemachine.lockTargetPitchRoll;
+                    if (ImGui::Checkbox("Lock Target Pitch & Roll", &lockTargetPitchRoll)) {
+                        PushUndoState();
+                        obj.cinemachine.lockTargetPitchRoll = lockTargetPitchRoll;
+                        if (onDirty_) onDirty_();
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Follow target yaw only so suspension pitch and body roll do not move the camera offset.");
                     }
                 }
 
@@ -4382,12 +4395,6 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         }
         if (material->alphaMode == "Mask") {
             materialChanged |= ImGui::SliderFloat("Alpha Cutoff", &material->alphaCutoff, 0.0f, 1.0f);
-        }
-        if (material->alphaMode == "Blend") {
-            materialChanged |= ImGui::DragInt("Transparent Sort Priority", &material->transparentSortPriority, 1.0f, -100, 100);
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Higher priority renders later and appears in front of lower-priority transparent materials.");
-            }
         }
         materialChanged |= ImGui::Checkbox("Double Sided", &material->doubleSided);
         ImGui::TreePop();

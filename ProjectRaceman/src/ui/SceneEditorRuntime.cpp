@@ -193,9 +193,21 @@ void SceneEditor::SetScriptsRunning(bool running) {
 
             playModeLoad_ = {};
             playModeLoad_.scriptBuild = std::make_shared<PlayModeLoadState::ScriptBuildStatus>();
+            playModeLoad_.window = EditorProgressService::Get().Begin(
+                "Compiling Scripts", "Building ProjectScripts.dll...", 0, false);
+            playModeLoad_.window.SetDetail("Compiling C++ scripts with MSBuild.");
             playModeLoad_.buildStart = std::chrono::high_resolution_clock::now();
             auto status = playModeLoad_.scriptBuild;
-            playModeLoad_.scriptBuildThread = std::make_unique<std::thread>([status]() {
+            const EditorProgressTask progressWindow = playModeLoad_.window;
+            playModeLoad_.scriptBuildThread = std::make_unique<std::thread>([status, progressWindow]() {
+                // Give the main thread an opportunity to present the modal
+                // before MSBuild begins. Without this handshake, a fast
+                // incremental build can finish and transition to scene loading
+                // before the first progress frame reaches the screen.
+                const auto renderDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(250);
+                while (!progressWindow.HasBeenRendered() && std::chrono::steady_clock::now() < renderDeadline) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
                 std::string error;
                 const bool ok = BuildScriptAssembly(&error);
                 {
@@ -244,6 +256,9 @@ void SceneEditor::SetScriptsRunning(bool running) {
         playModeLoad_.progress = std::make_shared<PhysicsBuildProgress>();
         playModeLoad_.progress->stepsTotal.store(static_cast<int>(physicsBodies.size()));
         playModeLoad_.buildStart = std::chrono::high_resolution_clock::now();
+        playModeLoad_.window = EditorProgressService::Get().Begin(
+            "Building Scene", "Preparing or baking collision geometry...",
+            static_cast<int>(physicsBodies.size()), true);
 
         PhysicsWorld* worldPtr = playModeLoad_.pendingWorld.get();
         PhysicsBuildProgress* progressPtr = playModeLoad_.progress.get();
@@ -367,6 +382,7 @@ void SceneEditor::TickPlayModeLoading() {
         }
 
         if (!status->success.load()) {
+            playModeLoad_.window.Fail(error.empty() ? "Script DLL build failed." : error);
             playModeLoad_ = {};
             RestoreFromPlayModeSnapshot();
             const std::string message = error.empty() ? "Script DLL build failed. Check the build output for compiler errors." : error;
@@ -380,6 +396,7 @@ void SceneEditor::TickPlayModeLoading() {
 
         std::string loadError;
         if (!LoadScriptAssembly(&loadError)) {
+            playModeLoad_.window.Fail(loadError.empty() ? "Script DLL load failed." : loadError);
             playModeLoad_ = {};
             RestoreFromPlayModeSnapshot();
             const std::string message = loadError.empty() ? "Script DLL load failed." : loadError;
@@ -395,6 +412,7 @@ void SceneEditor::TickPlayModeLoading() {
             console_->AddLog("Loaded script DLL with " + std::to_string(GetRegisteredScripts().size()) + " script(s).");
         }
 
+        playModeLoad_.window.Complete("Scripts compiled and loaded.");
         playModeLoad_ = {};
         playModeScriptAssemblyReady_ = true;
         SetScriptsRunning(true);
@@ -402,6 +420,14 @@ void SceneEditor::TickPlayModeLoading() {
     }
 
     auto* prog = playModeLoad_.progress.get();
+    if (prog && playModeLoad_.window.IsValid()) {
+        if (playModeLoad_.window.IsCancellationRequested()) prog->cancelRequested.store(true);
+        const int done = prog->stepsDone.load();
+        const int total = (std::max)(1, prog->stepsTotal.load());
+        playModeLoad_.window.SetProgress(done, total);
+        const std::string task = prog->GetTask();
+        if (!task.empty()) playModeLoad_.window.SetDetail(task);
+    }
     if (!prog || !prog->isDone.load()) {
         return; // still building
     }
@@ -414,6 +440,7 @@ void SceneEditor::TickPlayModeLoading() {
     const bool cancelled = prog->wasCancelled.load();
 
     if (cancelled) {
+        playModeLoad_.window.Cancelled();
         // Discard the partially-built world and restore editor state.
         playModeLoad_ = {};
         RestoreFromPlayModeSnapshot();
@@ -430,7 +457,8 @@ void SceneEditor::TickPlayModeLoading() {
     std::fprintf(stdout, "[Play] Build complete in %.1f ms\n", ms);
     std::fflush(stdout);
 
-    playModeLoad_ = {}; // reset (clears phase to Idle, closes popup next frame)
+    playModeLoad_.window.Complete("Scene build complete.");
+    playModeLoad_ = {}; // reset (clears phase to Idle)
 
     RebuildVehicleRuntime();
     RebuildAudioRuntime();
@@ -449,65 +477,7 @@ void SceneEditor::TickPlayModeLoading() {
 }
 
 void SceneEditor::RenderPlayModeLoadingPopup() {
-    if (playModeLoad_.phase == PlayModeLoadState::Phase::Idle) {
-        return;
-    }
-
-    // Keep the modal open as long as building is in progress.
-    const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(460.0f, 124.0f), ImGuiCond_Always);
-    ImGui::OpenPopup("###PlayModeLoading");
-
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 4.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.105f, 0.118f, 0.138f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram));
-    if (ImGui::BeginPopupModal("Building Scene...###PlayModeLoading", nullptr,
-        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-
-        if (playModeLoad_.phase == PlayModeLoadState::Phase::BuildingScripts) {
-            const double elapsed = std::chrono::duration<double>(
-                std::chrono::high_resolution_clock::now() - playModeLoad_.buildStart).count();
-            const float pulse = static_cast<float>(std::fmod(elapsed * 0.45, 1.0));
-
-            ImGui::TextUnformatted("Building script DLL...");
-            ImGui::ProgressBar(pulse, ImVec2(-1.0f, 0.0f), "ProjectScripts.dll");
-            ImGui::TextDisabled("Compiling C++ scripts with MSBuild.");
-            ImGui::BeginDisabled();
-            ImGui::Button("Cancel", ImVec2(100.0f, 0.0f));
-            ImGui::EndDisabled();
-        } else {
-            auto* prog = playModeLoad_.progress.get();
-            if (prog) {
-                const int done  = prog->stepsDone.load();
-                const int total = prog->stepsTotal.load();
-                const float fraction = (total > 0) ? static_cast<float>(done) / static_cast<float>(total) : 0.0f;
-
-                ImGui::TextUnformatted("Preparing or baking collision geometry...");
-
-                char label[32];
-                std::snprintf(label, sizeof(label), "%d / %d", done, (std::max)(total, 1));
-                ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), label);
-
-                const std::string task = prog->GetTask();
-                if (!task.empty()) {
-                    ImGui::TextDisabled("%s", task.c_str());
-                }
-
-                if (ImGui::Button("Cancel", ImVec2(100.0f, 0.0f))) {
-                    prog->cancelRequested.store(true);
-                }
-            }
-        }
-
-        ImGui::EndPopup();
-    }
-    ImGui::PopStyleColor(2);
-    ImGui::PopStyleVar(4);
+    // Rendered centrally by EditorProgressService.
 }
 
 void SceneEditor::StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs, std::string title) {
@@ -527,6 +497,9 @@ void SceneEditor::StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, 
 
     collisionBake_.active = true;
     collisionBake_.title = title.empty() ? "Baking Collision" : std::move(title);
+    collisionBake_.window = EditorProgressService::Get().Begin(
+        collisionBake_.title, "Preparing or baking collision geometry...",
+        static_cast<int>(jobs.size()), true);
     collisionBake_.progress = std::make_shared<PhysicsBuildProgress>();
     collisionBake_.progress->stepsDone.store(0);
     collisionBake_.progress->stepsTotal.store(static_cast<int>(jobs.size()));
@@ -540,14 +513,15 @@ void SceneEditor::StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, 
     }
 
     auto progress = collisionBake_.progress;
+    auto progressWindow = collisionBake_.window;
     auto* bakedCount = &collisionBake_.bakedCount;
     auto* failedCount = &collisionBake_.failedCount;
     auto* errorMutex = &collisionBake_.mutex;
     auto* lastError = &collisionBake_.lastError;
     collisionBake_.thread = std::make_unique<std::thread>(
-        [jobs = std::move(jobs), progress, bakedCount, failedCount, errorMutex, lastError]() {
+        [jobs = std::move(jobs), progress, progressWindow, bakedCount, failedCount, errorMutex, lastError]() {
             for (std::size_t i = 0; i < jobs.size(); ++i) {
-                if (progress->cancelRequested.load()) {
+                if (progress->cancelRequested.load() || progressWindow.IsCancellationRequested()) {
                     progress->wasCancelled.store(true);
                     break;
                 }
@@ -557,6 +531,8 @@ void SceneEditor::StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, 
                     : jobs[i].second;
                 progress->stepsDone.store(static_cast<int>(i));
                 progress->SetTask("Baking: " + label);
+                progressWindow.SetProgress(static_cast<int>(i), static_cast<int>(jobs.size()));
+                progressWindow.SetDetail("Baking: " + label);
 
                 CollisionShapeCacheInfo info;
                 const bool baked = PhysicsWorld::BakeCollisionShape(jobs[i].first, &info);
@@ -572,6 +548,9 @@ void SceneEditor::StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, 
             progress->stepsDone.store(static_cast<int>(jobs.size()));
             progress->SetTask(progress->wasCancelled.load() ? "Cancelled." : "Done.");
             progress->isDone.store(true);
+            if (progress->wasCancelled.load()) progressWindow.Cancelled();
+            else if (failedCount->load() > 0) progressWindow.Fail("Some collision meshes failed. Check the Console.");
+            else progressWindow.Complete("Collision bake complete.");
         });
 }
 
@@ -610,35 +589,11 @@ void SceneEditor::TickCollisionBake() {
     collisionBake_.title.clear();
     collisionBake_.progress.reset();
     collisionBake_.thread.reset();
+    collisionBake_.window = {};
 }
 
 void SceneEditor::RenderCollisionBakeInlineStatus() {
-    if (!collisionBake_.active || !collisionBake_.progress) {
-        return;
-    }
-
-    PhysicsBuildProgress* progress = collisionBake_.progress.get();
-    const int done = progress->stepsDone.load();
-    const int total = (std::max)(progress->stepsTotal.load(), 1);
-    const float fraction = static_cast<float>(done) / static_cast<float>(total);
-
-    ImGui::PushID("CollisionBakeInlineStatus");
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::TextUnformatted(collisionBake_.title.empty() ? "Baking collision cache" : collisionBake_.title.c_str());
-    char label[32];
-    std::snprintf(label, sizeof(label), "%d / %d", done, total);
-    ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), label);
-
-    const std::string task = progress->GetTask();
-    if (!task.empty()) {
-        ImGui::TextDisabled("%s", task.c_str());
-    }
-
-    if (ImGui::SmallButton("Cancel")) {
-        progress->cancelRequested.store(true);
-    }
-    ImGui::PopID();
+    // Progress is rendered as a shared standalone editor window.
 }
 
 bool SceneEditor::SyncAttachmentScriptFields(ObjectScriptAttachment& attachment) {
@@ -867,6 +822,12 @@ void SceneEditor::UpdateCinemachine(float deltaTime) {
 
         const glm::vec3 desiredPos = glm::vec3(desiredWorld[3]);
         const glm::quat desiredRot = glm::normalize(glm::quat_cast(desiredWorld));
+        const int followTargetIndex = cine.enabled && cine.type != CinemachineCameraType::LookAt &&
+            !cine.followTargetId.empty() ? findById(cine.followTargetId) : -1;
+        const bool hasFollowTarget = followTargetIndex >= 0 && followTargetIndex != camIdx;
+        const glm::vec3 followTargetPosition = hasFollowTarget
+            ? glm::vec3(getMatrix(followTargetIndex)[3])
+            : glm::vec3(0.0f);
 
         // Seed smoothing state on first touch
         RuntimeCinemachineState& state = runtimeCinemachineStates_[camObj.id];
@@ -875,6 +836,8 @@ void SceneEditor::UpdateCinemachine(float deltaTime) {
             // parent. Damping here would make it lag behind the vehicle.
             state.smoothedPosition = desiredPos;
             state.smoothedRotation = desiredRot;
+            state.followTargetId.clear();
+            state.followTargetInitialized = false;
             state.initialized = true;
             continue;
         }
@@ -885,8 +848,28 @@ void SceneEditor::UpdateCinemachine(float deltaTime) {
             state.initialized = true;
         }
 
-        const float posT = 1.0f - std::exp(-cine.positionDamping * deltaTime);
-        const float rotT = 1.0f - std::exp(-cine.rotationDamping * deltaTime);
+        // Carry target translation directly into the camera before damping the
+        // relative offset. Smoothing absolute world position made a fast car
+        // repeatedly lag and catch up to its already-interpolated render pose.
+        if (hasFollowTarget) {
+            if (state.followTargetInitialized && state.followTargetId == cine.followTargetId) {
+                state.smoothedPosition += followTargetPosition - state.previousFollowTargetPosition;
+            }
+            state.previousFollowTargetPosition = followTargetPosition;
+            state.followTargetId = cine.followTargetId;
+            state.followTargetInitialized = true;
+        } else {
+            state.followTargetId.clear();
+            state.followTargetInitialized = false;
+        }
+
+        // Zero damping means a rigid/direct follow, matching editor wording.
+        const float posT = cine.positionDamping <= 0.0f
+            ? 1.0f
+            : 1.0f - std::exp(-cine.positionDamping * deltaTime);
+        const float rotT = cine.rotationDamping <= 0.0f
+            ? 1.0f
+            : 1.0f - std::exp(-cine.rotationDamping * deltaTime);
 
         state.smoothedPosition = glm::mix(state.smoothedPosition, desiredPos, posT);
         state.smoothedRotation = glm::normalize(glm::slerp(state.smoothedRotation, desiredRot, rotT));

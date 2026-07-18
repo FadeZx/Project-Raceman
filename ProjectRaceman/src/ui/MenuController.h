@@ -9,9 +9,10 @@
 #include <vector>
 #include <array>
 
+#include "../rendering/Renderer.h"
+
 namespace raceman {
 
-class Renderer;
 class Console;
 
 using SkyboxFaces = std::array<std::string, 6>; // +X, -X, +Y, -Y, +Z, -Z
@@ -52,6 +53,11 @@ public:
                 float* sceneCameraNearClip = nullptr,
                 float* sceneCameraFarClip = nullptr);
 
+    bool IsProjectSettingsShortcutTarget() const { return projectSettingsShortcutTarget_; }
+    void SetProjectSkyboxFaces(const SkyboxFaces& faces);
+    void UndoGraphicsSettings(Renderer& renderer);
+    void RedoGraphicsSettings(Renderer& renderer);
+
 private:
     // Panels
     void RenderMainMenu(const std::function<void()>& onAddMeshPlane,
@@ -62,9 +68,7 @@ private:
     void RenderSkyboxPanel(const std::function<void(const SkyboxFaces&)>& onSkyboxChosen);
 
     // Helpers
-    void RefreshSkyboxSets();
-    static bool LooksLikeFaceSet(const std::vector<std::string>& names);
-    static SkyboxFaces BuildFacesFromFolder(const std::string& folder);
+    static bool TryBuildFacesFromFolder(const std::string& folder, SkyboxFaces& faces, std::string& error);
 
 private:
     // Persistence
@@ -77,14 +81,19 @@ private:
     bool showConsole_{false};
     int selectedProjectSettingsTab_{0};
     bool restoreProjectSettingsTab_{true};
+    bool projectSettingsShortcutTarget_{false};
 
-    // Cached skybox folders under assets/skybox
-    std::vector<std::string> skyboxFolders_;
+    RendererSettings graphicsEditStart_{};
+    bool graphicsEditActive_{false};
+    std::vector<RendererSettings> graphicsUndoStack_;
+    std::vector<RendererSettings> graphicsRedoStack_;
+    std::function<void()> graphicsChangedCallback_;
 
     SkyboxFaces selectedSkyboxFaces_{};
     bool hasSelectedSkyboxFaces_{false};
-    // Selected folder index for UI
-    int selectedFolder_{-1};
+    bool selectedSkyboxSaved_{false};
+    std::string selectedSkyboxFolder_;
+    std::string skyboxSelectionError_;
 
     // Async folder picker for Build...
     struct FolderPickerState {

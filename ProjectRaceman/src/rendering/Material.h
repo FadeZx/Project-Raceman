@@ -37,7 +37,6 @@ struct Material {
     std::string alphaMode{"Opaque"};
     float alphaCutoff{0.5f};
     bool doubleSided{false};
-    int transparentSortPriority{0};
 
     // Colors (RGBA / RGB)
     float albedoColor[4]{1.0f, 1.0f, 1.0f, 1.0f};

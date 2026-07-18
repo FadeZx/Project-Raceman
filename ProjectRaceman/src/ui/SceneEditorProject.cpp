@@ -1639,7 +1639,6 @@ unsigned int SceneEditor::GetModelChildThumbnailTexture(const std::string& impor
         cmd.alphaCutoff = alphaMode == "mask" ? material->alphaCutoff : 0.0f;
         cmd.doubleSided = material->doubleSided;
         cmd.transparent = alphaMode == "blend";
-        cmd.transparentSortPriority = material->transparentSortPriority;
         cmd.transparentSortCenter = glm::vec3(cmd.modelMatrix[3]);
         cmd.hasTransparentSortBounds = true;
         cmd.uvTiling = {material->uvTiling[0], material->uvTiling[1]};
@@ -1836,7 +1835,6 @@ unsigned int SceneEditor::GetModelPackageThumbnailTexture(const std::string& imp
             cmd.alphaCutoff = alphaMode == "mask" ? material->alphaCutoff : 0.0f;
             cmd.doubleSided = material->doubleSided;
             cmd.transparent = alphaMode == "blend";
-            cmd.transparentSortPriority = material->transparentSortPriority;
             cmd.transparentSortCenter = glm::vec3(cmd.modelMatrix[3]);
             cmd.hasTransparentSortBounds = true;
             cmd.uvTiling = {material->uvTiling[0], material->uvTiling[1]};
@@ -1917,6 +1915,7 @@ void SceneEditor::TickMaterialExtract() {
     materialExtract_.thread.reset();
     materialExtract_.itemCount.store(0);
     materialExtract_.errorCount.store(0);
+    materialExtract_.window = {};
     {
         std::lock_guard<std::mutex> lock(materialExtract_.mutex);
         materialExtract_.summary.clear();
@@ -1924,30 +1923,7 @@ void SceneEditor::TickMaterialExtract() {
 }
 
 void SceneEditor::RenderMaterialExtractInlineStatus() {
-    if (!materialExtract_.active || !materialExtract_.progress) {
-        return;
-    }
-
-    PhysicsBuildProgress* progress = materialExtract_.progress.get();
-    const int done = progress->stepsDone.load();
-    const int total = (std::max)(progress->stepsTotal.load(), 1);
-    const float fraction = static_cast<float>(done) / static_cast<float>(total);
-
-    ImGui::PushID("MaterialExtractInlineStatus");
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::TextUnformatted(materialExtract_.title.empty() ? "Extracting materials" : materialExtract_.title.c_str());
-    char label[32];
-    std::snprintf(label, sizeof(label), "%d / %d", done, total);
-    ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), label);
-    const std::string task = progress->GetTask();
-    if (!task.empty()) {
-        ImGui::TextDisabled("%s", task.c_str());
-    }
-    if (ImGui::SmallButton("Cancel")) {
-        progress->cancelRequested.store(true);
-    }
-    ImGui::PopID();
+    // Progress is rendered as a shared standalone editor window.
 }
 
 void SceneEditor::RenderModelAssetInspector() {
@@ -2021,6 +1997,9 @@ void SceneEditor::RenderModelAssetInspector() {
         materialExtract_.reloadMaterials = true;
         materialExtract_.refreshProjectFiles = true;
         materialExtract_.title = overwriteExisting ? "Re-extracting model materials" : "Extracting model materials";
+        materialExtract_.window = EditorProgressService::Get().Begin(
+            materialExtract_.title, "Processing imported model materials...",
+            static_cast<int>(infos.size()), true);
         materialExtract_.progress = std::make_shared<PhysicsBuildProgress>();
         materialExtract_.progress->stepsDone.store(0);
         materialExtract_.progress->stepsTotal.store(static_cast<int>(infos.size()));
@@ -2033,6 +2012,7 @@ void SceneEditor::RenderModelAssetInspector() {
         }
 
         auto progress = materialExtract_.progress;
+        auto progressWindow = materialExtract_.window;
         auto* itemCount = &materialExtract_.itemCount;
         auto* errorCount = &materialExtract_.errorCount;
         auto* summaryMutex = &materialExtract_.mutex;
@@ -2047,10 +2027,10 @@ void SceneEditor::RenderModelAssetInspector() {
             existingMaterialIds.insert(materialId);
         }
         materialExtract_.thread = std::make_unique<std::thread>(
-            [progress, itemCount, errorCount, summaryMutex, summary, jobInfos, jobImportPath, jobBaseName, jobTargetFolder, overwriteExisting, jobSettings, existingMaterialIds]() mutable {
+            [progress, progressWindow, itemCount, errorCount, summaryMutex, summary, jobInfos, jobImportPath, jobBaseName, jobTargetFolder, overwriteExisting, jobSettings, existingMaterialIds]() mutable {
                 bool changed = false;
                 for (std::size_t i = 0; i < jobInfos.size(); ++i) {
-                    if (progress->cancelRequested.load()) {
+                    if (progress->cancelRequested.load() || progressWindow.IsCancellationRequested()) {
                         progress->wasCancelled.store(true);
                         break;
                     }
@@ -2058,6 +2038,8 @@ void SceneEditor::RenderModelAssetInspector() {
                     const std::string meshLabel = ModelChildDisplayName(info);
                     progress->stepsDone.store(static_cast<int>(i));
                     progress->SetTask("Extracting: " + meshLabel);
+                    progressWindow.SetProgress(static_cast<int>(i), static_cast<int>(jobInfos.size()));
+                    progressWindow.SetDetail("Extracting: " + meshLabel);
                     ModelMaterialMapping& mapping = EnsureModelMaterialMapping(jobSettings, jobImportPath, jobBaseName, info);
                     const bool missing = mapping.materialId.empty() || existingMaterialIds.find(mapping.materialId) == existingMaterialIds.end();
                     if (overwriteExisting || missing) {
@@ -2084,6 +2066,9 @@ void SceneEditor::RenderModelAssetInspector() {
                 progress->stepsDone.store(static_cast<int>(jobInfos.size()));
                 progress->SetTask(progress->wasCancelled.load() ? "Cancelled." : "Done.");
                 progress->isDone.store(true);
+                if (progress->wasCancelled.load()) progressWindow.Cancelled();
+                else if (errorCount->load() > 0) progressWindow.Fail("Some materials could not be extracted. Check the Console.");
+                else progressWindow.Complete("Material extraction complete.");
             });
     };
 
@@ -2103,6 +2088,9 @@ void SceneEditor::RenderModelAssetInspector() {
         materialExtract_.reloadMaterials = false;
         materialExtract_.refreshProjectFiles = true;
         materialExtract_.title = "Extracting model textures";
+        materialExtract_.window = EditorProgressService::Get().Begin(
+            materialExtract_.title, "Processing imported model textures...",
+            static_cast<int>(infos.size()), true);
         materialExtract_.progress = std::make_shared<PhysicsBuildProgress>();
         materialExtract_.progress->stepsDone.store(0);
         materialExtract_.progress->stepsTotal.store(static_cast<int>(infos.size()));
@@ -2115,6 +2103,7 @@ void SceneEditor::RenderModelAssetInspector() {
         }
 
         auto progress = materialExtract_.progress;
+        auto progressWindow = materialExtract_.window;
         auto* itemCount = &materialExtract_.itemCount;
         auto* summaryMutex = &materialExtract_.mutex;
         auto* summary = &materialExtract_.summary;
@@ -2124,15 +2113,17 @@ void SceneEditor::RenderModelAssetInspector() {
         const fs::path jobTargetFolder = targetFolder;
         ModelImportSettings jobSettings = settings;
         materialExtract_.thread = std::make_unique<std::thread>(
-            [progress, itemCount, summaryMutex, summary, jobInfos, jobImportPath, jobBaseName, jobTargetFolder, jobSettings]() mutable {
+            [progress, progressWindow, itemCount, summaryMutex, summary, jobInfos, jobImportPath, jobBaseName, jobTargetFolder, jobSettings]() mutable {
                 for (std::size_t i = 0; i < jobInfos.size(); ++i) {
-                    if (progress->cancelRequested.load()) {
+                    if (progress->cancelRequested.load() || progressWindow.IsCancellationRequested()) {
                         progress->wasCancelled.store(true);
                         break;
                     }
                     const ImportedMeshInfo& info = jobInfos[i];
                     progress->stepsDone.store(static_cast<int>(i));
                     progress->SetTask("Extracting textures: " + ModelChildDisplayName(info));
+                    progressWindow.SetProgress(static_cast<int>(i), static_cast<int>(jobInfos.size()));
+                    progressWindow.SetDetail("Extracting textures: " + ModelChildDisplayName(info));
                     ModelMaterialMapping& mapping = EnsureModelMaterialMapping(jobSettings, jobImportPath, jobBaseName, info);
                     if (mapping.materialId.empty()) {
                         mapping.materialId = DefaultImportedMaterialId(jobImportPath, jobBaseName, info);
@@ -2161,6 +2152,8 @@ void SceneEditor::RenderModelAssetInspector() {
                 progress->stepsDone.store(static_cast<int>(jobInfos.size()));
                 progress->SetTask(progress->wasCancelled.load() ? "Cancelled." : "Done.");
                 progress->isDone.store(true);
+                if (progress->wasCancelled.load()) progressWindow.Cancelled();
+                else progressWindow.Complete("Texture extraction complete.");
             });
     };
 

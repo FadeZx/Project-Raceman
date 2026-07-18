@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 
 #include "ui/DebugUI.h"
+#include "ui/EditorProgress.h"
 
 
 
@@ -24,6 +25,7 @@ class SceneEditor;
 class SkyboxController;
 class AudioManager;
 class ProjectLauncher;
+class WindowsHdrPresenter;
 
 struct ApplicationConfig {
     std::string windowTitle{"Project Raceman"};
@@ -55,6 +57,7 @@ private:
     void ShutdownImGui();
     void ShutdownGlfw();
     void PollEvents();
+    void RefreshDisplayHdrStatus();
     void Update(float deltaTime);
     void Render();
     void FocusEditorCameraOn(const glm::vec3& target, float radius);
@@ -75,6 +78,7 @@ private:
     std::unique_ptr<SceneEditor> sceneEditor_;
     std::unique_ptr<SkyboxController> skyboxController_;
     std::unique_ptr<AudioManager> audioManager_;
+    std::unique_ptr<WindowsHdrPresenter> hdrPresenter_;
     std::unique_ptr<ProjectLauncher> launcher_;
 
     struct StandaloneBuildStatus {
@@ -83,6 +87,7 @@ private:
         bool success{false};
         std::string outputFolder;
         std::string message;
+        EditorProgressTask progress;
     };
     std::unique_ptr<std::thread> standaloneBuildThread_;
     std::shared_ptr<StandaloneBuildStatus> standaloneBuildStatus_;
@@ -94,6 +99,7 @@ private:
     bool playerDebugConsoleOpen_{false};
     float consoleSlideY_{4000.0f};  // animated Y; starts far below screen
     double lastFrameTime_{0.0};
+    double nextHdrDisplayRefreshTime_{0.0};
     AppFrameTimings frameTimings_{};
 
     // Render/physics debug toggles (edited via Project Settings)
@@ -106,6 +112,7 @@ private:
     std::string baseTitle_{};
     bool vsyncEnabled_{false};
     bool playerRuntimeStarted_{false};
+    std::string lastHdrPresenterStatus_;
     bool startupWindowShown_{false};
     bool startupSplashActive_{false};
     std::string startupSplashMessage_{};

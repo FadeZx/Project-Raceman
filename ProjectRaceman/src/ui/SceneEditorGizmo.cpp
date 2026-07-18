@@ -973,7 +973,17 @@ void SceneEditor::UpdateImGuizmo() {
         }
     }
 
-    glm::mat4 objectWorldMatrix = GetObjectDisplayWorldMatrix(selectedIndex_);
+    auto getObjectGizmoWorldMatrix = [&](int index) {
+        glm::mat4 world = GetObjectDisplayWorldMatrix(index);
+        if (index >= 0 && index < static_cast<int>(objects_.size())) {
+            const SceneObject& object = objects_[index];
+            if (object.hasCamera && object.camera.enabled && object.hasCinemachine && object.cinemachine.enabled) {
+                world = world * glm::scale(glm::mat4(1.0f), object.transform.scale);
+            }
+        }
+        return world;
+    };
+    glm::mat4 objectWorldMatrix = getObjectGizmoWorldMatrix(selectedIndex_);
     const glm::mat4 gizmoInputWorldMatrix = objectWorldMatrix;
     glm::mat4 deltaMatrix(1.0f);
     const bool allowGizmoInput = !io.WantTextInput && !io.MouseDown[1] &&
@@ -1037,7 +1047,7 @@ void SceneEditor::UpdateImGuizmo() {
             gizmoDragStartWorldMatrices_.reserve(gizmoDragSelectionIndices_.size());
             for (int index : gizmoDragSelectionIndices_) {
                 gizmoDragStartLocalTransforms_.push_back(objects_[index].transform);
-                gizmoDragStartWorldMatrices_.push_back(GetObjectDisplayWorldMatrix(index));
+                gizmoDragStartWorldMatrices_.push_back(getObjectGizmoWorldMatrix(index));
             }
             gizmoDirtyDuringDrag_ = false;
         }
@@ -1049,20 +1059,43 @@ void SceneEditor::UpdateImGuizmo() {
                 }
                 SceneObject& object = objects_[index];
                 if (object.hasCamera && object.camera.enabled && object.hasCinemachine && object.cinemachine.enabled) {
-                    const glm::vec3 targetPosition = glm::vec3(targetWorld[3]);
-                    if (object.cinemachine.type != CinemachineCameraType::LookAt && !object.cinemachine.followTargetId.empty()) {
-                        const int followIndex = FindObjectIndexById(object.cinemachine.followTargetId);
-                        object.transform.position = followIndex >= 0
-                            ? CinemachineWorldPositionToOffset(GetObjectWorldMatrix(followIndex), targetPosition)
-                            : targetPosition;
-                    } else {
-                        object.transform.position = targetPosition;
+                    if (gizmoMode_ == GizmoMode::Move) {
+                        // Apply the incremental gizmo translation instead of
+                        // converting the evaluated camera pose back to an absolute
+                        // offset every frame. Look-at rotation and moving follow
+                        // targets otherwise feed back into ImGuizmo and make the
+                        // camera drift or jump while dragging.
+                        const glm::vec3 worldDelta = glm::vec3(deltaMatrix[3]);
+                        const bool followsTarget = object.cinemachine.type != CinemachineCameraType::LookAt &&
+                            !object.cinemachine.followTargetId.empty();
+                        const int followIndex = followsTarget
+                            ? FindObjectIndexById(object.cinemachine.followTargetId)
+                            : -1;
+                        if (followIndex >= 0 && followIndex != index) {
+                            const glm::quat followRotation = ExtractWorldRotationNoScale(GetObjectWorldMatrix(followIndex));
+                            object.transform.position += glm::inverse(followRotation) * worldDelta;
+                        } else {
+                            const int parentIndex = FindObjectIndexById(object.parentId);
+                            const glm::vec3 localDelta = parentIndex >= 0
+                                ? glm::vec3(glm::inverse(GetObjectWorldMatrix(parentIndex)) * glm::vec4(worldDelta, 0.0f))
+                                : worldDelta;
+                            object.transform.position += localDelta;
+                        }
+                        object.cinemachine.followOffset = object.transform.position;
+                        return;
                     }
 
-                    // Moving a virtual camera must not rewrite its authored
-                    // rotation offset. Look At computes a new world rotation
-                    // from the moved position; changing the offset here makes
-                    // the gizmo and camera fight one another.
+                    if (gizmoMode_ == GizmoMode::Scale) {
+                        const Transform manipulatedTransform = TransformFromMatrix(targetWorld);
+                        object.transform.scale = {
+                            (std::max)(std::abs(manipulatedTransform.scale.x), 0.01f),
+                            (std::max)(std::abs(manipulatedTransform.scale.y), 0.01f),
+                            (std::max)(std::abs(manipulatedTransform.scale.z), 0.01f)
+                        };
+                        return;
+                    }
+
+                    const glm::vec3 targetPosition = glm::vec3(targetWorld[3]);
                     if (gizmoMode_ == GizmoMode::Rotate) {
                         glm::quat baseRotation = ExtractWorldRotationNoScale(GetObjectWorldMatrix(index));
                         if (object.cinemachine.type == CinemachineCameraType::Follow && !object.cinemachine.followTargetId.empty()) {
@@ -1091,7 +1124,6 @@ void SceneEditor::UpdateImGuizmo() {
                             glm::degrees(glm::eulerAngles(glm::normalize(glm::inverse(baseRotation) * targetRotation))),
                             object.transform.rotationEuler);
                     }
-                    object.cinemachine.followOffset = object.transform.position;
                     object.cinemachine.pitchOffset = object.transform.rotationEuler.x;
                     object.cinemachine.yawOffset = object.transform.rotationEuler.y;
                     return;
@@ -1119,7 +1151,7 @@ void SceneEditor::UpdateImGuizmo() {
             const glm::mat4 worldDelta = objectWorldMatrix * glm::inverse(gizmoInputWorldMatrix);
             for (std::size_t i = 0; i < gizmoDragSelectionIndices_.size(); ++i) {
                 const int index = gizmoDragSelectionIndices_[i];
-                const glm::mat4 targetWorld = worldDelta * GetObjectDisplayWorldMatrix(index);
+                const glm::mat4 targetWorld = worldDelta * getObjectGizmoWorldMatrix(index);
                 applyWorldMatrixToObject(index, targetWorld);
             }
             gizmoDirtyDuringDrag_ = true;

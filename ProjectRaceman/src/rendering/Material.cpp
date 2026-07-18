@@ -188,7 +188,6 @@ bool MaterialManager::LoadOne(const std::string& path, Material& out) {
         getf(obj, "alphaCutoff", out.alphaCutoff);
         gets(obj, "alphaMode", out.alphaMode);
         if (auto it = obj.find("doubleSided"); it != obj.end() && it->second.is_bool()) out.doubleSided = it->second.as_bool();
-        if (auto it = obj.find("transparentSortPriority"); it != obj.end() && it->second.is_number()) out.transparentSortPriority = static_cast<int>(it->second.as_number());
         out.version = 2;
         getv4(obj, "albedoColor", out.albedoColor);
         getv3(obj, "emissiveColor", out.emissiveColor);
@@ -297,7 +296,6 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
     out << "  \"alphaMode\": \"" << JsonEscape(m.alphaMode) << "\",\n";
     out << "  \"alphaCutoff\": " << m.alphaCutoff << ",\n";
     out << "  \"doubleSided\": " << (m.doubleSided ? "true" : "false") << ",\n";
-    out << "  \"transparentSortPriority\": " << m.transparentSortPriority << ",\n";
     out << "  \"emissiveColor\": [" << m.emissiveColor[0] << ", " << m.emissiveColor[1] << ", " << m.emissiveColor[2] << "],\n";
     out << "  \"uvTiling\": [" << m.uvTiling[0] << ", " << m.uvTiling[1] << "],\n";
     out << "  \"uvOffset\": [" << m.uvOffset[0] << ", " << m.uvOffset[1] << "],\n";

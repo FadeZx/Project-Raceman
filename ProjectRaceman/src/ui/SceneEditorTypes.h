@@ -304,6 +304,7 @@ struct CinemachineCameraComponent {
     glm::vec3 followOffset{0.0f, 2.0f, -5.0f};
     float pitchOffset{0.0f};
     float yawOffset{0.0f};
+    bool lockTargetPitchRoll{false};
     float positionDamping{5.0f};
     float rotationDamping{5.0f};
 };

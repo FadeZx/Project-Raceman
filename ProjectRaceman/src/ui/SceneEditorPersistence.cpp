@@ -256,8 +256,17 @@ void SceneEditor::RequestSaveCurrentScene() {
         return;
     }
     sceneSaveRequested_ = true;
-    sceneSavePopupRendered_ = false;
-    sceneSavePopupClosing_ = false;
+    saveProgress_ = EditorProgressService::Get().Begin(
+        "Saving Scene", "Saving scene and refreshing project assets...", 0, false);
+    saveProgress_.SetDetail(NormalizeSlashes(savePath_));
+}
+
+void SceneEditor::RequestSaveProject() {
+    if (projectSaveRequested_ || sceneSaveRequested_) return;
+    projectSaveRequested_ = true;
+    saveProgress_ = EditorProgressService::Get().Begin(
+        "Saving Project", "Saving project settings and metadata...", 0, false);
+    saveProgress_.SetDetail("project.raceman.json");
 }
 
 void SceneEditor::SaveActiveAsset() {
@@ -573,6 +582,7 @@ void SceneEditor::Save(const std::string& path) {
             out << "          \"followOffset\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
             out << "          \"pitchOffset\": " << o.transform.rotationEuler.x << ",\n";
             out << "          \"yawOffset\": " << o.transform.rotationEuler.y << ",\n";
+            out << "          \"lockTargetPitchRoll\": " << (o.cinemachine.lockTargetPitchRoll ? "true" : "false") << ",\n";
             out << "          \"positionDamping\": " << o.cinemachine.positionDamping << ",\n";
             out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << ",\n";
             out << "          \"priority\": " << o.cinemachine.priority << ",\n";
@@ -897,6 +907,7 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
             out << "          \"followOffset\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
             out << "          \"pitchOffset\": " << o.transform.rotationEuler.x << ",\n";
             out << "          \"yawOffset\": " << o.transform.rotationEuler.y << ",\n";
+            out << "          \"lockTargetPitchRoll\": " << (o.cinemachine.lockTargetPitchRoll ? "true" : "false") << ",\n";
             out << "          \"positionDamping\": " << o.cinemachine.positionDamping << ",\n";
             out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << ",\n";
             out << "          \"priority\": " << o.cinemachine.priority << ",\n";
@@ -969,6 +980,7 @@ void SceneEditor::Load(const std::string& path) {
     using scene_editor_internal::ReadBool;
     using scene_editor_internal::ReadBoolArray;
     using scene_editor_internal::ReadString;
+    using scene_editor_internal::ReadVec3;
     using scene_editor_internal::ReadVec2;
     using scene_editor_internal::ReadVec3;
     using scene_editor_internal::ReadVec4;
@@ -1576,6 +1588,7 @@ void SceneEditor::Load(const std::string& path) {
                         }
                         ReadString(component, "followTargetId", so.cinemachine.followTargetId);
                         ReadString(component, "lookAtTargetId", so.cinemachine.lookAtTargetId);
+                        ReadBool(component, "lockTargetPitchRoll", so.cinemachine.lockTargetPitchRoll);
                         if (ReadVec3(component, "followOffset", so.cinemachine.followOffset)) {
                             so.transform.position = so.cinemachine.followOffset;
                         }
@@ -2150,6 +2163,7 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                         }
                         ReadString(component, "followTargetId", so.cinemachine.followTargetId);
                         ReadString(component, "lookAtTargetId", so.cinemachine.lookAtTargetId);
+                        ReadBool(component, "lockTargetPitchRoll", so.cinemachine.lockTargetPitchRoll);
                         if (ReadVec3(component, "followOffset", so.cinemachine.followOffset)) {
                             so.transform.position = so.cinemachine.followOffset;
                         }
@@ -2350,10 +2364,74 @@ void SceneEditor::LoadProject() {
                     if (ReadString(graphics, "quality", value)) graphicsProfile_.quality = GraphicsQualityFromStorage(value);
                     if (ReadString(graphics, "antiAliasing", value)) graphicsProfile_.antiAliasing = AntiAliasingFromStorage(value);
                     ReadBool(graphics, "hdr", graphicsProfile_.hdr);
+                    if (auto it = graphics.find("hdrPaperWhiteNits"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.hdrPaperWhiteNits = (std::clamp)(static_cast<float>(it->second.as_number()), 80.0f, 500.0f);
+                    }
+                    if (auto it = graphics.find("hdrPeakBrightnessNits"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.hdrPeakBrightnessNits = (std::clamp)(static_cast<float>(it->second.as_number()),
+                            graphicsProfile_.hdrPaperWhiteNits, 4000.0f);
+                    }
                     ReadBool(graphics, "bloom", graphicsProfile_.bloom);
+                    if (auto it = graphics.find("bloomIntensity"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.bloomIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 3.0f);
+                    }
+                    if (auto it = graphics.find("bloomThreshold"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.bloomThreshold = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 8.0f);
+                    }
+                    if (auto it = graphics.find("bloomRadius"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.bloomRadius = (std::clamp)(static_cast<float>(it->second.as_number()), 0.25f, 3.0f);
+                    }
+                    ReadBool(graphics, "motionBlur", graphicsProfile_.motionBlur);
+                    if (auto it = graphics.find("motionBlurShutterAngle"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.motionBlurShutterAngle = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 360.0f);
+                    }
+                    if (auto it = graphics.find("motionBlurIntensity"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.motionBlurIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 2.0f);
+                    }
+                    if (auto it = graphics.find("motionBlurSamples"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.motionBlurSamples = (std::clamp)(static_cast<int>(it->second.as_number()), 4, 32);
+                    }
+                    if (auto it = graphics.find("motionBlurMaxRadius"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.motionBlurMaxRadius = (std::clamp)(static_cast<float>(it->second.as_number()), 1.0f, 64.0f);
+                    }
+                    ReadBool(graphics, "motionBlurDebugView", graphicsProfile_.motionBlurDebugView);
                     ReadBool(graphics, "ssao", graphicsProfile_.ssao);
+                    if (auto it = graphics.find("ssaoIntensity"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.ssaoIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 3.0f);
+                    }
+                    if (auto it = graphics.find("ssaoRadius"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.ssaoRadius = (std::clamp)(static_cast<float>(it->second.as_number()), 0.05f, 5.0f);
+                    }
+                    if (auto it = graphics.find("ssaoBias"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.ssaoBias = (std::clamp)(static_cast<float>(it->second.as_number()), 0.001f, 0.2f);
+                    }
+                    ReadBool(graphics, "ssaoDebugView", graphicsProfile_.ssaoDebugView);
                     ReadBool(graphics, "shadows", graphicsProfile_.shadows);
+                    if (auto it = graphics.find("shadowResolution"); it != graphics.end() && it->second.is_number()) {
+                        const int resolution = static_cast<int>(it->second.as_number());
+                        graphicsProfile_.shadowResolution = resolution == 512 || resolution == 1024 ||
+                            resolution == 2048 || resolution == 4096 ? resolution : 0;
+                    }
+                    if (auto it = graphics.find("shadowSoftness"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.shadowSoftness = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 8.0f);
+                    }
+                    if (auto it = graphics.find("shadowCascadeCount"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.shadowCascadeCount = (std::clamp)(static_cast<int>(it->second.as_number()), 1, 4);
+                    }
+                    if (auto it = graphics.find("shadowDistance"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.shadowDistance = (std::clamp)(static_cast<float>(it->second.as_number()), 10.0f, 1000.0f);
+                    }
+                    ReadBool(graphics, "shadowCascadeDebugView", graphicsProfile_.shadowCascadeDebugView);
                     ReadBool(graphics, "reflections", graphicsProfile_.reflections);
+                    if (auto it = graphics.find("environmentIntensity"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.environmentIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 4.0f);
+                    }
+                    if (auto it = graphics.find("reflectionIntensity"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.reflectionIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 4.0f);
+                    }
+                    if (auto it = graphics.find("iblDebugMode"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.iblDebugMode = (std::clamp)(static_cast<int>(it->second.as_number()), 0, 3);
+                    }
                     ReadBool(graphics, "particles", graphicsProfile_.particles);
                     ReadBool(graphics, "weather", graphicsProfile_.weather);
                     ReadBool(graphics, "lod", graphicsProfile_.lod);
@@ -2362,6 +2440,7 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("exposure"); it != graphics.end() && it->second.is_number()) graphicsProfile_.exposure = (std::max)(0.01f, static_cast<float>(it->second.as_number()));
                     if (auto it = graphics.find("stylizedBands"); it != graphics.end() && it->second.is_number()) graphicsProfile_.stylizedBands = (std::max)(2.0f, static_cast<float>(it->second.as_number()));
                     if (auto it = graphics.find("stylizedRimStrength"); it != graphics.end() && it->second.is_number()) graphicsProfile_.stylizedRimStrength = (std::max)(0.0f, static_cast<float>(it->second.as_number()));
+                    ReadVec3(graphics, "ambientColor", graphicsProfile_.ambientColor);
                 } else {
                     shouldSaveProject = true;
                 }
@@ -2673,10 +2752,33 @@ void SceneEditor::SaveProject() {
         out << "    \"quality\": \"" << GraphicsQualityToStorage(graphicsProfile_.quality) << "\",\n";
         out << "    \"antiAliasing\": \"" << AntiAliasingToStorage(graphicsProfile_.antiAliasing) << "\",\n";
         out << "    \"hdr\": " << (graphicsProfile_.hdr ? "true" : "false") << ",\n";
+        out << "    \"hdrPaperWhiteNits\": " << graphicsProfile_.hdrPaperWhiteNits << ",\n";
+        out << "    \"hdrPeakBrightnessNits\": " << graphicsProfile_.hdrPeakBrightnessNits << ",\n";
         out << "    \"bloom\": " << (graphicsProfile_.bloom ? "true" : "false") << ",\n";
+        out << "    \"bloomIntensity\": " << graphicsProfile_.bloomIntensity << ",\n";
+        out << "    \"bloomThreshold\": " << graphicsProfile_.bloomThreshold << ",\n";
+        out << "    \"bloomRadius\": " << graphicsProfile_.bloomRadius << ",\n";
+        out << "    \"motionBlur\": " << (graphicsProfile_.motionBlur ? "true" : "false") << ",\n";
+        out << "    \"motionBlurShutterAngle\": " << graphicsProfile_.motionBlurShutterAngle << ",\n";
+        out << "    \"motionBlurIntensity\": " << graphicsProfile_.motionBlurIntensity << ",\n";
+        out << "    \"motionBlurSamples\": " << graphicsProfile_.motionBlurSamples << ",\n";
+        out << "    \"motionBlurMaxRadius\": " << graphicsProfile_.motionBlurMaxRadius << ",\n";
+        out << "    \"motionBlurDebugView\": " << (graphicsProfile_.motionBlurDebugView ? "true" : "false") << ",\n";
         out << "    \"ssao\": " << (graphicsProfile_.ssao ? "true" : "false") << ",\n";
+        out << "    \"ssaoIntensity\": " << graphicsProfile_.ssaoIntensity << ",\n";
+        out << "    \"ssaoRadius\": " << graphicsProfile_.ssaoRadius << ",\n";
+        out << "    \"ssaoBias\": " << graphicsProfile_.ssaoBias << ",\n";
+        out << "    \"ssaoDebugView\": " << (graphicsProfile_.ssaoDebugView ? "true" : "false") << ",\n";
         out << "    \"shadows\": " << (graphicsProfile_.shadows ? "true" : "false") << ",\n";
+        out << "    \"shadowResolution\": " << graphicsProfile_.shadowResolution << ",\n";
+        out << "    \"shadowSoftness\": " << graphicsProfile_.shadowSoftness << ",\n";
+        out << "    \"shadowCascadeCount\": " << graphicsProfile_.shadowCascadeCount << ",\n";
+        out << "    \"shadowDistance\": " << graphicsProfile_.shadowDistance << ",\n";
+        out << "    \"shadowCascadeDebugView\": " << (graphicsProfile_.shadowCascadeDebugView ? "true" : "false") << ",\n";
         out << "    \"reflections\": " << (graphicsProfile_.reflections ? "true" : "false") << ",\n";
+        out << "    \"environmentIntensity\": " << graphicsProfile_.environmentIntensity << ",\n";
+        out << "    \"reflectionIntensity\": " << graphicsProfile_.reflectionIntensity << ",\n";
+        out << "    \"iblDebugMode\": " << graphicsProfile_.iblDebugMode << ",\n";
         out << "    \"particles\": " << (graphicsProfile_.particles ? "true" : "false") << ",\n";
         out << "    \"weather\": " << (graphicsProfile_.weather ? "true" : "false") << ",\n";
         out << "    \"lod\": " << (graphicsProfile_.lod ? "true" : "false") << ",\n";
@@ -2684,7 +2786,9 @@ void SceneEditor::SaveProject() {
         out << "    \"minimumResolutionScale\": " << graphicsProfile_.minimumResolutionScale << ",\n";
         out << "    \"exposure\": " << graphicsProfile_.exposure << ",\n";
         out << "    \"stylizedBands\": " << graphicsProfile_.stylizedBands << ",\n";
-        out << "    \"stylizedRimStrength\": " << graphicsProfile_.stylizedRimStrength << "\n";
+        out << "    \"stylizedRimStrength\": " << graphicsProfile_.stylizedRimStrength << ",\n";
+        out << "    \"ambientColor\": [" << graphicsProfile_.ambientColor.r << ", "
+            << graphicsProfile_.ambientColor.g << ", " << graphicsProfile_.ambientColor.b << "]\n";
         out << "  },\n";
         out << "  \"skybox\": [\n";
         for (std::size_t fi = 0; fi < skyboxFaces_.size(); ++fi) {

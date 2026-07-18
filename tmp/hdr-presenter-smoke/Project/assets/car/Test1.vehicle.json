@@ -1,0 +1,118 @@
+{
+  "name": "Test1",
+  "chassis": {
+    "mass": 1071.000,
+    "yawInertia": 2200.000,
+    "rollInertia": 978.000,
+    "pitchInertia": 970.000,
+    "centerOfMassOffset": [0.000, 1.660, -0.200]
+  },
+  "frontSuspension": {
+    "restLength": 0.380,
+    "springRate": 37400.000,
+    "bumpStopRate": 86880.000,
+    "compressionDamping": 5290.000,
+    "reboundDamping": 4370.000,
+    "antiRollStiffness": 20250.000
+  },
+  "rearSuspension": {
+    "restLength": 0.350,
+    "springRate": 36810.000,
+    "bumpStopRate": 86790.000,
+    "compressionDamping": 3740.000,
+    "reboundDamping": 3720.000,
+    "antiRollStiffness": 17210.000
+  },
+  "differential": {
+    "torqueSplit": 1.000,
+    "lockingCoefficient": 0.150,
+    "limitedSlip": true
+  },
+  "engine": {
+    "idleRPM": 900.000,
+    "redlineRPM": 15770.000,
+    "stallRPM": 13560.000,
+    "inertia": 0.630,
+    "torqueCurve": [
+      {"rpm": 1000.000, "torque": 200.000},
+      {"rpm": 6500.000, "torque": 220.000}
+    ]
+  },
+  "transmission": {
+    "mode": "automatic",
+    "gearRatios": [2.800, 1.900, 1.400, 1.100, 0.950, 0.850],
+    "finalDriveRatio": 3.420,
+    "reverseRatio": -2.900,
+    "shiftTime": 0.250
+  },
+  "wheels": [
+    {
+      "name": "Front Left",
+      "mountPosition": [-0.850, 1.350, 0.000],
+      "radius": 0.350,
+      "width": 0.240,
+      "mass": 15.000,
+      "inertia": 1.000,
+      "maxSteerAngle": 0.750,
+      "camber": 0.000,
+      "toe": 0.000,
+      "gripFactor": 2.780,
+      "longitudinalStiffness": 14360.000,
+      "lateralStiffness": 11170.000,
+      "maxBrakingTorque": 5510.000,
+      "driven": true,
+      "hasBrake": true
+    },
+    {
+      "name": "Front Right",
+      "mountPosition": [0.850, 1.350, 0.000],
+      "radius": 0.350,
+      "width": 0.240,
+      "mass": 15.000,
+      "inertia": 1.000,
+      "maxSteerAngle": 0.550,
+      "camber": 0.000,
+      "toe": 0.000,
+      "gripFactor": 2.290,
+      "longitudinalStiffness": 12690.000,
+      "lateralStiffness": 10370.000,
+      "maxBrakingTorque": 5550.000,
+      "driven": true,
+      "hasBrake": true
+    },
+    {
+      "name": "Rear Left",
+      "mountPosition": [-0.850, -1.350, 0.000],
+      "radius": 0.350,
+      "width": 0.240,
+      "mass": 15.000,
+      "inertia": 1.000,
+      "maxSteerAngle": 0.000,
+      "camber": 0.000,
+      "toe": 0.000,
+      "gripFactor": 2.240,
+      "longitudinalStiffness": 12470.000,
+      "lateralStiffness": 10800.000,
+      "maxBrakingTorque": 5570.000,
+      "driven": true,
+      "hasBrake": true
+    },
+    {
+      "name": "Rear Right",
+      "mountPosition": [0.850, -1.350, 0.000],
+      "radius": 0.350,
+      "width": 0.240,
+      "mass": 15.000,
+      "inertia": 1.000,
+      "maxSteerAngle": 0.000,
+      "camber": 0.000,
+      "toe": 0.000,
+      "gripFactor": 3.020,
+      "longitudinalStiffness": 12630.000,
+      "lateralStiffness": 11050.000,
+      "maxBrakingTorque": 6220.000,
+      "driven": true,
+      "hasBrake": true
+    }
+  ]
+}

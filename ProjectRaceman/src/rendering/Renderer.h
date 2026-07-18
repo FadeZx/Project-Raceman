@@ -53,10 +53,34 @@ struct GraphicsProfile {
     GraphicsQualityTier quality{GraphicsQualityTier::High};
     AntiAliasingMode antiAliasing{AntiAliasingMode::FXAA};
     bool hdr{true};
+    float hdrPaperWhiteNits{200.0f};
+    float hdrPeakBrightnessNits{1000.0f};
     bool bloom{true};
+    float bloomIntensity{0.7f};
+    float bloomThreshold{1.0f};
+    float bloomRadius{1.0f};
+    bool motionBlur{false};
+    float motionBlurShutterAngle{180.0f};
+    float motionBlurIntensity{1.0f};
+    int motionBlurSamples{12};
+    float motionBlurMaxRadius{24.0f};
+    bool motionBlurDebugView{false};
     bool ssao{true};
+    float ssaoIntensity{1.0f};
+    float ssaoRadius{0.75f};
+    float ssaoBias{0.025f};
+    bool ssaoDebugView{false};
     bool shadows{true};
+    // 0 follows the quality tier; otherwise an explicit square map resolution.
+    int shadowResolution{0};
+    float shadowSoftness{2.0f};
+    int shadowCascadeCount{4};
+    float shadowDistance{150.0f};
+    bool shadowCascadeDebugView{false};
     bool reflections{true};
+    float environmentIntensity{1.0f};
+    float reflectionIntensity{1.0f};
+    int iblDebugMode{0};
     bool particles{true};
     bool weather{true};
     bool lod{true};
@@ -65,13 +89,26 @@ struct GraphicsProfile {
     float exposure{1.0f};
     float stylizedBands{4.0f};
     float stylizedRimStrength{0.35f};
+    glm::vec3 ambientColor{0.08f, 0.08f, 0.08f};
 };
 
 struct RendererSettings {
-    glm::vec3 clearColor{0.02f, 0.02f, 0.02f};
-    glm::vec3 ambientColor{0.08f, 0.08f, 0.08f};
+    // Editor Scene-view background only. Game-view clear color belongs to Camera.
+    glm::vec3 editorClearColor{0.02f, 0.02f, 0.02f};
     bool enableDrawCallSorting{true};
     GraphicsProfile profile{};
+};
+
+struct DisplayHdrCapabilities {
+    bool detected{false};
+    bool hdrSupported{false};
+    bool hdrEnabledInWindows{false};
+    bool nativePresentationAvailable{false};
+    int displayBitsPerColor{8};
+    int windowBitsPerColor{8};
+    float minimumLuminanceNits{0.0f};
+    float maximumLuminanceNits{0.0f};
+    float maximumFullFrameLuminanceNits{0.0f};
 };
 
 struct RendererFrameStats {
@@ -86,6 +123,7 @@ struct MeshDrawCommand {
     unsigned int vao{0};
     unsigned int indexCount{0};
     glm::mat4 modelMatrix{1.0f};
+    std::string motionId;
     std::string materialId;
     glm::vec4 color{1.0f, 0.2f, 0.2f, 1.0f};
     glm::vec3 emissiveColor{0.0f};
@@ -98,7 +136,6 @@ struct MeshDrawCommand {
     float alphaCutoff{0.0f};
     bool doubleSided{false};
     bool transparent{false};
-    int transparentSortPriority{0};
     glm::vec3 transparentSortCenter{0.0f};
     float transparentSortRadius{0.0f};
     bool hasTransparentSortBounds{false};
@@ -149,6 +186,8 @@ struct DebugLineCommand {
 };
 
 struct EnvironmentMaps {
+    // Borrowed from SkyboxController; Renderer does not own this texture.
+    unsigned int source{0};
     unsigned int irradiance{0};
     unsigned int prefiltered{0};
     unsigned int brdfLut{0};
@@ -173,12 +212,20 @@ public:
     void EndFrameToViewportTarget();
     void PresentViewportTarget(ViewportRenderTarget target, const RendererViewport& destination);
     unsigned int GetViewportRenderTargetTexture(ViewportRenderTarget target) const;
+    // Linear scRGB RGBA16F output. Valid when HDR Output is enabled; editor
+    // panels intentionally use the SDR preview returned above.
+    unsigned int GetViewportHdrOutputTexture(ViewportRenderTarget target) const;
+    unsigned int GetViewportDepthTexture(ViewportRenderTarget target) const;
+    unsigned int GetViewportNormalTexture(ViewportRenderTarget target) const;
+    unsigned int GetViewportSsaoTexture(ViewportRenderTarget target) const;
 
-    void SetupEnvironment(const std::string& hdrPath);
+    void SetupEnvironment(unsigned int sourceCubemap);
     void BakeBrdfLut();
-    void CreateShadowMaps(int resolution);
+    void CreateShadowMaps(int resolution, int cascadeCount);
 
     void SubmitMesh(const MeshDrawCommand& cmd);
+    // Submit a camera-culled mesh to the depth pass without drawing it in the color pass.
+    void SubmitShadowCaster(const MeshDrawCommand& cmd);
     void ReportFrustumCulled() { ++frameStats_.frustumCulledMeshCount; }
     void SubmitLight(const LightDrawCommand& cmd);
     void SubmitLine(const DebugLineCommand& cmd);
@@ -191,25 +238,55 @@ public:
     const glm::mat4& GetProj() const { return proj_; }
 
     const EnvironmentMaps& GetEnvironmentMaps() const { return environmentMaps_; }
+    bool HasEnvironmentSource() const { return environmentMaps_.source != 0; }
+    bool IsEnvironmentBakeReady() const { return environmentReady_; }
+    float GetEnvironmentAverageLuminance() const { return environmentAverageLuminance_; }
     RendererSettings& GetSettings() { return settings_; }
     const RendererSettings& GetSettings() const { return settings_; }
     const RendererConfig& GetConfig() const;
     const RendererViewport& GetViewport() const { return viewport_; }
     const RendererFrameStats& GetFrameStats() const { return frameStats_; }
+    void SetDisplayHdrCapabilities(const DisplayHdrCapabilities& capabilities) { displayHdrCapabilities_ = capabilities; }
+    const DisplayHdrCapabilities& GetDisplayHdrCapabilities() const { return displayHdrCapabilities_; }
 
 private:
     struct ViewportTarget {
         unsigned int framebuffer{0};
         unsigned int hdrColorTexture{0};
-        unsigned int depthRenderbuffer{0};
+        unsigned int depthTexture{0};
+        unsigned int normalTexture{0};
+        unsigned int ambientTexture{0};
+        unsigned int compositeFramebuffer{0};
+        unsigned int compositeTexture{0};
+        unsigned int velocityFramebuffer{0};
+        unsigned int velocityTexture{0};
+        unsigned int motionBlurFramebuffer{0};
+        unsigned int motionBlurTexture{0};
         unsigned int outputFramebuffer{0};
         unsigned int colorTexture{0};
+        unsigned int hdrOutputFramebuffer{0};
+        unsigned int hdrOutputTexture{0};
+        std::array<unsigned int, 2> bloomFramebuffers{0, 0};
+        std::array<unsigned int, 2> bloomTextures{0, 0};
+        int bloomWidth{0};
+        int bloomHeight{0};
+        unsigned int ssaoFramebuffer{0};
+        unsigned int ssaoTexture{0};
+        unsigned int ssaoBlurFramebuffer{0};
+        unsigned int ssaoBlurTexture{0};
+        int ssaoWidth{0};
+        int ssaoHeight{0};
         int width{0};
         int height{0};
+        glm::mat4 previousViewProjection{1.0f};
+        bool hasPreviousViewProjection{false};
+        std::unordered_map<std::string, glm::mat4> previousModelMatrices;
     };
 
     void InitializePipelines();
     void InitializeQuad();
+    void InitializeSsaoResources();
+    void RenderCaptureCube() const;
     void ResolveViewportTarget(ViewportTarget& target);
     void DestroyViewportTarget(ViewportTarget& target);
     ViewportTarget& GetViewportTarget(ViewportRenderTarget target);
@@ -218,24 +295,47 @@ private:
     RendererConfig config_{};
     RendererViewport viewport_{};
     std::vector<MeshDrawCommand> drawList_;
+    std::vector<MeshDrawCommand> motionVectorDrawList_;
+    std::vector<MeshDrawCommand> shadowCasterList_;
     std::vector<LightDrawCommand> lightDrawList_;
     EnvironmentMaps environmentMaps_{};
     RendererSettings settings_{};
+    DisplayHdrCapabilities displayHdrCapabilities_{};
     unsigned int captureFbo_{0};
     unsigned int captureRbo_{0};
+    unsigned int captureCubeVao_{0};
+    unsigned int captureCubeVbo_{0};
+    bool environmentReady_{false};
+    float environmentAverageLuminance_{0.0f};
     unsigned int fullscreenQuad_{0};
     unsigned int lineVao_{0};
     unsigned int lineVbo_{0};
     std::size_t lineVertexCapacity_{0};
     ViewportTarget sceneViewportTarget_{};
     ViewportTarget gameViewportTarget_{};
-    std::vector<unsigned int> shadowMaps_;
+    unsigned int directionalShadowFramebuffer_{0};
+    unsigned int directionalShadowMap_{0};
+    int directionalShadowResolution_{0};
+    int directionalShadowCascadeCount_{0};
+    unsigned int ssaoNoiseTexture_{0};
+    std::array<glm::vec3, 32> ssaoKernel_{};
     std::vector<DebugLineCommand> lineDrawList_;
     RendererFrameStats frameStats_{};
 
     // Simple fallback pipeline state
     std::unique_ptr<Shader> simpleShader_;
     std::unique_ptr<Shader> toneMapShader_;
+    std::unique_ptr<Shader> bloomExtractShader_;
+    std::unique_ptr<Shader> bloomBlurShader_;
+    std::unique_ptr<Shader> ssaoShader_;
+    std::unique_ptr<Shader> ssaoBlurShader_;
+    std::unique_ptr<Shader> ssaoCompositeShader_;
+    std::unique_ptr<Shader> motionVectorShader_;
+    std::unique_ptr<Shader> motionBlurShader_;
+    std::unique_ptr<Shader> shadowDepthShader_;
+    std::unique_ptr<Shader> irradianceShader_;
+    std::unique_ptr<Shader> prefilterShader_;
+    std::unique_ptr<Shader> brdfShader_;
     std::unordered_map<std::string, std::unique_ptr<Shader>> materialShaders_;
     ViewportRenderTarget activeViewportTarget_{ViewportRenderTarget::Scene};
     bool viewportTargetActive_{false};

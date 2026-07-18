@@ -15,6 +15,7 @@ $solutionPath = Join-Path $sourceProjectRoot "Project Raceman.sln"
 $sourceMode = Test-Path $solutionPath
 $engineRoot = if ($sourceMode) { $sourceProjectRoot } else { $buildRoot }
 $binDir = if ($sourceMode) { Join-Path $sourceProjectRoot "bin\$Configuration" } else { $engineRoot }
+$buildStageRoot = $null
 $outputRoot = [System.IO.Path]::GetFullPath($OutputPath)
 
 function Find-MSBuild {
@@ -93,13 +94,35 @@ function Copy-DirectoryClean {
 
 if ($sourceMode) {
     $msbuild = Find-MSBuild
+    $stageName = "standalone-$Configuration-$Platform"
+    $buildStageRoot = Join-Path $sourceProjectRoot "bin-staging\$stageName"
+    $binDir = Join-Path $buildStageRoot "bin"
+    New-Item -ItemType Directory -Force -Path $buildStageRoot | Out-Null
     Write-Host "Building Project Raceman $Configuration|$Platform..."
-    & $msbuild $solutionPath /m "/p:Configuration=$Configuration" "/p:Platform=$Platform"
+    Write-Host "Using isolated build staging: $buildStageRoot"
+    & $msbuild $solutionPath /m "/p:Configuration=$Configuration" "/p:Platform=$Platform" "/p:RacemanStagingRoot=$buildStageRoot"
     if ($LASTEXITCODE -ne 0) {
         throw "MSBuild failed with exit code $LASTEXITCODE."
     }
 } else {
     Write-Host "Using packaged engine from $engineRoot"
+}
+
+function Find-EditBin {
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere) {
+        $installPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+        if ($installPath) {
+            $candidate = Get-ChildItem (Join-Path $installPath "VC\Tools\MSVC") -Recurse -Filter editbin.exe -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -match 'Hostx64\\x64\\editbin\.exe$' } |
+                Sort-Object FullName -Descending |
+                Select-Object -First 1
+            if ($candidate) { return $candidate.FullName }
+        }
+    }
+    $command = Get-Command editbin.exe -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+    throw "EDITBIN was not found. Install the Visual C++ build tools."
 }
 
 New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
@@ -169,17 +192,59 @@ if (Test-Path $exeSrc) {
     Write-Host "Renamed executable to $projectFolderName.exe"
 }
 
+# ProjectScripts.dll imports the engine's exported script API from
+# ProjectRaceman.exe. Keep a hard-link alias to the project-named game
+# executable so Windows can resolve that import without shipping a second copy.
+$engineExeAlias = Join-Path $outputRoot "ProjectRaceman.exe"
+if (-not (Test-Path $engineExeAlias)) {
+    try {
+        New-Item -ItemType HardLink -Path $engineExeAlias -Target $exeDest | Out-Null
+    } catch {
+        Copy-Item -Force -LiteralPath $exeDest -Destination $engineExeAlias
+    }
+}
+
+# The editor is a console-subsystem application for development logs. A shipped
+# player should be a GUI-subsystem application and write diagnostics only to
+# player.log, without opening a command window.
+$editbin = Find-EditBin
+& $editbin /NOLOGO /SUBSYSTEM:WINDOWS $exeDest
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to mark standalone executable as a Windows application."
+}
+
 Write-Host "Bundling project: $gameProjectDir"
 # Use robocopy to copy the project directory so that file modification times are
 # preserved. The physics collision cache is keyed on mesh file mtimes; if we used
 # Copy-Item the timestamps would change and every first run would re-cook colliders.
 $projDest = Join-Path $outputRoot "Project"
-if (Test-Path $projDest) {
-    Remove-Item -LiteralPath $projDest -Recurse -Force
-}
-robocopy $gameProjectDir $projDest /E /COPY:DAT /NFL /NDL /NJH /NJS
+New-Item -ItemType Directory -Force -Path $projDest | Out-Null
+# Mirror authored project content, but preserve collision shapes cooked by a
+# previous run of this standalone output. Rebuilding the same folder should not
+# force the player to cook every unchanged mesh again.
+robocopy $gameProjectDir $projDest /MIR /COPY:DAT /XD .collision-cache .raceman-cache /NFL /NDL /NJH /NJS
 if ($LASTEXITCODE -ge 8) {
     throw "robocopy failed copying project directory (exit code $LASTEXITCODE)."
+}
+$preservedCacheNames = @(".collision-cache", ".raceman-cache")
+foreach ($cacheName in $preservedCacheNames) {
+    $cacheSources = @()
+    # Compatibility with caches made before collision data was stored in the
+    # project directory itself.
+    if ($cacheName -eq ".collision-cache") {
+        $cacheSources += (Join-Path $engineRoot "Project\.collision-cache")
+    }
+    $cacheSources += (Join-Path $gameProjectDir $cacheName)
+    foreach ($sourceCache in $cacheSources) {
+      if (Test-Path $sourceCache) {
+        $destinationCache = Join-Path $projDest $cacheName
+        New-Item -ItemType Directory -Force -Path $destinationCache | Out-Null
+        robocopy $sourceCache $destinationCache /E /COPY:DAT /NFL /NDL /NJH /NJS
+        if ($LASTEXITCODE -ge 8) {
+            throw "robocopy failed copying $cacheName (exit code $LASTEXITCODE)."
+        }
+      }
+    }
 }
 Copy-DirectoryClean -Source (Join-Path $engineRoot "src\shaders") -Destination (Join-Path $outputRoot "src\shaders")
 

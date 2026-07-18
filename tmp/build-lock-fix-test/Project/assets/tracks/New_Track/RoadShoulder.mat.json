@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "name": "RoadShoulder",
+  "shader": "pbr",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0.152,
+  "roughness": 0.721,
+  "emissiveColor": [1, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "",
+    "normal": "",
+    "metallic": "",
+    "roughness": "",
+    "ao": ""
+  },
+  "properties": {
+    "albedoColor": { "type": "vec4", "value": [1, 1, 1, 1] },
+    "metallicTexture": { "type": "texture2D", "value": "" },
+    "albedoTexture": { "type": "texture2D", "value": "" },
+    "metallic": { "type": "float", "value": 0 },
+    "aoTexture": { "type": "texture2D", "value": "" },
+    "emissiveColor": { "type": "vec3", "value": [0, 0, 0] },
+    "roughness": { "type": "float", "value": 0.5 },
+    "normalTexture": { "type": "texture2D", "value": "" },
+    "roughnessTexture": { "type": "texture2D", "value": "" },
+    "uvOffset": { "type": "vec2", "value": [0, 0] },
+    "uvTiling": { "type": "vec2", "value": [1, 1] }
+  }
+}

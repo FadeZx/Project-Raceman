@@ -97,6 +97,10 @@ unsigned int SkyboxController::GetProgramId() const {
     return shader_ ? shader_->getID() : 0u;
 }
 
+unsigned int SkyboxController::GetCubemapTexture() const {
+    return skybox_ ? skybox_->GetCubemapTexture() : 0u;
+}
+
 void SkyboxController::Reload() {
     if (!shader_) {
         shader_ = std::make_unique<Shader>(vsPath_.c_str(), fsPath_.c_str());

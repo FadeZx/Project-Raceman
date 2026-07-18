@@ -41,7 +41,9 @@ Build/
 ProjectRaceman/.vs/
 ProjectRaceman/bin/
 ProjectRaceman/bin-int/
+ProjectRaceman/bin-staging/
 ProjectRaceman/Project/.collision-cache/
+**/.raceman-cache/
 ProjectRaceman/**/*.ilk
 ProjectRaceman/**/*.pdb
 ProjectRaceman/**/*.idb

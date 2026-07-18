@@ -1,0 +1,6 @@
+Project Raceman standalone build
+ProjectName=Project1
+Configuration=Release
+Platform=x64
+Source=D:\Project-Raceman\ProjectRaceman
+BuiltAt=2026-07-18T12:03:10.8384508+07:00

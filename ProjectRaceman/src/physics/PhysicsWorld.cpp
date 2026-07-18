@@ -147,6 +147,22 @@ std::uint64_t FnvHash64(const std::string& s) {
 }
 
 std::filesystem::path GetShapeCacheDir() {
+    // Keep cooked shapes with the actual project. The editor's working
+    // directory is the engine directory while a packaged player runs beside a
+    // `Project` folder, so current_path()/Project only worked for the latter.
+#if defined(_WIN32)
+    char* overrideRoot = nullptr;
+    size_t overrideRootLength = 0;
+    if (_dupenv_s(&overrideRoot, &overrideRootLength, "RACEMAN_PROJECT_ROOT") == 0 && overrideRoot != nullptr) {
+        const std::filesystem::path projectRoot(overrideRoot);
+        free(overrideRoot);
+        return (projectRoot / ".collision-cache").lexically_normal();
+    }
+#else
+    if (const char* overrideRoot = std::getenv("RACEMAN_PROJECT_ROOT")) {
+        return (std::filesystem::path(overrideRoot) / ".collision-cache").lexically_normal();
+    }
+#endif
     return (std::filesystem::current_path() / "Project" / ".collision-cache").lexically_normal();
 }
 

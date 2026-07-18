@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "generic_gauge_glass.001",
+  "shader": "pbr",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0,
+  "roughness": 1,
+  "emissiveColor": [0, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "assets/car/2018-bmw-m8-gte/materials/bmw_generic_gauge_glass001_albedo.png",
+    "normal": "",
+    "metallic": "",
+    "roughness": "",
+    "ao": ""
+  },
+  "properties": {
+  }
+}

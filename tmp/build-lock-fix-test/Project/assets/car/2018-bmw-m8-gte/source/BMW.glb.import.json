@@ -1,0 +1,792 @@
+{
+  "version": 1,
+  "pivotMode": 0,
+  "importMaterials": true,
+  "materialLocation": 0,
+  "materialRemapNaming": 0,
+  "materialRemapSearch": 0,
+  "materials": [
+    {
+      "meshIndex": 0,
+      "meshName": "Object_0.001",
+      "importedMaterialName": "Mesh_0571.rip.001",
+      "materialId": "bmw_mesh_0571rip001"
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "Object_38.001",
+      "importedMaterialName": "generic_gauge_glass.001",
+      "materialId": "bmw_generic_gauge_glass001"
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "Object_35.001",
+      "importedMaterialName": "daylights.001",
+      "materialId": "bmw_daylights001"
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "Object_37.001",
+      "importedMaterialName": "INT_Decals_LCD.001",
+      "materialId": "bmw_int_decals_lcd001"
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "Object_34.001",
+      "importedMaterialName": "Mesh_0571.rip.001",
+      "materialId": "bmw_mesh_0571rip001"
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "Object_33.001",
+      "importedMaterialName": "Mesh_0571.rip.001",
+      "materialId": "bmw_mesh_0571rip001"
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "Object_39.001",
+      "importedMaterialName": "Mesh_0597.rip.001",
+      "materialId": "bmw_mesh_0597rip001"
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "Object_46.001",
+      "importedMaterialName": "Mesh_0597.rip.001",
+      "materialId": "bmw_mesh_0597rip001"
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "Object_45.001",
+      "importedMaterialName": "Mesh_0597.rip.001",
+      "materialId": "bmw_mesh_0597rip001"
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "Object_47.001",
+      "importedMaterialName": "Mesh_0597.rip.001",
+      "materialId": "bmw_mesh_0597rip001"
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "Object_44.001",
+      "importedMaterialName": "Mesh_0597.rip.001",
+      "materialId": "bmw_mesh_0597rip001"
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "Object_40.001",
+      "importedMaterialName": "Mesh_0597.rip.001",
+      "materialId": "bmw_mesh_0597rip001"
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "Object_41.001",
+      "importedMaterialName": "Mesh_0597.rip.001",
+      "materialId": "bmw_mesh_0597rip001"
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "Object_42.001",
+      "importedMaterialName": "Mesh_0597.rip.001",
+      "materialId": "bmw_mesh_0597rip001"
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "Object_43.001",
+      "importedMaterialName": "Mesh_0597.rip.001",
+      "materialId": "bmw_mesh_0597rip001"
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "Object_50.001",
+      "importedMaterialName": "Mesh_0001.rip.001",
+      "materialId": "bmw_mesh_0001rip001"
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "Object_51.001",
+      "importedMaterialName": "Mesh_0002.rip.001",
+      "materialId": "bmw_mesh_0002rip001"
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "Object_52.001",
+      "importedMaterialName": "Mesh_0002.rip.001",
+      "materialId": "bmw_mesh_0002rip001"
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "Object_53.001",
+      "importedMaterialName": "Mesh_0006.rip.001",
+      "materialId": "bmw_mesh_0006rip001"
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "Object_54.001",
+      "importedMaterialName": "Mesh_0017.rip.001",
+      "materialId": "bmw_mesh_0017rip001"
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "Object_55.001",
+      "importedMaterialName": "Mesh_0017.rip.001",
+      "materialId": "bmw_mesh_0017rip001"
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "Object_56.001",
+      "importedMaterialName": "Mesh_0024.rip.001",
+      "materialId": "bmw_mesh_0024rip001"
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "Object_57.001",
+      "importedMaterialName": "Mesh_0024.rip.001",
+      "materialId": "bmw_mesh_0024rip001"
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "Object_58.001",
+      "importedMaterialName": "Mesh_0024.rip.001",
+      "materialId": "bmw_mesh_0024rip001"
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "Object_59.001",
+      "importedMaterialName": "Mesh_0027.rip.001",
+      "materialId": "bmw_mesh_0027rip001"
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "Object_60.001",
+      "importedMaterialName": "Mesh_0047.rip.001",
+      "materialId": "bmw_mesh_0047rip001"
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "Object_61.001",
+      "importedMaterialName": "Mesh_0064.rip.001",
+      "materialId": "bmw_mesh_0064rip001"
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "Object_62.001",
+      "importedMaterialName": "Mesh_0065.rip.001",
+      "materialId": "bmw_mesh_0065rip001"
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "Object_63.001",
+      "importedMaterialName": "Mesh_0066.rip.001",
+      "materialId": "bmw_mesh_0066rip001"
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "Object_64.001",
+      "importedMaterialName": "Mesh_0067.rip",
+      "materialId": "bmw_mesh_0067rip"
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "Object_65.001",
+      "importedMaterialName": "Mesh_0001.rip.001",
+      "materialId": "bmw_mesh_0001rip001"
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "Object_66.001",
+      "importedMaterialName": "Mesh_0004.rip.001",
+      "materialId": "bmw_mesh_0004rip001"
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "Object_67.001",
+      "importedMaterialName": "Mesh_0005.rip.001",
+      "materialId": "bmw_mesh_0005rip001"
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "Object_68.001",
+      "importedMaterialName": "Mesh_0007.rip.001",
+      "materialId": "bmw_mesh_0007rip001"
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "Object_69.001",
+      "importedMaterialName": "Mesh_0006.rip.001",
+      "materialId": "bmw_mesh_0006rip001"
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "Object_70.001",
+      "importedMaterialName": "Mesh_0009.rip.001",
+      "materialId": "bmw_mesh_0009rip001"
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "Object_71.001",
+      "importedMaterialName": "Mesh_0017.rip.001",
+      "materialId": "bmw_mesh_0017rip001"
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "Object_72.001",
+      "importedMaterialName": "Mesh_0017.rip.001",
+      "materialId": "bmw_mesh_0017rip001"
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "Object_73.001",
+      "importedMaterialName": "Mesh_0024.rip.001",
+      "materialId": "bmw_mesh_0024rip001"
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "Object_74.001",
+      "importedMaterialName": "Mesh_0024.rip.001",
+      "materialId": "bmw_mesh_0024rip001"
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "Object_75.001",
+      "importedMaterialName": "Mesh_0027.rip.001",
+      "materialId": "bmw_mesh_0027rip001"
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "Object_76.001",
+      "importedMaterialName": "Mesh_0046.rip.001",
+      "materialId": "bmw_mesh_0046rip001"
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "Object_77.001",
+      "importedMaterialName": "Mesh_0064.rip.001",
+      "materialId": "bmw_mesh_0064rip001"
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "Object_78.001",
+      "importedMaterialName": "Mesh_0065.rip.001",
+      "materialId": "bmw_mesh_0065rip001"
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "Object_79.001",
+      "importedMaterialName": "Mesh_0066.rip.001",
+      "materialId": "bmw_mesh_0066rip001"
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "Object_87.001",
+      "importedMaterialName": "int_shild.001",
+      "materialId": "bmw_int_shild001"
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "Object_1.001",
+      "importedMaterialName": "Mesh_0571.rip.001",
+      "materialId": "bmw_mesh_0571rip001"
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "Object_48.001",
+      "importedMaterialName": "PANNELLO_NERO.001",
+      "materialId": "bmw_pannello_nero001"
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "Object_30.001",
+      "importedMaterialName": "Mesh_0571.rip.001",
+      "materialId": "bmw_mesh_0571rip001"
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "Object_49.001",
+      "importedMaterialName": "scarichi.001",
+      "materialId": "bmw_scarichi001"
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "Object_36.001",
+      "importedMaterialName": "specchi.001",
+      "materialId": "bmw_specchi001"
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "Object_80.001",
+      "importedMaterialName": "Mesh_0596.rip.001",
+      "materialId": "bmw_mesh_0596rip001"
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "Object_81.001",
+      "importedMaterialName": "plastiche_volante.001",
+      "materialId": "bmw_plastiche_volante001"
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "Object_82.001",
+      "importedMaterialName": "carbonio_volante.001",
+      "materialId": "bmw_carbonio_volante001"
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "Object_83.001",
+      "importedMaterialName": "alcantara.001",
+      "materialId": "bmw_alcantara001"
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "Object_84.001",
+      "importedMaterialName": "metallo_volante.001",
+      "materialId": "bmw_metallo_volante001"
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "Object_85.001",
+      "importedMaterialName": "ergal.001",
+      "materialId": "bmw_ergal001"
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "Object_86.001",
+      "importedMaterialName": "palette.001",
+      "materialId": "bmw_palette001"
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "Object_31.001",
+      "importedMaterialName": "Mesh_0571.rip.001",
+      "materialId": "bmw_mesh_0571rip001"
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "Object_32.001",
+      "importedMaterialName": "Mesh_0571.rip.001",
+      "materialId": "bmw_mesh_0571rip001"
+    }
+  ],
+  "collisions": [
+    {
+      "meshIndex": 0,
+      "meshName": "Object_0.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "Object_38.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "Object_35.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "Object_37.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "Object_34.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "Object_33.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "Object_39.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "Object_46.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "Object_45.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "Object_47.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "Object_44.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "Object_40.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "Object_41.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "Object_42.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "Object_43.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "Object_50.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "Object_51.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "Object_52.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "Object_53.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "Object_54.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "Object_55.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "Object_56.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "Object_57.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "Object_58.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "Object_59.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "Object_60.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "Object_61.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "Object_62.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "Object_63.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "Object_64.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "Object_65.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "Object_66.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "Object_67.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "Object_68.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "Object_69.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "Object_70.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "Object_71.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "Object_72.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "Object_73.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "Object_74.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "Object_75.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "Object_76.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "Object_77.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "Object_78.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "Object_79.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "Object_87.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "Object_1.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "Object_48.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "Object_30.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "Object_49.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "Object_36.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "Object_80.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "Object_81.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "Object_82.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "Object_83.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "Object_84.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "Object_85.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "Object_86.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "Object_31.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "Object_32.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    }
+  ]
+}

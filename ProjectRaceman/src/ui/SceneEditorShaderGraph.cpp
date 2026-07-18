@@ -726,7 +726,9 @@ bool CompileShaderGraphFragment(const fs::path& fragmentPath,
             return false;
         }
         out << "#version 450 core\n";
-        out << "out vec4 FragColor;\n";
+        out << "layout(location = 0) out vec4 FragColor;\n";
+        out << "layout(location = 1) out vec4 NormalBuffer;\n";
+        out << "layout(location = 2) out vec4 AmbientBuffer;\n";
         out << "in vec2 vUV;\n";
         out << "in vec3 vWorldPosition;\n";
         out << "in vec3 vWorldNormal;\n";
@@ -753,14 +755,19 @@ bool CompileShaderGraphFragment(const fs::path& fragmentPath,
         out << "struct Light { int type; vec3 position; vec3 direction; vec3 color; float intensity; float range; float spotAngleDegrees; };\n";
         out << "uniform int uLightCount;\n";
         out << "uniform Light uLights[8];\n";
-        out << "vec3 ApplyLighting(vec3 albedo, vec3 normal, float metallic, float roughness) {\n";
+        out << "vec3 EvaluateAmbient(vec3 albedo, vec3 normal, float metallic, float roughness) {\n";
         out << "    vec3 viewDir = normalize(uCameraPosition - vWorldPosition);\n";
-        out << "    float shininess = mix(96.0, 8.0, roughness);\n";
         out << "    vec3 specularColor = mix(vec3(0.04), albedo, metallic);\n";
         out << "    vec3 ambientDiffuse = albedo * uAmbientColor * (1.0 - metallic * 0.75);\n";
         out << "    float rim = pow(clamp(1.0 - max(dot(normal, viewDir), 0.0), 0.0, 1.0), 2.0);\n";
         out << "    vec3 ambientSpecular = specularColor * (uAmbientColor + vec3(0.08)) * mix(0.15, 1.0, 1.0 - roughness) * (0.35 + metallic * 0.65) * (0.7 + rim * 0.3);\n";
-        out << "    vec3 lit = ambientDiffuse + ambientSpecular;\n";
+        out << "    return ambientDiffuse + ambientSpecular;\n";
+        out << "}\n";
+        out << "vec3 ApplyLighting(vec3 albedo, vec3 normal, float metallic, float roughness) {\n";
+        out << "    vec3 viewDir = normalize(uCameraPosition - vWorldPosition);\n";
+        out << "    float shininess = mix(96.0, 8.0, roughness);\n";
+        out << "    vec3 specularColor = mix(vec3(0.04), albedo, metallic);\n";
+        out << "    vec3 lit = EvaluateAmbient(albedo, normal, metallic, roughness);\n";
         out << "    for (int i = 0; i < uLightCount; ++i) {\n";
         out << "        Light light = uLights[i];\n";
         out << "        vec3 lightDir;\n";
@@ -805,6 +812,8 @@ bool CompileShaderGraphFragment(const fs::path& fragmentPath,
         out << "    vec4 base = graphBase * uColor;\n";
         out << "    float ao = uUseMaterialAoTexture ? texture(uMaterialAoTexture, vUV).r : 1.0;\n";
         out << "    vec3 lit = ApplyLighting(base.rgb, normal, metallic, roughness) * ao + emissive;\n";
+        out << "    NormalBuffer = vec4(normal, 1.0);\n";
+        out << "    AmbientBuffer = vec4(EvaluateAmbient(base.rgb, normal, metallic, roughness) * ao, base.a * alpha);\n";
         out << "    FragColor = vec4(lit, base.a * alpha);\n";
         out << "}\n";
         return true;

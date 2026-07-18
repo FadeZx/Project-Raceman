@@ -58,6 +58,10 @@
     <TargetName>ProjectRaceman</TargetName>
     <LanguageStandard>stdcpp17</LanguageStandard>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(RacemanStagingRoot)'!=''">
+    <OutDir>$(RacemanStagingRoot)\bin\</OutDir>
+    <IntDir>$(RacemanStagingRoot)\obj\ProjectRaceman\</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -73,7 +77,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Jolt.lib;dinput8.lib;dxguid.lib;Debug\STB_IMAGE.lib;Debug\GLAD.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Jolt.lib;dinput8.lib;dxguid.lib;d3d11.lib;d3dcompiler.lib;dxgi.lib;Debug\STB_IMAGE.lib;Debug\GLAD.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)../lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -101,7 +105,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Jolt.lib;dinput8.lib;dxguid.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;Debug/STB_IMAGE.lib;Debug/GLAD.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Jolt.lib;dinput8.lib;dxguid.lib;d3d11.lib;d3dcompiler.lib;dxgi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;Debug/STB_IMAGE.lib;Debug/GLAD.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)../lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -117,6 +121,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="assets\mesh\plane.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\Application.h" />
+    <ClInclude Include="src\platform\WindowsHdrPresenter.h" />
     <ClInclude Include="src\build\BuildSystem.h" />
     <ClInclude Include="src\input\InputManager.h" />
     <ClInclude Include="src\input\WheelForceFeedback.h" />
@@ -141,6 +146,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="src\scripting\ScriptRegistry.h" />
     <ClInclude Include="src\ui\Console.h" />
     <ClInclude Include="src\ui\DebugUI.h" />
+    <ClInclude Include="src\ui\EditorProgress.h" />
     <ClInclude Include="editor-assets\third_party\imgui\backends\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="src\ui\MenuController.h" />
     <ClInclude Include="src\ui\NativeDialogs.h" />
@@ -165,8 +171,8 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
+    <ClCompile Include="src\platform\WindowsHdrPresenter.cpp" />
     <ClCompile Include="src\build\BuildSystem.cpp" />
-    <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\input\InputManager.cpp" />
     <ClCompile Include="src\input\WheelForceFeedback.cpp" />
@@ -186,6 +192,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\scripting\ScriptRegistry.cpp" />
     <ClCompile Include="src\ui\Console.cpp" />
     <ClCompile Include="src\ui\DebugUI.cpp" />
+    <ClCompile Include="src\ui\EditorProgress.cpp" />
     <ClCompile Include="editor-assets\third_party\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="editor-assets\third_party\imgui\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="editor-assets\third_party\imgui\imgui.cpp" />
@@ -251,6 +258,11 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <None Include="src\shaders\default\emissive.fs" />
     <None Include="src\shaders\default\normal_debug.fs" />
     <None Include="src\shaders\default\vertex_color.fs" />
+    <None Include="src\shaders\post\bloom_extract.fs" />
+    <None Include="src\shaders\post\bloom_blur.fs" />
+    <None Include="src\shaders\post\ssao.fs" />
+    <None Include="src\shaders\post\ssao_bilateral_blur.fs" />
+    <None Include="src\shaders\post\ssao_composite.fs" />
     <None Include="src\shaders\diffuse lighting\light_cube.fs" />
     <None Include="src\shaders\diffuse lighting\light_cube.vs" />
     <None Include="src\shaders\model\model_loading.fs" />
@@ -267,6 +279,8 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <None Include="src\shaders\PBR\prefilter.fs" />
     <None Include="src\shaders\shadow\shadow_dept.fs" />
     <None Include="src\shaders\shadow\shadow_dept.vs" />
+    <None Include="src\shaders\shadow\directional_depth.fs" />
+    <None Include="src\shaders\shadow\directional_depth.vs" />
     <None Include="src\shaders\text.fs" />
     <None Include="src\shaders\text.vs" />
     <None Include="src\shaders\UIShader.fs" />

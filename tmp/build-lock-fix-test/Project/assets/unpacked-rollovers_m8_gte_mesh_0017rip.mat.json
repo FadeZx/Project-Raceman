@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Mesh_0017.rip",
+  "shader": "pbr",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0,
+  "roughness": 1,
+  "emissiveColor": [0, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "assets/car/2018-bmw-m8-gte/materials/unpacked-rollovers_m8_gte_mesh_0017rip_albedo.png",
+    "normal": "assets/car/2018-bmw-m8-gte/materials/unpacked-rollovers_m8_gte_mesh_0017rip_normal.png",
+    "metallic": "assets/car/2018-bmw-m8-gte/materials/unpacked-rollovers_m8_gte_mesh_0017rip_metallic.png",
+    "roughness": "",
+    "ao": ""
+  },
+  "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 }
+  }
+}

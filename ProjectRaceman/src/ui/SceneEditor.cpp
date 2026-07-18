@@ -713,13 +713,14 @@ std::string BuildScriptProjectSource(const std::vector<ScriptSourceInfo>& script
     project += "  <PropertyGroup><VcpkgEnableManifest>true</VcpkgEnableManifest></PropertyGroup>\n";
     project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Debug|x64'\"><OutDir>$(SolutionDir)bin\\$(Configuration)\\</OutDir><IntDir>$(SolutionDir)bin-int\\ProjectScripts\\$(Configuration)\\</IntDir><TargetName>ProjectScripts</TargetName><LanguageStandard>stdcpp17</LanguageStandard></PropertyGroup>\n";
     project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\"><OutDir>$(SolutionDir)bin\\$(Configuration)\\</OutDir><IntDir>$(SolutionDir)bin-int\\ProjectScripts\\$(Configuration)\\</IntDir><TargetName>ProjectScripts</TargetName><LanguageStandard>stdcpp17</LanguageStandard></PropertyGroup>\n";
+    project += "  <PropertyGroup Condition=\"'$(RacemanStagingRoot)'!=''\"><OutDir>$(RacemanStagingRoot)\\bin\\</OutDir><IntDir>$(RacemanStagingRoot)\\obj\\ProjectScripts\\</IntDir></PropertyGroup>\n";
     project += "  <ItemDefinitionGroup Condition=\"'$(Configuration)|$(Platform)'=='Debug|x64'\">\n";
     project += "    <ClCompile><WarningLevel>Level3</WarningLevel><SDLCheck>true</SDLCheck><PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;RACEMAN_SCRIPT_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions><ConformanceMode>true</ConformanceMode><AdditionalIncludeDirectories>$(ProjectDir)..\\includes;$(ProjectDir)includes;$(ProjectDir)editor-assets/third_party;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories><LanguageStandard>stdcpp17</LanguageStandard><AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions><ProgramDataBaseFileName>$(IntDir)%(Filename).compile.pdb</ProgramDataBaseFileName><RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary></ClCompile>\n";
-    project += "    <Link><SubSystem>Console</SubSystem><GenerateDebugInformation>false</GenerateDebugInformation><AdditionalDependencies>ProjectRaceman.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>$(ProjectDir)bin\\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories></Link>\n";
+    project += "    <Link><SubSystem>Console</SubSystem><GenerateDebugInformation>false</GenerateDebugInformation><AdditionalDependencies>ProjectRaceman.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>$(OutDir);$(ProjectDir)bin\\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories></Link>\n";
     project += "  </ItemDefinitionGroup>\n";
     project += "  <ItemDefinitionGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\">\n";
     project += "    <ClCompile><WarningLevel>Level3</WarningLevel><FunctionLevelLinking>true</FunctionLevelLinking><IntrinsicFunctions>true</IntrinsicFunctions><PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;JPH_DEBUG;JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER;JPH_OBJECT_STREAM;RACEMAN_SCRIPT_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions><ConformanceMode>true</ConformanceMode><AdditionalIncludeDirectories>$(ProjectDir)..\\includes;$(ProjectDir)includes;$(ProjectDir)editor-assets/third_party;$(ProjectDir)editor-assets/third_party/JoltPhysics-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories><LanguageStandard>stdcpp17</LanguageStandard><AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions><ProgramDataBaseFileName>$(IntDir)%(Filename).compile.pdb</ProgramDataBaseFileName><WholeProgramOptimization>false</WholeProgramOptimization><RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary></ClCompile>\n";
-    project += "    <Link><SubSystem>Console</SubSystem><GenerateDebugInformation>false</GenerateDebugInformation><EnableCOMDATFolding>true</EnableCOMDATFolding><OptimizeReferences>true</OptimizeReferences><LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration><AdditionalDependencies>ProjectRaceman.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>$(ProjectDir)bin\\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories></Link>\n";
+    project += "    <Link><SubSystem>Console</SubSystem><GenerateDebugInformation>false</GenerateDebugInformation><EnableCOMDATFolding>true</EnableCOMDATFolding><OptimizeReferences>true</OptimizeReferences><LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration><AdditionalDependencies>ProjectRaceman.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>$(OutDir);$(ProjectDir)bin\\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories></Link>\n";
     project += "  </ItemDefinitionGroup>\n";
     project += "  <ItemGroup>\n";
     project += "    <ClInclude Include=\"src\\scripting\\ObjectScript.h\" />\n";
@@ -851,6 +852,10 @@ SceneEditor::~SceneEditor() {
         }
         materialExtract_.thread->join();
     }
+    if (playModeLoad_.window.IsValid()) playModeLoad_.window.Cancelled("Editor operation stopped.");
+    if (collisionBake_.window.IsValid()) collisionBake_.window.Cancelled("Editor operation stopped.");
+    if (materialExtract_.window.IsValid()) materialExtract_.window.Cancelled("Editor operation stopped.");
+    if (saveProgress_.IsValid()) saveProgress_.Cancelled("Save operation stopped.");
 
     // If the app is closed while in play mode, restore the pre-play snapshot so
     // the saved scene on disk reflects the authored state, not runtime transforms.
@@ -1004,44 +1009,25 @@ void SceneEditor::AddEmptyObject() {
 }
 
 void SceneEditor::TickPendingSceneSave() {
-    if (!sceneSaveRequested_ || !sceneSavePopupRendered_) {
-        return;
-    }
+    if (!saveProgress_.IsValid() || !saveProgress_.HasBeenRendered()) return;
 
-    SaveCurrentScene();
-    sceneSaveRequested_ = false;
-    sceneSavePopupClosing_ = true;
+    if (projectSaveRequested_) {
+        saveProgress_.SetDetail("Writing project.raceman.json");
+        SaveProject();
+        projectSaveRequested_ = false;
+        saveProgress_.Complete("Project saved.");
+        saveProgress_ = {};
+    } else if (sceneSaveRequested_) {
+        saveProgress_.SetDetail(NormalizeSlashes(savePath_));
+        SaveCurrentScene();
+        sceneSaveRequested_ = false;
+        saveProgress_.Complete("Scene saved.");
+        saveProgress_ = {};
+    }
 }
 
 void SceneEditor::RenderSceneSavePopup() {
-    constexpr const char* popupId = "Saving Scene...###SceneSaveProgress";
-    if (sceneSaveRequested_) {
-        if (!sceneSavePopupRendered_) {
-            sceneSaveAnimationStart_ = glfwGetTime();
-        }
-        const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(ImVec2(420.0f, 112.0f), ImGuiCond_Always);
-        ImGui::OpenPopup(popupId);
-    }
-
-    if (ImGui::BeginPopupModal(popupId, nullptr,
-        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-        if (sceneSavePopupClosing_) {
-            ImGui::CloseCurrentPopup();
-            sceneSavePopupClosing_ = false;
-            sceneSavePopupRendered_ = false;
-        } else {
-            const double elapsed = glfwGetTime() - sceneSaveAnimationStart_;
-            const float pulse = static_cast<float>(std::fmod(elapsed * 0.65, 1.0));
-            ImGui::TextUnformatted("Saving scene and refreshing project assets...");
-            ImGui::ProgressBar(pulse, ImVec2(-1.0f, 0.0f), "Please wait");
-            ImGui::TextDisabled("%s", NormalizeSlashes(savePath_).c_str());
-            sceneSavePopupRendered_ = true;
-        }
-        ImGui::EndPopup();
-    }
+    // Rendered centrally by EditorProgressService after all editor panels.
 }
 
 void SceneEditor::RenderUI(float deltaTime) {
@@ -1718,7 +1704,9 @@ void SceneEditor::HandleEditorShortcuts() {
         return;
     }
     if (IsCtrlZPressed()) {
-        if (shaderGraphShortcutTarget) {
+        if (projectSettingsShortcutTarget_ && undoProjectSettings_) {
+            undoProjectSettings_();
+        } else if (shaderGraphShortcutTarget) {
             UndoShaderGraph();
         } else if (vehicleConfigShortcutTarget) {
             UndoVehicleConfig();
@@ -1732,7 +1720,9 @@ void SceneEditor::HandleEditorShortcuts() {
         return;
     }
     if (IsCtrlYPressed()) {
-        if (shaderGraphShortcutTarget) {
+        if (projectSettingsShortcutTarget_ && redoProjectSettings_) {
+            redoProjectSettings_();
+        } else if (shaderGraphShortcutTarget) {
             RedoShaderGraph();
         } else if (vehicleConfigShortcutTarget) {
             RedoVehicleConfig();
@@ -2038,6 +2028,32 @@ void SceneEditor::StartMeshColliderAutoBakeForIndices(const std::vector<int>& ob
 void SceneEditor::StartSelectedMeshColliderAutoBake(const std::string& title) {
     NormalizeSelection();
     StartMeshColliderAutoBakeForIndices(selectedIndices_, title);
+}
+
+std::vector<PhysicsColliderDesc> SceneEditor::CollectMeshCollidersNeedingBake() const {
+    std::vector<PhysicsColliderDesc> colliders;
+    std::unordered_set<std::string> seen;
+    for (const SceneObject& object : objects_) {
+        PhysicsColliderDesc collider;
+        std::string label;
+        if (!TryBuildMeshColliderBakeJob(object, collider, label)) {
+            continue;
+        }
+        char pivot[96];
+        std::snprintf(pivot, sizeof(pivot), "%.4f,%.4f,%.4f",
+                      collider.meshPivotOffset.x,
+                      collider.meshPivotOffset.y,
+                      collider.meshPivotOffset.z);
+        const std::string key = collider.meshAssetPath + "#" +
+                                std::to_string(collider.meshIndex) + "#" +
+                                std::to_string(static_cast<int>(collider.meshMode)) + "#" +
+                                std::to_string(static_cast<int>(collider.meshBuildQuality)) + "#" +
+                                pivot;
+        if (seen.insert(key).second) {
+            colliders.push_back(std::move(collider));
+        }
+    }
+    return colliders;
 }
 
 void SceneEditor::CopySelectedObjectsToClipboard() {
@@ -4218,6 +4234,7 @@ void SceneEditor::Load(const std::string& path) {
                         }
                         ReadString(component, "followTargetId", so.cinemachine.followTargetId);
                         ReadString(component, "lookAtTargetId", so.cinemachine.lookAtTargetId);
+                        ReadBool(component, "lockTargetPitchRoll", so.cinemachine.lockTargetPitchRoll);
                         if (ReadVec3(component, "followOffset", so.cinemachine.followOffset)) {
                             so.transform.position = so.cinemachine.followOffset;
                         }
@@ -5376,6 +5393,7 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
         if (o.meshFilter.vao == 0 || o.meshFilter.indexCount == 0) continue;
 
         MeshDrawCommand cmd;
+        cmd.motionId = o.id;
         cmd.vao = o.meshFilter.vao;
         cmd.indexCount = o.meshFilter.indexCount;
         {
@@ -5424,8 +5442,20 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
             }
             if (culled) {
                 renderer.ReportFrustumCulled();
-                // When frustum cull debug is on, culled objects are simply not drawn
-                // so you see exactly what the camera renders — no extra gizmos.
+                // Camera visibility and shadow visibility are different. Preserve
+                // nearby off-screen casters so their shadows do not pop at the
+                // edge of the view; Renderer culls them against the light volume.
+                if (renderer.GetSettings().profile.shadows) {
+                    cmd.materialId = o.meshRenderer.materialId.empty() ? std::string("pbr_default") : o.meshRenderer.materialId;
+                    if (const Material* material = materialManager_.Get(cmd.materialId)) {
+                        cmd.doubleSided = material->doubleSided;
+                        cmd.transparent = ToLowerCopy(material->alphaMode) == "blend";
+                    }
+                    if (!cmd.transparent) {
+                        renderer.SubmitShadowCaster(cmd);
+                    }
+                }
+                // Skip only the color pass; shadow submission was handled above.
                 continue;
             }
         }
@@ -5454,7 +5484,6 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
             cmd.alphaCutoff = alphaMode == "mask" ? material->alphaCutoff : 0.0f;
             cmd.doubleSided = material->doubleSided;
             cmd.transparent = alphaMode == "blend";
-            cmd.transparentSortPriority = material->transparentSortPriority;
             cmd.uvTiling = {material->uvTiling[0], material->uvTiling[1]};
             cmd.uvOffset = {material->uvOffset[0], material->uvOffset[1]};
             cmd.unlit = ToLowerCopy(material->shader) == "unlit";

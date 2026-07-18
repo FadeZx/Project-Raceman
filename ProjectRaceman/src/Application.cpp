@@ -4,9 +4,11 @@
 #include "build/BuildSystem.h"
 #include "input/InputManager.h"
 #include "physics/PhysicsWorld.h"
+#include "platform/WindowsHdrPresenter.h"
 #include "rendering/Renderer.h"
 #include "rendering/SkyboxController.h"
 #include "ui/DebugUI.h"
+#include "ui/EditorProgress.h"
 #include "ui/MenuController.h"
 #include "ui/ProjectLauncher.h"
 #include "ui/SceneEditor.h"
@@ -39,9 +41,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cctype>
+#include <cstdlib>
+#include <cwchar>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
+#include <thread>
+#include <vector>
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
@@ -49,9 +55,13 @@
 #endif
 #include <windows.h>
 #include <shellapi.h>
+#include <dxgi1_6.h>
+#pragma comment(lib, "dxgi.lib")
 #endif
 
 namespace raceman {
+
+DisplayHdrCapabilities QueryDisplayHdrCapabilities(GLFWwindow* window);
 
 namespace {
 void GlfwErrorCallback(int error, const char* description) {
@@ -141,6 +151,66 @@ void ClearRectPixels(int x, int y, int width, int height, const glm::vec4& color
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
+std::array<unsigned char, 7> StartupGlyph(char character) {
+    switch (static_cast<char>(std::toupper(static_cast<unsigned char>(character)))) {
+    case 'A': return {14, 17, 17, 31, 17, 17, 17};
+    case 'B': return {30, 17, 17, 30, 17, 17, 30};
+    case 'C': return {14, 17, 16, 16, 16, 17, 14};
+    case 'D': return {30, 17, 17, 17, 17, 17, 30};
+    case 'E': return {31, 16, 16, 30, 16, 16, 31};
+    case 'F': return {31, 16, 16, 30, 16, 16, 16};
+    case 'G': return {14, 17, 16, 23, 17, 17, 15};
+    case 'H': return {17, 17, 17, 31, 17, 17, 17};
+    case 'I': return {14, 4, 4, 4, 4, 4, 14};
+    case 'J': return {7, 2, 2, 2, 18, 18, 12};
+    case 'K': return {17, 18, 20, 24, 20, 18, 17};
+    case 'L': return {16, 16, 16, 16, 16, 16, 31};
+    case 'M': return {17, 27, 21, 21, 17, 17, 17};
+    case 'N': return {17, 25, 21, 19, 17, 17, 17};
+    case 'O': return {14, 17, 17, 17, 17, 17, 14};
+    case 'P': return {30, 17, 17, 30, 16, 16, 16};
+    case 'Q': return {14, 17, 17, 17, 21, 18, 13};
+    case 'R': return {30, 17, 17, 30, 20, 18, 17};
+    case 'S': return {15, 16, 16, 14, 1, 1, 30};
+    case 'T': return {31, 4, 4, 4, 4, 4, 4};
+    case 'U': return {17, 17, 17, 17, 17, 17, 14};
+    case 'V': return {17, 17, 17, 17, 17, 10, 4};
+    case 'W': return {17, 17, 17, 21, 21, 21, 10};
+    case 'X': return {17, 17, 10, 4, 10, 17, 17};
+    case 'Y': return {17, 17, 10, 4, 4, 4, 4};
+    case 'Z': return {31, 1, 2, 4, 8, 16, 31};
+    case '0': return {14, 17, 19, 21, 25, 17, 14};
+    case '1': return {4, 12, 4, 4, 4, 4, 14};
+    case '2': return {14, 17, 1, 2, 4, 8, 31};
+    case '3': return {30, 1, 1, 14, 1, 1, 30};
+    case '4': return {2, 6, 10, 18, 31, 2, 2};
+    case '5': return {31, 16, 16, 30, 1, 1, 30};
+    case '6': return {14, 16, 16, 30, 17, 17, 14};
+    case '7': return {31, 1, 2, 4, 8, 8, 8};
+    case '8': return {14, 17, 17, 14, 17, 17, 14};
+    case '9': return {14, 17, 17, 15, 1, 1, 14};
+    case '.': return {0, 0, 0, 0, 0, 12, 12};
+    case ':': return {0, 12, 12, 0, 12, 12, 0};
+    case '-': return {0, 0, 0, 31, 0, 0, 0};
+    default: return {0, 0, 0, 0, 0, 0, 0};
+    }
+}
+
+void DrawStartupBitmapText(const std::string& value, int x, int y, int scale, const glm::vec4& color) {
+    int cursorX = x;
+    for (char character : value) {
+        const std::array<unsigned char, 7> glyph = StartupGlyph(character);
+        for (int row = 0; row < 7; ++row) {
+            for (int column = 0; column < 5; ++column) {
+                if ((glyph[static_cast<std::size_t>(row)] & (1u << (4 - column))) != 0) {
+                    ClearRectPixels(cursorX + column * scale, y + (6 - row) * scale, scale, scale, color);
+                }
+            }
+        }
+        cursorX += 6 * scale;
+    }
+}
+
 unsigned int LoadStartupLogoTexture(int& width, int& height) {
     const std::filesystem::path iconPath =
         FindEngineRootForApplication() / "editor-assets" / "icons" / "ProjectRaceman_icon_full.png";
@@ -166,6 +236,122 @@ unsigned int LoadStartupLogoTexture(int& width, int& height) {
     glBindTexture(GL_TEXTURE_2D, 0);
     stbi_image_free(data);
     return textureId;
+}
+
+unsigned int GetStartupLogoProgram() {
+    static unsigned int program = 0;
+    static bool attempted = false;
+    if (attempted) {
+        return program;
+    }
+    attempted = true;
+
+    constexpr const char* vertexSource = R"(
+        #version 330 core
+        out vec2 textureCoordinate;
+        void main() {
+            const vec2 positions[3] = vec2[3](
+                vec2(-1.0, -1.0), vec2(3.0, -1.0), vec2(-1.0, 3.0));
+            vec2 position = positions[gl_VertexID];
+            gl_Position = vec4(position, 0.0, 1.0);
+            textureCoordinate = vec2(
+                (position.x + 1.0) * 0.5,
+                1.0 - (position.y + 1.0) * 0.5);
+        }
+    )";
+    constexpr const char* fragmentSource = R"(
+        #version 330 core
+        in vec2 textureCoordinate;
+        out vec4 fragmentColor;
+        uniform sampler2D startupLogo;
+        uniform vec4 uvTransform;
+        void main() {
+            vec2 uv = uvTransform.zw + textureCoordinate * uvTransform.xy;
+            fragmentColor = texture(startupLogo, uv);
+        }
+    )";
+
+    const auto compileShader = [](unsigned int type, const char* source) -> unsigned int {
+        const unsigned int shader = glCreateShader(type);
+        glShaderSource(shader, 1, &source, nullptr);
+        glCompileShader(shader);
+        int compiled = GL_FALSE;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+        if (compiled != GL_TRUE) {
+            glDeleteShader(shader);
+            return 0;
+        }
+        return shader;
+    };
+
+    const unsigned int vertexShader = compileShader(GL_VERTEX_SHADER, vertexSource);
+    const unsigned int fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentSource);
+    if (vertexShader == 0 || fragmentShader == 0) {
+        if (vertexShader != 0) glDeleteShader(vertexShader);
+        if (fragmentShader != 0) glDeleteShader(fragmentShader);
+        return 0;
+    }
+
+    program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+    glLinkProgram(program);
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+    int linked = GL_FALSE;
+    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (linked != GL_TRUE) {
+        glDeleteProgram(program);
+        program = 0;
+    }
+    return program;
+}
+
+void RenderStartupLogoTexture(
+    unsigned int textureId,
+    int imageWidth,
+    int imageHeight,
+    int framebufferWidth,
+    int framebufferHeight) {
+    if (textureId == 0 || imageWidth <= 0 || imageHeight <= 0 ||
+        framebufferWidth <= 0 || framebufferHeight <= 0) {
+        return;
+    }
+    const unsigned int program = GetStartupLogoProgram();
+    if (program == 0) {
+        return;
+    }
+
+    static unsigned int vertexArray = 0;
+    if (vertexArray == 0) {
+        glGenVertexArrays(1, &vertexArray);
+    }
+
+    const float imageAspect = static_cast<float>(imageWidth) / static_cast<float>(imageHeight);
+    const float windowAspect = static_cast<float>(framebufferWidth) / static_cast<float>(framebufferHeight);
+    float scaleX = 1.0f;
+    float scaleY = 1.0f;
+    float offsetX = 0.0f;
+    float offsetY = 0.0f;
+    if (imageAspect > windowAspect) {
+        scaleX = windowAspect / imageAspect;
+        offsetX = (1.0f - scaleX) * 0.5f;
+    } else {
+        scaleY = imageAspect / windowAspect;
+        offsetY = (1.0f - scaleY) * 0.5f;
+    }
+
+    glDisable(GL_BLEND);
+    glUseProgram(program);
+    glUniform1i(glGetUniformLocation(program, "startupLogo"), 0);
+    glUniform4f(glGetUniformLocation(program, "uvTransform"), scaleX, scaleY, offsetX, offsetY);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glBindVertexArray(vertexArray);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glUseProgram(0);
 }
 
 constexpr int kStartupSplashWidth = 680;
@@ -349,11 +535,20 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
     InitializeGlfw();
     PlayerStartupLog(config_, "Initializing OpenGL...");
     InitializeGlad();
+
+    // Initialize the editor font before the first visible splash frame. The
+    // previous order showed the bitmap fallback for early stages and then
+    // switched typefaces once ImGui came online halfway through startup.
+    debugUi_ = std::make_unique<DebugUI>(config.enableImGui);
+    if (config.enableImGui) {
+        InitializeImGui();
+    }
     ShowStartupSplash("Initializing OpenGL...", 0.10f);
 
     PlayerStartupLog(config_, "Creating renderer...");
     ShowStartupSplash("Creating renderer...", 0.18f);
     renderer_ = std::make_shared<Renderer>(RendererConfig{config.width, config.height});
+    RefreshDisplayHdrStatus();
     PlayerStartupLog(config_, "Creating input...");
     ShowStartupSplash("Initializing input...", 0.28f);
     if (!inputManager_) {
@@ -367,22 +562,22 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
     PlayerStartupLog(config_, "Creating editor/player services...");
     ShowStartupSplash("Creating editor services...", 0.48f);
 
-    debugUi_ = std::make_unique<DebugUI>(config.enableImGui);
     menuController_ = std::make_unique<MenuController>();
     console_ = std::make_unique<Console>();
     skyboxController_ = std::make_unique<SkyboxController>();
     PlayerStartupLog(config_, "Loading skybox...");
     ShowStartupSplash("Loading skybox...", 0.58f);
     skyboxController_->Reload();
+    renderer_->SetupEnvironment(skyboxController_->GetCubemapTexture());
     PlayerStartupLog(config_, "Skybox loaded.");
 
     if (config.enableImGui) {
-        InitializeImGui();
         ShowStartupSplash("Preparing editor UI...", 0.66f);
     }
 
     if (config.playerMode && config.enableImGui) {
         playerDebugMode_ = true;
+        playerDebugStatsOpen_ = true;
     }
 
     if (config.playerMode) {
@@ -402,6 +597,12 @@ Application::Application(const ApplicationConfig& config) : config_(config) {
         ShowStartupSplash("Loading project metadata...", 0.76f);
         sceneEditor_->SetProjectRoot(config.projectRoot);
         renderer_->GetSettings().profile = sceneEditor_->GetGraphicsProfile();
+        const SkyboxFaces& savedFaces = sceneEditor_->GetSkyboxFaces();
+        if (!savedFaces[0].empty()) {
+            skyboxController_->SetFaces(savedFaces);
+            skyboxController_->Reload();
+            renderer_->SetupEnvironment(skyboxController_->GetCubemapTexture());
+        }
         const std::string loadingTitle = config_.windowTitle + " - Loading...";
         glfwSetWindowTitle(window_, loadingTitle.c_str());
         consoleLog("Startup complete; runtime will begin after first frame.");
@@ -437,8 +638,14 @@ void Application::InitializeEditor(const std::string& projectPath) {
     setenv("RACEMAN_PROJECT_ROOT", projectPath.c_str(), 1);
 #endif
 
+    if (startupSplashActive_) {
+        ShowStartupSplash("Loading project metadata...", 0.78f);
+    }
     sceneEditor_ = std::make_unique<SceneEditor>();
     renderer_->GetSettings().profile = sceneEditor_->GetGraphicsProfile();
+    if (startupSplashActive_) {
+        ShowStartupSplash("Connecting editor services...", 0.86f);
+    }
     sceneEditor_->SetRenderer(renderer_.get());
     sceneEditor_->SetConsole(console_.get());
     sceneEditor_->SetInputManager(inputManager_.get());
@@ -468,10 +675,22 @@ void Application::InitializeEditor(const std::string& projectPath) {
     ProjectLauncher::AddToRegistry(std::filesystem::path(projectPath).filename().string(), projectPath);
 
     // Apply the project's saved skybox (if any face is non-empty) to the controller.
+    if (startupSplashActive_) {
+        ShowStartupSplash("Loading project skybox...", 0.93f);
+    }
     const SkyboxFaces& savedFaces = sceneEditor_->GetSkyboxFaces();
+    if (menuController_) {
+        menuController_->SetProjectSkyboxFaces(savedFaces);
+    }
     if (!savedFaces[0].empty() && skyboxController_) {
         skyboxController_->SetFaces(savedFaces);
         skyboxController_->Reload();
+    }
+    if (skyboxController_) {
+        renderer_->SetupEnvironment(skyboxController_->GetCubemapTexture());
+    }
+    if (startupSplashActive_) {
+        ShowStartupSplash("Project ready.", 0.98f);
     }
 }
 
@@ -583,6 +802,7 @@ Application::~Application() {
         ShutdownImGui();
     }
     audioManager_.reset(); // shuts down irrKlang
+    hdrPresenter_.reset(); // release DXGI/WGL resources while the GL context is alive
     renderer_.reset();
     debugUi_.reset();
     inputManager_.reset();
@@ -676,6 +896,14 @@ void Application::ShowStartupSplash(const std::string& message, float progress, 
     startupSplashMessage_ = message;
     startupSplashProgress_ = (std::clamp)(progress, 0.0f, 1.0f);
 
+    // Standalone players open directly into the game window. Startup progress
+    // remains available in player.log and the in-game debug overlay without a
+    // separate undecorated splash window.
+    if (config_.playerMode) {
+        std::cout << "[Player] " << message << std::endl;
+        return;
+    }
+
     const std::string title = config_.windowTitle + " - " + message;
     glfwSetWindowTitle(window_, title.c_str());
     if (console_) {
@@ -689,6 +917,14 @@ void Application::ShowStartupSplash(const std::string& message, float progress, 
         HideNativeWindowFrame(window_);
         glfwSetWindowSize(window_, kStartupSplashWidth, kStartupSplashHeight);
         CenterWindowOnPrimaryMonitor(window_, kStartupSplashWidth, kStartupSplashHeight);
+        // A hidden GLFW window does not reliably receive its first resize/paint
+        // on Windows.  Make the native surface visible before drawing so the
+        // first swapped splash frame is presented instead of a black surface.
+        if (showWindow) {
+            glfwShowWindow(window_);
+            startupWindowShown_ = true;
+        }
+        glfwPollEvents();
     }
 
     int framebufferWidth = 0;
@@ -707,6 +943,43 @@ void Application::ShowStartupSplash(const std::string& message, float progress, 
     if (startupLogoTexture_ == 0) {
         startupLogoTexture_ = LoadStartupLogoTexture(startupLogoWidth_, startupLogoHeight_);
     }
+    RenderStartupLogoTexture(
+        startupLogoTexture_,
+        startupLogoWidth_,
+        startupLogoHeight_,
+        framebufferWidth,
+        framebufferHeight);
+
+    // Always paint a direct OpenGL baseline first. ImGui is initialized in
+    // stages during editor startup, so its first draw submission may not yet be
+    // available. Keeping this underneath the branded UI prevents a blank
+    // startup window and still provides visible progress in that early frame.
+    glEnable(GL_SCISSOR_TEST);
+    if (startupLogoTexture_ == 0) {
+        ClearRectPixels(0, 0, framebufferWidth, framebufferHeight, glm::vec4(0.03f, 0.04f, 0.055f, 1.0f));
+    }
+    if (startupLogoTexture_ == 0) {
+        const int fallbackIcon = 54;
+        ClearRectPixels(34, framebufferHeight - 114, fallbackIcon, fallbackIcon, glm::vec4(0.92f, 0.94f, 0.97f, 1.0f));
+        ClearRectPixels(42, framebufferHeight - 106, fallbackIcon - 16, fallbackIcon - 16, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    }
+    const int fallbackBarX = 34;
+    const int fallbackBarY = 34;
+    const int fallbackBarWidth = framebufferWidth - 68;
+    ClearRectPixels(fallbackBarX, fallbackBarY, fallbackBarWidth, 8, glm::vec4(0.12f, 0.14f, 0.18f, 1.0f));
+    ClearRectPixels(
+        fallbackBarX,
+        fallbackBarY,
+        static_cast<int>(fallbackBarWidth * startupSplashProgress_),
+        8,
+        glm::vec4(0.16f, 0.62f, 0.94f, 1.0f));
+    DrawStartupBitmapText(
+        startupSplashMessage_,
+        fallbackBarX,
+        fallbackBarY + 24,
+        2,
+        glm::vec4(0.72f, 0.76f, 0.84f, 1.0f));
+    glDisable(GL_SCISSOR_TEST);
 
     if (config_.enableImGui && debugUi_ && ImGui::GetCurrentContext() != nullptr) {
         debugUi_->BeginFrame();
@@ -765,33 +1038,45 @@ void Application::ShowStartupSplash(const std::string& message, float progress, 
         ImGui::PopStyleVar(3);
         debugUi_->EndFrame();
         debugUi_->RenderDrawData();
-    } else {
-        glEnable(GL_SCISSOR_TEST);
-        ClearRectPixels(0, 0, framebufferWidth, framebufferHeight, glm::vec4(0.03f, 0.04f, 0.055f, 1.0f));
-        const int icon = 54;
-        ClearRectPixels(34, framebufferHeight - 114, icon, icon, glm::vec4(0.92f, 0.94f, 0.97f, 1.0f));
-        ClearRectPixels(42, framebufferHeight - 106, icon - 16, icon - 16, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-        const int barX = 34;
-        const int barY = 34;
-        const int barW = framebufferWidth - 68;
-        ClearRectPixels(barX, barY, barW, 8, glm::vec4(0.12f, 0.14f, 0.18f, 1.0f));
-        ClearRectPixels(barX, barY, static_cast<int>(barW * startupSplashProgress_), 8, glm::vec4(0.16f, 0.62f, 0.94f, 1.0f));
-        glDisable(GL_SCISSOR_TEST);
     }
 
     glfwSwapBuffers(window_);
     glfwPollEvents();
-    if (showWindow && !startupWindowShown_) {
-        glfwShowWindow(window_);
-        startupWindowShown_ = true;
-    }
 }
 
 void Application::FinishStartupSplash() {
     if (window_ == nullptr) {
         return;
     }
+    if (config_.playerMode) {
+        startupSplashActive_ = false;
+        RestoreNativeWindowFrame(window_);
+        glfwSetWindowSize(window_, config_.width, config_.height);
+#if defined(_WIN32)
+        FitCenteredClientSizeToWorkArea(window_, config_.width, config_.height);
+#else
+        CenterWindowOnPrimaryMonitor(window_, config_.width, config_.height);
+#endif
+        int framebufferWidth = 0;
+        int framebufferHeight = 0;
+        glfwGetFramebufferSize(window_, &framebufferWidth, &framebufferHeight);
+        if (renderer_ && framebufferWidth > 0 && framebufferHeight > 0) {
+            renderer_->Resize(framebufferWidth, framebufferHeight);
+        }
+        glfwSetWindowTitle(window_, config_.windowTitle.c_str());
+        glfwShowWindow(window_);
+        startupWindowShown_ = true;
+        return;
+    }
+
     ShowStartupSplash("Ready.", 1.0f, true);
+    // Keep the completed frame visible long enough for the compositor and the
+    // user to actually see 100% before the splash surface is hidden.
+    const auto completedFrameDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(120);
+    while (std::chrono::steady_clock::now() < completedFrameDeadline && !glfwWindowShouldClose(window_)) {
+        glfwPollEvents();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
     glfwHideWindow(window_);
     startupWindowShown_ = false;
     startupSplashActive_ = false;
@@ -846,6 +1131,13 @@ void Application::InitializeGlfw() {
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
+    // Prefer a 10-bit WGL surface where the driver exposes one. This reduces
+    // SDR banding and prepares the window for the future DXGI HDR presenter;
+    // it does not by itself tag the surface as Windows Advanced Color.
+    glfwWindowHint(GLFW_RED_BITS, 10);
+    glfwWindowHint(GLFW_GREEN_BITS, 10);
+    glfwWindowHint(GLFW_BLUE_BITS, 10);
+    glfwWindowHint(GLFW_ALPHA_BITS, 2);
 
     window_ = glfwCreateWindow(config_.width, config_.height, config_.windowTitle.c_str(), nullptr, nullptr);
     if (!window_) {
@@ -895,7 +1187,31 @@ void Application::PollEvents() {
         int framebufferHeight = 0;
         glfwGetFramebufferSize(window_, &framebufferWidth, &framebufferHeight);
         renderer_->Resize(framebufferWidth, framebufferHeight);
+        const double now = glfwGetTime();
+        if (now >= nextHdrDisplayRefreshTime_) {
+            RefreshDisplayHdrStatus();
+            nextHdrDisplayRefreshTime_ = now + 1.0;
+        }
     }
+}
+
+void Application::RefreshDisplayHdrStatus() {
+    if (!renderer_ || !window_) return;
+    DisplayHdrCapabilities capabilities = QueryDisplayHdrCapabilities(window_);
+    GLint redBits = 0;
+    GLint greenBits = 0;
+    GLint blueBits = 0;
+    glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_BACK_LEFT,
+        GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE, &redBits);
+    glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_BACK_LEFT,
+        GL_FRAMEBUFFER_ATTACHMENT_GREEN_SIZE, &greenBits);
+    glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_BACK_LEFT,
+        GL_FRAMEBUFFER_ATTACHMENT_BLUE_SIZE, &blueBits);
+    capabilities.windowBitsPerColor = (std::min)({redBits, greenBits, blueBits});
+    // WGL/GLFW cannot attach a DXGI color-space tag. Native presentation stays
+    // false until the player owns an FP16 DXGI flip-model swapchain.
+    capabilities.nativePresentationAvailable = false;
+    renderer_->SetDisplayHdrCapabilities(capabilities);
 }
 
 void Application::FocusEditorCameraOn(const glm::vec3& target, float radius) {
@@ -1084,32 +1400,16 @@ void Application::Update(float deltaTime) {
 
         // Standalone build progress popup — must appear before the dockspace so the
         // ID stack is clean, matching the pattern used by RenderPlayModeLoadingPopup().
-        if (standaloneBuildStatus_ && !standaloneBuildStatus_->isDone.load()) {
-            const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-            ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowSize(ImVec2(460.0f, 140.0f), ImGuiCond_Always);
-            ImGui::OpenPopup("###StandaloneBuild");
-            if (ImGui::BeginPopupModal("Building Standalone...###StandaloneBuild", nullptr,
-                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
-                ImGui::Spacing();
-                ImGui::TextUnformatted("Compiling and packaging build...");
-                ImGui::Spacing();
-                const float pulse = static_cast<float>(std::fmod(ImGui::GetTime() * 0.45, 1.0));
-                ImGui::ProgressBar(pulse, ImVec2(-1.0f, 0.0f), "build-game.ps1");
-                ImGui::Spacing();
-                ImGui::TextDisabled("Running MSBuild and copying project assets.");
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Spacing();
-                ImGui::BeginDisabled();
-                ImGui::Button("Cancel", ImVec2(100.0f, 0.0f));
-                ImGui::EndDisabled();
-                ImGui::EndPopup();
-            }
-        }
-
         // Unity-like Scene Editor panels (Scene hierarchy + Inspector)
         if (sceneEditor_) {
+            sceneEditor_->SetProjectSettingsUndoRedo(
+                menuController_ && menuController_->IsProjectSettingsShortcutTarget(),
+                [this]() {
+                    if (menuController_ && renderer_) menuController_->UndoGraphicsSettings(*renderer_);
+                },
+                [this]() {
+                    if (menuController_ && renderer_) menuController_->RedoGraphicsSettings(*renderer_);
+                });
             sceneEditor_->SetSceneViewportTexture(renderer_->GetViewportRenderTargetTexture(ViewportRenderTarget::Scene));
             sceneEditor_->SetGameViewportTexture(renderer_->GetViewportRenderTargetTexture(ViewportRenderTarget::Game));
             const float sceneAspect = sceneEditor_->GetSceneViewportSize().y > 0.5f
@@ -1165,7 +1465,7 @@ void Application::Update(float deltaTime) {
                     if (sceneEditor_) sceneEditor_->OpenSceneAsset(scenePath);
                 },
                 [this]() {
-                    if (sceneEditor_) sceneEditor_->SaveProject();
+                    if (sceneEditor_) sceneEditor_->RequestSaveProject();
                 },
                 [this](const std::string& outputFolder) {
                     if (standaloneBuildStatus_ && !standaloneBuildStatus_->isDone.load()) {
@@ -1179,14 +1479,41 @@ void Application::Update(float deltaTime) {
                         sceneEditor_->SyncScripts();
                     }
                     const std::string projectRoot = sceneEditor_ ? sceneEditor_->GetProjectRoot() : std::string{};
+                    const std::vector<PhysicsColliderDesc> colliderBakeJobs = sceneEditor_
+                        ? sceneEditor_->CollectMeshCollidersNeedingBake()
+                        : std::vector<PhysicsColliderDesc>{};
                     auto status = std::make_shared<StandaloneBuildStatus>();
                     status->outputFolder = outputFolder;
+                    status->progress = EditorProgressService::Get().Begin(
+                        "Building Standalone", "Compiling and packaging the game...", 0, false);
+                    status->progress.SetDetail("Running MSBuild and copying project assets.");
                     standaloneBuildStatus_ = status;
-                    standaloneBuildThread_ = std::make_unique<std::thread>([status, projectRoot]() {
-                        const BuildResult result = BuildStandaloneGame(status->outputFolder, projectRoot);
-                        std::lock_guard<std::mutex> lock(status->resultMutex);
-                        status->success = result.success;
-                        status->message = result.message;
+                    standaloneBuildThread_ = std::make_unique<std::thread>([status, projectRoot, colliderBakeJobs]() {
+                        BuildResult result;
+                        for (std::size_t index = 0; index < colliderBakeJobs.size(); ++index) {
+                            const PhysicsColliderDesc& collider = colliderBakeJobs[index];
+                            status->progress.SetDetail(
+                                "Baking mesh collider " + std::to_string(index + 1) + "/" +
+                                std::to_string(colliderBakeJobs.size()) + ": " +
+                                std::filesystem::path(collider.meshAssetPath).filename().string());
+                            CollisionShapeCacheInfo cacheInfo;
+                            if (!PhysicsWorld::BakeCollisionShape(collider, &cacheInfo)) {
+                                result = {false, "Standalone build failed while baking mesh collider: " +
+                                    collider.meshAssetPath + " (" + cacheInfo.message + ")"};
+                                break;
+                            }
+                        }
+                        if (result.message.empty()) {
+                            status->progress.SetDetail("Compiling scripts and packaging project assets.");
+                            result = BuildStandaloneGame(status->outputFolder, projectRoot);
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(status->resultMutex);
+                            status->success = result.success;
+                            status->message = result.message;
+                        }
+                        if (result.success) status->progress.Complete(result.message);
+                        else status->progress.Fail(result.message.empty() ? "Standalone build failed." : result.message);
                         status->isDone.store(true);
                     });
                 },
@@ -1213,6 +1540,7 @@ void Application::Update(float deltaTime) {
                 if (skyboxController_) {
                     skyboxController_->SetFaces(faces);
                     skyboxController_->Reload();
+                    renderer_->SetupEnvironment(skyboxController_->GetCubemapTexture());
                 }
                 if (sceneEditor_) {
                     sceneEditor_->SetSkyboxFaces(faces);
@@ -1284,14 +1612,109 @@ void Application::Update(float deltaTime) {
             ImGui::EndPopup();
         }
 
+        EditorProgressService::Get().Render();
         debugUi_->EndFrame();
     }
+}
+
+DisplayHdrCapabilities QueryDisplayHdrCapabilities(GLFWwindow* window) {
+    DisplayHdrCapabilities capabilities{};
+#if defined(_WIN32)
+    if (window == nullptr) return capabilities;
+    const HWND hwnd = glfwGetWin32Window(window);
+    const HMONITOR targetMonitor = hwnd != nullptr
+        ? MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) : nullptr;
+    if (targetMonitor == nullptr) return capabilities;
+
+    MONITORINFOEXW monitorInfo{};
+    monitorInfo.cbSize = sizeof(monitorInfo);
+    if (GetMonitorInfoW(targetMonitor, &monitorInfo)) {
+        UINT32 pathCount = 0;
+        UINT32 modeCount = 0;
+        if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount) == ERROR_SUCCESS) {
+            std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
+            std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
+            if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &pathCount, paths.data(),
+                    &modeCount, modes.data(), nullptr) == ERROR_SUCCESS) {
+                paths.resize(pathCount);
+                for (const DISPLAYCONFIG_PATH_INFO& path : paths) {
+                    DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName{};
+                    sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+                    sourceName.header.size = sizeof(sourceName);
+                    sourceName.header.adapterId = path.sourceInfo.adapterId;
+                    sourceName.header.id = path.sourceInfo.id;
+                    if (DisplayConfigGetDeviceInfo(&sourceName.header) != ERROR_SUCCESS ||
+                        std::wcscmp(sourceName.viewGdiDeviceName, monitorInfo.szDevice) != 0) continue;
+
+                    DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO colorInfo{};
+                    colorInfo.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO;
+                    colorInfo.header.size = sizeof(colorInfo);
+                    colorInfo.header.adapterId = path.targetInfo.adapterId;
+                    colorInfo.header.id = path.targetInfo.id;
+                    if (DisplayConfigGetDeviceInfo(&colorInfo.header) == ERROR_SUCCESS) {
+                        capabilities.detected = true;
+                        capabilities.hdrSupported = colorInfo.advancedColorSupported != 0;
+                        capabilities.hdrEnabledInWindows = colorInfo.advancedColorEnabled != 0;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    IDXGIFactory1* factory = nullptr;
+    if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), reinterpret_cast<void**>(&factory)))) {
+        return capabilities;
+    }
+    for (UINT adapterIndex = 0; ; ++adapterIndex) {
+        IDXGIAdapter1* adapter = nullptr;
+        if (factory->EnumAdapters1(adapterIndex, &adapter) == DXGI_ERROR_NOT_FOUND) break;
+        for (UINT outputIndex = 0; ; ++outputIndex) {
+            IDXGIOutput* output = nullptr;
+            if (adapter->EnumOutputs(outputIndex, &output) == DXGI_ERROR_NOT_FOUND) break;
+            DXGI_OUTPUT_DESC outputDesc{};
+            if (SUCCEEDED(output->GetDesc(&outputDesc)) && outputDesc.Monitor == targetMonitor) {
+                IDXGIOutput6* output6 = nullptr;
+                if (SUCCEEDED(output->QueryInterface(__uuidof(IDXGIOutput6), reinterpret_cast<void**>(&output6)))) {
+                    DXGI_OUTPUT_DESC1 desc{};
+                    if (SUCCEEDED(output6->GetDesc1(&desc))) {
+                        capabilities.detected = true;
+                        capabilities.displayBitsPerColor = static_cast<int>(desc.BitsPerColor);
+                        capabilities.minimumLuminanceNits = desc.MinLuminance;
+                        capabilities.maximumLuminanceNits = desc.MaxLuminance;
+                        capabilities.maximumFullFrameLuminanceNits = desc.MaxFullFrameLuminance;
+                        // DisplayConfig reports support even while HDR is off.
+                        // Fall back to the active DXGI colorspace only when the
+                        // older Windows API did not expose Advanced Color info.
+                        if (!capabilities.hdrSupported) {
+                            capabilities.hdrEnabledInWindows =
+                                desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                            capabilities.hdrSupported = capabilities.hdrEnabledInWindows ||
+                                (desc.BitsPerColor >= 10 && desc.MaxLuminance > 300.0f);
+                        }
+                    }
+                    output6->Release();
+                }
+                output->Release();
+                adapter->Release();
+                factory->Release();
+                return capabilities;
+            }
+            output->Release();
+        }
+        adapter->Release();
+    }
+    factory->Release();
+#else
+    (void)window;
+#endif
+    return capabilities;
 }
 
 void Application::Render() {
     const auto& cfg = renderer_->GetConfig();
     RendererSettings& rendererSettings = renderer_->GetSettings();
-    const glm::vec3 previousClearColor = rendererSettings.clearColor;
+    const glm::vec3 sceneViewClearColor = rendererSettings.editorClearColor;
     frameTimings_.scenePassMs = 0.0f;
     frameTimings_.gamePassMs = 0.0f;
     frameTimings_.imguiRenderMs = 0.0f;
@@ -1323,27 +1746,61 @@ void Application::Render() {
         renderer_->ResetFrameStats();
         RendererViewport viewport{0, 0, cfg.width, cfg.height};
         renderer_->SetViewport(viewport);
+        bool gameFrameReady = false;
 
-        // Only render the game scene once physics is ready; show a clear screen while loading.
-        if (sceneEditor_->GetPhysicsWorld() != nullptr) {
-            const float aspect = cfg.height > 0 ? static_cast<float>(cfg.width) / static_cast<float>(cfg.height) : 1.0f;
-            glm::mat4 view{1.0f};
-            glm::mat4 proj{1.0f};
-            glm::vec4 gameClearColor{0.02f, 0.02f, 0.02f, 1.0f};
-            if (sceneEditor_->TryGetGameCamera(view, proj, aspect, &gameClearColor)) {
-                RendererSettings& settings = renderer_->GetSettings();
-                settings.clearColor = glm::vec3(gameClearColor.r, gameClearColor.g, gameClearColor.b);
-                renderer_->EnsureViewportRenderTarget(ViewportRenderTarget::Game, cfg.width, cfg.height);
-                renderer_->SetCamera(view, proj);
-                renderer_->BeginFrameToViewportTarget(ViewportRenderTarget::Game, settings.clearColor);
-                if (skyboxController_) {
-                    skyboxController_->Draw(view, proj);
-                }
-                sceneEditor_->SubmitDraws(*renderer_, false);
-                renderer_->EndFrameToViewportTarget();
-                renderer_->PresentViewportTarget(ViewportRenderTarget::Game, viewport);
-                settings.clearColor = previousClearColor;
+        // Render immediately while the background physics build is still
+        // cooking. Runtime simulation begins automatically once its world is
+        // ready, but visual assets and loading/debug feedback must not wait.
+        const float aspect = cfg.height > 0 ? static_cast<float>(cfg.width) / static_cast<float>(cfg.height) : 1.0f;
+        glm::mat4 view{1.0f};
+        glm::mat4 proj{1.0f};
+        glm::vec4 gameClearColor{0.02f, 0.02f, 0.02f, 1.0f};
+        if (sceneEditor_->TryGetGameCamera(view, proj, aspect, &gameClearColor)) {
+            renderer_->EnsureViewportRenderTarget(ViewportRenderTarget::Game, cfg.width, cfg.height);
+            renderer_->SetCamera(view, proj);
+            renderer_->BeginFrameToViewportTarget(
+                ViewportRenderTarget::Game,
+                glm::vec3(gameClearColor.r, gameClearColor.g, gameClearColor.b));
+            if (skyboxController_) {
+                skyboxController_->Draw(view, proj);
             }
+            sceneEditor_->SubmitDraws(*renderer_, false);
+            renderer_->EndFrameToViewportTarget();
+            gameFrameReady = true;
+        }
+
+        bool useNativeHdr = false;
+        DisplayHdrCapabilities hdrCapabilities = renderer_->GetDisplayHdrCapabilities();
+        bool forceHdrPresenter = false;
+#if defined(_WIN32)
+        char forceHdrPresenterValue[4]{};
+        forceHdrPresenter = GetEnvironmentVariableA("RACEMAN_FORCE_HDR_PRESENTER",
+            forceHdrPresenterValue, static_cast<DWORD>(sizeof(forceHdrPresenterValue))) > 0 &&
+            std::string(forceHdrPresenterValue) == "1";
+#else
+        const char* forceHdrPresenterValue = std::getenv("RACEMAN_FORCE_HDR_PRESENTER");
+        forceHdrPresenter = forceHdrPresenterValue != nullptr && std::string(forceHdrPresenterValue) == "1";
+#endif
+        const bool wantsNativeHdr = gameFrameReady && !config_.enableImGui && rendererSettings.profile.hdr &&
+            (hdrCapabilities.hdrEnabledInWindows || forceHdrPresenter);
+        if (wantsNativeHdr) {
+            if (!hdrPresenter_) hdrPresenter_ = std::make_unique<WindowsHdrPresenter>();
+#if defined(_WIN32)
+            const HWND hwnd = glfwGetWin32Window(window_);
+            useNativeHdr = hdrPresenter_->Initialize(hwnd, cfg.width, cfg.height);
+#endif
+            const std::string& presenterStatus = hdrPresenter_->GetStatusMessage();
+            if (presenterStatus != lastHdrPresenterStatus_) {
+                std::cout << "[HDR] " << presenterStatus << std::endl;
+                lastHdrPresenterStatus_ = presenterStatus;
+            }
+        } else if (hdrPresenter_ && hdrPresenter_->IsActive()) {
+            hdrPresenter_->Shutdown();
+        }
+        hdrCapabilities.nativePresentationAvailable = useNativeHdr;
+        renderer_->SetDisplayHdrCapabilities(hdrCapabilities);
+        if (gameFrameReady && !useNativeHdr) {
+            renderer_->PresentViewportTarget(ViewportRenderTarget::Game, viewport);
         }
 
         if (config_.enableImGui) {
@@ -1352,7 +1809,19 @@ void Application::Render() {
             frameTimings_.imguiRenderMs = static_cast<float>((glfwGetTime() - imguiStart) * 1000.0);
         }
         const double swapStart = glfwGetTime();
-        glfwSwapBuffers(window_);
+        if (useNativeHdr) {
+            const bool presented = hdrPresenter_->Present(
+                renderer_->GetViewportHdrOutputTexture(ViewportRenderTarget::Game),
+                cfg.width, cfg.height, vsyncEnabled_);
+            if (!presented) {
+                hdrCapabilities.nativePresentationAvailable = false;
+                renderer_->SetDisplayHdrCapabilities(hdrCapabilities);
+                renderer_->PresentViewportTarget(ViewportRenderTarget::Game, viewport);
+                glfwSwapBuffers(window_);
+            }
+        } else {
+            glfwSwapBuffers(window_);
+        }
         frameTimings_.swapMs = static_cast<float>((glfwGetTime() - swapStart) * 1000.0);
         return;
     }
@@ -1382,7 +1851,7 @@ void Application::Render() {
         renderer_->SetViewport(viewport);
         renderer_->EnsureViewportRenderTarget(ViewportRenderTarget::Scene, viewport.width, viewport.height);
         const double passStart = glfwGetTime();
-        renderer_->BeginFrameToViewportTarget(ViewportRenderTarget::Scene, previousClearColor);
+        renderer_->BeginFrameToViewportTarget(ViewportRenderTarget::Scene, sceneViewClearColor);
         renderer_->SetCamera(view, proj);
         if (skyboxController_) {
             skyboxController_->Draw(view, proj);
@@ -1446,8 +1915,6 @@ void Application::Render() {
     } else {
         renderScenePass(RendererViewport{0, 0, cfg.width, cfg.height});
     }
-
-    rendererSettings.clearColor = previousClearColor;
 
     if (config_.enableImGui) {
         const double imguiStart = glfwGetTime();
