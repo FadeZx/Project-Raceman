@@ -3,6 +3,7 @@
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out vec4 NormalBuffer;
 layout(location = 2) out vec4 AmbientBuffer;
+layout(location = 3) out vec4 MaterialBuffer;
 in vec2 vUV;
 in vec3 vWorldPosition;
 in vec3 vWorldNormal;
@@ -44,12 +45,27 @@ uniform int uShadowCascadeCount;
 uniform sampler2DArray uDirectionalShadowMap;
 uniform float uShadowSoftness;
 uniform bool uShadowCascadeDebugView;
+uniform int uSpotShadowCount;
+uniform int uSpotShadowLightIndices[4];
+uniform mat4 uSpotLightMatrices[4];
+uniform sampler2DArray uSpotShadowMap;
+uniform int uPointShadowCount;
+uniform int uPointShadowLightIndices[4];
+uniform vec3 uPointShadowPositions[4];
+uniform float uPointShadowRanges[4];
+uniform samplerCubeArray uPointShadowMap;
 uniform bool uEnableIbl;
 uniform bool uUseBakedIbl;
 uniform samplerCube uEnvironmentMap;
 uniform samplerCube uIrradianceMap;
 uniform samplerCube uPrefilterMap;
 uniform sampler2D uBrdfLut;
+uniform int uReflectionProbeCount;
+uniform samplerCube uReflectionProbeMaps[4];
+uniform vec3 uReflectionProbePositions[4];
+uniform vec3 uReflectionProbeExtents[4];
+uniform float uReflectionProbeBlendDistances[4];
+uniform float uReflectionProbeIntensities[4];
 uniform float uEnvironmentIntensity;
 uniform float uReflectionIntensity;
 uniform int uIblDebugMode;
@@ -68,6 +84,47 @@ uniform int uLightCount;
 uniform Light uLights[8];
 
 const float PI = 3.14159265359;
+
+vec3 BoxProjectedReflectionDirection(vec3 worldPosition, vec3 reflectionDirection,
+                                     vec3 probePosition, vec3 boxExtents) {
+    vec3 safeDirection = vec3(
+        abs(reflectionDirection.x) > 0.0001 ? reflectionDirection.x : (reflectionDirection.x >= 0.0 ? 0.0001 : -0.0001),
+        abs(reflectionDirection.y) > 0.0001 ? reflectionDirection.y : (reflectionDirection.y >= 0.0 ? 0.0001 : -0.0001),
+        abs(reflectionDirection.z) > 0.0001 ? reflectionDirection.z : (reflectionDirection.z >= 0.0 ? 0.0001 : -0.0001));
+    vec3 boxMinimum = probePosition - boxExtents;
+    vec3 boxMaximum = probePosition + boxExtents;
+    vec3 targetPlane = vec3(
+        safeDirection.x > 0.0 ? boxMaximum.x : boxMinimum.x,
+        safeDirection.y > 0.0 ? boxMaximum.y : boxMinimum.y,
+        safeDirection.z > 0.0 ? boxMaximum.z : boxMinimum.z);
+    vec3 distances = (targetPlane - worldPosition) / safeDirection;
+    float intersectionDistance = min(distances.x, min(distances.y, distances.z));
+    vec3 intersection = worldPosition + safeDirection * max(intersectionDistance, 0.0);
+    return intersection - probePosition;
+}
+
+vec4 SampleLocalReflectionProbes(vec3 worldPosition, vec3 reflectionDirection, float roughness) {
+    vec3 accumulated = vec3(0.0);
+    float accumulatedWeight = 0.0;
+    float accumulatedCoverage = 0.0;
+    float maximumMip = uUseBakedIbl ? 4.0 : 7.0;
+    for (int probeIndex = 0; probeIndex < 4; ++probeIndex) {
+        if (probeIndex >= uReflectionProbeCount) break;
+        vec3 localPosition = worldPosition - uReflectionProbePositions[probeIndex];
+        vec3 distanceInside = uReflectionProbeExtents[probeIndex] - abs(localPosition);
+        float nearestBoundary = min(distanceInside.x, min(distanceInside.y, distanceInside.z));
+        if (nearestBoundary <= 0.0) continue;
+        float weight = smoothstep(0.0, max(uReflectionProbeBlendDistances[probeIndex], 0.01), nearestBoundary);
+        float probeIntensity = max(uReflectionProbeIntensities[probeIndex], 0.0);
+        vec3 correctedDirection = BoxProjectedReflectionDirection(worldPosition, reflectionDirection,
+            uReflectionProbePositions[probeIndex], uReflectionProbeExtents[probeIndex]);
+        accumulated += textureLod(uReflectionProbeMaps[probeIndex], correctedDirection, roughness * maximumMip).rgb *
+            weight * probeIntensity;
+        accumulatedWeight += weight;
+        accumulatedCoverage += weight * clamp(probeIntensity, 0.0, 1.0);
+    }
+    return vec4(accumulated / max(accumulatedWeight, 0.0001), clamp(accumulatedCoverage, 0.0, 1.0));
+}
 
 float DistributionGGX(vec3 normal, vec3 halfway, float roughness) {
     float a = roughness * roughness;
@@ -162,6 +219,42 @@ float DirectionalShadow(vec3 worldPosition, vec3 normal, vec3 lightDir) {
     return shadow / 16.0;
 }
 
+float SpotShadow(int slot, vec3 worldPosition, vec3 normal, vec3 lightDir) {
+    vec4 clip = uSpotLightMatrices[slot] * vec4(worldPosition, 1.0);
+    vec3 projected = clip.xyz / max(abs(clip.w), 0.00001);
+    projected = projected * 0.5 + 0.5;
+    if (projected.z <= 0.0 || projected.z >= 1.0 || any(lessThanEqual(projected.xy, vec2(0.0))) || any(greaterThanEqual(projected.xy, vec2(1.0)))) return 0.0;
+    float bias = max(0.002 * (1.0 - dot(normal, lightDir)), 0.0004);
+    vec2 texel = 1.0 / vec2(textureSize(uSpotShadowMap, 0).xy);
+    float radius = max(uShadowSoftness * 0.6, 0.0);
+    float shadow = 0.0;
+    for (int y = -1; y <= 1; ++y) {
+        for (int x = -1; x <= 1; ++x) {
+            float closest = texture(uSpotShadowMap, vec3(projected.xy + vec2(x, y) * texel * radius, float(slot))).r;
+            shadow += projected.z - bias > closest ? 1.0 : 0.0;
+        }
+    }
+    return shadow / 9.0;
+}
+
+float PointShadow(int slot, vec3 worldPosition, vec3 normal, vec3 lightDir) {
+    vec3 fromLight = worldPosition - uPointShadowPositions[slot];
+    float range = max(uPointShadowRanges[slot], 0.001);
+    float current = length(fromLight) / range;
+    if (current >= 1.0) return 0.0;
+    float bias = max(0.006 * (1.0 - dot(normal, lightDir)), 0.0015);
+    float diskRadius = (0.004 + current * 0.008) * max(uShadowSoftness, 0.25);
+    const vec3 offsets[8] = vec3[](
+        vec3(1,1,1), vec3(-1,1,1), vec3(1,-1,1), vec3(-1,-1,1),
+        vec3(1,1,-1), vec3(-1,1,-1), vec3(1,-1,-1), vec3(-1,-1,-1));
+    float shadow = 0.0;
+    for (int sampleIndex = 0; sampleIndex < 8; ++sampleIndex) {
+        float closest = texture(uPointShadowMap, vec4(fromLight + offsets[sampleIndex] * diskRadius * range, float(slot))).r;
+        shadow += current - bias > closest ? 1.0 : 0.0;
+    }
+    return shadow / 8.0;
+}
+
 void main() {
     vec4 base = uUseMaterialAlbedoTexture
         ? texture(uMaterialAlbedoTexture, vUV)
@@ -237,6 +330,14 @@ void main() {
         if (uEnableDirectionalShadow && i == uShadowLightIndex && light.type == 0) {
             visibility = 1.0 - DirectionalShadow(vWorldPosition, normal, lightDir);
         }
+        for (int slot = 0; slot < min(uSpotShadowCount, 4); ++slot) {
+            if (i == uSpotShadowLightIndices[slot] && light.type == 2)
+                visibility = 1.0 - SpotShadow(slot, vWorldPosition, normal, lightDir);
+        }
+        for (int slot = 0; slot < min(uPointShadowCount, 4); ++slot) {
+            if (i == uPointShadowLightIndices[slot] && light.type == 1)
+                visibility = 1.0 - PointShadow(slot, vWorldPosition, normal, lightDir);
+        }
         directLighting += (diffuseWeight * albedo / PI + specular) * radiance * nDotL * visibility;
     }
 
@@ -262,6 +363,8 @@ void main() {
         rawPrefilteredReflection = uUseBakedIbl
             ? textureLod(uPrefilterMap, reflectionDirection, roughness * 4.0).rgb
             : textureLod(uEnvironmentMap, reflectionDirection, roughness * 7.0).rgb;
+        vec4 localProbeReflection = SampleLocalReflectionProbes(vWorldPosition, reflectionDirection, roughness);
+        rawPrefilteredReflection = mix(rawPrefilteredReflection, localProbeReflection.rgb, localProbeReflection.a);
         vec2 environmentBrdf = texture(uBrdfLut, vec2(nDotV, roughness)).rg;
         iblReflection = rawPrefilteredReflection * (ambientFresnel * environmentBrdf.x + environmentBrdf.y);
 
@@ -299,6 +402,7 @@ void main() {
     }
     NormalBuffer = vec4(normalize(normal), 1.0);
     AmbientBuffer = vec4(ambient, albedoSample.a);
+    MaterialBuffer = vec4(metallic, roughness, clamp(uClearCoat, 0.0, 1.0), 1.0);
     FragColor = vec4(ambient + directLighting + uEmissiveColor, albedoSample.a);
     if (uEnableDirectionalShadow && uShadowCascadeDebugView) {
         const vec3 cascadeColors[4] = vec3[](

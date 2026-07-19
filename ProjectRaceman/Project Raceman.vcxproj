@@ -263,6 +263,11 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <None Include="src\shaders\post\ssao.fs" />
     <None Include="src\shaders\post\ssao_bilateral_blur.fs" />
     <None Include="src\shaders\post\ssao_composite.fs" />
+    <None Include="src\shaders\post\ssr.fs" />
+    <None Include="src\shaders\post\taa.fs" />
+    <None Include="src\shaders\post\camera_velocity.fs" />
+    <None Include="src\shaders\post\weather.fs" />
+    <None Include="src\shaders\post\depth_of_field.fs" />
     <None Include="src\shaders\diffuse lighting\light_cube.fs" />
     <None Include="src\shaders\diffuse lighting\light_cube.vs" />
     <None Include="src\shaders\model\model_loading.fs" />
@@ -281,6 +286,8 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <None Include="src\shaders\shadow\shadow_dept.vs" />
     <None Include="src\shaders\shadow\directional_depth.fs" />
     <None Include="src\shaders\shadow\directional_depth.vs" />
+    <None Include="src\shaders\shadow\point_depth.vs" />
+    <None Include="src\shaders\shadow\point_depth.fs" />
     <None Include="src\shaders\text.fs" />
     <None Include="src\shaders\text.vs" />
     <None Include="src\shaders\UIShader.fs" />

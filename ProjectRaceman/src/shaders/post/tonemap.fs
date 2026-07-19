@@ -17,6 +17,17 @@ uniform bool uDebugSsao;
 uniform float uBloomIntensity;
 uniform float uSsaoIntensity;
 uniform vec2 uInverseResolution;
+uniform bool uEnableColorGrading;
+uniform float uSaturation;
+uniform float uContrast;
+uniform float uTemperature;
+uniform float uTint;
+uniform bool uEnableVignette;
+uniform float uVignetteIntensity;
+uniform float uVignetteSmoothness;
+uniform bool uEnableFilmGrain;
+uniform float uFilmGrainIntensity;
+uniform float uTime;
 
 vec3 SampleScene(vec2 uv) {
     return texture(uHdrScene, clamp(uv, vec2(0.0), vec2(1.0))).rgb;
@@ -63,6 +74,25 @@ vec3 ToScRgb(vec3 sceneLinear) {
     return relativeNits * (paperWhite / 80.0);
 }
 
+vec3 ApplyFinishing(vec3 color) {
+    if (uEnableColorGrading) {
+        color *= vec3(1.0 + uTemperature * 0.12, 1.0 + uTint * 0.08, 1.0 - uTemperature * 0.12);
+        float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+        color = mix(vec3(luminance), color, uSaturation);
+        color = (color - vec3(0.18)) * uContrast + vec3(0.18);
+    }
+    if (uEnableVignette) {
+        vec2 centered = vUV - 0.5;
+        float edge = smoothstep(0.22, 0.22 + uVignetteSmoothness * 0.55, length(centered));
+        color *= 1.0 - edge * uVignetteIntensity;
+    }
+    if (uEnableFilmGrain) {
+        float noise = fract(sin(dot(gl_FragCoord.xy + vec2(uTime * 61.7, uTime * 17.3), vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+        color += noise * uFilmGrainIntensity * mix(0.35, 1.0, clamp(dot(color, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0));
+    }
+    return max(color, vec3(0.0));
+}
+
 vec3 ToSdr(vec3 sceneLinear, vec2 pixelPosition) {
     vec3 mapped = AcesFilm(sceneLinear);
     float dither = (fract(sin(dot(pixelPosition, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;
@@ -79,6 +109,6 @@ void main() {
     }
     vec3 hdr = uEnableFxaa ? SampleFxaa(vUV) : SampleScene(vUV);
     if (uEnableBloom) hdr += texture(uBloomTexture, vUV).rgb * uBloomIntensity;
-    vec3 exposed = hdr * uExposure;
+    vec3 exposed = ApplyFinishing(hdr * uExposure);
     FragColor = vec4(uOutputMode == 1 ? ToScRgb(exposed) : ToSdr(exposed, gl_FragCoord.xy), 1.0);
 }

@@ -1268,6 +1268,15 @@ void SceneEditor::RenderInspectorPanel() {
                         ImGui::EndMenu();
                     }
                 }
+                if (!obj.hasReflectionProbe) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Reflection Probe")) {
+                        PushUndoState();
+                        obj.hasReflectionProbe = true;
+                        obj.reflectionProbe = ReflectionProbeComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
                 if (!obj.hasAudioListener) {
                     anyAvailable = true;
                     if (ImGui::MenuItem("Audio Listener")) {
@@ -1326,6 +1335,7 @@ void SceneEditor::RenderInspectorPanel() {
                 case SceneInspectorComponentType::Camera: typeName = "Camera"; break;
                 case SceneInspectorComponentType::Cinemachine: typeName = "Cinemachine"; break;
                 case SceneInspectorComponentType::Light: typeName = "Light"; break;
+                case SceneInspectorComponentType::ReflectionProbe: typeName = "ReflectionProbe"; break;
                 case SceneInspectorComponentType::AudioListener: typeName = "AudioListener"; break;
                 case SceneInspectorComponentType::AudioSource: typeName = "AudioSource"; break;
                 case SceneInspectorComponentType::VehicleSound: typeName = "VehicleSound"; break;
@@ -1531,6 +1541,134 @@ void SceneEditor::RenderInspectorPanel() {
                     boundsSize.x,
                     boundsSize.y,
                     boundsSize.z);
+
+                ImGui::SeparatorText("LOD Group");
+                const bool lodEnabledBefore = obj.meshFilter.lodEnabled;
+                if (ImGui::Checkbox("Enable LOD##meshFilter", &obj.meshFilter.lodEnabled)) {
+                    const bool after = obj.meshFilter.lodEnabled;
+                    obj.meshFilter.lodEnabled = lodEnabledBefore;
+                    PushUndoState();
+                    obj.meshFilter.lodEnabled = after;
+                    if (onDirty_) onDirty_();
+                }
+                if (obj.meshFilter.lodEnabled) {
+                    float beforeBias = obj.meshFilter.lodBias;
+                    if (ImGui::SliderFloat("LOD Bias", &obj.meshFilter.lodBias, 0.25f, 4.0f, "%.2f")) {
+                        const float after = obj.meshFilter.lodBias;
+                        if (!inspectorEditActive_) {
+                            obj.meshFilter.lodBias = beforeBias;
+                            PushUndoState();
+                            obj.meshFilter.lodBias = after;
+                            inspectorEditActive_ = true;
+                        }
+                        if (onDirty_) onDirty_();
+                    }
+                    if (ImGui::IsItemDeactivated()) inspectorEditActive_ = false;
+                    float beforeHysteresis = obj.meshFilter.lodHysteresis;
+                    if (ImGui::SliderFloat("Hysteresis", &obj.meshFilter.lodHysteresis, 0.0f, 0.5f, "%.2f")) {
+                        const float after = obj.meshFilter.lodHysteresis;
+                        if (!inspectorEditActive_) {
+                            obj.meshFilter.lodHysteresis = beforeHysteresis;
+                            PushUndoState();
+                            obj.meshFilter.lodHysteresis = after;
+                            inspectorEditActive_ = true;
+                        }
+                        if (onDirty_) onDirty_();
+                    }
+                    if (ImGui::IsItemDeactivated()) inspectorEditActive_ = false;
+                    ImGui::TextDisabled("Current: LOD%d  (LOD0: %u triangles)", obj.meshFilter.activeLod, obj.meshFilter.indexCount / 3);
+
+                    for (int lodIndex = 0; lodIndex < static_cast<int>(obj.meshFilter.lodLevels.size()); ++lodIndex) {
+                        MeshLodLevel& level = obj.meshFilter.lodLevels[static_cast<std::size_t>(lodIndex)];
+                        ImGui::PushID(lodIndex);
+                        ImGui::Separator();
+                        ImGui::Text("LOD%d", lodIndex + 1);
+                        ImGui::SameLine();
+                        const std::string label = level.sourcePath.empty() ? "Select mesh..." : fs::path(level.sourcePath).filename().string();
+                        if (ImGui::Button(label.c_str())) {
+                            pendingLodLevelIndex_ = lodIndex;
+                            assetPickerMode_ = ProjectAssetPickerMode::AssignLodMesh;
+                        }
+                        if (ImGui::BeginDragDropTarget()) {
+                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                                const char* path = static_cast<const char*>(payload->Data);
+                                if (path && IsMeshAssetPath(path)) {
+                                    pendingLodLevelIndex_ = lodIndex;
+                                    AssignSelectedLodMesh(path);
+                                }
+                            }
+                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kMeshAssetPayload)) {
+                                const char* path = static_cast<const char*>(payload->Data);
+                                if (path) {
+                                    pendingLodLevelIndex_ = lodIndex;
+                                    AssignSelectedLodMesh(path);
+                                }
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+                        float beforeThreshold = level.screenRelativeHeight;
+                        if (ImGui::SliderFloat("Screen height", &level.screenRelativeHeight, 0.01f, 0.95f, "%.2f")) {
+                            float after = level.screenRelativeHeight;
+                            const float upper = lodIndex > 0
+                                ? obj.meshFilter.lodLevels[static_cast<std::size_t>(lodIndex - 1)].screenRelativeHeight - 0.01f
+                                : 0.95f;
+                            const float lower = lodIndex + 1 < static_cast<int>(obj.meshFilter.lodLevels.size())
+                                ? obj.meshFilter.lodLevels[static_cast<std::size_t>(lodIndex + 1)].screenRelativeHeight + 0.01f
+                                : 0.01f;
+                            after = (std::clamp)(after, (std::min)(lower, upper), (std::max)(lower, upper));
+                            if (!inspectorEditActive_) {
+                                level.screenRelativeHeight = beforeThreshold;
+                                PushUndoState();
+                                obj.meshFilter.lodLevels[static_cast<std::size_t>(lodIndex)].screenRelativeHeight = after;
+                                inspectorEditActive_ = true;
+                            }
+                            if (onDirty_) onDirty_();
+                        }
+                        if (ImGui::IsItemDeactivated()) inspectorEditActive_ = false;
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("Remove")) {
+                            PushUndoState();
+                            obj.meshFilter.lodLevels.erase(obj.meshFilter.lodLevels.begin() + lodIndex);
+                            if (onDirty_) onDirty_();
+                            ImGui::PopID();
+                            break;
+                        }
+                        ImGui::TextDisabled("%u triangles", level.indexCount / 3);
+                        ImGui::PopID();
+                    }
+                    if (ImGui::Button("Add LOD Level")) {
+                        PushUndoState();
+                        MeshLodLevel level;
+                        level.screenRelativeHeight = obj.meshFilter.lodLevels.empty()
+                            ? 0.25f
+                            : (std::max)(0.01f, obj.meshFilter.lodLevels.back().screenRelativeHeight * 0.5f);
+                        obj.meshFilter.lodLevels.push_back(std::move(level));
+                        pendingLodLevelIndex_ = static_cast<int>(obj.meshFilter.lodLevels.size()) - 1;
+                        assetPickerMode_ = ProjectAssetPickerMode::AssignLodMesh;
+                        if (onDirty_) onDirty_();
+                    }
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(90.0f);
+                    const std::string forcePreview = obj.meshFilter.forcedLod < 0
+                        ? std::string("Auto") : ("LOD" + std::to_string(obj.meshFilter.forcedLod));
+                    if (ImGui::BeginCombo("Force", forcePreview.c_str())) {
+                        if (ImGui::Selectable("Auto", obj.meshFilter.forcedLod < 0)) {
+                            PushUndoState();
+                            obj.meshFilter.forcedLod = -1;
+                            if (onDirty_) onDirty_();
+                        }
+                        for (int forceLod = 0; forceLod <= static_cast<int>(obj.meshFilter.lodLevels.size()); ++forceLod) {
+                            const std::string forceLabel = "LOD" + std::to_string(forceLod);
+                            if (ImGui::Selectable(forceLabel.c_str(), obj.meshFilter.forcedLod == forceLod)) {
+                                PushUndoState();
+                                obj.meshFilter.forcedLod = forceLod;
+                                if (onDirty_) onDirty_();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                    ImGui::TextDisabled("Higher bias keeps detailed meshes farther away.");
+                }
             }
             }
 
@@ -2607,6 +2745,15 @@ void SceneEditor::RenderInspectorPanel() {
                     if (onDirty_) onDirty_();
                 }
 
+                const bool castShadowsBefore = obj.light.castShadows;
+                if (ImGui::Checkbox("Cast Shadows##Light", &obj.light.castShadows)) {
+                    const bool after = obj.light.castShadows;
+                    obj.light.castShadows = castShadowsBefore;
+                    PushUndoState();
+                    obj.light.castShadows = after;
+                    if (onDirty_) onDirty_();
+                }
+
                 glm::vec3 color = obj.light.color;
                 if (ImGui::ColorEdit3("Color##Light", &color.x)) {
                     beginInspectorContinuousEdit();
@@ -2641,6 +2788,82 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                     endInspectorContinuousEdit();
+                }
+            }
+            }
+            if (currentComponentToRender == SceneInspectorComponentType::ReflectionProbe) {
+            bool removeProbe = false;
+            bool probeOpen = false;
+            bool probeEnabledChanged = false;
+            bool probeHeaderActive = false;
+            bool probeHeaderToggledOpen = false;
+            const bool probeEnabledBefore = obj.reflectionProbe.enabled;
+            if (obj.hasReflectionProbe) {
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::ReflectionProbe;
+                const std::string probeComponentKey = prepareComponentOpenState(SceneInspectorComponentType::ReflectionProbe);
+                probeOpen = RenderRemovableComponentHeader("Reflection Probe", "ReflectionProbeHeader",
+                    GetComponentIconTexture("component-light.png"), &obj.reflectionProbe.enabled,
+                    probeEnabledChanged, removeProbe, &componentType, &reorderDraggedType, &reorderTargetType,
+                    &probeHeaderActive, &probeHeaderToggledOpen);
+                finishComponentHeaderState(probeComponentKey, SceneInspectorComponentType::ReflectionProbe,
+                    probeHeaderActive, probeHeaderToggledOpen, probeOpen);
+            }
+            if (removeProbe) {
+                PushUndoState();
+                obj.hasReflectionProbe = false;
+                obj.reflectionProbe = ReflectionProbeComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasReflectionProbe && probeEnabledChanged) {
+                const bool enabledAfter = obj.reflectionProbe.enabled;
+                obj.reflectionProbe.enabled = probeEnabledBefore;
+                PushUndoState();
+                obj.reflectionProbe.enabled = enabledAfter;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasReflectionProbe && probeOpen) {
+                glm::vec3 boxSize = obj.reflectionProbe.boxSize;
+                if (ImGui::DragFloat3("Box Size##ReflectionProbe", &boxSize.x, 0.1f, 0.1f, 10000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.reflectionProbe.boxSize = (glm::max)(boxSize, glm::vec3(0.1f));
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+                float blendDistance = obj.reflectionProbe.blendDistance;
+                if (ImGui::DragFloat("Blend Distance##ReflectionProbe", &blendDistance, 0.05f, 0.01f, 1000.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.reflectionProbe.blendDistance = (std::max)(0.01f, blendDistance);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+                float intensity = obj.reflectionProbe.intensity;
+                if (ImGui::DragFloat("Intensity##ReflectionProbe", &intensity, 0.02f, 0.0f, 4.0f)) {
+                    beginInspectorContinuousEdit();
+                    obj.reflectionProbe.intensity = (std::clamp)(intensity, 0.0f, 4.0f);
+                    if (onDirty_) onDirty_();
+                }
+                endInspectorContinuousEdit();
+                const char* resolutionItems[] = {"64", "128", "256", "512"};
+                int resolutionIndex = obj.reflectionProbe.resolution <= 64 ? 0 :
+                    (obj.reflectionProbe.resolution <= 128 ? 1 : (obj.reflectionProbe.resolution <= 256 ? 2 : 3));
+                if (ImGui::Combo("Resolution##ReflectionProbe", &resolutionIndex, resolutionItems, 4)) {
+                    PushUndoState();
+                    obj.reflectionProbe.resolution = 64 << resolutionIndex;
+                    if (onDirty_) onDirty_();
+                }
+                const bool bakePending = !reflectionProbeBake_.objectId.empty();
+                ImGui::BeginDisabled(renderer_ == nullptr || bakePending);
+                if (ImGui::Button(obj.reflectionProbe.bakedCubemapPath.empty() ? "Bake Probe" : "Bake Probe Again")) {
+                    reflectionProbeBake_.objectId = obj.id;
+                    reflectionProbeBake_.window = EditorProgressService::Get().Begin(
+                        "Baking Reflection Probe", "Preparing scene capture...", 6, false);
+                }
+                ImGui::EndDisabled();
+                if (!obj.reflectionProbe.bakedCubemapPath.empty()) {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("Baked");
+                    ImGui::TextWrapped("%s", obj.reflectionProbe.bakedCubemapPath.c_str());
+                } else {
+                    ImGui::TextDisabled("Not baked; using the project skybox fallback.");
                 }
             }
             }
@@ -3965,12 +4188,13 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
         return;
     }
 
-    const bool pickingMesh = (assetPickerMode_ == ProjectAssetPickerMode::ReplaceMesh);
+    const bool pickingLodMesh = (assetPickerMode_ == ProjectAssetPickerMode::AssignLodMesh);
+    const bool pickingMesh = (assetPickerMode_ == ProjectAssetPickerMode::ReplaceMesh) || pickingLodMesh;
     const bool pickingMaterial = (assetPickerMode_ == ProjectAssetPickerMode::AssignMaterial);
     const bool pickingVehicleConfig = (assetPickerMode_ == ProjectAssetPickerMode::AssignVehicleConfig);
     ImGui::SetNextWindowSize(ImVec2(460.0f, 360.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
-    const char* windowTitle = pickingMesh ? "Select Project Mesh" : (pickingVehicleConfig ? "Select Vehicle Config" : "Select Project Material");
+    const char* windowTitle = pickingLodMesh ? "Select LOD Mesh" : (pickingMesh ? "Select Project Mesh" : (pickingVehicleConfig ? "Select Vehicle Config" : "Select Project Material"));
     bool pickerOpen = true;
     if (ImGui::Begin(windowTitle, &pickerOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking)) {
         if (!pickerOpen || (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape))) {
@@ -3982,7 +4206,7 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
                 : (pickingVehicleConfig ? "Select a vehicle config asset from the project" : "Select a material from the project"));
             ImGui::Separator();
 
-            if (pickingMesh) {
+            if (pickingMesh && !pickingLodMesh) {
                 const char* builtIns[] = {"Plane", "Cube", "Sphere", "Cone", "Capsule"};
                 for (int i = 0; i < 5; ++i) {
                     if (ImGui::Button(builtIns[i], ImVec2(90.0f, 0.0f))) {
@@ -4052,7 +4276,13 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
                     const std::string label = ProjectAssetDisplayFilename(file) + "##" + file;
                     if (ImGui::Selectable(label.c_str())) {
                         if (pickingMesh) {
-                            ReplaceSelectedMeshFromObj(file);
+                            if (pickingLodMesh) {
+                                AssignSelectedLodMesh(file);
+                            } else {
+                                ReplaceSelectedMeshFromObj(file);
+                            }
+                            assetPickerMode_ = ProjectAssetPickerMode::None;
+                            pickerOpen = false;
                         } else if (pickingVehicleConfig) {
                             AssignVehicleConfigToSelected(file);
                         } else {

@@ -1,0 +1,2753 @@
+{
+  "prefab": true,
+  "objects": [
+    {
+      "id": "gameobject_16",
+      "parentId": "",
+      "name": "RedBullGT3",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [-90, -90, 0],
+          "scale": [1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_21",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_0",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#0",
+          "meshIndex": 0,
+          "importedMaterialName": "Body",
+          "diffuseTexturePath": "*0",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_body",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_65",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_1",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#1",
+          "meshIndex": 1,
+          "importedMaterialName": "Body",
+          "diffuseTexturePath": "*0",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_body",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_66",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_2",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#2",
+          "meshIndex": 2,
+          "importedMaterialName": "Body",
+          "diffuseTexturePath": "*0",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_body",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_67",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_3",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#3",
+          "meshIndex": 3,
+          "importedMaterialName": "Body",
+          "diffuseTexturePath": "*0",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_body",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_68",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_4",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#4",
+          "meshIndex": 4,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_69",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_5",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#5",
+          "meshIndex": 5,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_70",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_6",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#6",
+          "meshIndex": 6,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_71",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_7",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#7",
+          "meshIndex": 7,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_72",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_8",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#8",
+          "meshIndex": 8,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_73",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_9",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#9",
+          "meshIndex": 9,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_74",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_10",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#10",
+          "meshIndex": 10,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_75",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_11",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#11",
+          "meshIndex": 11,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_76",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_12",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#12",
+          "meshIndex": 12,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_77",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_13",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#13",
+          "meshIndex": 13,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_78",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_14",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#14",
+          "meshIndex": 14,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_79",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_15",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#15",
+          "meshIndex": 15,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_80",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_16",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#16",
+          "meshIndex": 16,
+          "importedMaterialName": "Chassis",
+          "diffuseTexturePath": "*3",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_chassis",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_81",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_17",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#17",
+          "meshIndex": 17,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_82",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_18",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#18",
+          "meshIndex": 18,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_83",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_19",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#19",
+          "meshIndex": 19,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_84",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_20",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#20",
+          "meshIndex": 20,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_85",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_21",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#21",
+          "meshIndex": 21,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_86",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_22",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#22",
+          "meshIndex": 22,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_87",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_23",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#23",
+          "meshIndex": 23,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_88",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_24",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#24",
+          "meshIndex": 24,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_89",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_25",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#25",
+          "meshIndex": 25,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_90",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_26",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#26",
+          "meshIndex": 26,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_91",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_27",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#27",
+          "meshIndex": 27,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_92",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_28",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#28",
+          "meshIndex": 28,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_93",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_29",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#29",
+          "meshIndex": 29,
+          "importedMaterialName": "Glass",
+          "diffuseTexturePath": "*6",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_glass",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_94",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_30",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#30",
+          "meshIndex": 30,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_95",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_31",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#31",
+          "meshIndex": 31,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_96",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_32",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#32",
+          "meshIndex": 32,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_97",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_33",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#33",
+          "meshIndex": 33,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_98",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_34",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#34",
+          "meshIndex": 34,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_99",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_35",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#35",
+          "meshIndex": 35,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_100",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_36",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#36",
+          "meshIndex": 36,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_101",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_37",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#37",
+          "meshIndex": 37,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_102",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_38",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#38",
+          "meshIndex": 38,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_103",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_39",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#39",
+          "meshIndex": 39,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_104",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_40",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#40",
+          "meshIndex": 40,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_105",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_41",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#41",
+          "meshIndex": 41,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_106",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_42",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#42",
+          "meshIndex": 42,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_107",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_43",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#43",
+          "meshIndex": 43,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_108",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_44",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#44",
+          "meshIndex": 44,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_109",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_45",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#45",
+          "meshIndex": 45,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_110",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_46",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#46",
+          "meshIndex": 46,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_111",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_47",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#47",
+          "meshIndex": 47,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_112",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_48",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#48",
+          "meshIndex": 48,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_113",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_49",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#49",
+          "meshIndex": 49,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_114",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_50",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#50",
+          "meshIndex": 50,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_115",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_51",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#51",
+          "meshIndex": 51,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_116",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_52",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#52",
+          "meshIndex": 52,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_117",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_53",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#53",
+          "meshIndex": 53,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_118",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_54",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#54",
+          "meshIndex": 54,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_119",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_55",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#55",
+          "meshIndex": 55,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_120",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_56",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#56",
+          "meshIndex": 56,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_121",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_57",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#57",
+          "meshIndex": 57,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_122",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_58",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#58",
+          "meshIndex": 58,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_123",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_59",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#59",
+          "meshIndex": 59,
+          "importedMaterialName": "Interior",
+          "diffuseTexturePath": "*9",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_interior",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_124",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_60",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#60",
+          "meshIndex": 60,
+          "importedMaterialName": "Wheel",
+          "diffuseTexturePath": "*12",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_wheel",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_125",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_61",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#61",
+          "meshIndex": 61,
+          "importedMaterialName": "Wheel",
+          "diffuseTexturePath": "*12",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_wheel",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_126",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_62",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#62",
+          "meshIndex": 62,
+          "importedMaterialName": "Wheel",
+          "diffuseTexturePath": "*12",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_wheel",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_129",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_65",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#65",
+          "meshIndex": 65,
+          "importedMaterialName": "Wheel",
+          "diffuseTexturePath": "*12",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_wheel",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_130",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_66",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#66",
+          "meshIndex": 66,
+          "importedMaterialName": "Wheel",
+          "diffuseTexturePath": "*12",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_wheel",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_132",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_68",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#68",
+          "meshIndex": 68,
+          "importedMaterialName": "Wheel",
+          "diffuseTexturePath": "*12",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_wheel",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_134",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_70",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#70",
+          "meshIndex": 70,
+          "importedMaterialName": "Wheel",
+          "diffuseTexturePath": "*12",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_wheel",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_135",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_71",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#71",
+          "meshIndex": 71,
+          "importedMaterialName": "Wheel",
+          "diffuseTexturePath": "*12",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_wheel",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_143",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_76",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#76",
+          "meshIndex": 76,
+          "importedMaterialName": "Wheel",
+          "diffuseTexturePath": "*12",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_wheel",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    },
+    {
+      "id": "mesh_145",
+      "parentId": "gameobject_16",
+      "name": "RedBullGT3_78",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [0, 0, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "type": "MeshFilter",
+          "enabled": true,
+          "meshType": "Mesh",
+          "sourcePath": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb",
+          "assetId": "assets/car/mercedes-benz-amg-gt3-red-bull/source/RedBullGT3/RedBullGT3.glb#78",
+          "meshIndex": 78,
+          "importedMaterialName": "Wheel",
+          "diffuseTexturePath": "*12",
+          "lodEnabled": false,
+          "lodBias": 1,
+          "lodHysteresis": 0.1,
+          "forcedLod": -1,
+          "lodLevels": []
+        },
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "materialId": "redbullgt3_wheel",
+          "color": [1, 1, 1, 1]
+        }
+      ]
+    }
+  ]
+}

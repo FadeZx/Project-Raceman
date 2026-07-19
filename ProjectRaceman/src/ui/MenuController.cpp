@@ -28,6 +28,114 @@ std::string SceneDisplayName(const std::string& scenePath) {
     }
     return filename;
 }
+
+void ApplyGraphicsPreset(GraphicsProfile& profile, GraphicsQualityTier tier) {
+    profile.quality = tier;
+    profile.ssaoDebugView = false;
+    profile.motionBlurDebugView = false;
+    profile.taaDebugView = false;
+    profile.ssrDebugView = false;
+    profile.shadowCascadeDebugView = false;
+    profile.iblDebugMode = 0;
+    profile.lod = true;
+    profile.particles = true;
+    profile.colorGrading = true;
+    profile.colorSaturation = 1.0f;
+    profile.colorContrast = 1.0f;
+    profile.colorTemperature = 0.0f;
+    profile.colorTint = 0.0f;
+    profile.vignette = false;
+    profile.filmGrain = false;
+    profile.depthOfField = false;
+    profile.dynamicResolutionTargetFps = 60;
+    switch (tier) {
+    case GraphicsQualityTier::Low:
+        profile.antiAliasing = AntiAliasingMode::FXAA;
+        profile.bloom = false;
+        profile.motionBlur = false;
+        profile.ssao = false;
+        profile.shadows = true;
+        profile.shadowResolution = 1024;
+        profile.shadowSoftness = 1.0f;
+        profile.shadowCascadeCount = 1;
+        profile.shadowDistance = 60.0f;
+        profile.localShadowLightLimit = 0;
+        profile.reflections = false;
+        profile.screenSpaceReflections = false;
+        profile.dynamicResolution = true;
+        profile.minimumResolutionScale = 0.625f;
+        break;
+    case GraphicsQualityTier::Medium:
+        profile.antiAliasing = AntiAliasingMode::FXAA;
+        profile.bloom = true;
+        profile.bloomIntensity = 0.5f;
+        profile.motionBlur = false;
+        profile.ssao = true;
+        profile.ssaoIntensity = 0.8f;
+        profile.shadows = true;
+        profile.shadowResolution = 1024;
+        profile.shadowSoftness = 1.5f;
+        profile.shadowCascadeCount = 2;
+        profile.shadowDistance = 100.0f;
+        profile.localShadowLightLimit = 1;
+        profile.reflections = true;
+        profile.screenSpaceReflections = false;
+        profile.dynamicResolution = true;
+        profile.minimumResolutionScale = 0.75f;
+        break;
+    case GraphicsQualityTier::Ultra:
+        profile.antiAliasing = AntiAliasingMode::TAA;
+        profile.taaFeedback = 0.92f;
+        profile.taaSharpness = 0.15f;
+        profile.taaJitterStrength = 0.75f;
+        profile.bloom = true;
+        profile.bloomIntensity = 0.7f;
+        profile.motionBlur = true;
+        profile.motionBlurSamples = 20;
+        profile.motionBlurMinimumVelocityPixels = 1.0f;
+        profile.filmGrain = true;
+        profile.filmGrainIntensity = 0.025f;
+        profile.ssao = true;
+        profile.ssaoIntensity = 1.0f;
+        profile.shadows = true;
+        profile.shadowResolution = 4096;
+        profile.shadowSoftness = 2.5f;
+        profile.shadowCascadeCount = 4;
+        profile.shadowDistance = 250.0f;
+        profile.localShadowLightLimit = 4;
+        profile.reflections = true;
+        profile.screenSpaceReflections = true;
+        profile.ssrSteps = 64;
+        profile.dynamicResolution = false;
+        profile.minimumResolutionScale = 0.85f;
+        break;
+    case GraphicsQualityTier::High:
+    default:
+        profile.antiAliasing = AntiAliasingMode::TAA;
+        profile.taaFeedback = 0.90f;
+        profile.taaSharpness = 0.20f;
+        profile.taaJitterStrength = 0.50f;
+        profile.bloom = true;
+        profile.bloomIntensity = 0.7f;
+        profile.motionBlur = true;
+        profile.motionBlurSamples = 12;
+        profile.motionBlurMinimumVelocityPixels = 1.5f;
+        profile.ssao = true;
+        profile.ssaoIntensity = 1.0f;
+        profile.shadows = true;
+        profile.shadowResolution = 2048;
+        profile.shadowSoftness = 2.0f;
+        profile.shadowCascadeCount = 4;
+        profile.shadowDistance = 150.0f;
+        profile.localShadowLightLimit = 2;
+        profile.reflections = true;
+        profile.screenSpaceReflections = true;
+        profile.ssrSteps = 40;
+        profile.dynamicResolution = false;
+        profile.minimumResolutionScale = 0.75f;
+        break;
+    }
+}
 } // namespace
 
 MenuController::MenuController() { LoadState(); }
@@ -172,14 +280,35 @@ void MenuController::Render(Renderer& renderer,
                     const char* qualityNames[] = {"Low", "Medium", "High", "Ultra"};
                     int qualityIndex = static_cast<int>(settings.profile.quality);
                     if (ImGui::Combo("Quality Tier", &qualityIndex, qualityNames, 4)) {
-                        settings.profile.quality = static_cast<GraphicsQualityTier>(qualityIndex);
+                        ApplyGraphicsPreset(settings.profile, static_cast<GraphicsQualityTier>(qualityIndex));
                         graphicsChanged = true;
                     }
-                    const char* aaNames[] = {"None", "FXAA", "TAA (planned)", "MSAA (planned)"};
-                    int aaIndex = static_cast<int>(settings.profile.antiAliasing);
-                    if (ImGui::Combo("Anti-Aliasing", &aaIndex, aaNames, 4)) {
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Applies a complete performance preset. Individual controls can be customized afterward.");
+                    }
+                    const char* aaNames[] = {"None", "FXAA", "TAA"};
+                    int aaIndex = (std::min)(2, static_cast<int>(settings.profile.antiAliasing));
+                    if (ImGui::Combo("Anti-Aliasing", &aaIndex, aaNames, 3)) {
                         settings.profile.antiAliasing = static_cast<AntiAliasingMode>(aaIndex);
                         graphicsChanged = true;
+                    }
+                    if (settings.profile.antiAliasing == AntiAliasingMode::TAA) {
+                        graphicsChanged |= ImGui::SliderFloat("TAA History", &settings.profile.taaFeedback, 0.0f, 0.98f, "%.2f");
+                        graphicsChanged |= ImGui::SliderFloat("TAA Sharpness", &settings.profile.taaSharpness, 0.0f, 1.0f, "%.2f");
+                        graphicsChanged |= ImGui::SliderFloat("TAA Jitter Strength", &settings.profile.taaJitterStrength, 0.0f, 1.0f, "%.2f");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Subpixel sampling amount. 0.5 is the stable default; Ultra uses 0.75.");
+                        }
+                        if (ImGui::Checkbox("TAA Debug View", &settings.profile.taaDebugView)) {
+                            if (settings.profile.taaDebugView) {
+                                settings.profile.ssaoDebugView = false;
+                                settings.profile.motionBlurDebugView = false;
+                                settings.profile.shadowCascadeDebugView = false;
+                                settings.profile.iblDebugMode = 0;
+                                settings.profile.ssrDebugView = false;
+                            }
+                            graphicsChanged = true;
+                        }
                     }
                     graphicsChanged |= ImGui::DragFloat("Exposure", &settings.profile.exposure, 0.02f, 0.05f, 8.0f, "%.2f");
                     const char* outputModeNames[] = {"SDR (sRGB)", "HDR (scRGB linear)"};
@@ -234,15 +363,43 @@ void MenuController::Render(Renderer& renderer,
                     graphicsChanged |= ImGui::SliderFloat("Motion Blur Intensity", &settings.profile.motionBlurIntensity, 0.0f, 2.0f, "%.2f");
                     graphicsChanged |= ImGui::SliderInt("Motion Blur Samples", &settings.profile.motionBlurSamples, 4, 32);
                     graphicsChanged |= ImGui::SliderFloat("Maximum Blur Radius", &settings.profile.motionBlurMaxRadius, 1.0f, 64.0f, "%.0f px");
+                    graphicsChanged |= ImGui::SliderFloat("Motion Blur Dead Zone", &settings.profile.motionBlurMinimumVelocityPixels, 0.0f, 8.0f, "%.1f px");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Ignores tiny screen-space movement from camera and physics jitter.");
+                    }
                     if (ImGui::Checkbox("Motion Vector Debug View", &settings.profile.motionBlurDebugView)) {
                         if (settings.profile.motionBlurDebugView) {
                             settings.profile.ssaoDebugView = false;
                             settings.profile.shadowCascadeDebugView = false;
                             settings.profile.iblDebugMode = 0;
+                            settings.profile.ssrDebugView = false;
+                            settings.profile.taaDebugView = false;
                         }
                         graphicsChanged = true;
                     }
                     ImGui::TextDisabled("Uses camera and per-object motion vectors.");
+                    ImGui::EndDisabled();
+                    graphicsChanged |= ImGui::Checkbox("Depth of Field", &settings.profile.depthOfField);
+                    ImGui::BeginDisabled(!settings.profile.depthOfField);
+                    graphicsChanged |= ImGui::SliderFloat("Focus Distance", &settings.profile.depthOfFieldFocusDistance, 0.05f, 500.0f, "%.2f m", ImGuiSliderFlags_Logarithmic);
+                    graphicsChanged |= ImGui::SliderFloat("Focus Range", &settings.profile.depthOfFieldFocusRange, 0.05f, 100.0f, "%.2f m", ImGuiSliderFlags_Logarithmic);
+                    graphicsChanged |= ImGui::SliderFloat("DoF Maximum Radius", &settings.profile.depthOfFieldMaxRadius, 0.5f, 24.0f, "%.1f px");
+                    ImGui::EndDisabled();
+                    graphicsChanged |= ImGui::Checkbox("Color Grading", &settings.profile.colorGrading);
+                    ImGui::BeginDisabled(!settings.profile.colorGrading);
+                    graphicsChanged |= ImGui::SliderFloat("Saturation", &settings.profile.colorSaturation, 0.0f, 2.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderFloat("Contrast", &settings.profile.colorContrast, 0.5f, 2.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderFloat("Temperature", &settings.profile.colorTemperature, -1.0f, 1.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderFloat("Tint", &settings.profile.colorTint, -1.0f, 1.0f, "%.2f");
+                    ImGui::EndDisabled();
+                    graphicsChanged |= ImGui::Checkbox("Vignette", &settings.profile.vignette);
+                    ImGui::BeginDisabled(!settings.profile.vignette);
+                    graphicsChanged |= ImGui::SliderFloat("Vignette Intensity", &settings.profile.vignetteIntensity, 0.0f, 1.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderFloat("Vignette Smoothness", &settings.profile.vignetteSmoothness, 0.05f, 1.0f, "%.2f");
+                    ImGui::EndDisabled();
+                    graphicsChanged |= ImGui::Checkbox("Film Grain", &settings.profile.filmGrain);
+                    ImGui::BeginDisabled(!settings.profile.filmGrain);
+                    graphicsChanged |= ImGui::SliderFloat("Film Grain Intensity", &settings.profile.filmGrainIntensity, 0.0f, 0.25f, "%.3f");
                     ImGui::EndDisabled();
                     graphicsChanged |= ImGui::Checkbox("SSAO", &settings.profile.ssao);
                     ImGui::BeginDisabled(!settings.profile.ssao);
@@ -257,6 +414,8 @@ void MenuController::Render(Renderer& renderer,
                             settings.profile.iblDebugMode = 0;
                             settings.profile.shadowCascadeDebugView = false;
                             settings.profile.motionBlurDebugView = false;
+                            settings.profile.taaDebugView = false;
+                            settings.profile.ssrDebugView = false;
                         }
                         graphicsChanged = true;
                     }
@@ -299,11 +458,17 @@ void MenuController::Render(Renderer& renderer,
                     }
                     graphicsChanged |= ImGui::SliderFloat("Shadow Distance", &settings.profile.shadowDistance,
                         10.0f, 500.0f, "%.0f m", ImGuiSliderFlags_Logarithmic);
+                    graphicsChanged |= ImGui::SliderInt("Local Shadow Lights", &settings.profile.localShadowLightLimit, 0, 4);
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Maximum point and spot lights rendered into shadow maps. Point lights cost six faces each.");
+                    }
                     if (ImGui::Checkbox("Shadow Cascade Debug View", &settings.profile.shadowCascadeDebugView)) {
                         if (settings.profile.shadowCascadeDebugView) {
                             settings.profile.ssaoDebugView = false;
                             settings.profile.iblDebugMode = 0;
                             settings.profile.motionBlurDebugView = false;
+                            settings.profile.taaDebugView = false;
+                            settings.profile.ssrDebugView = false;
                         }
                         graphicsChanged = true;
                     }
@@ -317,12 +482,32 @@ void MenuController::Render(Renderer& renderer,
                     ImGui::BeginDisabled(!settings.profile.reflections);
                     graphicsChanged |= ImGui::SliderFloat("Environment Lighting", &settings.profile.environmentIntensity, 0.0f, 4.0f, "%.2f");
                     graphicsChanged |= ImGui::SliderFloat("Reflection Intensity", &settings.profile.reflectionIntensity, 0.0f, 4.0f, "%.2f");
+                    graphicsChanged |= ImGui::Checkbox("Screen-Space Reflections", &settings.profile.screenSpaceReflections);
+                    ImGui::BeginDisabled(!settings.profile.screenSpaceReflections);
+                    graphicsChanged |= ImGui::SliderFloat("SSR Intensity", &settings.profile.ssrIntensity, 0.0f, 2.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderFloat("SSR Maximum Distance", &settings.profile.ssrMaxDistance, 1.0f, 200.0f, "%.0f m", ImGuiSliderFlags_Logarithmic);
+                    graphicsChanged |= ImGui::SliderFloat("SSR Thickness", &settings.profile.ssrThickness, 0.01f, 2.0f, "%.2f m", ImGuiSliderFlags_Logarithmic);
+                    graphicsChanged |= ImGui::SliderInt("SSR Steps", &settings.profile.ssrSteps, 8, 96);
+                    if (ImGui::Checkbox("SSR Debug View", &settings.profile.ssrDebugView)) {
+                        if (settings.profile.ssrDebugView) {
+                            settings.profile.ssaoDebugView = false;
+                            settings.profile.shadowCascadeDebugView = false;
+                            settings.profile.motionBlurDebugView = false;
+                            settings.profile.taaDebugView = false;
+                            settings.profile.iblDebugMode = 0;
+                        }
+                        graphicsChanged = true;
+                    }
+                    ImGui::TextDisabled("SSR hits on-screen geometry; skybox IBL remains the fallback.");
+                    ImGui::EndDisabled();
                     const char* iblDebugNames[] = {"Off", "Diffuse Irradiance", "Raw Environment", "Final Specular"};
                     if (ImGui::Combo("IBL Debug View", &settings.profile.iblDebugMode, iblDebugNames, 4)) {
                         if (settings.profile.iblDebugMode != 0) {
                             settings.profile.ssaoDebugView = false;
                             settings.profile.shadowCascadeDebugView = false;
                             settings.profile.motionBlurDebugView = false;
+                            settings.profile.taaDebugView = false;
+                            settings.profile.ssrDebugView = false;
                         }
                         graphicsChanged = true;
                     }
@@ -335,7 +520,27 @@ void MenuController::Render(Renderer& renderer,
                         ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f), "IBL status: using skybox mip fallback");
                     }
                     graphicsChanged |= ImGui::Checkbox("Weather", &settings.profile.weather);
+                    ImGui::BeginDisabled(!settings.profile.weather);
+                    graphicsChanged |= ImGui::SliderFloat("Weather Intensity", &settings.profile.weatherIntensity, 0.0f, 1.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderFloat("Weather Wind", &settings.profile.weatherWind, -2.0f, 2.0f, "%.2f");
+                    ImGui::EndDisabled();
+                    graphicsChanged |= ImGui::Checkbox("Particles", &settings.profile.particles);
+                    if (settings.profile.weather && settings.profile.weatherIntensity > 0.0f) {
+                        const char* density = settings.profile.quality == GraphicsQualityTier::Low ? "Low"
+                            : (settings.profile.quality == GraphicsQualityTier::Medium ? "Medium"
+                            : (settings.profile.quality == GraphicsQualityTier::Ultra ? "Ultra" : "High"));
+                        ImGui::TextDisabled("Weather particles: %s%s", settings.profile.particles ? density : "Off",
+                            settings.profile.particles ? " density" : "");
+                    }
                     graphicsChanged |= ImGui::Checkbox("LOD", &settings.profile.lod);
+                    graphicsChanged |= ImGui::Checkbox("Dynamic Resolution", &settings.profile.dynamicResolution);
+                    ImGui::BeginDisabled(!settings.profile.dynamicResolution);
+                    graphicsChanged |= ImGui::SliderFloat("Minimum Resolution Scale", &settings.profile.minimumResolutionScale, 0.5f, 1.0f, "%.2f");
+                    graphicsChanged |= ImGui::SliderInt("Resolution Target FPS", &settings.profile.dynamicResolutionTargetFps, 30, 240);
+                    ImGui::TextDisabled("Current scale: Scene %.0f%%, Game %.0f%%",
+                        renderer.GetDynamicResolutionScale(ViewportRenderTarget::Scene) * 100.0f,
+                        renderer.GetDynamicResolutionScale(ViewportRenderTarget::Game) * 100.0f);
+                    ImGui::EndDisabled();
                     if (settings.profile.style == RenderStyle::Stylized) {
                         graphicsChanged |= ImGui::DragFloat("Lighting Bands", &settings.profile.stylizedBands, 0.25f, 2.0f, 12.0f, "%.1f");
                         graphicsChanged |= ImGui::DragFloat("Rim Strength", &settings.profile.stylizedRimStrength, 0.01f, 0.0f, 2.0f, "%.2f");

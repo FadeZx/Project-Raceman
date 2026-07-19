@@ -2,6 +2,7 @@
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out vec4 NormalBuffer;
 layout(location = 2) out vec4 AmbientBuffer;
+layout(location = 3) out vec4 MaterialBuffer;
 in vec2 vUV;
 in vec3 vWorldPosition;
 in vec3 vWorldNormal;
@@ -18,5 +19,6 @@ void main() {
     vec3 color = albedo.rgb * (uAmbientColor + vec3(0.65)) + normalTint * (0.08 * (1.0 - clamp(uRoughness, 0.0, 1.0))) + uEmissiveColor;
     NormalBuffer = vec4(normalize(vWorldNormal), 1.0);
     AmbientBuffer = vec4(0.0, 0.0, 0.0, albedo.a);
+    MaterialBuffer = vec4(0.0, 1.0, 0.0, 0.0);
     FragColor = vec4(color, albedo.a);
 }

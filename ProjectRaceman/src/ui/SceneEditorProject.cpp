@@ -4746,6 +4746,41 @@ bool SceneEditor::ReplaceSelectedMeshFromObj(const std::string& path) {
     }
 }
 
+bool SceneEditor::AssignSelectedLodMesh(const std::string& path) {
+    if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size()) || path.empty()) {
+        return false;
+    }
+    SceneObject& object = objects_[selectedIndex_];
+    if (!object.hasMeshFilter || pendingLodLevelIndex_ < 0 ||
+        pendingLodLevelIndex_ >= static_cast<int>(object.meshFilter.lodLevels.size())) {
+        return false;
+    }
+    try {
+        std::string resolvedPath;
+        std::shared_ptr<::Model> model;
+        std::vector<ImportedMeshInfo> infos;
+        if (!TryLoadMeshAsset(path, resolvedPath, model, infos) || infos.empty()) {
+            return false;
+        }
+        PushUndoState();
+        MeshLodLevel& level = object.meshFilter.lodLevels[static_cast<std::size_t>(pendingLodLevelIndex_)];
+        level.sourcePath = resolvedPath;
+        level.meshIndex = static_cast<int>(infos.front().meshIndex);
+        level.vao = infos.front().vao;
+        level.indexCount = infos.front().indexCount;
+        level.localBoundsMin = infos.front().localBoundsMin;
+        level.localBoundsMax = infos.front().localBoundsMax;
+        level.modelRef = std::move(model);
+        object.meshFilter.lodEnabled = true;
+        if (console_) console_->AddLog("Assigned " + resolvedPath + " to LOD" + std::to_string(pendingLodLevelIndex_ + 1) + " on " + object.name);
+        if (onDirty_) onDirty_();
+        return true;
+    } catch (...) {
+        if (console_) console_->AddLog("Failed to assign LOD mesh asset: " + path);
+        return false;
+    }
+}
+
 bool SceneEditor::ReplaceSelectedMeshWithPlane() {
     return ReplaceSelectedMeshWithBuiltIn("Plane");
 }

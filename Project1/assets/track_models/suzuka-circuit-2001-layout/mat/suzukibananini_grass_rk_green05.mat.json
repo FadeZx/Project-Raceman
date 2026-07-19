@@ -3,7 +3,7 @@
   "name": "GRASS_RK_GREEN05",
   "shader": "pbr",
   "albedoColor": [1, 1, 1, 1],
-  "metallic": 0.873,
+  "metallic": 0.447,
   "roughness": 0.789,
   "clearCoat": 0,
   "clearCoatRoughness": 0.1,

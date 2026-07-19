@@ -856,6 +856,7 @@ SceneEditor::~SceneEditor() {
     if (collisionBake_.window.IsValid()) collisionBake_.window.Cancelled("Editor operation stopped.");
     if (materialExtract_.window.IsValid()) materialExtract_.window.Cancelled("Editor operation stopped.");
     if (saveProgress_.IsValid()) saveProgress_.Cancelled("Save operation stopped.");
+    if (reflectionProbeBake_.window.IsValid()) reflectionProbeBake_.window.Cancelled("Reflection probe bake stopped.");
 
     // If the app is closed while in play mode, restore the pre-play snapshot so
     // the saved scene on disk reflects the authored state, not runtime transforms.
@@ -1026,6 +1027,44 @@ void SceneEditor::TickPendingSceneSave() {
     }
 }
 
+void SceneEditor::TickReflectionProbeBake() {
+    if (reflectionProbeBake_.objectId.empty() || !reflectionProbeBake_.window.IsValid() ||
+        !reflectionProbeBake_.window.HasBeenRendered()) return;
+
+    const auto objectIt = std::find_if(objects_.begin(), objects_.end(), [&](const SceneObject& object) {
+        return object.id == reflectionProbeBake_.objectId;
+    });
+    if (objectIt == objects_.end() || !objectIt->hasReflectionProbe || renderer_ == nullptr) {
+        reflectionProbeBake_.window.Fail("The reflection probe is no longer available.");
+        reflectionProbeBake_ = {};
+        return;
+    }
+
+    const int objectIndex = static_cast<int>(std::distance(objects_.begin(), objectIt));
+    const glm::vec3 capturePosition = glm::vec3(GetObjectWorldMatrix(objectIndex)[3]);
+    const std::string assetPath = "assets/reflection_probes/" + objectIt->id + ".rcubemap";
+    const std::string absolutePath = ResolveEditorPath(assetPath).string();
+    reflectionProbeBake_.window.SetDetail("Capturing six cubemap faces...");
+    const bool baked = renderer_->BakeReflectionProbe(
+        capturePosition, objectIt->reflectionProbe.resolution, absolutePath,
+        [this]() { SubmitDraws(*renderer_, false); },
+        [this](int completed, int total) {
+            reflectionProbeBake_.window.SetProgress(completed, total);
+            reflectionProbeBake_.window.SetDetail("Captured face " + std::to_string(completed) + " of " + std::to_string(total));
+        });
+
+    if (baked) {
+        objectIt->reflectionProbe.bakedCubemapPath = NormalizeSlashes(assetPath);
+        if (onDirty_) onDirty_();
+        if (console_) console_->AddLog("Baked reflection probe: " + NormalizeSlashes(assetPath));
+        reflectionProbeBake_.window.Complete("Reflection probe baked.");
+    } else {
+        if (console_) console_->AddLog("Failed to bake reflection probe: " + NormalizeSlashes(assetPath));
+        reflectionProbeBake_.window.Fail("Could not capture or write the probe cubemap.");
+    }
+    reflectionProbeBake_ = {};
+}
+
 void SceneEditor::RenderSceneSavePopup() {
     // Rendered centrally by EditorProgressService after all editor panels.
 }
@@ -1043,6 +1082,7 @@ void SceneEditor::RenderUI(float deltaTime) {
 
     timingStart = glfwGetTime();
     TickPendingSceneSave();
+    TickReflectionProbeBake();
     RenderSceneSavePopup();
     TickPlayModeLoading();          // check if async physics build is done; finalize on main thread
     RenderPlayModeLoadingPopup();   // show modal progress UI while building (before dockspace so ID stack is clean)
@@ -1916,6 +1956,10 @@ bool SceneEditor::PasteInspectorComponentFromClipboard(const std::vector<int>& t
         case SceneInspectorComponentType::Light:
             target.hasLight = true;
             target.light = componentClipboard_.sourceObject.light;
+            break;
+        case SceneInspectorComponentType::ReflectionProbe:
+            target.hasReflectionProbe = true;
+            target.reflectionProbe = componentClipboard_.sourceObject.reflectionProbe;
             break;
         case SceneInspectorComponentType::AudioListener:
             target.hasAudioListener = true;
@@ -3905,6 +3949,22 @@ void SceneEditor::Load(const std::string& path) {
                         ReadString(component, "diffuseTexturePath", so.meshFilter.diffuseTexturePath);
                         so.meshFilter.diffuseTexturePath = NormalizeSlashes(so.meshFilter.diffuseTexturePath);
                         ReadVec3(component, "pivotOffset", so.meshFilter.pivotOffset);
+                        ReadBool(component, "lodEnabled", so.meshFilter.lodEnabled);
+                        if (auto it = component.find("lodBias"); it != component.end() && it->second.is_number()) so.meshFilter.lodBias = (std::clamp)(static_cast<float>(it->second.as_number()), 0.25f, 4.0f);
+                        if (auto it = component.find("lodHysteresis"); it != component.end() && it->second.is_number()) so.meshFilter.lodHysteresis = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 0.5f);
+                        if (auto it = component.find("forcedLod"); it != component.end() && it->second.is_number()) so.meshFilter.forcedLod = static_cast<int>(it->second.as_number());
+                        if (auto levelsIt = component.find("lodLevels"); levelsIt != component.end() && levelsIt->second.is_array()) {
+                            for (const auto& value : levelsIt->second.as_array()) {
+                                if (!value.is_object()) continue;
+                                const auto& levelObject = value.as_object();
+                                MeshLodLevel level;
+                                ReadString(levelObject, "sourcePath", level.sourcePath);
+                                level.sourcePath = NormalizeSlashes(level.sourcePath);
+                                if (auto it = levelObject.find("meshIndex"); it != levelObject.end() && it->second.is_number()) level.meshIndex = (std::max)(0, static_cast<int>(it->second.as_number()));
+                                if (auto it = levelObject.find("screenRelativeHeight"); it != levelObject.end() && it->second.is_number()) level.screenRelativeHeight = (std::clamp)(static_cast<float>(it->second.as_number()), 0.01f, 0.95f);
+                                so.meshFilter.lodLevels.push_back(std::move(level));
+                            }
+                        }
                     } else if (componentType == "MeshRenderer") {
                         so.hasMeshRenderer = true;
                         ReadBool(component, "enabled", so.meshRenderer.enabled);
@@ -4265,6 +4325,7 @@ void SceneEditor::Load(const std::string& path) {
                     } else if (componentType == "Light") {
                         so.hasLight = true;
                         ReadBool(component, "enabled", so.light.enabled);
+                        ReadBool(component, "castShadows", so.light.castShadows);
                         ReadVec3(component, "color", so.light.color);
 
                         std::string lightType;
@@ -4342,6 +4403,28 @@ void SceneEditor::Load(const std::string& path) {
                         console_->AddLog("Failed to reload mesh source: " + so.meshFilter.sourcePath);
                     }
                 }
+            }
+
+            for (MeshLodLevel& level : so.meshFilter.lodLevels) {
+                if (level.sourcePath.empty()) continue;
+                try {
+                    const std::string cacheKey = NormalizeSlashes(level.sourcePath);
+                    CachedLoadedMeshAsset& cachedAsset = meshAssetCache[cacheKey];
+                    if (!cachedAsset.attempted) {
+                        cachedAsset.attempted = true;
+                        cachedAsset.loaded = TryLoadMeshAsset(level.sourcePath, cachedAsset.resolvedPath, cachedAsset.model, cachedAsset.infos);
+                    }
+                    if (cachedAsset.loaded && level.meshIndex >= 0 && level.meshIndex < static_cast<int>(cachedAsset.infos.size())) {
+                        const ImportedMeshInfo& info = cachedAsset.infos[static_cast<std::size_t>(level.meshIndex)];
+                        level.sourcePath = cachedAsset.resolvedPath;
+                        level.meshIndex = static_cast<int>(info.meshIndex);
+                        level.vao = info.vao;
+                        level.indexCount = info.indexCount;
+                        level.localBoundsMin = info.localBoundsMin;
+                        level.localBoundsMax = info.localBoundsMax;
+                        level.modelRef = cachedAsset.model;
+                    }
+                } catch (...) {}
             }
 
             objects_.push_back(std::move(so));
@@ -5349,7 +5432,48 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
     }
 
     for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
-        const auto& o = objects_[i];
+        const SceneObject& object = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !object.hasReflectionProbe || !object.reflectionProbe.enabled) continue;
+        const glm::mat4 worldMatrix = GetObjectWorldMatrix(i);
+        ReflectionProbeDrawCommand probe;
+        probe.position = glm::vec3(worldMatrix[3]);
+        const glm::vec3 worldScale{
+            glm::length(glm::vec3(worldMatrix[0])),
+            glm::length(glm::vec3(worldMatrix[1])),
+            glm::length(glm::vec3(worldMatrix[2]))};
+        probe.boxExtents = (glm::max)(object.reflectionProbe.boxSize * worldScale * 0.5f, glm::vec3(0.05f));
+        probe.blendDistance = object.reflectionProbe.blendDistance;
+        probe.intensity = object.reflectionProbe.intensity;
+        if (!object.reflectionProbe.bakedCubemapPath.empty()) {
+            probe.cubemapTexture = renderer.LoadReflectionProbeCubemap(
+                ResolveEditorPath(object.reflectionProbe.bakedCubemapPath).string());
+        }
+        renderer.SubmitReflectionProbe(probe);
+        if (editorInteraction && selectedIndex_ == i) {
+            const glm::vec3 minimum = probe.position - probe.boxExtents;
+            const glm::vec3 maximum = probe.position + probe.boxExtents;
+            const glm::vec3 corners[8] = {
+                {minimum.x, minimum.y, minimum.z}, {maximum.x, minimum.y, minimum.z},
+                {maximum.x, maximum.y, minimum.z}, {minimum.x, maximum.y, minimum.z},
+                {minimum.x, minimum.y, maximum.z}, {maximum.x, minimum.y, maximum.z},
+                {maximum.x, maximum.y, maximum.z}, {minimum.x, maximum.y, maximum.z}};
+            const int edges[12][2] = {
+                {0,1},{1,2},{2,3},{3,0}, {4,5},{5,6},{6,7},{7,4},
+                {0,4},{1,5},{2,6},{3,7}};
+            for (const auto& edge : edges) {
+                DebugLineCommand line;
+                line.start = corners[edge[0]];
+                line.end = corners[edge[1]];
+                line.color = glm::vec4(0.25f, 0.8f, 1.0f, 0.9f);
+                line.width = 1.5f;
+                line.depthMode = DebugLineDepthMode::DepthTestedOverlay;
+                renderer.SubmitLine(line);
+            }
+        }
+    }
+
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        auto& o = objects_[i];
         if (!IsObjectEffectivelyEnabled(i) || !o.hasLight || !o.light.enabled) {
             continue;
         }
@@ -5369,6 +5493,7 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
         light.intensity = o.light.intensity;
         light.range = o.light.range;
         light.spotAngleDegrees = o.light.spotAngleDegrees;
+        light.castShadows = o.light.castShadows;
         renderer.SubmitLight(light);
     }
 
@@ -5386,7 +5511,7 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
     }
 
     for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
-        const auto& o = objects_[i];
+        auto& o = objects_[i];
         if (!IsObjectEffectivelyEnabled(i)) continue;
         if (!o.hasMeshFilter || !o.hasMeshRenderer) continue;
         if (!o.meshFilter.enabled || !o.meshRenderer.enabled) continue;
@@ -5394,8 +5519,6 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
 
         MeshDrawCommand cmd;
         cmd.motionId = o.id;
-        cmd.vao = o.meshFilter.vao;
-        cmd.indexCount = o.meshFilter.indexCount;
         {
             glm::mat4 m = GetObjectWorldMatrix(i);
             const glm::vec3& po = o.meshFilter.pivotOffset;
@@ -5405,8 +5528,62 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
             cmd.modelMatrix = m;
         }
 
-        const glm::vec3& localBoundsMin = o.meshFilter.localBoundsMin;
-        const glm::vec3& localBoundsMax = o.meshFilter.localBoundsMax;
+        int selectedLod = 0;
+        if (renderer.GetSettings().profile.lod && o.meshFilter.lodEnabled && !o.meshFilter.lodLevels.empty()) {
+            const glm::vec3 baseCenter = (o.meshFilter.localBoundsMin + o.meshFilter.localBoundsMax) * 0.5f;
+            const glm::vec3 baseExtent = (o.meshFilter.localBoundsMax - o.meshFilter.localBoundsMin) * 0.5f;
+            const glm::vec3 worldCenter = glm::vec3(cmd.modelMatrix * glm::vec4(baseCenter, 1.0f));
+            const glm::vec3 sx = glm::vec3(cmd.modelMatrix[0]);
+            const glm::vec3 sy = glm::vec3(cmd.modelMatrix[1]);
+            const glm::vec3 sz = glm::vec3(cmd.modelMatrix[2]);
+            const float worldRadius = glm::length(baseExtent) * (std::max)({glm::length(sx), glm::length(sy), glm::length(sz)});
+            const glm::vec3 viewCenter = glm::vec3(renderer.GetView() * glm::vec4(worldCenter, 1.0f));
+            const float distance = (std::max)(0.001f, -viewCenter.z);
+            // Projected diameter in NDC divided by NDC's height (2) gives the
+            // fraction of viewport height occupied by the bounding sphere.
+            const float projectedHeight = (worldRadius * std::abs(renderer.GetProj()[1][1]) / distance) * o.meshFilter.lodBias;
+
+            int desiredLod = 0;
+            for (std::size_t levelIndex = 0; levelIndex < o.meshFilter.lodLevels.size(); ++levelIndex) {
+                if (projectedHeight < o.meshFilter.lodLevels[levelIndex].screenRelativeHeight) {
+                    desiredLod = static_cast<int>(levelIndex) + 1;
+                }
+            }
+            const int maxLod = static_cast<int>(o.meshFilter.lodLevels.size());
+            if (o.meshFilter.forcedLod >= 0) {
+                selectedLod = (std::min)(maxLod, o.meshFilter.forcedLod);
+            } else {
+                const int previousLod = (std::max)(0, (std::min)(maxLod, o.meshFilter.activeLod));
+                selectedLod = desiredLod;
+                if (desiredLod > previousLod) {
+                    const float boundary = o.meshFilter.lodLevels[static_cast<std::size_t>(desiredLod - 1)].screenRelativeHeight;
+                    if (projectedHeight >= boundary * (1.0f - o.meshFilter.lodHysteresis)) selectedLod = previousLod;
+                } else if (desiredLod < previousLod && previousLod > 0) {
+                    const float boundary = o.meshFilter.lodLevels[static_cast<std::size_t>(previousLod - 1)].screenRelativeHeight;
+                    if (projectedHeight <= boundary * (1.0f + o.meshFilter.lodHysteresis)) selectedLod = previousLod;
+                }
+            }
+        }
+        if (selectedLod > 0) {
+            const MeshLodLevel& level = o.meshFilter.lodLevels[static_cast<std::size_t>(selectedLod - 1)];
+            if (level.vao != 0 && level.indexCount != 0) {
+                cmd.vao = level.vao;
+                cmd.indexCount = level.indexCount;
+            } else {
+                selectedLod = 0;
+            }
+        }
+        if (selectedLod == 0) {
+            cmd.vao = o.meshFilter.vao;
+            cmd.indexCount = o.meshFilter.indexCount;
+        }
+        o.meshFilter.activeLod = selectedLod;
+
+        const MeshLodLevel* selectedLevel = selectedLod > 0
+            ? &o.meshFilter.lodLevels[static_cast<std::size_t>(selectedLod - 1)]
+            : nullptr;
+        const glm::vec3& localBoundsMin = selectedLevel ? selectedLevel->localBoundsMin : o.meshFilter.localBoundsMin;
+        const glm::vec3& localBoundsMax = selectedLevel ? selectedLevel->localBoundsMax : o.meshFilter.localBoundsMax;
         const glm::vec3 boundsCorners[8] = {
             {localBoundsMin.x, localBoundsMin.y, localBoundsMin.z}, {localBoundsMax.x, localBoundsMin.y, localBoundsMin.z},
             {localBoundsMax.x, localBoundsMax.y, localBoundsMin.z}, {localBoundsMin.x, localBoundsMax.y, localBoundsMin.z},

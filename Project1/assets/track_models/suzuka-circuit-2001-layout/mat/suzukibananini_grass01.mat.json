@@ -3,7 +3,7 @@
   "name": "GRASS01",
   "shader": "pbr",
   "albedoColor": [1, 1, 1, 1],
-  "metallic": 0.882,
+  "metallic": 0.515,
   "roughness": 1,
   "clearCoat": 0,
   "clearCoatRoughness": 0.02,

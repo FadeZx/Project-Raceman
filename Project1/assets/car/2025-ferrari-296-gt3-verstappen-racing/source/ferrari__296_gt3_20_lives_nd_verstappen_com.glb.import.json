@@ -1,0 +1,2664 @@
+{
+  "version": 1,
+  "pivotMode": 0,
+  "importMaterials": true,
+  "materialLocation": 0,
+  "materialRemapNaming": 0,
+  "materialRemapSearch": 0,
+  "materials": [
+    {
+      "meshIndex": 0,
+      "meshName": "Object_0",
+      "importedMaterialName": "MI_Tyre_Flex_Dry_L",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_mi_tyre_flex_dry_l"
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "Object_1",
+      "importedMaterialName": "EXT_RIM",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_rim"
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "Object_2",
+      "importedMaterialName": "EXT_RIM",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_rim"
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "Object_3",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "Object_4",
+      "importedMaterialName": "DISPLAY",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_display"
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "Object_5",
+      "importedMaterialName": "DISPLAY_SAS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_display_sas"
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "Object_6",
+      "importedMaterialName": "INT_CARBON_BAGE",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_carbon_bage"
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "Object_7",
+      "importedMaterialName": "INT_CARBON_SEAT",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_carbon_seat"
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "Object_8",
+      "importedMaterialName": "INT_ELECTRONICS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_electronics"
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "Object_9",
+      "importedMaterialName": "INT_ELECTRONICS_METAL_BLACK",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_electronics_metal_black"
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "Object_10",
+      "importedMaterialName": "INT_MANGUEIRAS_BLACKS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_mangueiras_blacks"
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "Object_11",
+      "importedMaterialName": "INT_PLASTIC_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_plastic_dash"
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "Object_12",
+      "importedMaterialName": "INT_METAL_METAL",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_metal_metal"
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "Object_13",
+      "importedMaterialName": "BORRACHA_DOORS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_borracha_doors"
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "Object_14",
+      "importedMaterialName": "INT_WELDING",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_welding"
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "Object_15",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "Object_16",
+      "importedMaterialName": "WorldGridMaterial",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_worldgridmaterial"
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "Object_17",
+      "importedMaterialName": "MANGUEIRA_AR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_mangueira_ar"
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "Object_18",
+      "importedMaterialName": "MANGUEIRA_BORRACHA",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_mangueira_borracha"
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "Object_19",
+      "importedMaterialName": "INT_Racelogic",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_racelogic"
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "Object_20",
+      "importedMaterialName": "INT_SAS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_sas"
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "Object_21",
+      "importedMaterialName": "SEAT_ALCANTARA",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_seat_alcantara"
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "Object_22",
+      "importedMaterialName": "SPARCO_FOAM",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_sparco_foam"
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "Object_23",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "Object_24",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "Object_25",
+      "importedMaterialName": "INT_Steer",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_steer"
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "Object_26",
+      "importedMaterialName": "STEER_METAL",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_steer_metal"
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "Object_27",
+      "importedMaterialName": "INT_Steer_Carbon",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_steer_carbon"
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "Object_28",
+      "importedMaterialName": "INT_Steer_Carbon_Forged",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_steer_carbon_forged"
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "Object_29",
+      "importedMaterialName": "STEER_METAL_GOLD",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_steer_metal_gold"
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "Object_30",
+      "importedMaterialName": "STEER_PUNHADURA",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_steer_punhadura"
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "Object_31",
+      "importedMaterialName": "EXT_Disc",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_disc"
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "Object_32",
+      "importedMaterialName": "EXT_Mechanics",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_mechanics"
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "Object_33",
+      "importedMaterialName": "EXT_Details",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_details"
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "Object_34",
+      "importedMaterialName": "MI_Tyre_Flex_Dry_L",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_mi_tyre_flex_dry_l"
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "Object_35",
+      "importedMaterialName": "EXT_RIM",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_rim"
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "Object_36",
+      "importedMaterialName": "EXT_RIM",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_rim"
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "Object_37",
+      "importedMaterialName": "EXT_Disc",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_disc"
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "Object_38",
+      "importedMaterialName": "EXT_Mechanics",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_mechanics"
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "Object_39",
+      "importedMaterialName": "EXT_Details",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_details"
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "Object_40",
+      "importedMaterialName": "EXT_Disc",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_disc"
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "Object_41",
+      "importedMaterialName": "EXT_Mechanics",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_mechanics"
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "Object_42",
+      "importedMaterialName": "EXT_Details",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_details"
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "Object_43",
+      "importedMaterialName": "EXT_Disc",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_disc"
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "Object_44",
+      "importedMaterialName": "EXT_Mechanics",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_mechanics"
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "Object_45",
+      "importedMaterialName": "EXT_Details",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_details"
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "Object_46",
+      "importedMaterialName": "BELT_SABELT",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_belt_sabelt"
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "Object_47",
+      "importedMaterialName": "INT_NET",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_net"
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "Object_48",
+      "importedMaterialName": "SEATBELT_CHROME",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_seatbelt_chrome"
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "Object_49",
+      "importedMaterialName": "INT_DECALS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_decals"
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "Object_50",
+      "importedMaterialName": "BELT_SABELT",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_belt_sabelt"
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "Object_51",
+      "importedMaterialName": "EXT_Details",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_details"
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "Object_52",
+      "importedMaterialName": "EXT_Windows",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_windows"
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "Object_53",
+      "importedMaterialName": "INT_PLASTIC_BLACK",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_plastic_black"
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "Object_54",
+      "importedMaterialName": "EXT_Carpaint_Inst",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_carpaint_inst"
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "Object_55",
+      "importedMaterialName": "INT_Carbon",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_carbon"
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "Object_56",
+      "importedMaterialName": "INT_DECALS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_decals"
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "Object_57",
+      "importedMaterialName": "INT_Windows",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_windows"
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "Object_58",
+      "importedMaterialName": "INT_ELECTRONICS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_electronics"
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "Object_59",
+      "importedMaterialName": "INT_METAL_METAL",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_metal_metal"
+    },
+    {
+      "meshIndex": 60,
+      "meshName": "Object_60",
+      "importedMaterialName": "INT_PLASTIC_BLACK",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_plastic_black"
+    },
+    {
+      "meshIndex": 61,
+      "meshName": "Object_61",
+      "importedMaterialName": "AR3DMat_Procedural_Realistic_Mirror",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ar3dmat_procedural_realistic_mirror"
+    },
+    {
+      "meshIndex": 62,
+      "meshName": "Object_62",
+      "importedMaterialName": "EXT_Mechanics",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_mechanics"
+    },
+    {
+      "meshIndex": 63,
+      "meshName": "Object_63",
+      "importedMaterialName": "EXT_Mechanics",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_mechanics"
+    },
+    {
+      "meshIndex": 64,
+      "meshName": "Object_64",
+      "importedMaterialName": "EXT_Details",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_details"
+    },
+    {
+      "meshIndex": 65,
+      "meshName": "Object_65",
+      "importedMaterialName": "EXT_Windows",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_windows"
+    },
+    {
+      "meshIndex": 66,
+      "meshName": "Object_66",
+      "importedMaterialName": "INT_PLASTIC_BLACK",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_plastic_black"
+    },
+    {
+      "meshIndex": 67,
+      "meshName": "Object_67",
+      "importedMaterialName": "EXT_Carpaint_Inst",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_carpaint_inst"
+    },
+    {
+      "meshIndex": 68,
+      "meshName": "Object_68",
+      "importedMaterialName": "INT_Carbon",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_carbon"
+    },
+    {
+      "meshIndex": 69,
+      "meshName": "Object_69",
+      "importedMaterialName": "INT_DECALS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_decals"
+    },
+    {
+      "meshIndex": 70,
+      "meshName": "Object_70",
+      "importedMaterialName": "INT_Windows",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_windows"
+    },
+    {
+      "meshIndex": 71,
+      "meshName": "Object_71",
+      "importedMaterialName": "INT_ELECTRONICS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_electronics"
+    },
+    {
+      "meshIndex": 72,
+      "meshName": "Object_72",
+      "importedMaterialName": "INT_METAL_METAL",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_metal_metal"
+    },
+    {
+      "meshIndex": 73,
+      "meshName": "Object_73",
+      "importedMaterialName": "INT_PLASTIC_BLACK",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_plastic_black"
+    },
+    {
+      "meshIndex": 74,
+      "meshName": "Object_74",
+      "importedMaterialName": "AR3DMat_Procedural_Realistic_Mirror",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ar3dmat_procedural_realistic_mirror"
+    },
+    {
+      "meshIndex": 75,
+      "meshName": "Object_75",
+      "importedMaterialName": "MI_Tyre_Flex_Dry_L",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_mi_tyre_flex_dry_l"
+    },
+    {
+      "meshIndex": 76,
+      "meshName": "Object_76",
+      "importedMaterialName": "EXT_RIM",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_rim"
+    },
+    {
+      "meshIndex": 77,
+      "meshName": "Object_77",
+      "importedMaterialName": "EXT_RIM",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_rim"
+    },
+    {
+      "meshIndex": 78,
+      "meshName": "Object_78",
+      "importedMaterialName": "EXT_Emissive_Light_Rear",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_emissive_light_rear"
+    },
+    {
+      "meshIndex": 79,
+      "meshName": "Object_79",
+      "importedMaterialName": "BORRACHA_CHASSIS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_borracha_chassis"
+    },
+    {
+      "meshIndex": 80,
+      "meshName": "Object_80",
+      "importedMaterialName": "EXT_Mechanics",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_mechanics"
+    },
+    {
+      "meshIndex": 81,
+      "meshName": "Object_81",
+      "importedMaterialName": "Lamp",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_lamp"
+    },
+    {
+      "meshIndex": 82,
+      "meshName": "Object_82",
+      "importedMaterialName": "EXT_Details",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_details"
+    },
+    {
+      "meshIndex": 83,
+      "meshName": "Object_83",
+      "importedMaterialName": "EXT_Windows",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_windows"
+    },
+    {
+      "meshIndex": 84,
+      "meshName": "Object_84",
+      "importedMaterialName": "EXT_Banner",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_banner"
+    },
+    {
+      "meshIndex": 85,
+      "meshName": "Object_85",
+      "importedMaterialName": "EXT_Carpaint_Inst",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_carpaint_inst"
+    },
+    {
+      "meshIndex": 86,
+      "meshName": "Object_86",
+      "importedMaterialName": "EXT_Mechanics",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_mechanics"
+    },
+    {
+      "meshIndex": 87,
+      "meshName": "Object_87",
+      "importedMaterialName": "EXT_Grid",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_grid"
+    },
+    {
+      "meshIndex": 88,
+      "meshName": "Object_88",
+      "importedMaterialName": "EXT_Glass_Emissive_Front",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_glass_emissive_front"
+    },
+    {
+      "meshIndex": 89,
+      "meshName": "Object_89",
+      "importedMaterialName": "EXT_Glass_Emissive_Rear",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_glass_emissive_rear"
+    },
+    {
+      "meshIndex": 90,
+      "meshName": "Object_90",
+      "importedMaterialName": "EXT_Emissive_Light_Front",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_emissive_light_front"
+    },
+    {
+      "meshIndex": 91,
+      "meshName": "Object_91",
+      "importedMaterialName": "EXT_Emissive_Light_Rear",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_emissive_light_rear"
+    },
+    {
+      "meshIndex": 92,
+      "meshName": "Object_92",
+      "importedMaterialName": "Lamp",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_lamp"
+    },
+    {
+      "meshIndex": 93,
+      "meshName": "Object_93",
+      "importedMaterialName": "Lamp",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_lamp"
+    },
+    {
+      "meshIndex": 94,
+      "meshName": "Object_94",
+      "importedMaterialName": "METAL_CHASSIS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_metal_chassis"
+    },
+    {
+      "meshIndex": 95,
+      "meshName": "Object_95",
+      "importedMaterialName": "PHONE_screen",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phone_screen"
+    },
+    {
+      "meshIndex": 96,
+      "meshName": "Object_96",
+      "importedMaterialName": "RADIATOR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_radiator"
+    },
+    {
+      "meshIndex": 97,
+      "meshName": "Object_97",
+      "importedMaterialName": "EXT_Emissive_Light_Rear",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_emissive_light_rear"
+    },
+    {
+      "meshIndex": 98,
+      "meshName": "Object_98",
+      "importedMaterialName": "Lamp",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_lamp"
+    },
+    {
+      "meshIndex": 99,
+      "meshName": "Object_99",
+      "importedMaterialName": "Lamp",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_lamp"
+    },
+    {
+      "meshIndex": 100,
+      "meshName": "Object_100",
+      "importedMaterialName": "EXT_Emissive_Light_Rear",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_emissive_light_rear"
+    },
+    {
+      "meshIndex": 101,
+      "meshName": "Object_101",
+      "importedMaterialName": "EXT_Emissive_Light_Rear",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_emissive_light_rear"
+    },
+    {
+      "meshIndex": 102,
+      "meshName": "Object_102",
+      "importedMaterialName": "MI_Tyre_Flex_Dry_L",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_mi_tyre_flex_dry_l"
+    },
+    {
+      "meshIndex": 103,
+      "meshName": "Object_103",
+      "importedMaterialName": "EXT_RIM",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_rim"
+    },
+    {
+      "meshIndex": 104,
+      "meshName": "Object_104",
+      "importedMaterialName": "EXT_RIM",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_ext_rim"
+    },
+    {
+      "meshIndex": 105,
+      "meshName": "Object_105",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 106,
+      "meshName": "Object_106",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 107,
+      "meshName": "Object_107",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 108,
+      "meshName": "Object_108",
+      "importedMaterialName": "DISPLAY",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_display"
+    },
+    {
+      "meshIndex": 109,
+      "meshName": "Object_109",
+      "importedMaterialName": "INT_Racelogic",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_racelogic"
+    },
+    {
+      "meshIndex": 110,
+      "meshName": "Object_110",
+      "importedMaterialName": "DISPLAY_SAS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_display_sas"
+    },
+    {
+      "meshIndex": 111,
+      "meshName": "Object_111",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 112,
+      "meshName": "Object_112",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 113,
+      "meshName": "Object_113",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 114,
+      "meshName": "Object_114",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 115,
+      "meshName": "Object_115",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 116,
+      "meshName": "Object_116",
+      "importedMaterialName": "INT_Carbon",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_carbon"
+    },
+    {
+      "meshIndex": 117,
+      "meshName": "Object_117",
+      "importedMaterialName": "INT_CARBON_BAGE",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_carbon_bage"
+    },
+    {
+      "meshIndex": 118,
+      "meshName": "Object_118",
+      "importedMaterialName": "INT_CARBON_SEAT",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_carbon_seat"
+    },
+    {
+      "meshIndex": 119,
+      "meshName": "Object_119",
+      "importedMaterialName": "INT_DECALS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_decals"
+    },
+    {
+      "meshIndex": 120,
+      "meshName": "Object_120",
+      "importedMaterialName": "INT_ELECTRONICS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_electronics"
+    },
+    {
+      "meshIndex": 121,
+      "meshName": "Object_121",
+      "importedMaterialName": "INT_ELECTRONICS_METAL_BLACK",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_electronics_metal_black"
+    },
+    {
+      "meshIndex": 122,
+      "meshName": "Object_122",
+      "importedMaterialName": "INT_MANGUEIRAS_BLACKS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_mangueiras_blacks"
+    },
+    {
+      "meshIndex": 123,
+      "meshName": "Object_123",
+      "importedMaterialName": "INT_ELECTRONICS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_electronics"
+    },
+    {
+      "meshIndex": 124,
+      "meshName": "Object_124",
+      "importedMaterialName": "INT_PLASTIC_BLACK",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_plastic_black"
+    },
+    {
+      "meshIndex": 125,
+      "meshName": "Object_125",
+      "importedMaterialName": "INT_PLASTIC_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_plastic_dash"
+    },
+    {
+      "meshIndex": 126,
+      "meshName": "Object_126",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 127,
+      "meshName": "Object_127",
+      "importedMaterialName": "INT_METAL_CHROME",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_metal_chrome"
+    },
+    {
+      "meshIndex": 128,
+      "meshName": "Object_128",
+      "importedMaterialName": "INT_METAL_METAL",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_metal_metal"
+    },
+    {
+      "meshIndex": 129,
+      "meshName": "Object_129",
+      "importedMaterialName": "BORRACHA_DOORS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_borracha_doors"
+    },
+    {
+      "meshIndex": 130,
+      "meshName": "Object_130",
+      "importedMaterialName": "Realistic_Carbon_Fiber",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_realistic_carbon_fiber"
+    },
+    {
+      "meshIndex": 131,
+      "meshName": "Object_131",
+      "importedMaterialName": "Light_grey_metallic_plastic",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_light_grey_metallic_plastic"
+    },
+    {
+      "meshIndex": 132,
+      "meshName": "Object_132",
+      "importedMaterialName": "INT_WELDING",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_welding"
+    },
+    {
+      "meshIndex": 133,
+      "meshName": "Object_133",
+      "importedMaterialName": "INT_Windows",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_windows"
+    },
+    {
+      "meshIndex": 134,
+      "meshName": "Object_134",
+      "importedMaterialName": "INT_Windshield",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_windshield"
+    },
+    {
+      "meshIndex": 135,
+      "meshName": "Object_135",
+      "importedMaterialName": "INT_ELECTRONICS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_electronics"
+    },
+    {
+      "meshIndex": 136,
+      "meshName": "Object_136",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 137,
+      "meshName": "Object_137",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 138,
+      "meshName": "Object_138",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 139,
+      "meshName": "Object_139",
+      "importedMaterialName": "LED_RACELOGIC",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_led_racelogic"
+    },
+    {
+      "meshIndex": 140,
+      "meshName": "Object_140",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 141,
+      "meshName": "Object_141",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 142,
+      "meshName": "Object_142",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 143,
+      "meshName": "Object_143",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 144,
+      "meshName": "Object_144",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 145,
+      "meshName": "Object_145",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 146,
+      "meshName": "Object_146",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 147,
+      "meshName": "Object_147",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 148,
+      "meshName": "Object_148",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 149,
+      "meshName": "Object_149",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 150,
+      "meshName": "Object_150",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 151,
+      "meshName": "Object_151",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 152,
+      "meshName": "Object_152",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 153,
+      "meshName": "Object_153",
+      "importedMaterialName": "INT_LED",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_led"
+    },
+    {
+      "meshIndex": 154,
+      "meshName": "Object_154",
+      "importedMaterialName": "WorldGridMaterial",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_worldgridmaterial"
+    },
+    {
+      "meshIndex": 155,
+      "meshName": "Object_155",
+      "importedMaterialName": "MANGUEIRA_AR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_mangueira_ar"
+    },
+    {
+      "meshIndex": 156,
+      "meshName": "Object_156",
+      "importedMaterialName": "MANGUEIRA_BORRACHA",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_mangueira_borracha"
+    },
+    {
+      "meshIndex": 157,
+      "meshName": "Object_157",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 158,
+      "meshName": "Object_158",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 159,
+      "meshName": "Object_159",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 160,
+      "meshName": "Object_160",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 161,
+      "meshName": "Object_161",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 162,
+      "meshName": "Object_162",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 163,
+      "meshName": "Object_163",
+      "importedMaterialName": "INT_Racelogic",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_racelogic"
+    },
+    {
+      "meshIndex": 164,
+      "meshName": "Object_164",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 165,
+      "meshName": "Object_165",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 166,
+      "meshName": "Object_166",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 167,
+      "meshName": "Object_167",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 168,
+      "meshName": "Object_168",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 169,
+      "meshName": "Object_169",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 170,
+      "meshName": "Object_170",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 171,
+      "meshName": "Object_171",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 172,
+      "meshName": "Object_172",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 173,
+      "meshName": "Object_173",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 174,
+      "meshName": "Object_174",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 175,
+      "meshName": "Object_175",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 176,
+      "meshName": "Object_176",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 177,
+      "meshName": "Object_177",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 178,
+      "meshName": "Object_178",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 179,
+      "meshName": "Object_179",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 180,
+      "meshName": "Object_180",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 181,
+      "meshName": "Object_181",
+      "importedMaterialName": "RPMBAR",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_rpmbar"
+    },
+    {
+      "meshIndex": 182,
+      "meshName": "Object_182",
+      "importedMaterialName": "INT_SAS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_sas"
+    },
+    {
+      "meshIndex": 183,
+      "meshName": "Object_183",
+      "importedMaterialName": "SEAT_ALCANTARA",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_seat_alcantara"
+    },
+    {
+      "meshIndex": 184,
+      "meshName": "Object_184",
+      "importedMaterialName": "SPARCO_FOAM",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_sparco_foam"
+    },
+    {
+      "meshIndex": 185,
+      "meshName": "Object_185",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 186,
+      "meshName": "Object_186",
+      "importedMaterialName": "INT_Steer",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_steer"
+    },
+    {
+      "meshIndex": 187,
+      "meshName": "Object_187",
+      "importedMaterialName": "STEER_METAL",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_steer_metal"
+    },
+    {
+      "meshIndex": 188,
+      "meshName": "Object_188",
+      "importedMaterialName": "INT_Steer_Carbon",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_steer_carbon"
+    },
+    {
+      "meshIndex": 189,
+      "meshName": "Object_189",
+      "importedMaterialName": "INT_Steer_Carbon_Forged",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_steer_carbon_forged"
+    },
+    {
+      "meshIndex": 190,
+      "meshName": "Object_190",
+      "importedMaterialName": "INT_DECALS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_decals"
+    },
+    {
+      "meshIndex": 191,
+      "meshName": "Object_191",
+      "importedMaterialName": "STEER_METAL_GOLD",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_steer_metal_gold"
+    },
+    {
+      "meshIndex": 192,
+      "meshName": "Object_192",
+      "importedMaterialName": "STEER_PUNHADURA",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_steer_punhadura"
+    },
+    {
+      "meshIndex": 193,
+      "meshName": "Object_193",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 194,
+      "meshName": "Object_194",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 195,
+      "meshName": "Object_195",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 196,
+      "meshName": "Object_196",
+      "importedMaterialName": "PHISICS_DASH",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_phisics_dash"
+    },
+    {
+      "meshIndex": 197,
+      "meshName": "Object_197",
+      "importedMaterialName": "AUX_LIGHT",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_aux_light"
+    },
+    {
+      "meshIndex": 198,
+      "meshName": "Object_198",
+      "importedMaterialName": "AUX_LIGHT",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_aux_light"
+    },
+    {
+      "meshIndex": 199,
+      "meshName": "Object_199",
+      "importedMaterialName": "AUX_LIGHT",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_aux_light"
+    },
+    {
+      "meshIndex": 200,
+      "meshName": "Object_200",
+      "importedMaterialName": "INT_DECALS",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_decals"
+    },
+    {
+      "meshIndex": 201,
+      "meshName": "Object_201",
+      "importedMaterialName": "Steel",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_steel"
+    },
+    {
+      "meshIndex": 202,
+      "meshName": "Object_202",
+      "importedMaterialName": "INT_BANNER",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_int_banner"
+    },
+    {
+      "meshIndex": 203,
+      "meshName": "Object_203",
+      "importedMaterialName": "AUX_LIGHT",
+      "materialId": "ferrari__296_gt3_20_lives_nd_verstappen_com_aux_light"
+    }
+  ],
+  "collisions": [
+    {
+      "meshIndex": 0,
+      "meshName": "Object_0",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "Object_1",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "Object_2",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "Object_3",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "Object_4",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "Object_5",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "Object_6",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "Object_7",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "Object_8",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "Object_9",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "Object_10",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "Object_11",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "Object_12",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "Object_13",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "Object_14",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "Object_15",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "Object_16",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "Object_17",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "Object_18",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "Object_19",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "Object_20",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "Object_21",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "Object_22",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "Object_23",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "Object_24",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "Object_25",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "Object_26",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "Object_27",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "Object_28",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "Object_29",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "Object_30",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "Object_31",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "Object_32",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "Object_33",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "Object_34",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "Object_35",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "Object_36",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "Object_37",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "Object_38",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "Object_39",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "Object_40",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "Object_41",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "Object_42",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "Object_43",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "Object_44",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "Object_45",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "Object_46",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "Object_47",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "Object_48",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "Object_49",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "Object_50",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "Object_51",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "Object_52",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "Object_53",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "Object_54",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "Object_55",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "Object_56",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "Object_57",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "Object_58",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "Object_59",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 60,
+      "meshName": "Object_60",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 61,
+      "meshName": "Object_61",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 62,
+      "meshName": "Object_62",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 63,
+      "meshName": "Object_63",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 64,
+      "meshName": "Object_64",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 65,
+      "meshName": "Object_65",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 66,
+      "meshName": "Object_66",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 67,
+      "meshName": "Object_67",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 68,
+      "meshName": "Object_68",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 69,
+      "meshName": "Object_69",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 70,
+      "meshName": "Object_70",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 71,
+      "meshName": "Object_71",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 72,
+      "meshName": "Object_72",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 73,
+      "meshName": "Object_73",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 74,
+      "meshName": "Object_74",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 75,
+      "meshName": "Object_75",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 76,
+      "meshName": "Object_76",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 77,
+      "meshName": "Object_77",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 78,
+      "meshName": "Object_78",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 79,
+      "meshName": "Object_79",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 80,
+      "meshName": "Object_80",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 81,
+      "meshName": "Object_81",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 82,
+      "meshName": "Object_82",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 83,
+      "meshName": "Object_83",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 84,
+      "meshName": "Object_84",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 85,
+      "meshName": "Object_85",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 86,
+      "meshName": "Object_86",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 87,
+      "meshName": "Object_87",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 88,
+      "meshName": "Object_88",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 89,
+      "meshName": "Object_89",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 90,
+      "meshName": "Object_90",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 91,
+      "meshName": "Object_91",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 92,
+      "meshName": "Object_92",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 93,
+      "meshName": "Object_93",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 94,
+      "meshName": "Object_94",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 95,
+      "meshName": "Object_95",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 96,
+      "meshName": "Object_96",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 97,
+      "meshName": "Object_97",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 98,
+      "meshName": "Object_98",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 99,
+      "meshName": "Object_99",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 100,
+      "meshName": "Object_100",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 101,
+      "meshName": "Object_101",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 102,
+      "meshName": "Object_102",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 103,
+      "meshName": "Object_103",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 104,
+      "meshName": "Object_104",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 105,
+      "meshName": "Object_105",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 106,
+      "meshName": "Object_106",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 107,
+      "meshName": "Object_107",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 108,
+      "meshName": "Object_108",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 109,
+      "meshName": "Object_109",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 110,
+      "meshName": "Object_110",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 111,
+      "meshName": "Object_111",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 112,
+      "meshName": "Object_112",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 113,
+      "meshName": "Object_113",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 114,
+      "meshName": "Object_114",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 115,
+      "meshName": "Object_115",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 116,
+      "meshName": "Object_116",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 117,
+      "meshName": "Object_117",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 118,
+      "meshName": "Object_118",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 119,
+      "meshName": "Object_119",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 120,
+      "meshName": "Object_120",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 121,
+      "meshName": "Object_121",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 122,
+      "meshName": "Object_122",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 123,
+      "meshName": "Object_123",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 124,
+      "meshName": "Object_124",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 125,
+      "meshName": "Object_125",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 126,
+      "meshName": "Object_126",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 127,
+      "meshName": "Object_127",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 128,
+      "meshName": "Object_128",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 129,
+      "meshName": "Object_129",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 130,
+      "meshName": "Object_130",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 131,
+      "meshName": "Object_131",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 132,
+      "meshName": "Object_132",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 133,
+      "meshName": "Object_133",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 134,
+      "meshName": "Object_134",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 135,
+      "meshName": "Object_135",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 136,
+      "meshName": "Object_136",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 137,
+      "meshName": "Object_137",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 138,
+      "meshName": "Object_138",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 139,
+      "meshName": "Object_139",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 140,
+      "meshName": "Object_140",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 141,
+      "meshName": "Object_141",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 142,
+      "meshName": "Object_142",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 143,
+      "meshName": "Object_143",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 144,
+      "meshName": "Object_144",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 145,
+      "meshName": "Object_145",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 146,
+      "meshName": "Object_146",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 147,
+      "meshName": "Object_147",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 148,
+      "meshName": "Object_148",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 149,
+      "meshName": "Object_149",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 150,
+      "meshName": "Object_150",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 151,
+      "meshName": "Object_151",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 152,
+      "meshName": "Object_152",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 153,
+      "meshName": "Object_153",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 154,
+      "meshName": "Object_154",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 155,
+      "meshName": "Object_155",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 156,
+      "meshName": "Object_156",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 157,
+      "meshName": "Object_157",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 158,
+      "meshName": "Object_158",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 159,
+      "meshName": "Object_159",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 160,
+      "meshName": "Object_160",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 161,
+      "meshName": "Object_161",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 162,
+      "meshName": "Object_162",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 163,
+      "meshName": "Object_163",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 164,
+      "meshName": "Object_164",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 165,
+      "meshName": "Object_165",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 166,
+      "meshName": "Object_166",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 167,
+      "meshName": "Object_167",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 168,
+      "meshName": "Object_168",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 169,
+      "meshName": "Object_169",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 170,
+      "meshName": "Object_170",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 171,
+      "meshName": "Object_171",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 172,
+      "meshName": "Object_172",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 173,
+      "meshName": "Object_173",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 174,
+      "meshName": "Object_174",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 175,
+      "meshName": "Object_175",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 176,
+      "meshName": "Object_176",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 177,
+      "meshName": "Object_177",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 178,
+      "meshName": "Object_178",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 179,
+      "meshName": "Object_179",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 180,
+      "meshName": "Object_180",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 181,
+      "meshName": "Object_181",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 182,
+      "meshName": "Object_182",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 183,
+      "meshName": "Object_183",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 184,
+      "meshName": "Object_184",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 185,
+      "meshName": "Object_185",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 186,
+      "meshName": "Object_186",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 187,
+      "meshName": "Object_187",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 188,
+      "meshName": "Object_188",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 189,
+      "meshName": "Object_189",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 190,
+      "meshName": "Object_190",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 191,
+      "meshName": "Object_191",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 192,
+      "meshName": "Object_192",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 193,
+      "meshName": "Object_193",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 194,
+      "meshName": "Object_194",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 195,
+      "meshName": "Object_195",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 196,
+      "meshName": "Object_196",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 197,
+      "meshName": "Object_197",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 198,
+      "meshName": "Object_198",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 199,
+      "meshName": "Object_199",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 200,
+      "meshName": "Object_200",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 201,
+      "meshName": "Object_201",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 202,
+      "meshName": "Object_202",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 203,
+      "meshName": "Object_203",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    }
+  ]
+}

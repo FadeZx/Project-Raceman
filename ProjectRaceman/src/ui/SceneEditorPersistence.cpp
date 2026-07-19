@@ -9,6 +9,57 @@ using namespace scene_editor_internal;
 
 namespace {
 
+void WriteMeshLodSettings(std::ostream& out, const MeshFilterComponent& filter, const char* indent) {
+    out << ",\n" << indent << "\"lodEnabled\": " << (filter.lodEnabled ? "true" : "false") << ",\n";
+    out << indent << "\"lodBias\": " << filter.lodBias << ",\n";
+    out << indent << "\"lodHysteresis\": " << filter.lodHysteresis << ",\n";
+    out << indent << "\"forcedLod\": " << filter.forcedLod << ",\n";
+    out << indent << "\"lodLevels\": [";
+    for (std::size_t i = 0; i < filter.lodLevels.size(); ++i) {
+        const MeshLodLevel& level = filter.lodLevels[i];
+        if (i > 0) out << ",";
+        out << "\n" << indent << "  {\"sourcePath\": \"" << JsonEscape(NormalizeSlashes(level.sourcePath))
+            << "\", \"meshIndex\": " << level.meshIndex
+            << ", \"screenRelativeHeight\": " << level.screenRelativeHeight << "}";
+    }
+    if (!filter.lodLevels.empty()) out << "\n" << indent;
+    out << "]";
+}
+
+void ReadMeshLodSettings(const raceman::physics::json::Object& component, MeshFilterComponent& filter) {
+    ReadBool(component, "lodEnabled", filter.lodEnabled);
+    if (auto it = component.find("lodBias"); it != component.end() && it->second.is_number())
+        filter.lodBias = (std::max)(0.25f, (std::min)(4.0f, static_cast<float>(it->second.as_number())));
+    if (auto it = component.find("lodHysteresis"); it != component.end() && it->second.is_number())
+        filter.lodHysteresis = (std::max)(0.0f, (std::min)(0.5f, static_cast<float>(it->second.as_number())));
+    if (auto it = component.find("forcedLod"); it != component.end() && it->second.is_number())
+        filter.forcedLod = static_cast<int>(it->second.as_number());
+    auto levelsIt = component.find("lodLevels");
+    if (levelsIt == component.end() || !levelsIt->second.is_array()) return;
+    filter.lodLevels.clear();
+    for (const auto& value : levelsIt->second.as_array()) {
+        if (!value.is_object()) continue;
+        const auto& object = value.as_object();
+        MeshLodLevel level;
+        ReadString(object, "sourcePath", level.sourcePath);
+        level.sourcePath = NormalizeSlashes(level.sourcePath);
+        if (auto it = object.find("meshIndex"); it != object.end() && it->second.is_number())
+            level.meshIndex = (std::max)(0, static_cast<int>(it->second.as_number()));
+        if (auto it = object.find("screenRelativeHeight"); it != object.end() && it->second.is_number())
+            level.screenRelativeHeight = (std::max)(0.01f, (std::min)(0.95f, static_cast<float>(it->second.as_number())));
+        filter.lodLevels.push_back(std::move(level));
+    }
+}
+
+void ApplyMeshInfoToLodLevel(MeshLodLevel& level, const ImportedMeshInfo& info, const std::shared_ptr<::Model>& model) {
+    level.meshIndex = static_cast<int>(info.meshIndex);
+    level.vao = info.vao;
+    level.indexCount = info.indexCount;
+    level.localBoundsMin = info.localBoundsMin;
+    level.localBoundsMax = info.localBoundsMax;
+    level.modelRef = model;
+}
+
 const char* RenderStyleToStorage(RenderStyle style) {
     return style == RenderStyle::Stylized ? "Stylized" : "Realistic";
 }
@@ -49,7 +100,9 @@ AntiAliasingMode AntiAliasingFromStorage(const std::string& value) {
     const std::string lower = ToLowerCopy(value);
     if (lower == "none") return AntiAliasingMode::None;
     if (lower == "taa") return AntiAliasingMode::TAA;
-    if (lower == "msaa") return AntiAliasingMode::MSAA;
+    // Legacy projects could store the planned-but-never-implemented MSAA mode.
+    // Migrate it to the supported spatial fallback instead of silently disabling AA.
+    if (lower == "msaa") return AntiAliasingMode::FXAA;
     return AntiAliasingMode::FXAA;
 }
 
@@ -402,6 +455,7 @@ void SceneEditor::Save(const std::string& path) {
                     out << ",\n          \"pivotOffset\": [" << po.x << ", " << po.y << ", " << po.z << "]";
                 }
             }
+            WriteMeshLodSettings(out, o.meshFilter, "          ");
             out << "\n";
             out << "        }";
         }
@@ -594,11 +648,24 @@ void SceneEditor::Save(const std::string& path) {
             out << "        {\n";
             out << "          \"type\": \"Light\",\n";
             out << "          \"enabled\": " << (o.light.enabled ? "true" : "false") << ",\n";
+            out << "          \"castShadows\": " << (o.light.castShadows ? "true" : "false") << ",\n";
             out << "          \"lightType\": \"" << LightTypeToString(o.light.type) << "\",\n";
             out << "          \"color\": [" << o.light.color.r << ", " << o.light.color.g << ", " << o.light.color.b << "],\n";
             out << "          \"intensity\": " << o.light.intensity << ",\n";
             out << "          \"range\": " << o.light.range << ",\n";
             out << "          \"spotAngleDegrees\": " << o.light.spotAngleDegrees << "\n";
+            out << "        }";
+        }
+        if (o.hasReflectionProbe) {
+            out << ",\n";
+            out << "        {\n";
+            out << "          \"type\": \"ReflectionProbe\",\n";
+            out << "          \"enabled\": " << (o.reflectionProbe.enabled ? "true" : "false") << ",\n";
+            out << "          \"boxSize\": [" << o.reflectionProbe.boxSize.x << ", " << o.reflectionProbe.boxSize.y << ", " << o.reflectionProbe.boxSize.z << "],\n";
+            out << "          \"blendDistance\": " << o.reflectionProbe.blendDistance << ",\n";
+            out << "          \"intensity\": " << o.reflectionProbe.intensity << ",\n";
+            out << "          \"resolution\": " << o.reflectionProbe.resolution << ",\n";
+            out << "          \"bakedCubemapPath\": \"" << JsonEscape(NormalizeSlashes(o.reflectionProbe.bakedCubemapPath)) << "\"\n";
             out << "        }";
         }
         if (o.hasAudioListener) {
@@ -738,6 +805,7 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
             if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
                 out << ",\n          \"pivotOffset\": [" << po.x << ", " << po.y << ", " << po.z << "]";
             }
+            WriteMeshLodSettings(out, o.meshFilter, "          ");
             out << "\n        }";
         }
         if (o.hasMeshRenderer) {
@@ -919,6 +987,7 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
             out << "        {\n";
             out << "          \"type\": \"Light\",\n";
             out << "          \"enabled\": " << (o.light.enabled ? "true" : "false") << ",\n";
+            out << "          \"castShadows\": " << (o.light.castShadows ? "true" : "false") << ",\n";
             out << "          \"lightType\": \"" << LightTypeToString(o.light.type) << "\",\n";
             out << "          \"color\": [" << o.light.color.r << ", " << o.light.color.g << ", " << o.light.color.b << "],\n";
             out << "          \"intensity\": " << o.light.intensity << ",\n";
@@ -1260,6 +1329,7 @@ void SceneEditor::Load(const std::string& path) {
                         ReadString(component, "diffuseTexturePath", so.meshFilter.diffuseTexturePath);
                         so.meshFilter.diffuseTexturePath = NormalizeSlashes(so.meshFilter.diffuseTexturePath);
                         ReadVec3(component, "pivotOffset", so.meshFilter.pivotOffset);
+                        ReadMeshLodSettings(component, so.meshFilter);
                     } else if (componentType == "MeshRenderer") {
                         so.hasMeshRenderer = true;
                         ReadBool(component, "enabled", so.meshRenderer.enabled);
@@ -1619,6 +1689,7 @@ void SceneEditor::Load(const std::string& path) {
                     } else if (componentType == "Light") {
                         so.hasLight = true;
                         ReadBool(component, "enabled", so.light.enabled);
+                        ReadBool(component, "castShadows", so.light.castShadows);
                         ReadVec3(component, "color", so.light.color);
 
                         std::string lightType;
@@ -1638,6 +1709,19 @@ void SceneEditor::Load(const std::string& path) {
                         if (spotAngleIt != component.end() && spotAngleIt->second.is_number()) {
                             so.light.spotAngleDegrees = (std::max)(1.0f, (std::min)(179.0f, static_cast<float>(spotAngleIt->second.as_number())));
                         }
+                    } else if (componentType == "ReflectionProbe") {
+                        so.hasReflectionProbe = true;
+                        ReadBool(component, "enabled", so.reflectionProbe.enabled);
+                        ReadVec3(component, "boxSize", so.reflectionProbe.boxSize);
+                        so.reflectionProbe.boxSize = (glm::max)(so.reflectionProbe.boxSize, glm::vec3(0.1f));
+                        if (auto blend = component.find("blendDistance"); blend != component.end() && blend->second.is_number()) so.reflectionProbe.blendDistance = (std::max)(0.01f, static_cast<float>(blend->second.as_number()));
+                        if (auto intensity = component.find("intensity"); intensity != component.end() && intensity->second.is_number()) so.reflectionProbe.intensity = (std::clamp)(static_cast<float>(intensity->second.as_number()), 0.0f, 4.0f);
+                        if (auto resolution = component.find("resolution"); resolution != component.end() && resolution->second.is_number()) {
+                            const int value = static_cast<int>(resolution->second.as_number());
+                            so.reflectionProbe.resolution = value <= 64 ? 64 : (value <= 128 ? 128 : (value <= 256 ? 256 : 512));
+                        }
+                        ReadString(component, "bakedCubemapPath", so.reflectionProbe.bakedCubemapPath);
+                        so.reflectionProbe.bakedCubemapPath = NormalizeSlashes(so.reflectionProbe.bakedCubemapPath);
                     } else if (componentType == "AudioListener") {
                         so.hasAudioListener = true;
                         ReadBool(component, "enabled", so.audioListener.enabled);
@@ -1776,6 +1860,26 @@ void SceneEditor::Load(const std::string& path) {
                     } else if (console_) {
                         console_->AddLog("Failed to reload mesh source: " + so.meshFilter.sourcePath);
                     }
+                }
+            }
+
+            for (MeshLodLevel& level : so.meshFilter.lodLevels) {
+                if (level.sourcePath.empty()) continue;
+                try {
+                    const std::string cacheKey = NormalizeSlashes(level.sourcePath);
+                    CachedLoadedMeshAsset& cacheEntry = meshAssetCache[cacheKey];
+                    if (!cacheEntry.attempted) {
+                        cacheEntry.attempted = true;
+                        cacheEntry.loaded = TryLoadMeshAsset(level.sourcePath, cacheEntry.resolvedPath, cacheEntry.model, cacheEntry.infos);
+                    }
+                    if (cacheEntry.loaded && level.meshIndex >= 0 && level.meshIndex < static_cast<int>(cacheEntry.infos.size())) {
+                        level.sourcePath = cacheEntry.resolvedPath;
+                        ApplyMeshInfoToLodLevel(level, cacheEntry.infos[static_cast<std::size_t>(level.meshIndex)], cacheEntry.model);
+                    } else if (console_) {
+                        console_->AddLog("Failed to reload LOD mesh source: " + level.sourcePath);
+                    }
+                } catch (...) {
+                    if (console_) console_->AddLog("Failed to reload LOD mesh source: " + level.sourcePath);
                 }
             }
 
@@ -1998,6 +2102,7 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                         ReadString(component, "diffuseTexturePath", so.meshFilter.diffuseTexturePath);
                         so.meshFilter.diffuseTexturePath = NormalizeSlashes(so.meshFilter.diffuseTexturePath);
                         ReadVec3(component, "pivotOffset", so.meshFilter.pivotOffset);
+                        ReadMeshLodSettings(component, so.meshFilter);
                     } else if (componentType == "MeshRenderer") {
                         so.hasMeshRenderer = true;
                         ReadBool(component, "enabled", so.meshRenderer.enabled);
@@ -2182,6 +2287,7 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                     } else if (componentType == "Light") {
                         so.hasLight = true;
                         ReadBool(component, "enabled", so.light.enabled);
+                        ReadBool(component, "castShadows", so.light.castShadows);
                         ReadVec3(component, "color", so.light.color);
                         std::string lightTypeStr;
                         if (ReadString(component, "lightType", lightTypeStr)) so.light.type = LightTypeFromString(lightTypeStr);
@@ -2237,6 +2343,22 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
                         so.meshFilter.sourcePath = cacheEntry.resolvedPath;
                         ApplyMeshInfoToSceneObject(so, cacheEntry.infos[static_cast<std::size_t>(so.meshFilter.meshIndex)], cacheEntry.model);
                         so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
+                    }
+                } catch (...) {}
+            }
+
+            for (MeshLodLevel& level : so.meshFilter.lodLevels) {
+                if (level.sourcePath.empty()) continue;
+                try {
+                    const std::string cacheKey = NormalizeSlashes(level.sourcePath);
+                    MeshCache& cacheEntry = meshAssetCache[cacheKey];
+                    if (!cacheEntry.attempted) {
+                        cacheEntry.attempted = true;
+                        cacheEntry.loaded = TryLoadMeshAsset(level.sourcePath, cacheEntry.resolvedPath, cacheEntry.model, cacheEntry.infos);
+                    }
+                    if (cacheEntry.loaded && level.meshIndex >= 0 && level.meshIndex < static_cast<int>(cacheEntry.infos.size())) {
+                        level.sourcePath = cacheEntry.resolvedPath;
+                        ApplyMeshInfoToLodLevel(level, cacheEntry.infos[static_cast<std::size_t>(level.meshIndex)], cacheEntry.model);
                     }
                 } catch (...) {}
             }
@@ -2363,6 +2485,16 @@ void SceneEditor::LoadProject() {
                     if (ReadString(graphics, "style", value)) graphicsProfile_.style = RenderStyleFromStorage(value);
                     if (ReadString(graphics, "quality", value)) graphicsProfile_.quality = GraphicsQualityFromStorage(value);
                     if (ReadString(graphics, "antiAliasing", value)) graphicsProfile_.antiAliasing = AntiAliasingFromStorage(value);
+                    if (auto it = graphics.find("taaFeedback"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.taaFeedback = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 0.98f);
+                    }
+                    if (auto it = graphics.find("taaSharpness"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.taaSharpness = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
+                    }
+                    if (auto it = graphics.find("taaJitterStrength"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.taaJitterStrength = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
+                    }
+                    ReadBool(graphics, "taaDebugView", graphicsProfile_.taaDebugView);
                     ReadBool(graphics, "hdr", graphicsProfile_.hdr);
                     if (auto it = graphics.find("hdrPaperWhiteNits"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.hdrPaperWhiteNits = (std::clamp)(static_cast<float>(it->second.as_number()), 80.0f, 500.0f);
@@ -2381,6 +2513,20 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("bloomRadius"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.bloomRadius = (std::clamp)(static_cast<float>(it->second.as_number()), 0.25f, 3.0f);
                     }
+                    ReadBool(graphics, "colorGrading", graphicsProfile_.colorGrading);
+                    if (auto it = graphics.find("colorSaturation"); it != graphics.end() && it->second.is_number()) graphicsProfile_.colorSaturation = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 2.0f);
+                    if (auto it = graphics.find("colorContrast"); it != graphics.end() && it->second.is_number()) graphicsProfile_.colorContrast = (std::clamp)(static_cast<float>(it->second.as_number()), 0.5f, 2.0f);
+                    if (auto it = graphics.find("colorTemperature"); it != graphics.end() && it->second.is_number()) graphicsProfile_.colorTemperature = (std::clamp)(static_cast<float>(it->second.as_number()), -1.0f, 1.0f);
+                    if (auto it = graphics.find("colorTint"); it != graphics.end() && it->second.is_number()) graphicsProfile_.colorTint = (std::clamp)(static_cast<float>(it->second.as_number()), -1.0f, 1.0f);
+                    ReadBool(graphics, "vignette", graphicsProfile_.vignette);
+                    if (auto it = graphics.find("vignetteIntensity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.vignetteIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
+                    if (auto it = graphics.find("vignetteSmoothness"); it != graphics.end() && it->second.is_number()) graphicsProfile_.vignetteSmoothness = (std::clamp)(static_cast<float>(it->second.as_number()), 0.05f, 1.0f);
+                    ReadBool(graphics, "filmGrain", graphicsProfile_.filmGrain);
+                    if (auto it = graphics.find("filmGrainIntensity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.filmGrainIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 0.25f);
+                    ReadBool(graphics, "depthOfField", graphicsProfile_.depthOfField);
+                    if (auto it = graphics.find("depthOfFieldFocusDistance"); it != graphics.end() && it->second.is_number()) graphicsProfile_.depthOfFieldFocusDistance = (std::clamp)(static_cast<float>(it->second.as_number()), 0.05f, 500.0f);
+                    if (auto it = graphics.find("depthOfFieldFocusRange"); it != graphics.end() && it->second.is_number()) graphicsProfile_.depthOfFieldFocusRange = (std::clamp)(static_cast<float>(it->second.as_number()), 0.05f, 100.0f);
+                    if (auto it = graphics.find("depthOfFieldMaxRadius"); it != graphics.end() && it->second.is_number()) graphicsProfile_.depthOfFieldMaxRadius = (std::clamp)(static_cast<float>(it->second.as_number()), 0.5f, 24.0f);
                     ReadBool(graphics, "motionBlur", graphicsProfile_.motionBlur);
                     if (auto it = graphics.find("motionBlurShutterAngle"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.motionBlurShutterAngle = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 360.0f);
@@ -2393,6 +2539,9 @@ void SceneEditor::LoadProject() {
                     }
                     if (auto it = graphics.find("motionBlurMaxRadius"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.motionBlurMaxRadius = (std::clamp)(static_cast<float>(it->second.as_number()), 1.0f, 64.0f);
+                    }
+                    if (auto it = graphics.find("motionBlurMinimumVelocityPixels"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.motionBlurMinimumVelocityPixels = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 8.0f);
                     }
                     ReadBool(graphics, "motionBlurDebugView", graphicsProfile_.motionBlurDebugView);
                     ReadBool(graphics, "ssao", graphicsProfile_.ssao);
@@ -2421,6 +2570,9 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("shadowDistance"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.shadowDistance = (std::clamp)(static_cast<float>(it->second.as_number()), 10.0f, 1000.0f);
                     }
+                    if (auto it = graphics.find("localShadowLightLimit"); it != graphics.end() && it->second.is_number()) {
+                        graphicsProfile_.localShadowLightLimit = (std::clamp)(static_cast<int>(it->second.as_number()), 0, 4);
+                    }
                     ReadBool(graphics, "shadowCascadeDebugView", graphicsProfile_.shadowCascadeDebugView);
                     ReadBool(graphics, "reflections", graphicsProfile_.reflections);
                     if (auto it = graphics.find("environmentIntensity"); it != graphics.end() && it->second.is_number()) {
@@ -2432,11 +2584,20 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("iblDebugMode"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.iblDebugMode = (std::clamp)(static_cast<int>(it->second.as_number()), 0, 3);
                     }
+                    ReadBool(graphics, "screenSpaceReflections", graphicsProfile_.screenSpaceReflections);
+                    if (auto it = graphics.find("ssrIntensity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.ssrIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 2.0f);
+                    if (auto it = graphics.find("ssrMaxDistance"); it != graphics.end() && it->second.is_number()) graphicsProfile_.ssrMaxDistance = (std::clamp)(static_cast<float>(it->second.as_number()), 1.0f, 200.0f);
+                    if (auto it = graphics.find("ssrThickness"); it != graphics.end() && it->second.is_number()) graphicsProfile_.ssrThickness = (std::clamp)(static_cast<float>(it->second.as_number()), 0.01f, 2.0f);
+                    if (auto it = graphics.find("ssrSteps"); it != graphics.end() && it->second.is_number()) graphicsProfile_.ssrSteps = (std::clamp)(static_cast<int>(it->second.as_number()), 8, 96);
+                    ReadBool(graphics, "ssrDebugView", graphicsProfile_.ssrDebugView);
                     ReadBool(graphics, "particles", graphicsProfile_.particles);
                     ReadBool(graphics, "weather", graphicsProfile_.weather);
+                    if (auto it = graphics.find("weatherIntensity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.weatherIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
+                    if (auto it = graphics.find("weatherWind"); it != graphics.end() && it->second.is_number()) graphicsProfile_.weatherWind = (std::clamp)(static_cast<float>(it->second.as_number()), -2.0f, 2.0f);
                     ReadBool(graphics, "lod", graphicsProfile_.lod);
                     ReadBool(graphics, "dynamicResolution", graphicsProfile_.dynamicResolution);
                     if (auto it = graphics.find("minimumResolutionScale"); it != graphics.end() && it->second.is_number()) graphicsProfile_.minimumResolutionScale = (std::clamp)(static_cast<float>(it->second.as_number()), 0.5f, 1.0f);
+                    if (auto it = graphics.find("dynamicResolutionTargetFps"); it != graphics.end() && it->second.is_number()) graphicsProfile_.dynamicResolutionTargetFps = (std::clamp)(static_cast<int>(it->second.as_number()), 30, 240);
                     if (auto it = graphics.find("exposure"); it != graphics.end() && it->second.is_number()) graphicsProfile_.exposure = (std::max)(0.01f, static_cast<float>(it->second.as_number()));
                     if (auto it = graphics.find("stylizedBands"); it != graphics.end() && it->second.is_number()) graphicsProfile_.stylizedBands = (std::max)(2.0f, static_cast<float>(it->second.as_number()));
                     if (auto it = graphics.find("stylizedRimStrength"); it != graphics.end() && it->second.is_number()) graphicsProfile_.stylizedRimStrength = (std::max)(0.0f, static_cast<float>(it->second.as_number()));
@@ -2751,6 +2912,10 @@ void SceneEditor::SaveProject() {
         out << "    \"style\": \"" << RenderStyleToStorage(graphicsProfile_.style) << "\",\n";
         out << "    \"quality\": \"" << GraphicsQualityToStorage(graphicsProfile_.quality) << "\",\n";
         out << "    \"antiAliasing\": \"" << AntiAliasingToStorage(graphicsProfile_.antiAliasing) << "\",\n";
+        out << "    \"taaFeedback\": " << graphicsProfile_.taaFeedback << ",\n";
+        out << "    \"taaSharpness\": " << graphicsProfile_.taaSharpness << ",\n";
+        out << "    \"taaJitterStrength\": " << graphicsProfile_.taaJitterStrength << ",\n";
+        out << "    \"taaDebugView\": " << (graphicsProfile_.taaDebugView ? "true" : "false") << ",\n";
         out << "    \"hdr\": " << (graphicsProfile_.hdr ? "true" : "false") << ",\n";
         out << "    \"hdrPaperWhiteNits\": " << graphicsProfile_.hdrPaperWhiteNits << ",\n";
         out << "    \"hdrPeakBrightnessNits\": " << graphicsProfile_.hdrPeakBrightnessNits << ",\n";
@@ -2758,11 +2923,26 @@ void SceneEditor::SaveProject() {
         out << "    \"bloomIntensity\": " << graphicsProfile_.bloomIntensity << ",\n";
         out << "    \"bloomThreshold\": " << graphicsProfile_.bloomThreshold << ",\n";
         out << "    \"bloomRadius\": " << graphicsProfile_.bloomRadius << ",\n";
+        out << "    \"colorGrading\": " << (graphicsProfile_.colorGrading ? "true" : "false") << ",\n";
+        out << "    \"colorSaturation\": " << graphicsProfile_.colorSaturation << ",\n";
+        out << "    \"colorContrast\": " << graphicsProfile_.colorContrast << ",\n";
+        out << "    \"colorTemperature\": " << graphicsProfile_.colorTemperature << ",\n";
+        out << "    \"colorTint\": " << graphicsProfile_.colorTint << ",\n";
+        out << "    \"vignette\": " << (graphicsProfile_.vignette ? "true" : "false") << ",\n";
+        out << "    \"vignetteIntensity\": " << graphicsProfile_.vignetteIntensity << ",\n";
+        out << "    \"vignetteSmoothness\": " << graphicsProfile_.vignetteSmoothness << ",\n";
+        out << "    \"filmGrain\": " << (graphicsProfile_.filmGrain ? "true" : "false") << ",\n";
+        out << "    \"filmGrainIntensity\": " << graphicsProfile_.filmGrainIntensity << ",\n";
+        out << "    \"depthOfField\": " << (graphicsProfile_.depthOfField ? "true" : "false") << ",\n";
+        out << "    \"depthOfFieldFocusDistance\": " << graphicsProfile_.depthOfFieldFocusDistance << ",\n";
+        out << "    \"depthOfFieldFocusRange\": " << graphicsProfile_.depthOfFieldFocusRange << ",\n";
+        out << "    \"depthOfFieldMaxRadius\": " << graphicsProfile_.depthOfFieldMaxRadius << ",\n";
         out << "    \"motionBlur\": " << (graphicsProfile_.motionBlur ? "true" : "false") << ",\n";
         out << "    \"motionBlurShutterAngle\": " << graphicsProfile_.motionBlurShutterAngle << ",\n";
         out << "    \"motionBlurIntensity\": " << graphicsProfile_.motionBlurIntensity << ",\n";
         out << "    \"motionBlurSamples\": " << graphicsProfile_.motionBlurSamples << ",\n";
         out << "    \"motionBlurMaxRadius\": " << graphicsProfile_.motionBlurMaxRadius << ",\n";
+        out << "    \"motionBlurMinimumVelocityPixels\": " << graphicsProfile_.motionBlurMinimumVelocityPixels << ",\n";
         out << "    \"motionBlurDebugView\": " << (graphicsProfile_.motionBlurDebugView ? "true" : "false") << ",\n";
         out << "    \"ssao\": " << (graphicsProfile_.ssao ? "true" : "false") << ",\n";
         out << "    \"ssaoIntensity\": " << graphicsProfile_.ssaoIntensity << ",\n";
@@ -2774,16 +2954,26 @@ void SceneEditor::SaveProject() {
         out << "    \"shadowSoftness\": " << graphicsProfile_.shadowSoftness << ",\n";
         out << "    \"shadowCascadeCount\": " << graphicsProfile_.shadowCascadeCount << ",\n";
         out << "    \"shadowDistance\": " << graphicsProfile_.shadowDistance << ",\n";
+        out << "    \"localShadowLightLimit\": " << graphicsProfile_.localShadowLightLimit << ",\n";
         out << "    \"shadowCascadeDebugView\": " << (graphicsProfile_.shadowCascadeDebugView ? "true" : "false") << ",\n";
         out << "    \"reflections\": " << (graphicsProfile_.reflections ? "true" : "false") << ",\n";
         out << "    \"environmentIntensity\": " << graphicsProfile_.environmentIntensity << ",\n";
         out << "    \"reflectionIntensity\": " << graphicsProfile_.reflectionIntensity << ",\n";
         out << "    \"iblDebugMode\": " << graphicsProfile_.iblDebugMode << ",\n";
+        out << "    \"screenSpaceReflections\": " << (graphicsProfile_.screenSpaceReflections ? "true" : "false") << ",\n";
+        out << "    \"ssrIntensity\": " << graphicsProfile_.ssrIntensity << ",\n";
+        out << "    \"ssrMaxDistance\": " << graphicsProfile_.ssrMaxDistance << ",\n";
+        out << "    \"ssrThickness\": " << graphicsProfile_.ssrThickness << ",\n";
+        out << "    \"ssrSteps\": " << graphicsProfile_.ssrSteps << ",\n";
+        out << "    \"ssrDebugView\": " << (graphicsProfile_.ssrDebugView ? "true" : "false") << ",\n";
         out << "    \"particles\": " << (graphicsProfile_.particles ? "true" : "false") << ",\n";
         out << "    \"weather\": " << (graphicsProfile_.weather ? "true" : "false") << ",\n";
+        out << "    \"weatherIntensity\": " << graphicsProfile_.weatherIntensity << ",\n";
+        out << "    \"weatherWind\": " << graphicsProfile_.weatherWind << ",\n";
         out << "    \"lod\": " << (graphicsProfile_.lod ? "true" : "false") << ",\n";
         out << "    \"dynamicResolution\": " << (graphicsProfile_.dynamicResolution ? "true" : "false") << ",\n";
         out << "    \"minimumResolutionScale\": " << graphicsProfile_.minimumResolutionScale << ",\n";
+        out << "    \"dynamicResolutionTargetFps\": " << graphicsProfile_.dynamicResolutionTargetFps << ",\n";
         out << "    \"exposure\": " << graphicsProfile_.exposure << ",\n";
         out << "    \"stylizedBands\": " << graphicsProfile_.stylizedBands << ",\n";
         out << "    \"stylizedRimStrength\": " << graphicsProfile_.stylizedRimStrength << ",\n";

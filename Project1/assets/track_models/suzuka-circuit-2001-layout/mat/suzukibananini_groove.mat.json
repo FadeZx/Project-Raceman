@@ -12,7 +12,6 @@
   "alphaMode": "Opaque",
   "alphaCutoff": 0.5,
   "doubleSided": false,
-  "transparentSortPriority": 0,
   "emissiveColor": [0, 0, 0],
   "uvTiling": [1, 1],
   "uvOffset": [0, 0],

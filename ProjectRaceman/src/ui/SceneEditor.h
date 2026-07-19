@@ -239,6 +239,7 @@ private:
     void TickPlayModeLoading();
     void RenderPlayModeLoadingPopup();
     void TickPendingSceneSave();
+    void TickReflectionProbeBake();
     void RenderSceneSavePopup();
     int HotReloadRuntimeVehiclesForConfig(const std::string& configPath, const physics::VehicleConfig& config);
     void StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs, std::string title);
@@ -285,6 +286,7 @@ private:
     bool ReplaceSelectedMeshWithPlane();
     bool ReplaceSelectedMeshWithBuiltIn(const std::string& meshType);
     bool ReplaceSelectedMeshFromObj(const std::string& path);
+    bool AssignSelectedLodMesh(const std::string& path);
     bool AssignMaterialToSelected(const std::string& materialId);
     bool AssignVehicleConfigToSelected(const std::string& configPath);
     bool AttachScriptToSelected(const std::string& scriptName, const std::string& scriptPath);
@@ -456,6 +458,7 @@ private:
     bool vehicleSoundEditorFocusRequested_{false};
     double vehicleSoundEditorHighlightUntil_{0.0};
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
+    int pendingLodLevelIndex_{-1};
     bool scriptsRunning_{false};
     bool scriptsPaused_{false};
     float runtimeSimulationAccumulator_{0.0f};
@@ -751,6 +754,10 @@ private:
     bool sceneSaveRequested_{false};
     bool projectSaveRequested_{false};
     EditorProgressTask saveProgress_{};
+    struct ReflectionProbeBakeState {
+        std::string objectId;
+        EditorProgressTask window;
+    } reflectionProbeBake_;
     std::function<void()> onDirty_{};
     std::function<void(const glm::vec3&, float)> onFocusObject_{};
     std::function<void(const glm::mat4&)> onEditorCameraViewChanged_{};

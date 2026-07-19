@@ -1,0 +1,1052 @@
+{
+  "version": 1,
+  "pivotMode": 0,
+  "importMaterials": true,
+  "materialLocation": 0,
+  "materialRemapNaming": 0,
+  "materialRemapSearch": 0,
+  "materials": [
+    {
+      "meshIndex": 0,
+      "meshName": "Object_41",
+      "importedMaterialName": "Body",
+      "materialId": "redbullgt3_body"
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "Object_41.001",
+      "importedMaterialName": "Body",
+      "materialId": "redbullgt3_body"
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "Object_23.008",
+      "importedMaterialName": "Body",
+      "materialId": "redbullgt3_body"
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "Object_41.003",
+      "importedMaterialName": "Body",
+      "materialId": "redbullgt3_body"
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "Object_8.001",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "Object_23.002",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "Object_22.008",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "Object_22.007",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "Object_25",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "Object_23.003",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "Object_24",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "Object_23.004",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "Object_23.007",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "Object_20.005",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "Object_55.001",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "Object_23.005",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "Object_8",
+      "importedMaterialName": "Chassis",
+      "materialId": "redbullgt3_chassis"
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "Object_36.007",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "Object_37.007",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "Object_35",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "Object_38.002",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "Object_36.006",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "Object_36.002",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "Object_36.003",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "Object_37.004",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "Object_37.002",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "Object_37.003",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "Object_36.005",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "Object_38",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "Object_53",
+      "importedMaterialName": "Glass",
+      "materialId": "redbullgt3_glass"
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "Object_16.004",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "Object_29.043",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "Object_29.007",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "Object_9",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "Object_10",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "Object_28.002",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "Object_29.002",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "Object_27",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "Object_3",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "Object_4",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "Object_29.008",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "Object_29.067",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "Object_29.004",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "Object_29.016",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "Object_16.007",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "Object_29.020",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "Object_29.054",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "Object_29.053",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "Object_29.011",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "Object_29.019",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "Object_27.001",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "Object_29.003",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "Object_2",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "Object_33",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "Object_28",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "Object_48",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "Object_34",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "Object_5",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "Object_27.003",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "Object_31",
+      "importedMaterialName": "Interior",
+      "materialId": "redbullgt3_interior"
+    },
+    {
+      "meshIndex": 60,
+      "meshName": "Object_13.002",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 61,
+      "meshName": "Object_1.002",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 62,
+      "meshName": "Object_12.002",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 63,
+      "meshName": "Object_44",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 64,
+      "meshName": "Mesh.092",
+      "importedMaterialName": "Tire",
+      "materialId": "redbullgt3_tire"
+    },
+    {
+      "meshIndex": 65,
+      "meshName": "Object_13.003",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 66,
+      "meshName": "Object_1.001",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 67,
+      "meshName": "Object_12.001",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 68,
+      "meshName": "Object_45",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 69,
+      "meshName": "Mesh.003",
+      "importedMaterialName": "Tire",
+      "materialId": "redbullgt3_tire"
+    },
+    {
+      "meshIndex": 70,
+      "meshName": "Object_13.004",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 71,
+      "meshName": "Object_1.003",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 72,
+      "meshName": "Object_12.003",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 73,
+      "meshName": "Object_46",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 74,
+      "meshName": "Mesh.106",
+      "importedMaterialName": "Tire",
+      "materialId": "redbullgt3_tire"
+    },
+    {
+      "meshIndex": 75,
+      "meshName": "Object_13",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 76,
+      "meshName": "Object_1",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 77,
+      "meshName": "Object_12",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 78,
+      "meshName": "Object_47",
+      "importedMaterialName": "Wheel",
+      "materialId": "redbullgt3_wheel"
+    },
+    {
+      "meshIndex": 79,
+      "meshName": "Mesh.004",
+      "importedMaterialName": "Tire",
+      "materialId": "redbullgt3_tire"
+    }
+  ],
+  "collisions": [
+    {
+      "meshIndex": 0,
+      "meshName": "Object_41",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "Object_41.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "Object_23.008",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "Object_41.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "Object_8.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "Object_23.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "Object_22.008",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "Object_22.007",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "Object_25",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "Object_23.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "Object_24",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "Object_23.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "Object_23.007",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "Object_20.005",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "Object_55.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "Object_23.005",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "Object_8",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "Object_36.007",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "Object_37.007",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "Object_35",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "Object_38.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "Object_36.006",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "Object_36.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "Object_36.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "Object_37.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "Object_37.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "Object_37.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "Object_36.005",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "Object_38",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "Object_53",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "Object_16.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "Object_29.043",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "Object_29.007",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "Object_9",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "Object_10",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "Object_28.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "Object_29.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "Object_27",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "Object_3",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "Object_4",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "Object_29.008",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "Object_29.067",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "Object_29.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "Object_29.016",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "Object_16.007",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "Object_29.020",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "Object_29.054",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "Object_29.053",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "Object_29.011",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "Object_29.019",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "Object_27.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "Object_29.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "Object_2",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "Object_33",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "Object_28",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "Object_48",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "Object_34",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "Object_5",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "Object_27.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "Object_31",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 60,
+      "meshName": "Object_13.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 61,
+      "meshName": "Object_1.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 62,
+      "meshName": "Object_12.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 63,
+      "meshName": "Object_44",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 64,
+      "meshName": "Mesh.092",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 65,
+      "meshName": "Object_13.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 66,
+      "meshName": "Object_1.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 67,
+      "meshName": "Object_12.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 68,
+      "meshName": "Object_45",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 69,
+      "meshName": "Mesh.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 70,
+      "meshName": "Object_13.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 71,
+      "meshName": "Object_1.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 72,
+      "meshName": "Object_12.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 73,
+      "meshName": "Object_46",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 74,
+      "meshName": "Mesh.106",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 75,
+      "meshName": "Object_13",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 76,
+      "meshName": "Object_1",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 77,
+      "meshName": "Object_12",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 78,
+      "meshName": "Object_47",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 79,
+      "meshName": "Mesh.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    }
+  ]
+}

@@ -1762,7 +1762,7 @@ void Application::Render() {
                 ViewportRenderTarget::Game,
                 glm::vec3(gameClearColor.r, gameClearColor.g, gameClearColor.b));
             if (skyboxController_) {
-                skyboxController_->Draw(view, proj);
+                skyboxController_->Draw(view, renderer_->GetProj());
             }
             sceneEditor_->SubmitDraws(*renderer_, false);
             renderer_->EndFrameToViewportTarget();
@@ -1854,7 +1854,7 @@ void Application::Render() {
         renderer_->BeginFrameToViewportTarget(ViewportRenderTarget::Scene, sceneViewClearColor);
         renderer_->SetCamera(view, proj);
         if (skyboxController_) {
-            skyboxController_->Draw(view, proj);
+            skyboxController_->Draw(view, renderer_->GetProj());
         }
         if (sceneEditor_) {
             sceneEditor_->SubmitDraws(*renderer_, true);
@@ -1887,7 +1887,7 @@ void Application::Render() {
         if (usingGameCamera) {
             renderer_->SetCamera(view, proj);
             if (skyboxController_) {
-                skyboxController_->Draw(view, proj);
+                skyboxController_->Draw(view, renderer_->GetProj());
             }
             if (sceneEditor_) {
                 sceneEditor_->SubmitDraws(*renderer_, false);

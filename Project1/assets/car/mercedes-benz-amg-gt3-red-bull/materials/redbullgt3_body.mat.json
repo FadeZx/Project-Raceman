@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "name": "Body",
+  "shader": "pbr",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0.147,
+  "roughness": 0.599,
+  "clearCoat": 0.299,
+  "clearCoatRoughness": 0.424,
+  "anisotropy": 0,
+  "transmission": 0,
+  "alphaMode": "Opaque",
+  "alphaCutoff": 0.5,
+  "doubleSided": false,
+  "emissiveColor": [0, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "assets/car/mercedes-benz-amg-gt3-red-bull/materials/redbullgt3_body_albedo.png",
+    "normal": "assets/car/mercedes-benz-amg-gt3-red-bull/materials/redbullgt3_body_normal.png",
+    "metallic": "assets/car/mercedes-benz-amg-gt3-red-bull/materials/redbullgt3_body_metallic.png",
+    "roughness": "",
+    "ao": ""
+  },
+  "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 }
+  }
+}

@@ -414,5 +414,12 @@
     <None Include="src\shaders\post\ssao.fs" />
     <None Include="src\shaders\post\ssao_bilateral_blur.fs" />
     <None Include="src\shaders\post\ssao_composite.fs" />
+    <None Include="src\shaders\post\ssr.fs" />
+    <None Include="src\shaders\post\taa.fs" />
+    <None Include="src\shaders\post\camera_velocity.fs" />
+    <None Include="src\shaders\post\weather.fs" />
+    <None Include="src\shaders\post\depth_of_field.fs" />
+    <None Include="src\shaders\shadow\point_depth.vs" />
+    <None Include="src\shaders\shadow\point_depth.fs" />
   </ItemGroup>
 </Project>

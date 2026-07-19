@@ -23,6 +23,12 @@ This checklist tracks the renderer features exposed by Project Settings and the 
 - [x] Roughness-prefiltered specular environment map
 - [x] Integrated BRDF lookup texture
 - [x] Reflection intensity, enable/disable, and IBL debug controls
+- [x] Roughness-aware screen-space reflections with material-property buffer, adjustable ray budget, edge/distance fading, skybox IBL fallback, and hit debug view
+- [x] Mesh LOD selection with project-asset levels, screen-height thresholds, bias, hysteresis, and debug forcing
+- [x] Temporal anti-aliasing with stable de-jittered output, 16-frame subpixel sampling, Catmull-Rom reconstruction, logarithmic depth and compact normal rejection, velocity dilation, HDR-aware variance clipping, reactive per-pixel history convergence, sharpening, and camera-cut handling
+- [x] Adaptive dynamic resolution with per-viewport frame pacing, quantized scaling, and temporal reset on resize
+- [x] Point- and spot-light shadow maps with per-light casting and a configurable local-light budget
+- [x] HDR weather atmosphere and quality-scaled procedural weather particles
 
 ## Implemented: SSAO
 
@@ -40,24 +46,26 @@ This checklist tracks the renderer features exposed by Project Settings and the 
 - [x] Per-camera and per-object motion-vector generation
 - [x] Velocity-buffer motion blur with shutter, intensity, samples, and radius controls
 - [x] Motion-vector debug visualization
-- [ ] Color grading
-- [ ] Vignette and film grain
-- [ ] Depth of field
+- [x] Color grading
+- [x] Vignette and film grain
+- [x] Depth of field
 
 ## Remaining Features
 
 - [x] Native Windows FP16 scRGB DXGI presentation with zero-copy OpenGL/D3D11 interop and SDR fallback
-- [ ] Point- and spot-light shadows
-- [ ] Mesh LOD selection
-- [ ] Temporal anti-aliasing
-- [ ] Dynamic resolution
-- [ ] Renderer-integrated weather quality
-- [ ] Renderer-integrated particle quality
-- [ ] Graphics presets that configure all implemented effects
+- [x] Point- and spot-light shadows
+- [x] Mesh LOD selection
+- [x] Temporal anti-aliasing
+- [x] Dynamic resolution
+- [x] Renderer-integrated weather quality
+- [x] Renderer-integrated particle quality
+- [x] Graphics presets that configure all implemented effects
+- [x] Box reflection-probe components with influence visualization, nearest-probe prioritization, true intensity scaling, blending, parallax correction, and global-skybox fallback
+- [x] Baked six-face reflection-probe capture, project-asset storage, persistence, and per-probe PBR sampling
+- [ ] Sphere probe influence volumes
+- [ ] Selective real-time reflection-probe updates
 
 ## Recommended Order
 
-1. LOD
-2. TAA
-3. Dynamic resolution
-4. Point/spot shadows and weather/particle quality integration
+1. Add sphere influence volumes.
+2. Add selective real-time probe updates for garages, tunnels, and showcase scenes.

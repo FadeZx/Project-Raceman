@@ -26,6 +26,7 @@ enum class GizmoMode {
 enum class ProjectAssetPickerMode {
     None,
     ReplaceMesh,
+    AssignLodMesh,
     AssignMaterial,
     AttachScript,
     AssignVehicleConfig
@@ -57,6 +58,7 @@ enum class SceneComponentType {
     PlaneCollider,
     Camera,
     Light,
+    ReflectionProbe,
     AudioListener,
     AudioSource,
     VehicleSound,
@@ -75,6 +77,7 @@ enum class SceneInspectorComponentType {
     Camera,
     Cinemachine,
     Light,
+    ReflectionProbe,
     AudioListener,
     AudioSource,
     VehicleSound,
@@ -151,6 +154,18 @@ struct Transform {
     glm::vec3 scale{1.0f, 1.0f, 1.0f};
 };
 
+struct MeshLodLevel {
+    // The base MeshFilter is always LOD0. These entries are LOD1 and below.
+    std::string sourcePath;
+    int meshIndex{0};
+    float screenRelativeHeight{0.25f};
+    unsigned int vao{0};
+    unsigned int indexCount{0};
+    glm::vec3 localBoundsMin{-0.5f, -0.5f, -0.5f};
+    glm::vec3 localBoundsMax{0.5f, 0.5f, 0.5f};
+    std::shared_ptr<::Model> modelRef;
+};
+
 struct MeshFilterComponent {
     bool enabled{true};
     std::string meshType;
@@ -169,6 +184,12 @@ struct MeshFilterComponent {
     std::vector<glm::vec3> pickVertices;
     std::vector<unsigned int> pickIndices;
     std::shared_ptr<::Model> modelRef;
+    bool lodEnabled{false};
+    float lodBias{1.0f};
+    float lodHysteresis{0.10f};
+    int forcedLod{-1};
+    int activeLod{0};
+    std::vector<MeshLodLevel> lodLevels;
 };
 
 struct MeshRendererComponent {
@@ -311,11 +332,21 @@ struct CinemachineCameraComponent {
 
 struct LightComponent {
     bool enabled{true};
+    bool castShadows{true};
     LightType type{LightType::Point};
     glm::vec3 color{1.0f, 1.0f, 1.0f};
     float intensity{1.0f};
     float range{10.0f};
     float spotAngleDegrees{30.0f};
+};
+
+struct ReflectionProbeComponent {
+    bool enabled{true};
+    glm::vec3 boxSize{10.0f};
+    float blendDistance{1.0f};
+    float intensity{1.0f};
+    int resolution{256};
+    std::string bakedCubemapPath;
 };
 
 struct AudioListenerComponent {
@@ -370,6 +401,7 @@ struct SceneObject {
     bool hasCamera{false};
     bool hasCinemachine{false};
     bool hasLight{false};
+    bool hasReflectionProbe{false};
     bool hasAudioListener{false};
     bool hasAudioSource{false};
     bool hasVehicleSound{false};
@@ -389,6 +421,7 @@ struct SceneObject {
     CameraComponent camera;
     CinemachineCameraComponent cinemachine;
     LightComponent light;
+    ReflectionProbeComponent reflectionProbe;
     AudioListenerComponent audioListener;
     AudioSourceComponent audioSource;
     VehicleSoundComponent vehicleSound;

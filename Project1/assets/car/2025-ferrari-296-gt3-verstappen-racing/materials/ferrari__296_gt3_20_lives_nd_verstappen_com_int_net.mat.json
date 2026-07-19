@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "INT_NET",
+  "shader": "pbr",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0,
+  "roughness": 1,
+  "emissiveColor": [0, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "assets/car/2025-ferrari-296-gt3-verstappen-racing/materials/ferrari__296_gt3_20_lives_nd_verstappen_com_int_net_albedo.png",
+    "normal": "assets/car/2025-ferrari-296-gt3-verstappen-racing/materials/ferrari__296_gt3_20_lives_nd_verstappen_com_int_net_normal.png",
+    "metallic": "",
+    "roughness": "",
+    "ao": ""
+  },
+  "properties": {
+  }
+}

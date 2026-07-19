@@ -278,6 +278,7 @@ inline std::vector<SceneInspectorComponentType> DefaultInspectorComponentOrder()
         SceneInspectorComponentType::Camera,
         SceneInspectorComponentType::Cinemachine,
         SceneInspectorComponentType::Light,
+        SceneInspectorComponentType::ReflectionProbe,
         SceneInspectorComponentType::AudioListener,
         SceneInspectorComponentType::AudioSource,
         SceneInspectorComponentType::VehicleSound,
@@ -309,6 +310,8 @@ inline bool HasInspectorComponent(const SceneObject& object, SceneInspectorCompo
         return object.hasCinemachine;
     case SceneInspectorComponentType::Light:
         return object.hasLight;
+    case SceneInspectorComponentType::ReflectionProbe:
+        return object.hasReflectionProbe;
     case SceneInspectorComponentType::AudioListener:
         return object.hasAudioListener;
     case SceneInspectorComponentType::AudioSource:
@@ -1428,6 +1431,7 @@ inline const char* InspectorComponentTypeToString(SceneInspectorComponentType ty
     case SceneInspectorComponentType::Camera: return "Camera";
     case SceneInspectorComponentType::Cinemachine: return "Cinemachine";
     case SceneInspectorComponentType::Light: return "Light";
+    case SceneInspectorComponentType::ReflectionProbe: return "ReflectionProbe";
     case SceneInspectorComponentType::AudioListener: return "AudioListener";
     case SceneInspectorComponentType::AudioSource: return "AudioSource";
     case SceneInspectorComponentType::VehicleSound: return "VehicleSound";
@@ -1448,6 +1452,7 @@ inline bool InspectorComponentTypeFromString(const std::string& value, SceneInsp
     if (value == "Camera") { outType = SceneInspectorComponentType::Camera; return true; }
     if (value == "Cinemachine") { outType = SceneInspectorComponentType::Cinemachine; return true; }
     if (value == "Light") { outType = SceneInspectorComponentType::Light; return true; }
+    if (value == "ReflectionProbe") { outType = SceneInspectorComponentType::ReflectionProbe; return true; }
     if (value == "AudioListener") { outType = SceneInspectorComponentType::AudioListener; return true; }
     if (value == "AudioSource") { outType = SceneInspectorComponentType::AudioSource; return true; }
     if (value == "VehicleSound") { outType = SceneInspectorComponentType::VehicleSound; return true; }
