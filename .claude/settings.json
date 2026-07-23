@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($path = \"d:\\\\Project-Raceman\\\\ProjectRaceman\\\\src\\\\ui\\\\SceneEditorPersistence.cpp\"; $lines = [System.IO.File]::ReadAllLines\\($path\\); \"Line 960: $\\($lines[959]\\)\"; \"Line 1239: $\\($lines[1238]\\)\"; \"Line 1240: $\\($lines[1239]\\)\"; $new = $lines[0..958] + $lines[1239..\\($lines.Count-1\\)]; [System.IO.File]::WriteAllLines\\($path, $new\\); \"New count: $\\($new.Count\\) \\(was $\\($lines.Count\\)\\)\")"
+    ]
+  }
+}

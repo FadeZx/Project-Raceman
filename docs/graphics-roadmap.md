@@ -11,6 +11,7 @@ This checklist tracks the renderer features exposed by Project Settings and the 
 - [x] Windows HDR display/Advanced Color detection and live capability status
 - [x] Prefer a 10-bit WGL framebuffer with verified actual channel depth
 - [x] FXAA
+- [x] SMAA 1x at the Ultra preset (0.05 edge threshold, 32-step orthogonal search, 16-step diagonal pattern detection, LUT-driven blending weights with corner rounding, neighborhood blending) applied to both SDR and HDR scRGB outputs
 - [x] Realistic and stylized PBR modes
 - [x] Directional shadow mapping
 - [x] Configurable shadow resolution and soft-shadow filtering
@@ -25,7 +26,7 @@ This checklist tracks the renderer features exposed by Project Settings and the 
 - [x] Reflection intensity, enable/disable, and IBL debug controls
 - [x] Roughness-aware screen-space reflections with material-property buffer, adjustable ray budget, edge/distance fading, skybox IBL fallback, and hit debug view
 - [x] Mesh LOD selection with project-asset levels, screen-height thresholds, bias, hysteresis, and debug forcing
-- [x] Temporal anti-aliasing with stable de-jittered output, 16-frame subpixel sampling, Catmull-Rom reconstruction, logarithmic depth and compact normal rejection, velocity dilation, HDR-aware variance clipping, reactive per-pixel history convergence, sharpening, and camera-cut handling
+- [x] Temporal anti-aliasing with stable de-jittered output, full-pixel 16-frame subpixel sampling, Blackman-Harris current-frame reconstruction, Catmull-Rom history resampling, logarithmic depth and compact normal rejection, velocity dilation, HDR-aware soft variance clipping, inverse-luminance anti-flicker weighting, reactive per-pixel history convergence, sharpening, and camera-cut handling
 - [x] Adaptive dynamic resolution with per-viewport frame pacing, quantized scaling, and temporal reset on resize
 - [x] Point- and spot-light shadow maps with per-light casting and a configurable local-light budget
 - [x] HDR weather atmosphere and quality-scaled procedural weather particles
@@ -62,10 +63,7 @@ This checklist tracks the renderer features exposed by Project Settings and the 
 - [x] Graphics presets that configure all implemented effects
 - [x] Box reflection-probe components with influence visualization, nearest-probe prioritization, true intensity scaling, blending, parallax correction, and global-skybox fallback
 - [x] Baked six-face reflection-probe capture, project-asset storage, persistence, and per-probe PBR sampling
-- [ ] Sphere probe influence volumes
-- [ ] Selective real-time reflection-probe updates
+- [x] Sphere probe influence volumes with radial falloff, sphere-projected parallax correction, and wireframe influence visualization
+- [x] Selective real-time reflection-probe updates with camera-distance gating, per-probe face-per-frame time slicing, a one-probe-per-frame budget, and baked/skybox fallback
 
-## Recommended Order
-
-1. Add sphere influence volumes.
-2. Add selective real-time probe updates for garages, tunnels, and showcase scenes.
+All planned renderer features are implemented.

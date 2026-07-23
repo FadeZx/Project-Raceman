@@ -1172,20 +1172,19 @@ void SceneEditor::UpdateImGuizmo() {
     }
 }
 
-void SceneEditor::SubmitGizmo(Renderer& renderer) {
-    if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
+void SceneEditor::SubmitColliderWireframe(Renderer& renderer, int objectIndex, const glm::vec4& colorOverride, bool useColorOverride) {
+    if (objectIndex < 0 || objectIndex >= static_cast<int>(objects_.size())) {
+        return;
+    }
+    const SceneObject& object = objects_[objectIndex];
+    if (!IsObjectEffectivelyEnabled(objectIndex)) {
         return;
     }
 
-    const SceneObject& object = objects_[selectedIndex_];
-    if (!IsObjectEffectivelyEnabled(selectedIndex_)) {
-        return;
-    }
-
-    const glm::vec4 colliderColor{0.1f, 0.9f, 0.35f, 1.0f};
+    const glm::vec4 colliderColor = useColorOverride ? colorOverride : glm::vec4{0.1f, 0.9f, 0.35f, 1.0f};
     constexpr float colliderWidth = 2.0f;
     constexpr DebugLineDepthMode helperDepthMode = DebugLineDepthMode::DepthTestedOverlay;
-    const glm::mat4 objectMatrix = GetObjectDisplayWorldMatrix(selectedIndex_);
+    const glm::mat4 objectMatrix = GetObjectDisplayWorldMatrix(objectIndex);
     const SceneColliderType colliderType = GetActiveColliderType(object);
     if (colliderType == SceneColliderType::Box && object.boxCollider.enabled) {
         SubmitWireBox(
@@ -1220,7 +1219,7 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             object.planeCollider.offset,
             object.planeCollider.halfExtent,
             object.planeCollider.infinite,
-            glm::vec4{0.45f, 0.8f, 1.0f, 1.0f},
+            useColorOverride ? colorOverride : glm::vec4{0.45f, 0.8f, 1.0f, 1.0f},
             colliderWidth,
             helperDepthMode);
     }
@@ -1234,6 +1233,7 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
         if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
             meshGizmoMatrix = meshGizmoMatrix * glm::translate(glm::mat4(1.0f), -po);
         }
+        const glm::vec4 meshColliderColor = useColorOverride ? colorOverride : glm::vec4{0.95f, 0.55f, 0.2f, 1.0f};
         ImportedCollisionMesh mesh;
         if (TryGetCollisionMeshForObject(object, mesh)) {
             SubmitWireMesh(
@@ -1241,7 +1241,7 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
                 meshGizmoMatrix,
                 mesh.vertices,
                 mesh.indices,
-                glm::vec4{0.95f, 0.55f, 0.2f, 1.0f},
+                meshColliderColor,
                 colliderWidth,
                 helperDepthMode);
         } else {
@@ -1250,7 +1250,7 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
             if (GetObjectLocalBounds(object, boundsMin, boundsMax)) {
                 const glm::vec3 size = boundsMax - boundsMin;
                 const glm::vec3 center = (boundsMin + boundsMax) * 0.5f;
-                SubmitWireBox(renderer, meshGizmoMatrix, center, size, glm::vec4{0.95f, 0.55f, 0.2f, 1.0f}, colliderWidth, helperDepthMode);
+                SubmitWireBox(renderer, meshGizmoMatrix, center, size, meshColliderColor, colliderWidth, helperDepthMode);
             }
         }
     }
@@ -1258,10 +1258,35 @@ void SceneEditor::SubmitGizmo(Renderer& renderer) {
         const float radius = (std::max)(0.001f, object.characterController.radius);
         const float height = (std::max)(radius * 2.0f, object.characterController.height);
         const glm::mat4 controllerMatrix = BuildObjectMatrixNoScale(object);
-        const glm::vec4 controllerColor{0.2f, 0.75f, 1.0f, 1.0f};
+        const glm::vec4 controllerColor = useColorOverride ? colorOverride : glm::vec4{0.2f, 0.75f, 1.0f, 1.0f};
         const glm::vec3 controllerCenter = object.characterController.center + glm::vec3{0.0f, height * 0.5f, 0.0f};
         SubmitWireCapsuleY(renderer, controllerMatrix, controllerCenter, radius, height, controllerColor, colliderWidth, helperDepthMode);
     }
+}
+
+void SceneEditor::SubmitAllColliders(Renderer& renderer) {
+    const glm::vec4 allCollidersColor{0.95f, 0.75f, 0.15f, 0.85f};
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        if (i == selectedIndex_) {
+            continue;
+        }
+        SubmitColliderWireframe(renderer, i, allCollidersColor, true);
+    }
+}
+
+void SceneEditor::SubmitGizmo(Renderer& renderer) {
+    if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
+        return;
+    }
+
+    const SceneObject& object = objects_[selectedIndex_];
+    if (!IsObjectEffectivelyEnabled(selectedIndex_)) {
+        return;
+    }
+
+    constexpr DebugLineDepthMode helperDepthMode = DebugLineDepthMode::DepthTestedOverlay;
+    const glm::mat4 objectMatrix = GetObjectDisplayWorldMatrix(selectedIndex_);
+    SubmitColliderWireframe(renderer, selectedIndex_, glm::vec4{0.0f}, false);
     if (object.hasCamera && object.camera.enabled) {
         SubmitCameraFrustum(renderer, object, objectMatrix, glm::vec4{1.0f, 0.85f, 0.2f, 1.0f}, 2.0f, helperDepthMode);
     }

@@ -45,7 +45,7 @@ enum class AntiAliasingMode {
     None,
     FXAA,
     TAA,
-    MSAA
+    SMAA
 };
 
 struct GraphicsProfile {
@@ -53,9 +53,9 @@ struct GraphicsProfile {
     RenderStyle style{RenderStyle::Realistic};
     GraphicsQualityTier quality{GraphicsQualityTier::High};
     AntiAliasingMode antiAliasing{AntiAliasingMode::FXAA};
-    float taaFeedback{0.90f};
-    float taaSharpness{0.20f};
-    float taaJitterStrength{0.50f};
+    float taaFeedback{0.94f};
+    float taaSharpness{0.10f};
+    float taaJitterStrength{1.00f};
     bool taaDebugView{false};
     bool hdr{true};
     float hdrPaperWhiteNits{200.0f};
@@ -117,6 +117,9 @@ struct GraphicsProfile {
     float minimumResolutionScale{0.75f};
     int dynamicResolutionTargetFps{60};
     float exposure{1.0f};
+    // Scene View debug shading modes, not persisted as look/quality choices.
+    bool wireframeView{false};
+    bool plainView{false};
     float stylizedBands{4.0f};
     float stylizedRimStrength{0.35f};
     glm::vec3 ambientColor{0.08f, 0.08f, 0.08f};
@@ -202,9 +205,16 @@ struct LightDrawCommand {
     bool castShadows{true};
 };
 
+enum class ReflectionProbeVolumeShape {
+    Box,
+    Sphere
+};
+
 struct ReflectionProbeDrawCommand {
     glm::vec3 position{0.0f};
+    ReflectionProbeVolumeShape shape{ReflectionProbeVolumeShape::Box};
     glm::vec3 boxExtents{5.0f};
+    float sphereRadius{5.0f};
     float blendDistance{1.0f};
     float intensity{1.0f};
     unsigned int cubemapTexture{0};
@@ -266,6 +276,15 @@ public:
                              const std::function<void()>& submitScene,
                              const std::function<void(int, int)>& progress = {});
     unsigned int LoadReflectionProbeCubemap(const std::string& path);
+    // Time-sliced realtime probe capture: renders `faceCount` cubemap faces this
+    // call and returns the probe texture once a full six-face round has finished.
+    unsigned int UpdateRealtimeReflectionProbe(const std::string& probeId,
+                                               const glm::vec3& position,
+                                               int resolution,
+                                               int faceCount,
+                                               const std::function<void()>& submitScene);
+    unsigned int GetRealtimeReflectionProbeTexture(const std::string& probeId) const;
+    void ReleaseRealtimeReflectionProbe(const std::string& probeId);
     void BakeBrdfLut();
     void CreateShadowMaps(int resolution, int cascadeCount);
     void CreateLocalShadowMaps(int spotResolution, int spotCount, int pointResolution, int pointCount);
@@ -317,6 +336,14 @@ private:
         unsigned int weatherTexture{0};
         unsigned int depthOfFieldFramebuffer{0};
         unsigned int depthOfFieldTexture{0};
+        unsigned int smaaColorFramebuffer{0};
+        unsigned int smaaColorTexture{0};
+        unsigned int smaaHdrColorFramebuffer{0};
+        unsigned int smaaHdrColorTexture{0};
+        unsigned int smaaEdgeFramebuffer{0};
+        unsigned int smaaEdgeTexture{0};
+        unsigned int smaaWeightFramebuffer{0};
+        unsigned int smaaWeightTexture{0};
         std::array<unsigned int, 2> taaFramebuffers{0, 0};
         std::array<unsigned int, 2> taaHistoryTextures{0, 0};
         std::array<unsigned int, 2> taaSurfaceHistoryTextures{0, 0};
@@ -358,7 +385,15 @@ private:
     void InitializeQuad();
     void InitializeSsaoResources();
     void RenderCaptureCube() const;
+    bool CaptureReflectionProbeFaces(const glm::vec3& position,
+                                     int resolution,
+                                     unsigned int cubemap,
+                                     int firstFace,
+                                     int faceCount,
+                                     const std::function<void()>& submitScene,
+                                     const std::function<void(int, int)>& progress);
     void ResolveViewportTarget(ViewportTarget& target);
+    void RenderOverlayLines(ViewportTarget& target);
     void DestroyViewportTarget(ViewportTarget& target);
     ViewportTarget& GetViewportTarget(ViewportRenderTarget target);
     const ViewportTarget& GetViewportTarget(ViewportRenderTarget target) const;
@@ -371,6 +406,13 @@ private:
     std::vector<LightDrawCommand> lightDrawList_;
     std::vector<ReflectionProbeDrawCommand> reflectionProbeDrawList_;
     std::unordered_map<std::string, unsigned int> reflectionProbeCubemapCache_;
+    struct RealtimeReflectionProbeState {
+        unsigned int cubemap{0};
+        int resolution{0};
+        int nextFace{0};
+        bool completedFullRound{false};
+    };
+    std::unordered_map<std::string, RealtimeReflectionProbeState> realtimeReflectionProbes_;
     EnvironmentMaps environmentMaps_{};
     RendererSettings settings_{};
     DisplayHdrCapabilities displayHdrCapabilities_{};
@@ -417,6 +459,12 @@ private:
     std::unique_ptr<Shader> weatherShader_;
     std::unique_ptr<Shader> depthOfFieldShader_;
     std::unique_ptr<Shader> taaShader_;
+    std::unique_ptr<Shader> smaaEdgeShader_;
+    std::unique_ptr<Shader> smaaWeightsShader_;
+    std::unique_ptr<Shader> smaaBlendShader_;
+    std::unique_ptr<Shader> debugLineShader_;
+    unsigned int smaaAreaTexture_{0};
+    unsigned int smaaSearchTexture_{0};
     std::unique_ptr<Shader> shadowDepthShader_;
     std::unique_ptr<Shader> pointShadowDepthShader_;
     std::unique_ptr<Shader> irradianceShader_;

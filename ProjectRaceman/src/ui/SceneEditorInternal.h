@@ -1464,6 +1464,56 @@ inline std::string InspectorComponentKey(const std::string& objectId, SceneInspe
     return objectId + "|" + InspectorComponentTypeToString(type);
 }
 
+inline const char* SceneComponentTypeToString(SceneComponentType type) {
+    switch (type) {
+    case SceneComponentType::Transform: return "Transform";
+    case SceneComponentType::MeshFilter: return "MeshFilter";
+    case SceneComponentType::MeshRenderer: return "MeshRenderer";
+    case SceneComponentType::Script: return "Script";
+    case SceneComponentType::Rigidbody: return "Rigidbody";
+    case SceneComponentType::Vehicle: return "Vehicle";
+    case SceneComponentType::CharacterController: return "CharacterController";
+    case SceneComponentType::BoxCollider: return "BoxCollider";
+    case SceneComponentType::SphereCollider: return "SphereCollider";
+    case SceneComponentType::CapsuleCollider: return "CapsuleCollider";
+    case SceneComponentType::PlaneCollider: return "PlaneCollider";
+    case SceneComponentType::MeshCollider: return "MeshCollider";
+    case SceneComponentType::Camera: return "Camera";
+    case SceneComponentType::Cinemachine: return "Cinemachine";
+    case SceneComponentType::Light: return "Light";
+    case SceneComponentType::ReflectionProbe: return "ReflectionProbe";
+    case SceneComponentType::AudioListener: return "AudioListener";
+    case SceneComponentType::AudioSource: return "AudioSource";
+    case SceneComponentType::VehicleSound: return "VehicleSound";
+    case SceneComponentType::TrackGenerator: return "TrackGenerator";
+    }
+    return "Transform";
+}
+
+inline bool SceneComponentTypeFromString(const std::string& value, SceneComponentType& outType) {
+    if (value == "Transform") { outType = SceneComponentType::Transform; return true; }
+    if (value == "MeshFilter") { outType = SceneComponentType::MeshFilter; return true; }
+    if (value == "MeshRenderer") { outType = SceneComponentType::MeshRenderer; return true; }
+    if (value == "Script") { outType = SceneComponentType::Script; return true; }
+    if (value == "Rigidbody") { outType = SceneComponentType::Rigidbody; return true; }
+    if (value == "Vehicle") { outType = SceneComponentType::Vehicle; return true; }
+    if (value == "CharacterController") { outType = SceneComponentType::CharacterController; return true; }
+    if (value == "BoxCollider") { outType = SceneComponentType::BoxCollider; return true; }
+    if (value == "SphereCollider") { outType = SceneComponentType::SphereCollider; return true; }
+    if (value == "CapsuleCollider") { outType = SceneComponentType::CapsuleCollider; return true; }
+    if (value == "PlaneCollider") { outType = SceneComponentType::PlaneCollider; return true; }
+    if (value == "MeshCollider") { outType = SceneComponentType::MeshCollider; return true; }
+    if (value == "Camera") { outType = SceneComponentType::Camera; return true; }
+    if (value == "Cinemachine") { outType = SceneComponentType::Cinemachine; return true; }
+    if (value == "Light") { outType = SceneComponentType::Light; return true; }
+    if (value == "ReflectionProbe") { outType = SceneComponentType::ReflectionProbe; return true; }
+    if (value == "AudioListener") { outType = SceneComponentType::AudioListener; return true; }
+    if (value == "AudioSource") { outType = SceneComponentType::AudioSource; return true; }
+    if (value == "VehicleSound") { outType = SceneComponentType::VehicleSound; return true; }
+    if (value == "TrackGenerator") { outType = SceneComponentType::TrackGenerator; return true; }
+    return false;
+}
+
 inline bool IsObjectNameCopySuffix(const std::string& name) {
     return name.size() >= 5 && name.substr(name.size() - 5) == " Copy";
 }

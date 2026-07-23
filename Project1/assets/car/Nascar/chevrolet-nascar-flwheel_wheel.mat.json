@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "name": "wheel",
+  "shader": "unlit",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0,
+  "roughness": 0,
+  "clearCoat": 0,
+  "clearCoatRoughness": 0.02,
+  "anisotropy": -1,
+  "transmission": 0,
+  "alphaMode": "Opaque",
+  "alphaCutoff": 0.5,
+  "doubleSided": false,
+  "emissiveColor": [0, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "assets/car/Nascar/wheel.png",
+    "normal": "assets/car/mercedes-benz-amg-gt3-red-bull/materials/redbullgt3_wheel_normal.png",
+    "metallic": "assets/car/mercedes-benz-amg-gt3-red-bull/materials/redbullgt3_wheel_metallic.png",
+    "roughness": "assets/car/mercedes-benz-amg-gt3-red-bull/textures/Wheel_Metallic-Wheel_Roughness_14@channels=B.png",
+    "ao": ""
+  },
+  "properties": {
+    "alphaCutoff": { "type": "float", "value": 0 }
+  }
+}

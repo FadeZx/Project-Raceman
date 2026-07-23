@@ -63,6 +63,8 @@ uniform sampler2D uBrdfLut;
 uniform int uReflectionProbeCount;
 uniform samplerCube uReflectionProbeMaps[4];
 uniform vec3 uReflectionProbePositions[4];
+// 0 = box, 1 = sphere (extents.x carries the sphere radius).
+uniform int uReflectionProbeShapes[4];
 uniform vec3 uReflectionProbeExtents[4];
 uniform float uReflectionProbeBlendDistances[4];
 uniform float uReflectionProbeIntensities[4];
@@ -103,6 +105,19 @@ vec3 BoxProjectedReflectionDirection(vec3 worldPosition, vec3 reflectionDirectio
     return intersection - probePosition;
 }
 
+vec3 SphereProjectedReflectionDirection(vec3 worldPosition, vec3 reflectionDirection,
+                                        vec3 probePosition, float radius) {
+    // Ray-sphere intersection from inside the influence sphere; the hit point
+    // re-centres the lookup so the reflection parallax matches the capture point.
+    vec3 fromCenter = worldPosition - probePosition;
+    float b = dot(fromCenter, reflectionDirection);
+    float c = dot(fromCenter, fromCenter) - radius * radius;
+    float discriminant = b * b - c;
+    if (discriminant <= 0.0) return reflectionDirection;
+    float hitDistance = -b + sqrt(discriminant);
+    return fromCenter + reflectionDirection * max(hitDistance, 0.0);
+}
+
 vec4 SampleLocalReflectionProbes(vec3 worldPosition, vec3 reflectionDirection, float roughness) {
     vec3 accumulated = vec3(0.0);
     float accumulatedWeight = 0.0;
@@ -110,14 +125,23 @@ vec4 SampleLocalReflectionProbes(vec3 worldPosition, vec3 reflectionDirection, f
     float maximumMip = uUseBakedIbl ? 4.0 : 7.0;
     for (int probeIndex = 0; probeIndex < 4; ++probeIndex) {
         if (probeIndex >= uReflectionProbeCount) break;
+        bool isSphere = uReflectionProbeShapes[probeIndex] == 1;
         vec3 localPosition = worldPosition - uReflectionProbePositions[probeIndex];
-        vec3 distanceInside = uReflectionProbeExtents[probeIndex] - abs(localPosition);
-        float nearestBoundary = min(distanceInside.x, min(distanceInside.y, distanceInside.z));
+        float nearestBoundary;
+        if (isSphere) {
+            nearestBoundary = uReflectionProbeExtents[probeIndex].x - length(localPosition);
+        } else {
+            vec3 distanceInside = uReflectionProbeExtents[probeIndex] - abs(localPosition);
+            nearestBoundary = min(distanceInside.x, min(distanceInside.y, distanceInside.z));
+        }
         if (nearestBoundary <= 0.0) continue;
         float weight = smoothstep(0.0, max(uReflectionProbeBlendDistances[probeIndex], 0.01), nearestBoundary);
         float probeIntensity = max(uReflectionProbeIntensities[probeIndex], 0.0);
-        vec3 correctedDirection = BoxProjectedReflectionDirection(worldPosition, reflectionDirection,
-            uReflectionProbePositions[probeIndex], uReflectionProbeExtents[probeIndex]);
+        vec3 correctedDirection = isSphere
+            ? SphereProjectedReflectionDirection(worldPosition, reflectionDirection,
+                uReflectionProbePositions[probeIndex], uReflectionProbeExtents[probeIndex].x)
+            : BoxProjectedReflectionDirection(worldPosition, reflectionDirection,
+                uReflectionProbePositions[probeIndex], uReflectionProbeExtents[probeIndex]);
         accumulated += textureLod(uReflectionProbeMaps[probeIndex], correctedDirection, roughness * maximumMip).rgb *
             weight * probeIntensity;
         accumulatedWeight += weight;

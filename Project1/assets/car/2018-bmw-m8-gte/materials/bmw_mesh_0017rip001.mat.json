@@ -6,7 +6,7 @@
   "metallic": 0.328,
   "roughness": 0.191,
   "clearCoat": 0.079,
-  "clearCoatRoughness": 0.458,
+  "clearCoatRoughness": 0.074,
   "anisotropy": 0.107,
   "transmission": 0,
   "alphaMode": "Opaque",

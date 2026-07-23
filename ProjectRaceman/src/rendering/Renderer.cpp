@@ -1,6 +1,8 @@
 #include "Renderer.h"
 #include "shader.h"
 #include "ShaderRegistry.h"
+#include "smaa/AreaTex.h"
+#include "smaa/SearchTex.h"
 
 #include <glad/glad.h>
 
@@ -55,6 +57,12 @@ Renderer::~Renderer() {
         (void)path;
         if (texture != 0) glDeleteTextures(1, &texture);
     }
+    for (const auto& [probeId, state] : realtimeReflectionProbes_) {
+        (void)probeId;
+        if (state.cubemap != 0) glDeleteTextures(1, &state.cubemap);
+    }
+    if (smaaAreaTexture_ != 0) glDeleteTextures(1, &smaaAreaTexture_);
+    if (smaaSearchTexture_ != 0) glDeleteTextures(1, &smaaSearchTexture_);
     if (fullscreenQuad_ != 0) {
         glDeleteVertexArrays(1, &fullscreenQuad_);
     }
@@ -184,6 +192,14 @@ void Renderer::EnsureViewportRenderTarget(ViewportRenderTarget target, int width
     if (renderTarget.weatherTexture == 0) glGenTextures(1, &renderTarget.weatherTexture);
     if (renderTarget.depthOfFieldFramebuffer == 0) glGenFramebuffers(1, &renderTarget.depthOfFieldFramebuffer);
     if (renderTarget.depthOfFieldTexture == 0) glGenTextures(1, &renderTarget.depthOfFieldTexture);
+    if (renderTarget.smaaColorFramebuffer == 0) glGenFramebuffers(1, &renderTarget.smaaColorFramebuffer);
+    if (renderTarget.smaaColorTexture == 0) glGenTextures(1, &renderTarget.smaaColorTexture);
+    if (renderTarget.smaaHdrColorFramebuffer == 0) glGenFramebuffers(1, &renderTarget.smaaHdrColorFramebuffer);
+    if (renderTarget.smaaHdrColorTexture == 0) glGenTextures(1, &renderTarget.smaaHdrColorTexture);
+    if (renderTarget.smaaEdgeFramebuffer == 0) glGenFramebuffers(1, &renderTarget.smaaEdgeFramebuffer);
+    if (renderTarget.smaaEdgeTexture == 0) glGenTextures(1, &renderTarget.smaaEdgeTexture);
+    if (renderTarget.smaaWeightFramebuffer == 0) glGenFramebuffers(1, &renderTarget.smaaWeightFramebuffer);
+    if (renderTarget.smaaWeightTexture == 0) glGenTextures(1, &renderTarget.smaaWeightTexture);
     if (renderTarget.taaFramebuffers[0] == 0) glGenFramebuffers(2, renderTarget.taaFramebuffers.data());
     if (renderTarget.taaHistoryTextures[0] == 0) glGenTextures(2, renderTarget.taaHistoryTextures.data());
     if (renderTarget.taaSurfaceHistoryTextures[0] == 0) glGenTextures(2, renderTarget.taaSurfaceHistoryTextures.data());
@@ -388,6 +404,30 @@ void Renderer::EnsureViewportRenderTarget(ViewportRenderTarget target, int width
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         throw std::runtime_error("Failed to create depth-of-field framebuffer");
     }
+
+    auto setupSmaaAttachment = [&](unsigned int texture, unsigned int framebuffer, GLenum internalFormat,
+                                   GLenum format, GLenum type, const char* label) {
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            throw std::runtime_error(std::string("Failed to create SMAA framebuffer: ") + label);
+        }
+    };
+    setupSmaaAttachment(renderTarget.smaaColorTexture, renderTarget.smaaColorFramebuffer,
+                        GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, "color");
+    setupSmaaAttachment(renderTarget.smaaHdrColorTexture, renderTarget.smaaHdrColorFramebuffer,
+                        GL_RGBA16F, GL_RGBA, GL_FLOAT, "hdr color");
+    setupSmaaAttachment(renderTarget.smaaEdgeTexture, renderTarget.smaaEdgeFramebuffer,
+                        GL_RG8, GL_RG, GL_UNSIGNED_BYTE, "edges");
+    setupSmaaAttachment(renderTarget.smaaWeightTexture, renderTarget.smaaWeightFramebuffer,
+                        GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, "weights");
 
     glBindTexture(GL_TEXTURE_2D, renderTarget.colorTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
@@ -752,16 +792,16 @@ unsigned int Renderer::LoadReflectionProbeCubemap(const std::string& path) {
     return texture;
 }
 
-bool Renderer::BakeReflectionProbe(const glm::vec3& position,
-                                   int resolution,
-                                   const std::string& outputPath,
-                                   const std::function<void()>& submitScene,
-                                   const std::function<void(int, int)>& progress) {
-    if (!submitScene || outputPath.empty()) return false;
-    resolution = (std::clamp)(resolution, 16, 1024);
-    std::error_code directoryError;
-    std::filesystem::create_directories(std::filesystem::path(outputPath).parent_path(), directoryError);
-    if (directoryError) return false;
+bool Renderer::CaptureReflectionProbeFaces(const glm::vec3& position,
+                                           int resolution,
+                                           unsigned int cubemap,
+                                           int firstFace,
+                                           int faceCount,
+                                           const std::function<void()>& submitScene,
+                                           const std::function<void(int, int)>& progress) {
+    if (!submitScene || cubemap == 0 || faceCount <= 0) return false;
+    firstFace = (std::clamp)(firstFace, 0, 5);
+    faceCount = (std::min)(faceCount, 6 - firstFace);
 
     GLint previousFramebuffer = 0;
     GLint previousViewport[4]{};
@@ -776,19 +816,6 @@ bool Renderer::BakeReflectionProbe(const glm::vec3& position,
     const glm::mat4 savedProjection = unjitteredProj_;
     const RendererViewport savedRendererViewport = viewport_;
     const bool savedViewportTargetActive = viewportTargetActive_;
-
-    unsigned int cubemap = 0;
-    glGenTextures(1, &cubemap);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
-    for (unsigned int face = 0; face < 6; ++face) {
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB16F,
-                     resolution, resolution, 0, GL_RGB, GL_FLOAT, nullptr);
-    }
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     if (captureFbo_ == 0) glGenFramebuffers(1, &captureFbo_);
     if (captureRbo_ == 0) glGenRenderbuffers(1, &captureRbo_);
@@ -813,15 +840,15 @@ bool Renderer::BakeReflectionProbe(const glm::vec3& position,
         glm::lookAt(position, position + glm::vec3( 0, 0,-1), glm::vec3(0,-1, 0))};
 
     bool complete = true;
-    for (unsigned int face = 0; face < 6; ++face) {
+    for (int face = firstFace; face < firstFace + faceCount; ++face) {
         glBindFramebuffer(GL_FRAMEBUFFER, captureFbo_);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                               GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, cubemap, 0);
+                               GL_TEXTURE_CUBE_MAP_POSITIVE_X + static_cast<unsigned int>(face), cubemap, 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             complete = false;
             break;
         }
-        SetCamera(captureViews[face], captureProjection);
+        SetCamera(captureViews[static_cast<std::size_t>(face)], captureProjection);
         glViewport(0, 0, resolution, resolution);
         glDisable(GL_SCISSOR_TEST);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -835,15 +862,61 @@ bool Renderer::BakeReflectionProbe(const glm::vec3& position,
             reflectionCaptureSkyShader_->use();
             reflectionCaptureSkyShader_->setInt("environmentMap", 0);
             reflectionCaptureSkyShader_->setMat4("projection", captureProjection);
-            reflectionCaptureSkyShader_->setMat4("view", captureViews[face]);
+            reflectionCaptureSkyShader_->setMat4("view", captureViews[static_cast<std::size_t>(face)]);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, environmentMaps_.source);
             RenderCaptureCube();
         }
         submitScene();
         Flush();
-        if (progress) progress(static_cast<int>(face) + 1, 6);
+        if (progress) progress(face + 1, 6);
     }
+
+    SetCamera(savedView, savedProjection);
+    viewport_ = savedRendererViewport;
+    viewportTargetActive_ = savedViewportTargetActive;
+    glBindFramebuffer(GL_FRAMEBUFFER, static_cast<unsigned int>(previousFramebuffer));
+    glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+    glScissor(previousScissorBox[0], previousScissorBox[1], previousScissorBox[2], previousScissorBox[3]);
+    if (previousScissor) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+    if (previousDepth) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+    if (previousCull) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+    return complete;
+}
+
+namespace {
+
+unsigned int CreateProbeCubemapTexture(int resolution) {
+    unsigned int cubemap = 0;
+    glGenTextures(1, &cubemap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
+    for (unsigned int face = 0; face < 6; ++face) {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB16F,
+                     resolution, resolution, 0, GL_RGB, GL_FLOAT, nullptr);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    return cubemap;
+}
+
+} // namespace
+
+bool Renderer::BakeReflectionProbe(const glm::vec3& position,
+                                   int resolution,
+                                   const std::string& outputPath,
+                                   const std::function<void()>& submitScene,
+                                   const std::function<void(int, int)>& progress) {
+    if (!submitScene || outputPath.empty()) return false;
+    resolution = (std::clamp)(resolution, 16, 1024);
+    std::error_code directoryError;
+    std::filesystem::create_directories(std::filesystem::path(outputPath).parent_path(), directoryError);
+    if (directoryError) return false;
+
+    unsigned int cubemap = CreateProbeCubemapTexture(resolution);
+    bool complete = CaptureReflectionProbeFaces(position, resolution, cubemap, 0, 6, submitScene, progress);
 
     if (complete) {
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
@@ -866,16 +939,6 @@ bool Renderer::BakeReflectionProbe(const glm::vec3& position,
         complete = static_cast<bool>(output);
     }
 
-    SetCamera(savedView, savedProjection);
-    viewport_ = savedRendererViewport;
-    viewportTargetActive_ = savedViewportTargetActive;
-    glBindFramebuffer(GL_FRAMEBUFFER, static_cast<unsigned int>(previousFramebuffer));
-    glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
-    glScissor(previousScissorBox[0], previousScissorBox[1], previousScissorBox[2], previousScissorBox[3]);
-    if (previousScissor) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
-    if (previousDepth) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
-    if (previousCull) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
-
     const std::string key = std::filesystem::path(outputPath).lexically_normal().string();
     if (complete) {
         if (const auto existing = reflectionProbeCubemapCache_.find(key); existing != reflectionProbeCubemapCache_.end()) {
@@ -888,6 +951,56 @@ bool Renderer::BakeReflectionProbe(const glm::vec3& position,
         glDeleteTextures(1, &cubemap);
     }
     return complete;
+}
+
+unsigned int Renderer::UpdateRealtimeReflectionProbe(const std::string& probeId,
+                                                     const glm::vec3& position,
+                                                     int resolution,
+                                                     int faceCount,
+                                                     const std::function<void()>& submitScene) {
+    if (probeId.empty() || !submitScene) return 0;
+    resolution = (std::clamp)(resolution, 16, 1024);
+    faceCount = (std::clamp)(faceCount, 1, 6);
+
+    RealtimeReflectionProbeState& state = realtimeReflectionProbes_[probeId];
+    if (state.cubemap == 0 || state.resolution != resolution) {
+        if (state.cubemap != 0) glDeleteTextures(1, &state.cubemap);
+        state = {};
+        state.cubemap = CreateProbeCubemapTexture(resolution);
+        state.resolution = resolution;
+    }
+
+    int remaining = faceCount;
+    while (remaining > 0) {
+        const int batch = (std::min)(remaining, 6 - state.nextFace);
+        if (!CaptureReflectionProbeFaces(position, resolution, state.cubemap, state.nextFace, batch,
+                                         submitScene, {})) {
+            return GetRealtimeReflectionProbeTexture(probeId);
+        }
+        state.nextFace += batch;
+        remaining -= batch;
+        if (state.nextFace >= 6) {
+            state.nextFace = 0;
+            state.completedFullRound = true;
+            glBindTexture(GL_TEXTURE_CUBE_MAP, state.cubemap);
+            glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        }
+    }
+    return state.completedFullRound ? state.cubemap : 0;
+}
+
+unsigned int Renderer::GetRealtimeReflectionProbeTexture(const std::string& probeId) const {
+    const auto it = realtimeReflectionProbes_.find(probeId);
+    if (it == realtimeReflectionProbes_.end() || !it->second.completedFullRound) return 0;
+    return it->second.cubemap;
+}
+
+void Renderer::ReleaseRealtimeReflectionProbe(const std::string& probeId) {
+    const auto it = realtimeReflectionProbes_.find(probeId);
+    if (it == realtimeReflectionProbes_.end()) return;
+    if (it->second.cubemap != 0) glDeleteTextures(1, &it->second.cubemap);
+    realtimeReflectionProbes_.erase(it);
 }
 
 void Renderer::BakeBrdfLut() {
@@ -1025,6 +1138,18 @@ void Renderer::DestroyViewportTarget(ViewportTarget& target) {
     if (target.velocityTexture != 0) glDeleteTextures(1, &target.velocityTexture);
     target.motionBlurFramebuffer = target.motionBlurTexture = 0;
     target.velocityFramebuffer = target.velocityTexture = 0;
+    if (target.smaaColorFramebuffer != 0) glDeleteFramebuffers(1, &target.smaaColorFramebuffer);
+    if (target.smaaColorTexture != 0) glDeleteTextures(1, &target.smaaColorTexture);
+    if (target.smaaHdrColorFramebuffer != 0) glDeleteFramebuffers(1, &target.smaaHdrColorFramebuffer);
+    if (target.smaaHdrColorTexture != 0) glDeleteTextures(1, &target.smaaHdrColorTexture);
+    if (target.smaaEdgeFramebuffer != 0) glDeleteFramebuffers(1, &target.smaaEdgeFramebuffer);
+    if (target.smaaEdgeTexture != 0) glDeleteTextures(1, &target.smaaEdgeTexture);
+    if (target.smaaWeightFramebuffer != 0) glDeleteFramebuffers(1, &target.smaaWeightFramebuffer);
+    if (target.smaaWeightTexture != 0) glDeleteTextures(1, &target.smaaWeightTexture);
+    target.smaaColorFramebuffer = target.smaaColorTexture = 0;
+    target.smaaHdrColorFramebuffer = target.smaaHdrColorTexture = 0;
+    target.smaaEdgeFramebuffer = target.smaaEdgeTexture = 0;
+    target.smaaWeightFramebuffer = target.smaaWeightTexture = 0;
     if (target.ssaoBlurFramebuffer != 0) {
         glDeleteFramebuffers(1, &target.ssaoBlurFramebuffer);
         target.ssaoBlurFramebuffer = 0;
@@ -1109,6 +1234,10 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     if (target.outputFramebuffer == 0 || target.hdrColorTexture == 0 || toneMapShader_ == nullptr) {
         return;
     }
+    // Plain View is the "no extra graphics" mode: every screen-space and
+    // temporal post effect is skipped so the image is just the tonemapped
+    // lit scene, matching Unity's minimal shaded-only viewport.
+    const bool plainViewActive = settings_.profile.plainView;
 
     const glm::mat4 currentViewProjection = proj_ * view_;
     const bool needsVelocity = settings_.profile.motionBlur || settings_.profile.antiAliasing == AntiAliasingMode::TAA;
@@ -1170,7 +1299,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     glDisable(GL_BLEND);
     glBindVertexArray(fullscreenQuad_);
 
-    const bool ssaoReady = settings_.profile.ssao && ssaoShader_ && ssaoBlurShader_ &&
+    const bool ssaoReady = !plainViewActive && settings_.profile.ssao && ssaoShader_ && ssaoBlurShader_ &&
         ssaoCompositeShader_ && ssaoNoiseTexture_ != 0 && target.ssaoFramebuffer != 0 &&
         target.ssaoTexture != 0 && target.ssaoBlurFramebuffer != 0 && target.ssaoBlurTexture != 0 &&
         target.compositeFramebuffer != 0 && target.compositeTexture != 0 && target.ambientTexture != 0;
@@ -1244,7 +1373,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
 
     unsigned int postProcessSceneTexture = ssaoReady ? target.compositeTexture : target.hdrColorTexture;
     const bool ssaoDebugActive = ssaoReady && settings_.profile.ssaoDebugView;
-    const bool ssrReady = !ssaoDebugActive && settings_.profile.reflections &&
+    const bool ssrReady = !plainViewActive && !ssaoDebugActive && settings_.profile.reflections &&
         settings_.profile.screenSpaceReflections && settings_.profile.iblDebugMode == 0 && ssrShader_ &&
         target.ssrFramebuffer != 0 && target.ssrTexture != 0 && target.materialTexture != 0;
     if (ssrReady) {
@@ -1277,7 +1406,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     }
     const bool ssrDebugActive = ssrReady && settings_.profile.ssrDebugView;
     const bool spatialDebugActive = ssaoDebugActive || ssrDebugActive;
-    const bool depthOfFieldReady = !spatialDebugActive && settings_.profile.depthOfField && depthOfFieldShader_ &&
+    const bool depthOfFieldReady = !plainViewActive && !spatialDebugActive && settings_.profile.depthOfField && depthOfFieldShader_ &&
         target.depthOfFieldFramebuffer != 0 && target.depthOfFieldTexture != 0;
     if (depthOfFieldReady) {
         int sampleCount = 12;
@@ -1305,7 +1434,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         glDrawArrays(GL_TRIANGLES, 0, 3);
         postProcessSceneTexture = target.depthOfFieldTexture;
     }
-    const bool taaReady = !spatialDebugActive && settings_.profile.antiAliasing == AntiAliasingMode::TAA &&
+    const bool taaReady = !plainViewActive && !spatialDebugActive && settings_.profile.antiAliasing == AntiAliasingMode::TAA &&
         velocityReady && taaShader_ && target.taaFramebuffers[0] != 0 && target.taaHistoryTextures[0] != 0 &&
         target.taaSurfaceHistoryTextures[0] != 0;
     if (taaReady) {
@@ -1333,8 +1462,10 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         taaShader_->setVec2("uCurrentJitterUv", target.taaCurrentJitterUv.x, target.taaCurrentJitterUv.y);
         taaShader_->setVec2("uPreviousJitterUv", target.taaPreviousJitterUv.x, target.taaPreviousJitterUv.y);
         taaShader_->setVec2("uTexelSize", 1.0f / static_cast<float>(target.width), 1.0f / static_cast<float>(target.height));
-        taaShader_->setFloat("uFeedback", target.taaHistoryValid ? (std::clamp)(settings_.profile.taaFeedback, 0.0f, 0.98f) : 0.0f);
-        taaShader_->setFloat("uSharpness", (std::clamp)(settings_.profile.taaSharpness, 0.0f, 1.0f));
+        // Below ~0.85 feedback TAA stops accumulating and the jitter shows as
+        // raw shimmer, so the effective range is clamped away from that zone.
+        taaShader_->setFloat("uFeedback", target.taaHistoryValid ? (std::clamp)(settings_.profile.taaFeedback, 0.85f, 0.98f) : 0.0f);
+        taaShader_->setFloat("uSharpness", (std::clamp)(settings_.profile.taaSharpness, 0.0f, 0.5f));
         taaShader_->setBool("uDebugView", settings_.profile.taaDebugView);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, postProcessSceneTexture);
@@ -1358,7 +1489,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     } else if (settings_.profile.antiAliasing != AntiAliasingMode::TAA) {
         target.taaHistoryValid = false;
     }
-    const bool motionBlurReady = !spatialDebugActive && !(taaReady && settings_.profile.taaDebugView) &&
+    const bool motionBlurReady = !plainViewActive && !spatialDebugActive && !(taaReady && settings_.profile.taaDebugView) &&
         settings_.profile.motionBlur && velocityReady &&
         motionBlurShader_ && target.motionBlurFramebuffer != 0 && target.motionBlurTexture != 0;
     if (motionBlurReady) {
@@ -1386,7 +1517,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         glDrawArrays(GL_TRIANGLES, 0, 3);
         postProcessSceneTexture = target.motionBlurTexture;
     }
-    const bool weatherReady = !spatialDebugActive && !(taaReady && settings_.profile.taaDebugView) &&
+    const bool weatherReady = !plainViewActive && !spatialDebugActive && !(taaReady && settings_.profile.taaDebugView) &&
         settings_.profile.weather && settings_.profile.weatherIntensity > 0.001f && weatherShader_ &&
         target.weatherFramebuffer != 0 && target.weatherTexture != 0;
     if (weatherReady) {
@@ -1416,7 +1547,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         glDrawArrays(GL_TRIANGLES, 0, 3);
         postProcessSceneTexture = target.weatherTexture;
     }
-    const bool postDebugActive = spatialDebugActive || (taaReady && settings_.profile.taaDebugView) ||
+    const bool postDebugActive = plainViewActive || spatialDebugActive || (taaReady && settings_.profile.taaDebugView) ||
         (motionBlurReady && settings_.profile.motionBlurDebugView);
 
     const bool bloomReady = !postDebugActive && settings_.profile.bloom && bloomExtractShader_ && bloomBlurShader_ &&
@@ -1479,7 +1610,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         paperWhiteNits, 4000.0f);
     toneMapShader_->setFloat("uHdrPaperWhiteNits", paperWhiteNits);
     toneMapShader_->setFloat("uHdrPeakBrightnessNits", peakBrightnessNits);
-    toneMapShader_->setBool("uEnableFxaa", settings_.profile.antiAliasing == AntiAliasingMode::FXAA);
+    toneMapShader_->setBool("uEnableFxaa", !plainViewActive && settings_.profile.antiAliasing == AntiAliasingMode::FXAA);
     toneMapShader_->setVec2("uInverseResolution",
         1.0f / static_cast<float>((std::max)(1, target.width)),
         1.0f / static_cast<float>((std::max)(1, target.height)));
@@ -1490,19 +1621,203 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, ssaoReady ? target.ssaoBlurTexture : 0);
 
+    const bool smaaReady = !postDebugActive && settings_.profile.antiAliasing == AntiAliasingMode::SMAA &&
+        smaaEdgeShader_ && smaaWeightsShader_ && smaaBlendShader_ &&
+        smaaAreaTexture_ != 0 && smaaSearchTexture_ != 0 &&
+        target.smaaColorFramebuffer != 0 && target.smaaEdgeFramebuffer != 0 && target.smaaWeightFramebuffer != 0;
+
     glViewport(0, 0, target.width, target.height);
-    if (settings_.profile.hdr && target.hdrOutputFramebuffer != 0) {
-        glBindFramebuffer(GL_FRAMEBUFFER, target.hdrOutputFramebuffer);
+    const bool hdrOutputActive = settings_.profile.hdr && target.hdrOutputFramebuffer != 0;
+    if (hdrOutputActive) {
+        glBindFramebuffer(GL_FRAMEBUFFER, smaaReady ? target.smaaHdrColorFramebuffer : target.hdrOutputFramebuffer);
         toneMapShader_->setInt("uOutputMode", 1);
         glDrawArrays(GL_TRIANGLES, 0, 3);
     }
     // Editor panels and the current GLFW default framebuffer are SDR. Keep a
     // display-referred preview separate from the unclamped scRGB HDR output.
-    glBindFramebuffer(GL_FRAMEBUFFER, target.outputFramebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, smaaReady ? target.smaaColorFramebuffer : target.outputFramebuffer);
     toneMapShader_->setInt("uOutputMode", settings_.profile.hdr ? 2 : 0);
     glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    if (smaaReady) {
+        const glm::vec4 rtMetrics{
+            1.0f / static_cast<float>(target.width), 1.0f / static_cast<float>(target.height),
+            static_cast<float>(target.width), static_cast<float>(target.height)};
+
+        // Pass 1: luma edge detection from the tonemapped SDR image.
+        glBindFramebuffer(GL_FRAMEBUFFER, target.smaaEdgeFramebuffer);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        smaaEdgeShader_->use();
+        smaaEdgeShader_->setInt("uColorTexture", 0);
+        smaaEdgeShader_->setVec2("uTexelSize", rtMetrics.x, rtMetrics.y);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, target.smaaColorTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // Pass 2: blending weights via the area/search lookup textures.
+        glBindFramebuffer(GL_FRAMEBUFFER, target.smaaWeightFramebuffer);
+        glClear(GL_COLOR_BUFFER_BIT);
+        smaaWeightsShader_->use();
+        smaaWeightsShader_->setInt("uEdgesTexture", 0);
+        smaaWeightsShader_->setInt("uAreaTexture", 1);
+        smaaWeightsShader_->setInt("uSearchTexture", 2);
+        smaaWeightsShader_->setVec4("uRtMetrics", rtMetrics);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, target.smaaEdgeTexture);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, smaaAreaTexture_);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, smaaSearchTexture_);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // Pass 3: neighborhood blending into the final output(s). The weights
+        // computed from the SDR image are reused for the scRGB HDR output.
+        smaaBlendShader_->use();
+        smaaBlendShader_->setInt("uColorTexture", 0);
+        smaaBlendShader_->setInt("uBlendTexture", 1);
+        smaaBlendShader_->setVec4("uRtMetrics", rtMetrics);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, target.smaaWeightTexture);
+        glBindFramebuffer(GL_FRAMEBUFFER, target.outputFramebuffer);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, target.smaaColorTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        if (hdrOutputActive) {
+            glBindFramebuffer(GL_FRAMEBUFFER, target.hdrOutputFramebuffer);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, target.smaaHdrColorTexture);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+        }
+    }
+
     glBindVertexArray(0);
     motionVectorDrawList_.clear();
+
+    RenderOverlayLines(target);
+}
+
+// Draws selection/collider/gizmo overlay lines after tonemapping, SSAO, bloom,
+// SSR and TAA/SMAA have all resolved, straight onto the final display buffer.
+// Drawing them earlier (into the lit HDR scene buffer, as before) meant every
+// one of those lighting-driven post effects reshaped the overlay color too
+// (AO darkening it, bloom blooming it, exposure/tonemap recoloring it). The
+// overlay never writes normal/ambient/material data, so it cannot itself
+// influence lighting; occlusion is instead resolved manually against the
+// already-captured scene depth texture, since the SDR output target has no
+// depth attachment of its own.
+void Renderer::RenderOverlayLines(ViewportTarget& target) {
+    if (lineDrawList_.empty()) {
+        return;
+    }
+    if (debugLineShader_ == nullptr || target.outputFramebuffer == 0 || target.depthTexture == 0) {
+        lineDrawList_.clear();
+        return;
+    }
+
+    if (lineVao_ == 0) {
+        glGenVertexArrays(1, &lineVao_);
+        glGenBuffers(1, &lineVbo_);
+        glBindVertexArray(lineVao_);
+        glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+        glBindVertexArray(0);
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, target.outputFramebuffer);
+    glViewport(0, 0, target.width, target.height);
+
+    debugLineShader_->use();
+    debugLineShader_->setMat4("uMVP", proj_ * view_);
+    debugLineShader_->setMat4("uModel", glm::mat4(1.0f));
+    debugLineShader_->setVec2("uUvTiling", glm::vec2(1.0f));
+    debugLineShader_->setVec2("uUvOffset", glm::vec2(0.0f));
+    debugLineShader_->setInt("uDepthTexture", 0);
+    debugLineShader_->setVec2("uScreenSize", static_cast<float>(target.width), static_cast<float>(target.height));
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, target.depthTexture);
+    glBindVertexArray(lineVao_);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDepthMask(GL_FALSE);
+
+    auto sameLineStyle = [](const DebugLineCommand& a, const DebugLineCommand& b) {
+        return a.depthMode == b.depthMode
+            && a.width == b.width
+            && a.color.x == b.color.x
+            && a.color.y == b.color.y
+            && a.color.z == b.color.z
+            && a.color.w == b.color.w;
+    };
+
+    auto drawLineBatch = [&](DebugLineDepthMode mode, bool overlayPass) {
+        const bool useDepthTest = (mode != DebugLineDepthMode::AlwaysOnTop) && !overlayPass;
+        debugLineShader_->setBool("uUseDepthTest", useDepthTest);
+        if (overlayPass) {
+            glEnable(GL_BLEND);
+            glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        } else {
+            glDisable(GL_BLEND);
+        }
+
+        std::vector<glm::vec3> vertices;
+        vertices.reserve(lineDrawList_.size() * 2);
+        for (std::size_t i = 0; i < lineDrawList_.size();) {
+            const DebugLineCommand& first = lineDrawList_[i];
+            if (first.depthMode != mode) {
+                ++i;
+                continue;
+            }
+
+            vertices.clear();
+            glm::vec4 color = first.color;
+            if (overlayPass) {
+                color.a *= 0.25f;
+            }
+            const float width = first.width;
+
+            std::size_t j = i;
+            for (; j < lineDrawList_.size(); ++j) {
+                const DebugLineCommand& cmd = lineDrawList_[j];
+                if (!sameLineStyle(cmd, first)) {
+                    break;
+                }
+                vertices.push_back(cmd.start);
+                vertices.push_back(cmd.end);
+            }
+
+            if (vertices.empty()) {
+                i = j;
+                continue;
+            }
+
+            glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
+            const std::size_t vertexCount = vertices.size();
+            const std::size_t requiredBytes = vertexCount * sizeof(glm::vec3);
+            if (vertexCount > lineVertexCapacity_) {
+                glBufferData(GL_ARRAY_BUFFER, requiredBytes, vertices.data(), GL_DYNAMIC_DRAW);
+                lineVertexCapacity_ = vertexCount;
+            } else {
+                glBufferSubData(GL_ARRAY_BUFFER, 0, requiredBytes, vertices.data());
+            }
+            glLineWidth(width);
+            debugLineShader_->setVec4("uColor", color);
+            glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(vertexCount));
+            i = j;
+        }
+    };
+
+    drawLineBatch(DebugLineDepthMode::DepthTested, false);
+    drawLineBatch(DebugLineDepthMode::DepthTestedOverlay, false);
+    drawLineBatch(DebugLineDepthMode::DepthTestedOverlay, true);
+    drawLineBatch(DebugLineDepthMode::AlwaysOnTop, false);
+
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+    glBindVertexArray(0);
+    lineDrawList_.clear();
 }
 
 Renderer::ViewportTarget& Renderer::GetViewportTarget(ViewportRenderTarget target) {
@@ -1598,12 +1913,18 @@ void Renderer::Flush() {
     glFrontFace(GL_CCW);
 
     const glm::vec3 cameraPosition = glm::vec3(glm::inverse(view_)[3]);
+    auto probeOutsideDistanceSquared = [&](const ReflectionProbeDrawCommand& probe) {
+        if (probe.shape == ReflectionProbeVolumeShape::Sphere) {
+            const float outside = (std::max)(glm::length(cameraPosition - probe.position) - probe.sphereRadius, 0.0f);
+            return outside * outside;
+        }
+        const glm::vec3 outside = (glm::max)(glm::abs(cameraPosition - probe.position) - probe.boxExtents, glm::vec3(0.0f));
+        return glm::dot(outside, outside);
+    };
     std::stable_sort(reflectionProbeDrawList_.begin(), reflectionProbeDrawList_.end(),
         [&](const ReflectionProbeDrawCommand& left, const ReflectionProbeDrawCommand& right) {
-            const glm::vec3 leftOutside = (glm::max)(glm::abs(cameraPosition - left.position) - left.boxExtents, glm::vec3(0.0f));
-            const glm::vec3 rightOutside = (glm::max)(glm::abs(cameraPosition - right.position) - right.boxExtents, glm::vec3(0.0f));
-            const float leftOutsideDistance = glm::dot(leftOutside, leftOutside);
-            const float rightOutsideDistance = glm::dot(rightOutside, rightOutside);
+            const float leftOutsideDistance = probeOutsideDistanceSquared(left);
+            const float rightOutsideDistance = probeOutsideDistanceSquared(right);
             if (std::abs(leftOutsideDistance - rightOutsideDistance) > 0.0001f)
                 return leftOutsideDistance < rightOutsideDistance;
             const glm::vec3 leftCenterOffset = cameraPosition - left.position;
@@ -1797,19 +2118,30 @@ void Renderer::Flush() {
             const glm::mat4 lightMatrix = lightProjection * lightView;
             directionalLightMatrices[static_cast<std::size_t>(cascade)] = lightMatrix;
 
+            // Bounds-test any command (visible or camera-culled) against this
+            // cascade's light-space volume so meshes outside it aren't
+            // resubmitted to every cascade.
+            auto intersectsCascade = [&](const MeshDrawCommand& cmd) {
+                if (!cmd.hasTransparentSortBounds) return true;
+                const glm::vec3 centerLightSpace = glm::vec3(lightView * glm::vec4(cmd.transparentSortCenter, 1.0f));
+                const float boundsRadius = cmd.transparentSortRadius;
+                const float lightDepth = -centerLightSpace.z;
+                return !(std::abs(centerLightSpace.x) > cascadeRadius + boundsRadius ||
+                    std::abs(centerLightSpace.y) > cascadeRadius + boundsRadius ||
+                    lightDepth + boundsRadius < 0.1f ||
+                    lightDepth - boundsRadius > cascadeRadius * 6.0f);
+            };
+
             glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                 directionalShadowMap_, 0, cascade);
             glClear(GL_DEPTH_BUFFER_BIT);
-            for (const MeshDrawCommand* cmd : opaqueCommands) drawShadowCaster(*cmd, lightMatrix);
+            for (const MeshDrawCommand* cmd : opaqueCommands) {
+                if (!intersectsCascade(*cmd)) continue;
+                drawShadowCaster(*cmd, lightMatrix);
+            }
             for (const MeshDrawCommand& cmd : shadowCasterList_) {
                 // Test camera-culled meshes against this cascade's light volume.
-                const glm::vec3 centerLightSpace = glm::vec3(lightView * glm::vec4(cmd.transparentSortCenter, 1.0f));
-                const float boundsRadius = cmd.hasTransparentSortBounds ? cmd.transparentSortRadius : 0.0f;
-                const float lightDepth = -centerLightSpace.z;
-                if (std::abs(centerLightSpace.x) > cascadeRadius + boundsRadius ||
-                    std::abs(centerLightSpace.y) > cascadeRadius + boundsRadius ||
-                    lightDepth + boundsRadius < 0.1f ||
-                    lightDepth - boundsRadius > cascadeRadius * 6.0f) continue;
+                if (!intersectsCascade(cmd)) continue;
                 drawShadowCaster(cmd, lightMatrix);
             }
         }
@@ -1892,6 +2224,8 @@ void Renderer::Flush() {
             glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, spotShadowMap_, 0, slot);
             glClear(GL_DEPTH_BUFFER_BIT);
             for (const MeshDrawCommand* cmd : opaqueCommands) {
+                if (cmd->hasTransparentSortBounds &&
+                    glm::length(cmd->transparentSortCenter - light.position) > light.range + cmd->transparentSortRadius) continue;
                 shadowDepthShader_->setMat4("uLightMVP", lightMatrix * cmd->modelMatrix);
                 drawLocalCaster(*shadowDepthShader_, *cmd);
             }
@@ -1914,20 +2248,35 @@ void Renderer::Flush() {
             const glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.05f, range);
             pointShadowDepthShader_->setVec3("uLightPosition", light.position);
             pointShadowDepthShader_->setFloat("uLightRange", range);
+
+            // Range-cull once per light rather than once per cube face.
+            std::vector<const MeshDrawCommand*> rangeOpaqueCommands;
+            rangeOpaqueCommands.reserve(opaqueCommands.size());
+            for (const MeshDrawCommand* cmd : opaqueCommands) {
+                if (cmd->hasTransparentSortBounds &&
+                    glm::length(cmd->transparentSortCenter - light.position) > range + cmd->transparentSortRadius) continue;
+                rangeOpaqueCommands.push_back(cmd);
+            }
+            std::vector<const MeshDrawCommand*> rangeCasterList;
+            rangeCasterList.reserve(shadowCasterList_.size());
+            for (const MeshDrawCommand& cmd : shadowCasterList_) {
+                if (glm::length(cmd.transparentSortCenter - light.position) > range + cmd.transparentSortRadius) continue;
+                rangeCasterList.push_back(&cmd);
+            }
+
             for (int face = 0; face < 6; ++face) {
                 const glm::mat4 lightMatrix = projection * glm::lookAt(light.position, light.position + cubeDirections[static_cast<std::size_t>(face)], cubeUps[static_cast<std::size_t>(face)]);
                 glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, pointShadowMap_, 0, slot * 6 + face);
                 glClear(GL_DEPTH_BUFFER_BIT);
-                for (const MeshDrawCommand* cmd : opaqueCommands) {
+                for (const MeshDrawCommand* cmd : rangeOpaqueCommands) {
                     pointShadowDepthShader_->setMat4("uLightMVP", lightMatrix * cmd->modelMatrix);
                     pointShadowDepthShader_->setMat4("uModel", cmd->modelMatrix);
                     drawLocalCaster(*pointShadowDepthShader_, *cmd);
                 }
-                for (const MeshDrawCommand& cmd : shadowCasterList_) {
-                    if (glm::length(cmd.transparentSortCenter - light.position) > range + cmd.transparentSortRadius) continue;
-                    pointShadowDepthShader_->setMat4("uLightMVP", lightMatrix * cmd.modelMatrix);
-                    pointShadowDepthShader_->setMat4("uModel", cmd.modelMatrix);
-                    drawLocalCaster(*pointShadowDepthShader_, cmd);
+                for (const MeshDrawCommand* cmd : rangeCasterList) {
+                    pointShadowDepthShader_->setMat4("uLightMVP", lightMatrix * cmd->modelMatrix);
+                    pointShadowDepthShader_->setMat4("uModel", cmd->modelMatrix);
+                    drawLocalCaster(*pointShadowDepthShader_, *cmd);
                 }
             }
         }
@@ -2003,10 +2352,16 @@ void Renderer::Flush() {
             if (probeIndex < reflectionProbeCount) {
                 const ReflectionProbeDrawCommand& probe = reflectionProbeDrawList_[static_cast<std::size_t>(probeIndex)];
                 shader.setVec3("uReflectionProbePositions" + index, probe.position);
-                shader.setVec3("uReflectionProbeExtents" + index, glm::vec3(
-                    (std::max)(probe.boxExtents.x, 0.01f),
-                    (std::max)(probe.boxExtents.y, 0.01f),
-                    (std::max)(probe.boxExtents.z, 0.01f)));
+                shader.setInt("uReflectionProbeShapes" + index,
+                    probe.shape == ReflectionProbeVolumeShape::Sphere ? 1 : 0);
+                const float sphereRadius = (std::max)(probe.sphereRadius, 0.01f);
+                shader.setVec3("uReflectionProbeExtents" + index,
+                    probe.shape == ReflectionProbeVolumeShape::Sphere
+                        ? glm::vec3(sphereRadius)
+                        : glm::vec3(
+                            (std::max)(probe.boxExtents.x, 0.01f),
+                            (std::max)(probe.boxExtents.y, 0.01f),
+                            (std::max)(probe.boxExtents.z, 0.01f)));
                 shader.setFloat("uReflectionProbeBlendDistances" + index, (std::max)(0.01f, probe.blendDistance));
                 shader.setFloat("uReflectionProbeIntensities" + index, (std::max)(0.0f, probe.intensity));
                 glActiveTexture(GL_TEXTURE5 + probeIndex);
@@ -2190,130 +2545,25 @@ void Renderer::Flush() {
         }
     };
 
+    if (settings_.profile.wireframeView) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDisable(GL_CULL_FACE);
+    }
     for (const MeshDrawCommand* cmd : opaqueCommands) {
         drawMeshCommand(*cmd);
     }
     for (const MeshDrawCommand* cmd : transparentCommands) {
         drawMeshCommand(*cmd);
     }
-    // Debug lines and gizmos are overlays, not scene surfaces for SSAO.
-    glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    glColorMaski(2, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    glColorMaski(3, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    if (settings_.profile.wireframeView) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
     glBindVertexArray(0);
     drawList_.clear();
     shadowCasterList_.clear();
     lightDrawList_.clear();
     reflectionProbeDrawList_.clear();
 
-    if (!lineDrawList_.empty()) {
-        if (lineVao_ == 0) {
-            glGenVertexArrays(1, &lineVao_);
-            glGenBuffers(1, &lineVbo_);
-            glBindVertexArray(lineVao_);
-            glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
-            glBindVertexArray(0);
-        }
-
-        Shader* lineShader = resolveShader("unlit");
-        lineShader->use();
-        lineShader->setMat4("uMVP", proj_ * view_);
-        lineShader->setMat4("uModel", glm::mat4(1.0f));
-        lineShader->setVec2("uUvTiling", glm::vec2(1.0f));
-        lineShader->setVec2("uUvOffset", glm::vec2(0.0f));
-        lineShader->setVec3("uEmissiveColor", glm::vec3(0.0f));
-        lineShader->setFloat("uMetallic", 0.0f);
-        lineShader->setFloat("uRoughness", 1.0f);
-        lineShader->setBool("uUseDiffuseTexture", false);
-        glBindVertexArray(lineVao_);
-
-        auto sameLineStyle = [](const DebugLineCommand& a, const DebugLineCommand& b) {
-            return a.depthMode == b.depthMode
-                && a.width == b.width
-                && a.color.x == b.color.x
-                && a.color.y == b.color.y
-                && a.color.z == b.color.z
-                && a.color.w == b.color.w;
-        };
-
-        auto drawLineBatch = [&](DebugLineDepthMode mode, bool overlayPass) {
-            if (mode == DebugLineDepthMode::AlwaysOnTop || overlayPass) {
-                glDisable(GL_DEPTH_TEST);
-            } else {
-                glEnable(GL_DEPTH_TEST);
-                glDepthFunc(GL_LEQUAL);
-            }
-            glDisable(GL_CULL_FACE);
-            glDepthMask(GL_FALSE);
-            if (overlayPass) {
-                glEnable(GL_BLEND);
-                glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-            } else {
-                glDisable(GL_BLEND);
-            }
-
-            std::vector<glm::vec3> vertices;
-            vertices.reserve(lineDrawList_.size() * 2);
-            for (std::size_t i = 0; i < lineDrawList_.size();) {
-                const DebugLineCommand& first = lineDrawList_[i];
-                if (first.depthMode != mode) {
-                    ++i;
-                    continue;
-                }
-
-                vertices.clear();
-                glm::vec4 color = first.color;
-                if (overlayPass) {
-                    color.a *= 0.25f;
-                }
-                const float width = first.width;
-
-                std::size_t j = i;
-                for (; j < lineDrawList_.size(); ++j) {
-                    const DebugLineCommand& cmd = lineDrawList_[j];
-                    if (!sameLineStyle(cmd, first)) {
-                        break;
-                    }
-                    vertices.push_back(cmd.start);
-                    vertices.push_back(cmd.end);
-                }
-
-                if (vertices.empty()) {
-                    i = j;
-                    continue;
-                }
-
-                glBindBuffer(GL_ARRAY_BUFFER, lineVbo_);
-                const std::size_t vertexCount = vertices.size();
-                const std::size_t requiredBytes = vertexCount * sizeof(glm::vec3);
-                if (vertexCount > lineVertexCapacity_) {
-                    glBufferData(GL_ARRAY_BUFFER, requiredBytes, vertices.data(), GL_DYNAMIC_DRAW);
-                    lineVertexCapacity_ = vertexCount;
-                } else {
-                    glBufferSubData(GL_ARRAY_BUFFER, 0, requiredBytes, vertices.data());
-                }
-                glLineWidth(width);
-                lineShader->setVec4("uColor", color);
-                glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(vertexCount));
-                i = j;
-            }
-        };
-
-        drawLineBatch(DebugLineDepthMode::DepthTested, false);
-        drawLineBatch(DebugLineDepthMode::DepthTestedOverlay, false);
-        drawLineBatch(DebugLineDepthMode::DepthTestedOverlay, true);
-        drawLineBatch(DebugLineDepthMode::AlwaysOnTop, false);
-        glBindVertexArray(0);
-        lineDrawList_.clear();
-    }
-
-    // Restore previous state
-    glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glColorMaski(3, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glLineWidth(lineWidth);
     glDisable(GL_SCISSOR_TEST);
     glDepthMask(depthWriteMask);
@@ -2407,6 +2657,28 @@ void Renderer::InitializePipelines() {
     weatherShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/weather.fs");
     depthOfFieldShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/depth_of_field.fs");
     taaShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/taa.fs");
+    smaaEdgeShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/smaa_edge.fs");
+    smaaWeightsShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/smaa_weights.fs");
+    smaaBlendShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/smaa_blend.fs");
+    debugLineShader_ = std::make_unique<Shader>("src/shaders/default/default.vs", "src/shaders/post/debug_line.fs");
+    if (smaaAreaTexture_ == 0) {
+        glGenTextures(1, &smaaAreaTexture_);
+        glBindTexture(GL_TEXTURE_2D, smaaAreaTexture_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, AREATEX_WIDTH, AREATEX_HEIGHT, 0, GL_RG, GL_UNSIGNED_BYTE, areaTexBytes);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+    if (smaaSearchTexture_ == 0) {
+        glGenTextures(1, &smaaSearchTexture_);
+        glBindTexture(GL_TEXTURE_2D, smaaSearchTexture_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, searchTexBytes);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
     shadowDepthShader_ = std::make_unique<Shader>("src/shaders/shadow/directional_depth.vs", "src/shaders/shadow/directional_depth.fs");
     pointShadowDepthShader_ = std::make_unique<Shader>("src/shaders/shadow/point_depth.vs", "src/shaders/shadow/point_depth.fs");
     irradianceShader_ = std::make_unique<Shader>("src/shaders/PBR/cubemap.vs", "src/shaders/PBR/irradiance_convolution.fs");

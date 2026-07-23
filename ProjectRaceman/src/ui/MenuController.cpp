@@ -85,9 +85,9 @@ void ApplyGraphicsPreset(GraphicsProfile& profile, GraphicsQualityTier tier) {
         break;
     case GraphicsQualityTier::Ultra:
         profile.antiAliasing = AntiAliasingMode::TAA;
-        profile.taaFeedback = 0.92f;
+        profile.taaFeedback = 0.95f;
         profile.taaSharpness = 0.15f;
-        profile.taaJitterStrength = 0.75f;
+        profile.taaJitterStrength = 1.00f;
         profile.bloom = true;
         profile.bloomIntensity = 0.7f;
         profile.motionBlur = true;
@@ -112,9 +112,9 @@ void ApplyGraphicsPreset(GraphicsProfile& profile, GraphicsQualityTier tier) {
     case GraphicsQualityTier::High:
     default:
         profile.antiAliasing = AntiAliasingMode::TAA;
-        profile.taaFeedback = 0.90f;
-        profile.taaSharpness = 0.20f;
-        profile.taaJitterStrength = 0.50f;
+        profile.taaFeedback = 0.94f;
+        profile.taaSharpness = 0.10f;
+        profile.taaJitterStrength = 1.00f;
         profile.bloom = true;
         profile.bloomIntensity = 0.7f;
         profile.motionBlur = true;
@@ -286,28 +286,27 @@ void MenuController::Render(Renderer& renderer,
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Applies a complete performance preset. Individual controls can be customized afterward.");
                     }
-                    const char* aaNames[] = {"None", "FXAA", "TAA"};
-                    int aaIndex = (std::min)(2, static_cast<int>(settings.profile.antiAliasing));
-                    if (ImGui::Combo("Anti-Aliasing", &aaIndex, aaNames, 3)) {
+                    const char* aaNames[] = {"None", "FXAA", "TAA", "SMAA"};
+                    int aaIndex = (std::min)(3, static_cast<int>(settings.profile.antiAliasing));
+                    if (ImGui::Combo("Anti-Aliasing", &aaIndex, aaNames, 4)) {
                         settings.profile.antiAliasing = static_cast<AntiAliasingMode>(aaIndex);
                         graphicsChanged = true;
                     }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("SMAA: sharp, stable edges with no temporal shimmer or ghosting.\nTAA: smoothest overall image, also removes specular/shading aliasing.");
+                    }
                     if (settings.profile.antiAliasing == AntiAliasingMode::TAA) {
-                        graphicsChanged |= ImGui::SliderFloat("TAA History", &settings.profile.taaFeedback, 0.0f, 0.98f, "%.2f");
-                        graphicsChanged |= ImGui::SliderFloat("TAA Sharpness", &settings.profile.taaSharpness, 0.0f, 1.0f, "%.2f");
-                        graphicsChanged |= ImGui::SliderFloat("TAA Jitter Strength", &settings.profile.taaJitterStrength, 0.0f, 1.0f, "%.2f");
+                        graphicsChanged |= ImGui::SliderFloat("TAA Smoothing", &settings.profile.taaFeedback, 0.85f, 0.98f, "%.2f");
                         if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("Subpixel sampling amount. 0.5 is the stable default; Ultra uses 0.75.");
+                            ImGui::SetTooltip("Temporal smoothing. Higher is smoother and more stable; 0.94 is the recommended default.");
                         }
-                        if (ImGui::Checkbox("TAA Debug View", &settings.profile.taaDebugView)) {
-                            if (settings.profile.taaDebugView) {
-                                settings.profile.ssaoDebugView = false;
-                                settings.profile.motionBlurDebugView = false;
-                                settings.profile.shadowCascadeDebugView = false;
-                                settings.profile.iblDebugMode = 0;
-                                settings.profile.ssrDebugView = false;
-                            }
-                            graphicsChanged = true;
+                        graphicsChanged |= ImGui::SliderFloat("TAA Sharpness", &settings.profile.taaSharpness, 0.0f, 0.5f, "%.2f");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Post-resolve sharpening. Keep low (around 0.10) for a soft, filmic image.");
+                        }
+                        graphicsChanged |= ImGui::SliderFloat("TAA Jitter Strength", &settings.profile.taaJitterStrength, 0.25f, 1.0f, "%.2f");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Subpixel sampling amount. 1.0 gives the most edge anti-aliasing; smoothing hides the jitter.");
                         }
                     }
                     graphicsChanged |= ImGui::DragFloat("Exposure", &settings.profile.exposure, 0.02f, 0.05f, 8.0f, "%.2f");
@@ -367,16 +366,6 @@ void MenuController::Render(Renderer& renderer,
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Ignores tiny screen-space movement from camera and physics jitter.");
                     }
-                    if (ImGui::Checkbox("Motion Vector Debug View", &settings.profile.motionBlurDebugView)) {
-                        if (settings.profile.motionBlurDebugView) {
-                            settings.profile.ssaoDebugView = false;
-                            settings.profile.shadowCascadeDebugView = false;
-                            settings.profile.iblDebugMode = 0;
-                            settings.profile.ssrDebugView = false;
-                            settings.profile.taaDebugView = false;
-                        }
-                        graphicsChanged = true;
-                    }
                     ImGui::TextDisabled("Uses camera and per-object motion vectors.");
                     ImGui::EndDisabled();
                     graphicsChanged |= ImGui::Checkbox("Depth of Field", &settings.profile.depthOfField);
@@ -409,16 +398,6 @@ void MenuController::Render(Renderer& renderer,
                     }
                     graphicsChanged |= ImGui::SliderFloat("SSAO Radius", &settings.profile.ssaoRadius, 0.05f, 5.0f, "%.2f m");
                     graphicsChanged |= ImGui::SliderFloat("SSAO Bias", &settings.profile.ssaoBias, 0.001f, 0.2f, "%.3f m", ImGuiSliderFlags_Logarithmic);
-                    if (ImGui::Checkbox("SSAO Debug View", &settings.profile.ssaoDebugView)) {
-                        if (settings.profile.ssaoDebugView) {
-                            settings.profile.iblDebugMode = 0;
-                            settings.profile.shadowCascadeDebugView = false;
-                            settings.profile.motionBlurDebugView = false;
-                            settings.profile.taaDebugView = false;
-                            settings.profile.ssrDebugView = false;
-                        }
-                        graphicsChanged = true;
-                    }
                     const int ssaoDivisor = settings.profile.quality == GraphicsQualityTier::Low ? 4
                         : (settings.profile.quality == GraphicsQualityTier::Ultra ? 1 : 2);
                     const int ssaoSamples = settings.profile.quality == GraphicsQualityTier::Low ? 8
@@ -462,16 +441,6 @@ void MenuController::Render(Renderer& renderer,
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Maximum point and spot lights rendered into shadow maps. Point lights cost six faces each.");
                     }
-                    if (ImGui::Checkbox("Shadow Cascade Debug View", &settings.profile.shadowCascadeDebugView)) {
-                        if (settings.profile.shadowCascadeDebugView) {
-                            settings.profile.ssaoDebugView = false;
-                            settings.profile.iblDebugMode = 0;
-                            settings.profile.motionBlurDebugView = false;
-                            settings.profile.taaDebugView = false;
-                            settings.profile.ssrDebugView = false;
-                        }
-                        graphicsChanged = true;
-                    }
                     ImGui::EndDisabled();
                     if (settings.profile.shadows) {
                         ImGui::TextDisabled("Active shadow map: %d cascade layer%s",
@@ -488,29 +457,8 @@ void MenuController::Render(Renderer& renderer,
                     graphicsChanged |= ImGui::SliderFloat("SSR Maximum Distance", &settings.profile.ssrMaxDistance, 1.0f, 200.0f, "%.0f m", ImGuiSliderFlags_Logarithmic);
                     graphicsChanged |= ImGui::SliderFloat("SSR Thickness", &settings.profile.ssrThickness, 0.01f, 2.0f, "%.2f m", ImGuiSliderFlags_Logarithmic);
                     graphicsChanged |= ImGui::SliderInt("SSR Steps", &settings.profile.ssrSteps, 8, 96);
-                    if (ImGui::Checkbox("SSR Debug View", &settings.profile.ssrDebugView)) {
-                        if (settings.profile.ssrDebugView) {
-                            settings.profile.ssaoDebugView = false;
-                            settings.profile.shadowCascadeDebugView = false;
-                            settings.profile.motionBlurDebugView = false;
-                            settings.profile.taaDebugView = false;
-                            settings.profile.iblDebugMode = 0;
-                        }
-                        graphicsChanged = true;
-                    }
                     ImGui::TextDisabled("SSR hits on-screen geometry; skybox IBL remains the fallback.");
                     ImGui::EndDisabled();
-                    const char* iblDebugNames[] = {"Off", "Diffuse Irradiance", "Raw Environment", "Final Specular"};
-                    if (ImGui::Combo("IBL Debug View", &settings.profile.iblDebugMode, iblDebugNames, 4)) {
-                        if (settings.profile.iblDebugMode != 0) {
-                            settings.profile.ssaoDebugView = false;
-                            settings.profile.shadowCascadeDebugView = false;
-                            settings.profile.motionBlurDebugView = false;
-                            settings.profile.taaDebugView = false;
-                            settings.profile.ssrDebugView = false;
-                        }
-                        graphicsChanged = true;
-                    }
                     ImGui::EndDisabled();
                     if (!renderer.HasEnvironmentSource()) {
                         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.35f, 1.0f), "IBL status: no valid skybox cubemap");

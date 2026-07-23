@@ -93,7 +93,11 @@ bool RenderRemovableComponentHeader(const char* label,
                                     SceneInspectorComponentType* outDraggedType = nullptr,
                                     SceneInspectorComponentType* outDropTargetType = nullptr,
                                     bool* outHeaderActive = nullptr,
-                                    bool* outHeaderToggledOpen = nullptr) {
+                                    bool* outHeaderToggledOpen = nullptr,
+                                    bool showPrefabMenu = false,
+                                    bool isPrefabOverridden = false,
+                                    bool* outApplyToPrefabRequested = nullptr,
+                                    bool* outRevertToPrefabRequested = nullptr) {
     ImGui::PushID(id);
     const ImVec4 accent = ComponentHeaderAccent(label);
     ImGuiStorage* storage = ImGui::GetStateStorage();
@@ -166,6 +170,9 @@ bool RenderRemovableComponentHeader(const char* label,
         drawList->AddRect(ImVec2(rowMin.x + 1.0f, rowMin.y + 1.0f), ImVec2(rowMax.x - 1.0f, rowMax.y - 1.0f), IM_COL32(230, 248, 255, 170), 2.0f, 0, 1.0f);
         drawList->AddRectFilled(ImVec2(rowMin.x, rowMin.y), ImVec2(rowMin.x + 4.0f, rowMax.y), focusColor, 2.0f);
     }
+    if (showPrefabMenu && isPrefabOverridden && !rowHighlighted) {
+        drawList->AddRectFilled(ImVec2(rowMin.x, rowMin.y), ImVec2(rowMin.x + 4.0f, rowMax.y), IM_COL32(80, 160, 240, 255), 2.0f);
+    }
     const ImU32 textColor = ImGui::GetColorU32(ImGuiCol_Text);
     const float arrowX = rowMin.x + 12.0f;
     const float arrowY = rowMin.y + rowHeight * 0.5f;
@@ -220,6 +227,20 @@ bool RenderRemovableComponentHeader(const char* label,
         removeRequested = ImGui::Button("Remove", ImVec2(removeButtonWidth, removeMax.y - removeMin.y));
         ImGui::SetCursorScreenPos(restorePos);
     }
+    if (showPrefabMenu) {
+        if (rowHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && !mouseOnRemove && !mouseOnCheckbox) {
+            ImGui::OpenPopup("##componentPrefabMenu");
+        }
+        if (ImGui::BeginPopup("##componentPrefabMenu")) {
+            if (ImGui::MenuItem("Apply to Prefab", nullptr, false, isPrefabOverridden)) {
+                if (outApplyToPrefabRequested != nullptr) *outApplyToPrefabRequested = true;
+            }
+            if (ImGui::MenuItem("Revert", nullptr, false, isPrefabOverridden)) {
+                if (outRevertToPrefabRequested != nullptr) *outRevertToPrefabRequested = true;
+            }
+            ImGui::EndPopup();
+        }
+    }
     ImGui::PopID();
     return open;
 }
@@ -255,6 +276,12 @@ void EndInspectorSubsection() {
 void SceneEditor::RenderVehicleComponentInspector(SceneObject& obj,
                                                    SceneInspectorComponentType& reorderDraggedType,
                                                    SceneInspectorComponentType& reorderTargetType) {
+    const int objectIndex = FindObjectIndexById(obj.id);
+    const bool objectIsPrefabInstance = IsPrefabInstance(objectIndex);
+    auto handlePrefabComponentMenu = [&](bool applyRequested, bool revertRequested, SceneComponentType componentType) {
+        if (applyRequested) ApplyComponentToPrefab(objectIndex, componentType);
+        if (revertRequested) RevertComponentToPrefab(objectIndex, componentType);
+    };
     auto prepareComponentOpenState = [&](SceneInspectorComponentType) {
         const std::string key = obj.id + "|Vehicle";
         bool openState = true;
@@ -292,11 +319,15 @@ void SceneEditor::RenderVehicleComponentInspector(SceneObject& obj,
             bool vehicleEnabledChanged = false;
             bool vehicleHeaderActive = false;
             bool vehicleHeaderToggledOpen = false;
+            bool vehicleApplyRequested = false;
+            bool vehicleRevertRequested = false;
             const bool vehicleEnabledBefore = obj.vehicle.enabled;
             if (obj.hasVehicle) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Vehicle;
                 const std::string vehicleComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Vehicle);
-                vehicleOpen = RenderRemovableComponentHeader("Vehicle", "VehicleHeader", GetComponentIconTexture("component-vehicle.png"), &obj.vehicle.enabled, vehicleEnabledChanged, removeVehicle, &componentType, &reorderDraggedType, &reorderTargetType, &vehicleHeaderActive, &vehicleHeaderToggledOpen);
+                vehicleOpen = RenderRemovableComponentHeader("Vehicle", "VehicleHeader", GetComponentIconTexture("component-vehicle.png"), &obj.vehicle.enabled, vehicleEnabledChanged, removeVehicle, &componentType, &reorderDraggedType, &reorderTargetType, &vehicleHeaderActive, &vehicleHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(objectIndex, SceneComponentType::Vehicle), &vehicleApplyRequested, &vehicleRevertRequested);
+                handlePrefabComponentMenu(vehicleApplyRequested, vehicleRevertRequested, SceneComponentType::Vehicle);
                 finishComponentHeaderState(vehicleComponentKey, SceneInspectorComponentType::Vehicle, vehicleHeaderActive, vehicleHeaderToggledOpen, vehicleOpen);
             }
             if (removeVehicle) {

@@ -110,6 +110,34 @@ int MaterialPropertyComponentCount(MaterialPropertyType type) {
     }
 }
 
+void ApplyOverriddenField(Material& dest, const Material& level, const std::string& fieldId) {
+    if (fieldId == "shader") { dest.shader = level.shader; return; }
+    if (fieldId == "metallic") { dest.metallic = level.metallic; return; }
+    if (fieldId == "roughness") { dest.roughness = level.roughness; return; }
+    if (fieldId == "clearCoat") { dest.clearCoat = level.clearCoat; return; }
+    if (fieldId == "clearCoatRoughness") { dest.clearCoatRoughness = level.clearCoatRoughness; return; }
+    if (fieldId == "anisotropy") { dest.anisotropy = level.anisotropy; return; }
+    if (fieldId == "transmission") { dest.transmission = level.transmission; return; }
+    if (fieldId == "alphaMode") { dest.alphaMode = level.alphaMode; return; }
+    if (fieldId == "alphaCutoff") { dest.alphaCutoff = level.alphaCutoff; return; }
+    if (fieldId == "doubleSided") { dest.doubleSided = level.doubleSided; return; }
+    if (fieldId == "albedoColor") { for (int i = 0; i < 4; ++i) dest.albedoColor[i] = level.albedoColor[i]; return; }
+    if (fieldId == "emissiveColor") { for (int i = 0; i < 3; ++i) dest.emissiveColor[i] = level.emissiveColor[i]; return; }
+    if (fieldId == "uvTiling") { for (int i = 0; i < 2; ++i) dest.uvTiling[i] = level.uvTiling[i]; return; }
+    if (fieldId == "uvOffset") { for (int i = 0; i < 2; ++i) dest.uvOffset[i] = level.uvOffset[i]; return; }
+    if (fieldId == "texAlbedo") { dest.texAlbedo = level.texAlbedo; return; }
+    if (fieldId == "texNormal") { dest.texNormal = level.texNormal; return; }
+    if (fieldId == "texMetallic") { dest.texMetallic = level.texMetallic; return; }
+    if (fieldId == "texRoughness") { dest.texRoughness = level.texRoughness; return; }
+    if (fieldId == "texAo") { dest.texAo = level.texAo; return; }
+    if (fieldId.rfind("prop:", 0) == 0) {
+        const std::string propertyName = fieldId.substr(5);
+        if (const auto it = level.properties.find(propertyName); it != level.properties.end()) {
+            dest.properties[propertyName] = it->second;
+        }
+    }
+}
+
 } // namespace
 
 static inline std::string trim_copy(std::string s) {
@@ -171,6 +199,12 @@ bool MaterialManager::LoadOne(const std::string& path, Material& out) {
         };
 
         gets(obj, "name", out.name);
+        gets(obj, "baseMaterial", out.baseMaterialId);
+        if (auto it = obj.find("overriddenFields"); it != obj.end() && it->second.is_array()) {
+            for (const auto& value : it->second.as_array()) {
+                if (value.is_string()) out.overriddenFieldIds.insert(value.as_string());
+            }
+        }
         gets(obj, "shader", out.shader);
         if (auto it = obj.find("version"); it != obj.end() && it->second.is_number()) {
             out.version = static_cast<int>(it->second.as_number());
@@ -243,6 +277,7 @@ bool MaterialManager::LoadOne(const std::string& path, Material& out) {
 void MaterialManager::LoadAll() {
     materials_.clear();
     materialPaths_.clear();
+    resolveCache_.clear();
     const fs::path dir = FindAssetsRoot();
     if (!fs::exists(dir)) return;
     try {
@@ -284,6 +319,17 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
     out << "{\n";
     out << "  \"version\": 2,\n";
     out << "  \"name\": \"" << JsonEscape(m.name.empty() ? id : m.name) << "\",\n";
+    out << "  \"baseMaterial\": \"" << JsonEscape(m.baseMaterialId) << "\",\n";
+    out << "  \"overriddenFields\": [";
+    {
+        bool firstField = true;
+        for (const std::string& fieldId : m.overriddenFieldIds) {
+            if (!firstField) out << ", ";
+            out << "\"" << JsonEscape(fieldId) << "\"";
+            firstField = false;
+        }
+    }
+    out << "],\n";
     const std::string shaderId = ShaderRegistry::NormalizeShaderId(m.shader.empty() ? std::string("pbr") : m.shader);
     out << "  \"shader\": \"" << JsonEscape((ShaderRegistry::IsKnownShader(shaderId) || ShaderRegistry::IsGraphShaderId(shaderId)) ? shaderId : std::string("pbr")) << "\",\n";
     out << "  \"albedoColor\": [" << m.albedoColor[0] << ", " << m.albedoColor[1] << ", " << m.albedoColor[2] << ", " << m.albedoColor[3] << "],\n";
@@ -334,6 +380,10 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
     }
     out << "  }\n";
     out << "}\n";
+    // Any material's edit could affect a downstream variant chain; a whole
+    // cache clear is simple and correct given materials are edited far less
+    // often than they are rendered.
+    resolveCache_.clear();
     return true;
 }
 
@@ -366,6 +416,62 @@ std::vector<std::string> MaterialManager::ListMaterialIds() const {
     for (const auto& kv : materials_) ids.push_back(kv.first);
     std::sort(ids.begin(), ids.end());
     return ids;
+}
+
+bool MaterialManager::WouldCreateCycle(const std::string& candidateId, const std::string& proposedBaseId) const {
+    if (proposedBaseId.empty()) return false;
+    if (candidateId == proposedBaseId) return true;
+    std::string current = proposedBaseId;
+    std::set<std::string> visited;
+    while (!current.empty()) {
+        if (current == candidateId) return true;
+        if (!visited.insert(current).second) return true; // pre-existing cycle
+        const auto it = materials_.find(current);
+        if (it == materials_.end()) break;
+        current = it->second.baseMaterialId;
+    }
+    return false;
+}
+
+Material MaterialManager::Resolve(const std::string& id) const {
+    const auto cached = resolveCache_.find(id);
+    if (cached != resolveCache_.end()) return cached->second;
+
+    const auto selfIt = materials_.find(id);
+    if (selfIt == materials_.end()) {
+        return Material{};
+    }
+    if (selfIt->second.baseMaterialId.empty()) {
+        resolveCache_[id] = selfIt->second;
+        return selfIt->second;
+    }
+
+    // Walk the base chain root->leaf, guarding against cycles.
+    std::vector<const Material*> chain;
+    std::set<std::string> visited;
+    const Material* level = &selfIt->second;
+    std::string levelId = id;
+    while (true) {
+        chain.push_back(level);
+        if (!visited.insert(levelId).second) break; // cycle guard
+        if (level->baseMaterialId.empty()) break;
+        const auto baseIt = materials_.find(level->baseMaterialId);
+        if (baseIt == materials_.end()) break;
+        levelId = level->baseMaterialId;
+        level = &baseIt->second;
+    }
+
+    Material result = *chain.back(); // root's full values
+    for (auto it = chain.rbegin() + 1; it != chain.rend(); ++it) {
+        for (const std::string& fieldId : (*it)->overriddenFieldIds) {
+            ApplyOverriddenField(result, **it, fieldId);
+        }
+    }
+    result.name = selfIt->second.name; // identity metadata, never inherited
+    result.baseMaterialId.clear();
+    result.overriddenFieldIds.clear();
+    resolveCache_[id] = result;
+    return result;
 }
 
 } // namespace raceman

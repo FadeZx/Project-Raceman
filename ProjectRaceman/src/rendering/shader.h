@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <unordered_map>
 
 class Shader
 {
@@ -80,59 +81,59 @@ public:
     // ------------------------------------------------------------------------
     void setBool(const std::string& name, bool value) const
     {
-        glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value);
+        glUniform1i(location(name), (int)value);
     }
     // ------------------------------------------------------------------------
     void setInt(const std::string& name, int value) const
     {
-        glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
+        glUniform1i(location(name), value);
     }
     // ------------------------------------------------------------------------
     void setFloat(const std::string& name, float value) const
     {
-        glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
+        glUniform1f(location(name), value);
     }
     // ------------------------------------------------------------------------
     void setVec2(const std::string& name, const glm::vec2& value) const
     {
-        glUniform2fv(glGetUniformLocation(ID, name.c_str()), 1, &value[0]);
+        glUniform2fv(location(name), 1, &value[0]);
     }
     void setVec2(const std::string& name, float x, float y) const
     {
-        glUniform2f(glGetUniformLocation(ID, name.c_str()), x, y);
+        glUniform2f(location(name), x, y);
     }
     // ------------------------------------------------------------------------
     void setVec3(const std::string& name, const glm::vec3& value) const
     {
-        glUniform3fv(glGetUniformLocation(ID, name.c_str()), 1, &value[0]);
+        glUniform3fv(location(name), 1, &value[0]);
     }
     void setVec3(const std::string& name, float x, float y, float z) const
     {
-        glUniform3f(glGetUniformLocation(ID, name.c_str()), x, y, z);
+        glUniform3f(location(name), x, y, z);
     }
     // ------------------------------------------------------------------------
     void setVec4(const std::string& name, const glm::vec4& value) const
     {
-        glUniform4fv(glGetUniformLocation(ID, name.c_str()), 1, &value[0]);
+        glUniform4fv(location(name), 1, &value[0]);
     }
     void setVec4(const std::string& name, float x, float y, float z, float w) const
     {
-        glUniform4f(glGetUniformLocation(ID, name.c_str()), x, y, z, w);
+        glUniform4f(location(name), x, y, z, w);
     }
     // ------------------------------------------------------------------------
     void setMat2(const std::string& name, const glm::mat2& mat) const
     {
-        glUniformMatrix2fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+        glUniformMatrix2fv(location(name), 1, GL_FALSE, &mat[0][0]);
     }
     // ------------------------------------------------------------------------
     void setMat3(const std::string& name, const glm::mat3& mat) const
     {
-        glUniformMatrix3fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+        glUniformMatrix3fv(location(name), 1, GL_FALSE, &mat[0][0]);
     }
     // ------------------------------------------------------------------------
     void setMat4(const std::string& name, const glm::mat4& mat) const
     {
-        glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+        glUniformMatrix4fv(location(name), 1, GL_FALSE, &mat[0][0]);
     }
 
     unsigned int getID() const {
@@ -140,6 +141,22 @@ public:
     }
 
 private:
+    // glGetUniformLocation does a driver-side name lookup; every setXxx call
+    // used to pay that cost every frame for every uniform on every draw. This
+    // cache turns repeat lookups (the overwhelming majority) into a local
+    // hash-map hit instead of a driver round trip.
+    mutable std::unordered_map<std::string, GLint> uniformLocationCache_;
+    GLint location(const std::string& name) const
+    {
+        auto it = uniformLocationCache_.find(name);
+        if (it != uniformLocationCache_.end()) {
+            return it->second;
+        }
+        const GLint loc = glGetUniformLocation(ID, name.c_str());
+        uniformLocationCache_.emplace(name, loc);
+        return loc;
+    }
+
     // utility function for checking shader compilation/linking errors.
     // ------------------------------------------------------------------------
     void checkCompileErrors(GLuint shader, std::string type)

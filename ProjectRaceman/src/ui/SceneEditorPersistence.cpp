@@ -90,7 +90,7 @@ const char* AntiAliasingToStorage(AntiAliasingMode mode) {
     switch (mode) {
     case AntiAliasingMode::None: return "None";
     case AntiAliasingMode::TAA: return "TAA";
-    case AntiAliasingMode::MSAA: return "MSAA";
+    case AntiAliasingMode::SMAA: return "SMAA";
     case AntiAliasingMode::FXAA:
     default: return "FXAA";
     }
@@ -100,9 +100,10 @@ AntiAliasingMode AntiAliasingFromStorage(const std::string& value) {
     const std::string lower = ToLowerCopy(value);
     if (lower == "none") return AntiAliasingMode::None;
     if (lower == "taa") return AntiAliasingMode::TAA;
+    if (lower == "smaa") return AntiAliasingMode::SMAA;
     // Legacy projects could store the planned-but-never-implemented MSAA mode.
-    // Migrate it to the supported spatial fallback instead of silently disabling AA.
-    if (lower == "msaa") return AntiAliasingMode::FXAA;
+    // Migrate it to the closest supported spatial mode instead of silently disabling AA.
+    if (lower == "msaa") return AntiAliasingMode::SMAA;
     return AntiAliasingMode::FXAA;
 }
 
@@ -399,6 +400,547 @@ void SceneEditor::SaveCurrentSceneAs() {
     SaveCurrentScene();
 }
 
+namespace {
+
+// Shared scene-object JSON writer. This is the single authoritative field list
+// for scene files, prefab files, and prefab override diffing — keep it the only
+// place component fields are serialized.
+void WriteJsonFloat(std::ostream& out, float value) {
+    if (value == 0.0f) value = 0.0f; // normalize -0 so diffs and round-trips stay stable
+    out << value;
+}
+
+void WriteJsonVec3(std::ostream& out, const glm::vec3& v) {
+    out << "[";
+    WriteJsonFloat(out, v.x);
+    out << ", ";
+    WriteJsonFloat(out, v.y);
+    out << ", ";
+    WriteJsonFloat(out, v.z);
+    out << "]";
+}
+
+void WriteJsonVec4(std::ostream& out, const glm::vec4& v) {
+    out << "[";
+    WriteJsonFloat(out, v.x);
+    out << ", ";
+    WriteJsonFloat(out, v.y);
+    out << ", ";
+    WriteJsonFloat(out, v.z);
+    out << ", ";
+    WriteJsonFloat(out, v.w);
+    out << "]";
+}
+
+bool SerializedComponentPresent(const SceneObject& o, SceneComponentType type) {
+    switch (type) {
+    case SceneComponentType::Transform: return true;
+    case SceneComponentType::MeshFilter: return o.hasMeshFilter;
+    case SceneComponentType::MeshRenderer: return o.hasMeshRenderer;
+    case SceneComponentType::Script: return o.hasScriptComponent;
+    case SceneComponentType::Rigidbody: return o.hasRigidbody;
+    case SceneComponentType::Vehicle: return o.hasVehicle;
+    case SceneComponentType::CharacterController: return o.hasCharacterController;
+    case SceneComponentType::BoxCollider: return GetActiveColliderType(o) == SceneColliderType::Box;
+    case SceneComponentType::SphereCollider: return GetActiveColliderType(o) == SceneColliderType::Sphere;
+    case SceneComponentType::CapsuleCollider: return GetActiveColliderType(o) == SceneColliderType::Capsule;
+    case SceneComponentType::PlaneCollider: return GetActiveColliderType(o) == SceneColliderType::Plane;
+    case SceneComponentType::MeshCollider: return GetActiveColliderType(o) == SceneColliderType::Mesh;
+    case SceneComponentType::Camera: return o.hasCamera;
+    case SceneComponentType::Cinemachine: return o.hasCinemachine;
+    case SceneComponentType::Light: return o.hasLight;
+    case SceneComponentType::ReflectionProbe: return o.hasReflectionProbe;
+    case SceneComponentType::AudioListener: return o.hasAudioListener;
+    case SceneComponentType::AudioSource: return o.hasAudioSource;
+    case SceneComponentType::VehicleSound: return o.hasVehicleSound;
+    case SceneComponentType::TrackGenerator: return o.hasTrackGenerator;
+    }
+    return false;
+}
+
+void WriteSceneObjectComponentBody(std::ostream& out, const SceneObject& o, SceneComponentType type) {
+    switch (type) {
+    case SceneComponentType::Transform: {
+        out << "        {\n";
+        out << "          \"type\": \"Transform\",\n";
+        out << "          \"position\": ";
+        WriteJsonVec3(out, o.transform.position);
+        out << ",\n";
+        out << "          \"rotationEuler\": ";
+        WriteJsonVec3(out, o.transform.rotationEuler);
+        out << ",\n";
+        out << "          \"scale\": ";
+        WriteJsonVec3(out, o.transform.scale);
+        out << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::MeshFilter: {
+        const std::string meshType = o.meshFilter.meshType.empty() ? o.type : o.meshFilter.meshType;
+        out << "        {\n";
+        out << "          \"type\": \"MeshFilter\",\n";
+        out << "          \"enabled\": " << (o.meshFilter.enabled ? "true" : "false") << ",\n";
+        out << "          \"meshType\": \"" << JsonEscape(meshType) << "\",\n";
+        out << "          \"sourcePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.sourcePath)) << "\",\n";
+        out << "          \"assetId\": \"" << JsonEscape(o.meshFilter.assetId.empty() ? ModelChildAssetId(o.meshFilter.sourcePath, o.meshFilter.meshIndex) : o.meshFilter.assetId) << "\",\n";
+        out << "          \"meshIndex\": " << o.meshFilter.meshIndex << ",\n";
+        out << "          \"importedMaterialName\": \"" << JsonEscape(o.meshFilter.importedMaterialName) << "\",\n";
+        out << "          \"diffuseTexturePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.diffuseTexturePath)) << "\"";
+        const glm::vec3& po = o.meshFilter.pivotOffset;
+        if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
+            out << ",\n          \"pivotOffset\": ";
+            WriteJsonVec3(out, po);
+        }
+        WriteMeshLodSettings(out, o.meshFilter, "          ");
+        out << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::MeshRenderer: {
+        out << "        {\n";
+        out << "          \"type\": \"MeshRenderer\",\n";
+        out << "          \"enabled\": " << (o.meshRenderer.enabled ? "true" : "false") << ",\n";
+        out << "          \"materialId\": \"" << JsonEscape(o.meshRenderer.materialId.empty() ? "pbr_default" : o.meshRenderer.materialId) << "\",\n";
+        out << "          \"color\": ";
+        WriteJsonVec4(out, o.meshRenderer.color);
+        out << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::Script: {
+        out << "        {\n";
+        out << "          \"type\": \"Script\",\n";
+        out << "          \"enabled\": " << (o.scriptComponent.enabled ? "true" : "false") << ",\n";
+        out << "          \"attachments\": [\n";
+        for (std::size_t scriptIndex = 0; scriptIndex < o.scriptComponent.attachments.size(); ++scriptIndex) {
+            const ObjectScriptAttachment& script = o.scriptComponent.attachments[scriptIndex];
+            out << "            {\n";
+            out << "              \"enabled\": " << (script.enabled ? "true" : "false") << ",\n";
+            out << "              \"scriptName\": \"" << JsonEscape(script.scriptName) << "\",\n";
+            out << "              \"scriptPath\": \"" << JsonEscape(NormalizeSlashes(script.scriptPath)) << "\"";
+            if (!script.fields.empty()) {
+                out << ",\n";
+                out << "              \"fields\": [\n";
+                for (std::size_t fieldIndex = 0; fieldIndex < script.fields.size(); ++fieldIndex) {
+                    const ScriptFieldEntry& field = script.fields[fieldIndex];
+                    out << "                {\n";
+                    out << "                  \"name\": \"" << JsonEscape(field.name) << "\",\n";
+                    out << "                  \"type\": \"" << ScriptFieldTypeToString(field.type) << "\",\n";
+                    WriteScriptFieldValue(out, field);
+                    out << "                }" << (fieldIndex + 1 < script.fields.size() ? ",\n" : "\n");
+                }
+                out << "              ]\n";
+                out << "            }";
+            } else {
+                out << "\n";
+                out << "            }";
+            }
+            out << (scriptIndex + 1 < o.scriptComponent.attachments.size() ? ",\n" : "\n");
+        }
+        out << "          ]\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::Rigidbody: {
+        out << "        {\n";
+        out << "          \"type\": \"Rigidbody\",\n";
+        out << "          \"enabled\": " << (o.rigidbody.enabled ? "true" : "false") << ",\n";
+        out << "          \"bodyType\": \"" << RigidbodyBodyTypeToString(o.rigidbody.bodyType) << "\",\n";
+        out << "          \"mass\": ";
+        WriteJsonFloat(out, o.rigidbody.mass);
+        out << ",\n";
+        out << "          \"useGravity\": " << (o.rigidbody.useGravity ? "true" : "false") << ",\n";
+        out << "          \"linearDamping\": ";
+        WriteJsonFloat(out, o.rigidbody.linearDamping);
+        out << ",\n";
+        out << "          \"angularDamping\": ";
+        WriteJsonFloat(out, o.rigidbody.angularDamping);
+        out << ",\n";
+        out << "          \"friction\": ";
+        WriteJsonFloat(out, o.rigidbody.friction);
+        out << ",\n";
+        out << "          \"restitution\": ";
+        WriteJsonFloat(out, o.rigidbody.restitution);
+        out << ",\n";
+        out << "          \"velocity\": ";
+        WriteJsonVec3(out, o.rigidbody.velocity);
+        out << ",\n";
+        out << "          \"angularVelocity\": ";
+        WriteJsonVec3(out, o.rigidbody.angularVelocity);
+        out << ",\n";
+        out << "          \"freezePosition\": [" << (o.rigidbody.freezePositionX ? "true" : "false") << ", " << (o.rigidbody.freezePositionY ? "true" : "false") << ", " << (o.rigidbody.freezePositionZ ? "true" : "false") << "],\n";
+        out << "          \"freezeRotation\": [" << (o.rigidbody.freezeRotationX ? "true" : "false") << ", " << (o.rigidbody.freezeRotationY ? "true" : "false") << ", " << (o.rigidbody.freezeRotationZ ? "true" : "false") << "]\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::Vehicle: {
+        out << "        {\n";
+        out << "          \"type\": \"Vehicle\",\n";
+        out << "          \"enabled\": " << (o.vehicle.enabled ? "true" : "false") << ",\n";
+        out << "          \"configPath\": \"" << JsonEscape(NormalizeSlashes(o.vehicle.configPath)) << "\",\n";
+        out << "          \"inputProfileId\": \"" << JsonEscape(o.vehicle.inputProfileId) << "\",\n";
+        out << "          \"preferredInputDevice\": \"" << InputDevicePreferenceToStorage(o.vehicle.preferredInputDevice) << "\",\n";
+        out << "          \"preferredInputDeviceId\": \"" << JsonEscape(o.vehicle.preferredInputDeviceId) << "\",\n";
+        out << "          \"chassisObjectIds\": [";
+        for (std::size_t chassisIndex = 0; chassisIndex < o.vehicle.chassisObjectIds.size(); ++chassisIndex) {
+            out << (chassisIndex == 0 ? "" : ", ") << "\"" << JsonEscape(o.vehicle.chassisObjectIds[chassisIndex]) << "\"";
+        }
+        out << "],\n";
+        out << "          \"wheelBindings\": [\n";
+        for (std::size_t wheelIndex = 0; wheelIndex < o.vehicle.wheelBindings.size(); ++wheelIndex) {
+            const VehicleWheelBinding& binding = o.vehicle.wheelBindings[wheelIndex];
+            out << "            {\n";
+            out << "              \"wheelName\": \"" << JsonEscape(binding.wheelName) << "\",\n";
+            out << "              \"objectId\": \"" << JsonEscape(binding.objectId) << "\",\n";
+            out << "              \"visualRotationEuler\": ";
+            WriteJsonVec3(out, binding.visualRotationEuler);
+            out << "\n";
+            out << "            }" << (wheelIndex + 1 < o.vehicle.wheelBindings.size() ? ",\n" : "\n");
+        }
+        out << "          ]\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::CharacterController: {
+        out << "        {\n";
+        out << "          \"type\": \"CharacterController\",\n";
+        out << "          \"enabled\": " << (o.characterController.enabled ? "true" : "false") << ",\n";
+        out << "          \"height\": ";
+        WriteJsonFloat(out, o.characterController.height);
+        out << ",\n";
+        out << "          \"radius\": ";
+        WriteJsonFloat(out, o.characterController.radius);
+        out << ",\n";
+        out << "          \"center\": ";
+        WriteJsonVec3(out, o.characterController.center);
+        out << ",\n";
+        out << "          \"stepHeight\": ";
+        WriteJsonFloat(out, o.characterController.stepHeight);
+        out << ",\n";
+        out << "          \"slopeLimitDegrees\": ";
+        WriteJsonFloat(out, o.characterController.slopeLimitDegrees);
+        out << ",\n";
+        out << "          \"maxStrength\": ";
+        WriteJsonFloat(out, o.characterController.maxStrength);
+        out << ",\n";
+        out << "          \"mass\": ";
+        WriteJsonFloat(out, o.characterController.mass);
+        out << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::BoxCollider:
+    case SceneComponentType::SphereCollider:
+    case SceneComponentType::CapsuleCollider:
+    case SceneComponentType::PlaneCollider:
+    case SceneComponentType::MeshCollider: {
+        const SceneColliderType colliderType = GetActiveColliderType(o);
+        out << "        {\n";
+        out << "          \"type\": \"Collider\",\n";
+        out << "          \"colliderType\": \"" << SceneColliderTypeLabel(colliderType) << "\"";
+        if (colliderType == SceneColliderType::Box) {
+            out << ",\n";
+            out << "          \"enabled\": " << (o.boxCollider.enabled ? "true" : "false") << ",\n";
+            out << "          \"isTrigger\": " << (o.boxCollider.isTrigger ? "true" : "false") << ",\n";
+            out << "          \"center\": ";
+            WriteJsonVec3(out, o.boxCollider.center);
+            out << ",\n";
+            out << "          \"size\": ";
+            WriteJsonVec3(out, o.boxCollider.size);
+            out << "\n";
+        } else if (colliderType == SceneColliderType::Sphere) {
+            out << ",\n";
+            out << "          \"enabled\": " << (o.sphereCollider.enabled ? "true" : "false") << ",\n";
+            out << "          \"isTrigger\": " << (o.sphereCollider.isTrigger ? "true" : "false") << ",\n";
+            out << "          \"center\": ";
+            WriteJsonVec3(out, o.sphereCollider.center);
+            out << ",\n";
+            out << "          \"radius\": ";
+            WriteJsonFloat(out, o.sphereCollider.radius);
+            out << "\n";
+        } else if (colliderType == SceneColliderType::Capsule) {
+            out << ",\n";
+            out << "          \"enabled\": " << (o.capsuleCollider.enabled ? "true" : "false") << ",\n";
+            out << "          \"isTrigger\": " << (o.capsuleCollider.isTrigger ? "true" : "false") << ",\n";
+            out << "          \"center\": ";
+            WriteJsonVec3(out, o.capsuleCollider.center);
+            out << ",\n";
+            out << "          \"radius\": ";
+            WriteJsonFloat(out, o.capsuleCollider.radius);
+            out << ",\n";
+            out << "          \"height\": ";
+            WriteJsonFloat(out, o.capsuleCollider.height);
+            out << "\n";
+        } else if (colliderType == SceneColliderType::Plane) {
+            out << ",\n";
+            out << "          \"enabled\": " << (o.planeCollider.enabled ? "true" : "false") << ",\n";
+            out << "          \"isTrigger\": " << (o.planeCollider.isTrigger ? "true" : "false") << ",\n";
+            out << "          \"normal\": ";
+            WriteJsonVec3(out, o.planeCollider.normal);
+            out << ",\n";
+            out << "          \"offset\": ";
+            WriteJsonFloat(out, o.planeCollider.offset);
+            out << ",\n";
+            out << "          \"infinite\": " << (o.planeCollider.infinite ? "true" : "false") << ",\n";
+            out << "          \"halfExtent\": ";
+            WriteJsonFloat(out, o.planeCollider.halfExtent);
+            out << "\n";
+        } else if (colliderType == SceneColliderType::Mesh) {
+            out << ",\n";
+            out << "          \"enabled\": " << (o.meshCollider.enabled ? "true" : "false") << ",\n";
+            out << "          \"isTrigger\": " << (o.meshCollider.isTrigger ? "true" : "false") << ",\n";
+            out << "          \"buildQuality\": \"" << MeshColliderBuildQualityToString(o.meshCollider.buildQuality) << "\",\n";
+            out << "          \"mode\": \"" << MeshColliderModeToString(o.meshCollider.mode) << "\"\n";
+        }
+        out << ",\n";
+        WriteColliderSurface(out, o.colliderSurface, "          ");
+        out << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::Camera: {
+        out << "        {\n";
+        out << "          \"type\": \"Camera\",\n";
+        out << "          \"enabled\": " << (o.camera.enabled ? "true" : "false") << ",\n";
+        out << "          \"isMain\": " << (o.camera.isMain ? "true" : "false") << ",\n";
+        out << "          \"fieldOfViewDegrees\": ";
+        WriteJsonFloat(out, o.camera.fieldOfViewDegrees);
+        out << ",\n";
+        out << "          \"nearClip\": ";
+        WriteJsonFloat(out, o.camera.nearClip);
+        out << ",\n";
+        out << "          \"farClip\": ";
+        WriteJsonFloat(out, o.camera.farClip);
+        out << ",\n";
+        out << "          \"clearColor\": ";
+        WriteJsonVec4(out, o.camera.clearColor);
+        out << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::Cinemachine: {
+        const auto cinemachineTypeStr = [](CinemachineCameraType t) -> const char* {
+            switch (t) {
+                case CinemachineCameraType::Follow:          return "Follow";
+                case CinemachineCameraType::LookAt:          return "LookAt";
+                case CinemachineCameraType::FollowAndLookAt: return "FollowAndLookAt";
+            }
+            return "FollowAndLookAt";
+        };
+        out << "        {\n";
+        out << "          \"type\": \"Cinemachine\",\n";
+        out << "          \"enabled\": " << (o.cinemachine.enabled ? "true" : "false") << ",\n";
+        out << "          \"cameraType\": \"" << cinemachineTypeStr(o.cinemachine.type) << "\",\n";
+        out << "          \"followTargetId\": \"" << JsonEscape(o.cinemachine.followTargetId) << "\",\n";
+        out << "          \"lookAtTargetId\": \"" << JsonEscape(o.cinemachine.lookAtTargetId) << "\",\n";
+        out << "          \"followOffset\": ";
+        WriteJsonVec3(out, o.transform.position);
+        out << ",\n";
+        out << "          \"pitchOffset\": ";
+        WriteJsonFloat(out, o.transform.rotationEuler.x);
+        out << ",\n";
+        out << "          \"yawOffset\": ";
+        WriteJsonFloat(out, o.transform.rotationEuler.y);
+        out << ",\n";
+        out << "          \"lockTargetPitchRoll\": " << (o.cinemachine.lockTargetPitchRoll ? "true" : "false") << ",\n";
+        out << "          \"positionDamping\": ";
+        WriteJsonFloat(out, o.cinemachine.positionDamping);
+        out << ",\n";
+        out << "          \"rotationDamping\": ";
+        WriteJsonFloat(out, o.cinemachine.rotationDamping);
+        out << ",\n";
+        out << "          \"priority\": " << o.cinemachine.priority << ",\n";
+        out << "          \"blendDuration\": ";
+        WriteJsonFloat(out, o.cinemachine.blendDuration);
+        out << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::Light: {
+        out << "        {\n";
+        out << "          \"type\": \"Light\",\n";
+        out << "          \"enabled\": " << (o.light.enabled ? "true" : "false") << ",\n";
+        out << "          \"castShadows\": " << (o.light.castShadows ? "true" : "false") << ",\n";
+        out << "          \"lightType\": \"" << LightTypeToString(o.light.type) << "\",\n";
+        out << "          \"color\": [";
+        WriteJsonFloat(out, o.light.color.r);
+        out << ", ";
+        WriteJsonFloat(out, o.light.color.g);
+        out << ", ";
+        WriteJsonFloat(out, o.light.color.b);
+        out << "],\n";
+        out << "          \"intensity\": ";
+        WriteJsonFloat(out, o.light.intensity);
+        out << ",\n";
+        out << "          \"range\": ";
+        WriteJsonFloat(out, o.light.range);
+        out << ",\n";
+        out << "          \"spotAngleDegrees\": ";
+        WriteJsonFloat(out, o.light.spotAngleDegrees);
+        out << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::ReflectionProbe: {
+        out << "        {\n";
+        out << "          \"type\": \"ReflectionProbe\",\n";
+        out << "          \"enabled\": " << (o.reflectionProbe.enabled ? "true" : "false") << ",\n";
+        out << "          \"shape\": \"" << (o.reflectionProbe.shape == ReflectionProbeShape::Sphere ? "Sphere" : "Box") << "\",\n";
+        out << "          \"boxSize\": ";
+        WriteJsonVec3(out, o.reflectionProbe.boxSize);
+        out << ",\n";
+        out << "          \"sphereRadius\": ";
+        WriteJsonFloat(out, o.reflectionProbe.sphereRadius);
+        out << ",\n";
+        out << "          \"blendDistance\": ";
+        WriteJsonFloat(out, o.reflectionProbe.blendDistance);
+        out << ",\n";
+        out << "          \"intensity\": ";
+        WriteJsonFloat(out, o.reflectionProbe.intensity);
+        out << ",\n";
+        out << "          \"resolution\": " << o.reflectionProbe.resolution << ",\n";
+        out << "          \"updateMode\": \"" << (o.reflectionProbe.updateMode == ReflectionProbeUpdateMode::Realtime ? "Realtime" : "Baked") << "\",\n";
+        out << "          \"realtimeUpdateDistance\": ";
+        WriteJsonFloat(out, o.reflectionProbe.realtimeUpdateDistance);
+        out << ",\n";
+        out << "          \"realtimeFacesPerFrame\": " << o.reflectionProbe.realtimeFacesPerFrame << ",\n";
+        out << "          \"bakedCubemapPath\": \"" << JsonEscape(NormalizeSlashes(o.reflectionProbe.bakedCubemapPath)) << "\"\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::AudioListener: {
+        out << "        {\n";
+        out << "          \"type\": \"AudioListener\",\n";
+        out << "          \"enabled\": " << (o.audioListener.enabled ? "true" : "false") << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::AudioSource: {
+        out << "        {\n";
+        out << "          \"type\": \"AudioSource\",\n";
+        out << "          \"enabled\": " << (o.audioSource.enabled ? "true" : "false") << ",\n";
+        out << "          \"clipPath\": \"" << JsonEscape(o.audioSource.clipPath) << "\",\n";
+        out << "          \"volume\": ";
+        WriteJsonFloat(out, o.audioSource.volume);
+        out << ",\n";
+        out << "          \"pitch\": ";
+        WriteJsonFloat(out, o.audioSource.pitch);
+        out << ",\n";
+        out << "          \"loop\": " << (o.audioSource.loop ? "true" : "false") << ",\n";
+        out << "          \"playOnAwake\": " << (o.audioSource.playOnAwake ? "true" : "false") << ",\n";
+        out << "          \"spatialBlend\": ";
+        WriteJsonFloat(out, o.audioSource.spatialBlend);
+        out << ",\n";
+        out << "          \"minDistance\": ";
+        WriteJsonFloat(out, o.audioSource.minDistance);
+        out << ",\n";
+        out << "          \"maxDistance\": ";
+        WriteJsonFloat(out, o.audioSource.maxDistance);
+        out << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::VehicleSound: {
+        out << "        {\n";
+        out << "          \"type\": \"VehicleSound\",\n";
+        out << "          \"enabled\": " << (o.vehicleSound.enabled ? "true" : "false") << ",\n";
+        out << "          \"profilePath\": \"" << JsonEscape(o.vehicleSound.profilePath) << "\"\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::TrackGenerator: {
+        out << "        {\n";
+        out << "          \"type\": \"TrackGenerator\",\n";
+        out << "          \"enabled\": " << (o.trackGenerator.enabled ? "true" : "false") << ",\n";
+        out << "          \"trackSourcePath\": \"" << JsonEscape(o.trackGenerator.trackSourcePath) << "\",\n";
+        out << "          \"roadObjectId\": \"" << JsonEscape(o.trackGenerator.roadObjectId) << "\",\n";
+        out << "          \"shoulderObjectId\": \"" << JsonEscape(o.trackGenerator.shoulderObjectId) << "\"\n";
+        out << "        }";
+        break;
+    }
+    }
+}
+
+constexpr SceneComponentType kSerializedComponentOrder[] = {
+    SceneComponentType::Transform,
+    SceneComponentType::MeshFilter,
+    SceneComponentType::MeshRenderer,
+    SceneComponentType::Script,
+    SceneComponentType::Rigidbody,
+    SceneComponentType::Vehicle,
+    SceneComponentType::CharacterController,
+    SceneComponentType::BoxCollider,
+    SceneComponentType::SphereCollider,
+    SceneComponentType::CapsuleCollider,
+    SceneComponentType::PlaneCollider,
+    SceneComponentType::MeshCollider,
+    SceneComponentType::Camera,
+    SceneComponentType::Cinemachine,
+    SceneComponentType::Light,
+    SceneComponentType::ReflectionProbe,
+    SceneComponentType::AudioListener,
+    SceneComponentType::AudioSource,
+    SceneComponentType::VehicleSound,
+    SceneComponentType::TrackGenerator,
+};
+
+void WritePrefabLinkJson(std::ostream& out, const SceneObject& o) {
+    out << "      \"prefabLink\": {\n";
+    out << "        \"sourcePrefabPath\": \"" << JsonEscape(NormalizeSlashes(o.sourcePrefabPath)) << "\",\n";
+    out << "        \"prefabInstanceRootId\": \"" << JsonEscape(o.prefabInstanceRootId) << "\",\n";
+    out << "        \"prefabLocalId\": \"" << JsonEscape(o.prefabLocalId) << "\",\n";
+    out << "        \"overriddenComponents\": [";
+    bool firstOverride = true;
+    for (SceneComponentType overriddenType : o.prefabOverriddenComponents) {
+        if (!firstOverride) out << ", ";
+        out << "\"" << SceneComponentTypeToString(overriddenType) << "\"";
+        firstOverride = false;
+    }
+    out << "],\n";
+    out << "        \"structureOverridden\": " << (o.prefabStructureOverridden ? "true" : "false") << "\n";
+    out << "      },\n";
+}
+
+// Writes one complete scene-object JSON block ("    {" ... "    }"), without a
+// trailing comma/newline. includePrefabLink is true for scene files and false
+// for prefab files (a prefab describes canonical content, not link metadata).
+void WriteSceneObjectJson(std::ostream& out, const SceneObject& o, bool includePrefabLink) {
+    out << "    {\n";
+    out << "      \"id\": \"" << JsonEscape(o.id) << "\",\n";
+    out << "      \"parentId\": \"" << JsonEscape(o.parentId) << "\",\n";
+    out << "      \"name\": \"" << JsonEscape(o.name) << "\",\n";
+    out << "      \"tag\": \"" << JsonEscape(o.tag.empty() ? "Untagged" : o.tag) << "\",\n";
+    out << "      \"type\": \"" << JsonEscape(o.type) << "\",\n";
+    out << "      \"physicsLayer\": " << (std::max)(0, (std::min)(kPhysicsLayerCount - 1, o.physicsLayer)) << ",\n";
+    out << "      \"enabled\": " << (o.enabled ? "true" : "false") << ",\n";
+    if (includePrefabLink && !o.sourcePrefabPath.empty()) {
+        WritePrefabLinkJson(out, o);
+    }
+    SceneObject orderedObject = o;
+    SyncInspectorComponentOrder(orderedObject);
+    out << "      \"componentOrder\": [";
+    for (std::size_t orderIndex = 0; orderIndex < orderedObject.inspectorComponentOrder.size(); ++orderIndex) {
+        out << "\"" << InspectorComponentTypeToString(orderedObject.inspectorComponentOrder[orderIndex]) << "\"";
+        if (orderIndex + 1 < orderedObject.inspectorComponentOrder.size()) {
+            out << ", ";
+        }
+    }
+    out << "],\n";
+    out << "      \"components\": [\n";
+    bool firstComponent = true;
+    for (SceneComponentType componentType : kSerializedComponentOrder) {
+        if (!SerializedComponentPresent(o, componentType)) continue;
+        if (!firstComponent) out << ",\n";
+        WriteSceneObjectComponentBody(out, o, componentType);
+        firstComponent = false;
+    }
+    out << "\n";
+    out << "      ]\n";
+    out << "    }";
+}
+
+} // namespace
+
 void SceneEditor::Save(const std::string& path) {
     const fs::path targetPath = ResolveEditorPath(path);
     try {
@@ -411,306 +953,8 @@ void SceneEditor::Save(const std::string& path) {
     // Minimal JSON (manual)
     out << "{\n  \"objects\": [\n";
     for (size_t i = 0; i < objects_.size(); ++i) {
-        const auto& o = objects_[i];
-        const std::string meshType = o.meshFilter.meshType.empty() ? o.type : o.meshFilter.meshType;
-        out << "    {\n";
-        out << "      \"id\": \"" << JsonEscape(o.id) << "\",\n";
-        out << "      \"parentId\": \"" << JsonEscape(o.parentId) << "\",\n";
-        out << "      \"name\": \"" << JsonEscape(o.name) << "\",\n";
-        out << "      \"tag\": \"" << JsonEscape(o.tag.empty() ? "Untagged" : o.tag) << "\",\n";
-        out << "      \"type\": \"" << JsonEscape(o.type) << "\",\n";
-        out << "      \"physicsLayer\": " << ClampPhysicsLayerIndex(o.physicsLayer) << ",\n";
-        out << "      \"enabled\": " << (o.enabled ? "true" : "false") << ",\n";
-        SceneObject orderedObject = o;
-        SyncInspectorComponentOrder(orderedObject);
-        out << "      \"componentOrder\": [";
-        for (std::size_t orderIndex = 0; orderIndex < orderedObject.inspectorComponentOrder.size(); ++orderIndex) {
-            out << "\"" << InspectorComponentTypeToString(orderedObject.inspectorComponentOrder[orderIndex]) << "\"";
-            if (orderIndex + 1 < orderedObject.inspectorComponentOrder.size()) {
-                out << ", ";
-            }
-        }
-        out << "],\n";
-        out << "      \"components\": [\n";
-        out << "        {\n";
-        out << "          \"type\": \"Transform\",\n";
-        out << "          \"position\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
-        out << "          \"rotationEuler\": [" << o.transform.rotationEuler.x << ", " << o.transform.rotationEuler.y << ", " << o.transform.rotationEuler.z << "],\n";
-        out << "          \"scale\": [" << o.transform.scale.x << ", " << o.transform.scale.y << ", " << o.transform.scale.z << "]\n";
-        out << "        }";
-        if (o.hasMeshFilter) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"MeshFilter\",\n";
-            out << "          \"enabled\": " << (o.meshFilter.enabled ? "true" : "false") << ",\n";
-            out << "          \"meshType\": \"" << JsonEscape(meshType) << "\",\n";
-            out << "          \"sourcePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.sourcePath)) << "\",\n";
-            out << "          \"assetId\": \"" << JsonEscape(o.meshFilter.assetId.empty() ? ModelChildAssetId(o.meshFilter.sourcePath, o.meshFilter.meshIndex) : o.meshFilter.assetId) << "\",\n";
-            out << "          \"meshIndex\": " << o.meshFilter.meshIndex << ",\n";
-            out << "          \"importedMaterialName\": \"" << JsonEscape(o.meshFilter.importedMaterialName) << "\",\n";
-            out << "          \"diffuseTexturePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.diffuseTexturePath)) << "\"";
-            {
-                const glm::vec3& po = o.meshFilter.pivotOffset;
-                if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
-                    out << ",\n          \"pivotOffset\": [" << po.x << ", " << po.y << ", " << po.z << "]";
-                }
-            }
-            WriteMeshLodSettings(out, o.meshFilter, "          ");
-            out << "\n";
-            out << "        }";
-        }
-        if (o.hasMeshRenderer) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"MeshRenderer\",\n";
-            out << "          \"enabled\": " << (o.meshRenderer.enabled ? "true" : "false") << ",\n";
-            out << "          \"materialId\": \"" << JsonEscape(o.meshRenderer.materialId.empty() ? "pbr_default" : o.meshRenderer.materialId) << "\",\n";
-            out << "          \"color\": [" << o.meshRenderer.color.r << ", " << o.meshRenderer.color.g << ", " << o.meshRenderer.color.b << ", " << o.meshRenderer.color.a << "]\n";
-            out << "        }";
-        }
-        if (o.hasScriptComponent) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Script\",\n";
-            out << "          \"enabled\": " << (o.scriptComponent.enabled ? "true" : "false") << ",\n";
-            out << "          \"attachments\": [\n";
-            for (size_t scriptIndex = 0; scriptIndex < o.scriptComponent.attachments.size(); ++scriptIndex) {
-                const ObjectScriptAttachment& script = o.scriptComponent.attachments[scriptIndex];
-                out << "            {\n";
-                out << "              \"enabled\": " << (script.enabled ? "true" : "false") << ",\n";
-                out << "              \"scriptName\": \"" << JsonEscape(script.scriptName) << "\",\n";
-                out << "              \"scriptPath\": \"" << JsonEscape(NormalizeSlashes(script.scriptPath)) << "\"";
-                if (!script.fields.empty()) {
-                    out << ",\n";
-                    out << "              \"fields\": [\n";
-                    for (std::size_t fieldIndex = 0; fieldIndex < script.fields.size(); ++fieldIndex) {
-                        const ScriptFieldEntry& field = script.fields[fieldIndex];
-                        out << "                {\n";
-                        out << "                  \"name\": \"" << JsonEscape(field.name) << "\",\n";
-                        out << "                  \"type\": \"" << ScriptFieldTypeToString(field.type) << "\",\n";
-                        WriteScriptFieldValue(out, field);
-                        out << "                }" << (fieldIndex + 1 < script.fields.size() ? ",\n" : "\n");
-                    }
-                    out << "              ]\n";
-                    out << "            }";
-                } else {
-                    out << "\n";
-                    out << "            }";
-                }
-                out << (scriptIndex + 1 < o.scriptComponent.attachments.size() ? ",\n" : "\n");
-            }
-            out << "          ]\n";
-            out << "        }";
-        }
-        if (o.hasRigidbody) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Rigidbody\",\n";
-            out << "          \"enabled\": " << (o.rigidbody.enabled ? "true" : "false") << ",\n";
-            out << "          \"bodyType\": \"" << RigidbodyBodyTypeToString(o.rigidbody.bodyType) << "\",\n";
-            out << "          \"mass\": " << o.rigidbody.mass << ",\n";
-            out << "          \"useGravity\": " << (o.rigidbody.useGravity ? "true" : "false") << ",\n";
-            out << "          \"linearDamping\": " << o.rigidbody.linearDamping << ",\n";
-            out << "          \"angularDamping\": " << o.rigidbody.angularDamping << ",\n";
-            out << "          \"friction\": " << o.rigidbody.friction << ",\n";
-            out << "          \"restitution\": " << o.rigidbody.restitution << ",\n";
-            out << "          \"velocity\": [" << o.rigidbody.velocity.x << ", " << o.rigidbody.velocity.y << ", " << o.rigidbody.velocity.z << "],\n";
-            out << "          \"angularVelocity\": [" << o.rigidbody.angularVelocity.x << ", " << o.rigidbody.angularVelocity.y << ", " << o.rigidbody.angularVelocity.z << "],\n";
-            out << "          \"freezePosition\": [" << (o.rigidbody.freezePositionX ? "true" : "false") << ", " << (o.rigidbody.freezePositionY ? "true" : "false") << ", " << (o.rigidbody.freezePositionZ ? "true" : "false") << "],\n";
-            out << "          \"freezeRotation\": [" << (o.rigidbody.freezeRotationX ? "true" : "false") << ", " << (o.rigidbody.freezeRotationY ? "true" : "false") << ", " << (o.rigidbody.freezeRotationZ ? "true" : "false") << "]\n";
-            out << "        }";
-        }
-        if (o.hasVehicle) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Vehicle\",\n";
-            out << "          \"enabled\": " << (o.vehicle.enabled ? "true" : "false") << ",\n";
-            out << "          \"configPath\": \"" << JsonEscape(NormalizeSlashes(o.vehicle.configPath)) << "\",\n";
-            out << "          \"inputProfileId\": \"" << JsonEscape(o.vehicle.inputProfileId) << "\",\n";
-            out << "          \"preferredInputDevice\": \"" << InputDevicePreferenceToStorage(o.vehicle.preferredInputDevice) << "\",\n";
-            out << "          \"preferredInputDeviceId\": \"" << JsonEscape(o.vehicle.preferredInputDeviceId) << "\",\n";
-            out << "          \"chassisObjectIds\": [";
-            for (std::size_t chassisIndex = 0; chassisIndex < o.vehicle.chassisObjectIds.size(); ++chassisIndex) {
-                out << (chassisIndex == 0 ? "" : ", ") << "\"" << JsonEscape(o.vehicle.chassisObjectIds[chassisIndex]) << "\"";
-            }
-            out << "],\n";
-            out << "          \"wheelBindings\": [\n";
-            for (std::size_t wheelIndex = 0; wheelIndex < o.vehicle.wheelBindings.size(); ++wheelIndex) {
-                const VehicleWheelBinding& binding = o.vehicle.wheelBindings[wheelIndex];
-                out << "            {\n";
-                out << "              \"wheelName\": \"" << JsonEscape(binding.wheelName) << "\",\n";
-                out << "              \"objectId\": \"" << JsonEscape(binding.objectId) << "\",\n";
-                out << "              \"visualRotationEuler\": [" << binding.visualRotationEuler.x << ", " << binding.visualRotationEuler.y << ", " << binding.visualRotationEuler.z << "]\n";
-                out << "            }" << (wheelIndex + 1 < o.vehicle.wheelBindings.size() ? ",\n" : "\n");
-            }
-            out << "          ]\n";
-            out << "        }";
-        }
-        if (o.hasCharacterController) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"CharacterController\",\n";
-            out << "          \"enabled\": " << (o.characterController.enabled ? "true" : "false") << ",\n";
-            out << "          \"height\": " << o.characterController.height << ",\n";
-            out << "          \"radius\": " << o.characterController.radius << ",\n";
-            out << "          \"center\": [" << o.characterController.center.x << ", " << o.characterController.center.y << ", " << o.characterController.center.z << "],\n";
-            out << "          \"stepHeight\": " << o.characterController.stepHeight << ",\n";
-            out << "          \"slopeLimitDegrees\": " << o.characterController.slopeLimitDegrees << ",\n";
-            out << "          \"maxStrength\": " << o.characterController.maxStrength << ",\n";
-            out << "          \"mass\": " << o.characterController.mass << "\n";
-            out << "        }";
-        }
-        const SceneColliderType colliderType = GetActiveColliderType(o);
-        if (colliderType != SceneColliderType::None) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Collider\",\n";
-            out << "          \"colliderType\": \"" << SceneColliderTypeLabel(colliderType) << "\"";
-            if (colliderType == SceneColliderType::Box) {
-                out << ",\n";
-                out << "          \"enabled\": " << (o.boxCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.boxCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"center\": [" << o.boxCollider.center.x << ", " << o.boxCollider.center.y << ", " << o.boxCollider.center.z << "],\n";
-                out << "          \"size\": [" << o.boxCollider.size.x << ", " << o.boxCollider.size.y << ", " << o.boxCollider.size.z << "]\n";
-            } else if (colliderType == SceneColliderType::Sphere) {
-                out << ",\n";
-                out << "          \"enabled\": " << (o.sphereCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.sphereCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"center\": [" << o.sphereCollider.center.x << ", " << o.sphereCollider.center.y << ", " << o.sphereCollider.center.z << "],\n";
-                out << "          \"radius\": " << o.sphereCollider.radius << "\n";
-            } else if (colliderType == SceneColliderType::Capsule) {
-                out << ",\n";
-                out << "          \"enabled\": " << (o.capsuleCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.capsuleCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"center\": [" << o.capsuleCollider.center.x << ", " << o.capsuleCollider.center.y << ", " << o.capsuleCollider.center.z << "],\n";
-                out << "          \"radius\": " << o.capsuleCollider.radius << ",\n";
-                out << "          \"height\": " << o.capsuleCollider.height << "\n";
-            } else if (colliderType == SceneColliderType::Plane) {
-                out << ",\n";
-                out << "          \"enabled\": " << (o.planeCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.planeCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"normal\": [" << o.planeCollider.normal.x << ", " << o.planeCollider.normal.y << ", " << o.planeCollider.normal.z << "],\n";
-                out << "          \"offset\": " << o.planeCollider.offset << ",\n";
-                out << "          \"infinite\": " << (o.planeCollider.infinite ? "true" : "false") << ",\n";
-                out << "          \"halfExtent\": " << o.planeCollider.halfExtent << "\n";
-            } else if (colliderType == SceneColliderType::Mesh) {
-                out << ",\n";
-                out << "          \"enabled\": " << (o.meshCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.meshCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"buildQuality\": \"" << MeshColliderBuildQualityToString(o.meshCollider.buildQuality) << "\",\n";
-                out << "          \"mode\": \"" << MeshColliderModeToString(o.meshCollider.mode) << "\"\n";
-            }
-            out << ",\n";
-            WriteColliderSurface(out, o.colliderSurface, "          ");
-            out << "\n";
-            out << "        }";
-        }
-        if (o.hasCamera) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Camera\",\n";
-            out << "          \"enabled\": " << (o.camera.enabled ? "true" : "false") << ",\n";
-            out << "          \"isMain\": " << (o.camera.isMain ? "true" : "false") << ",\n";
-            out << "          \"fieldOfViewDegrees\": " << o.camera.fieldOfViewDegrees << ",\n";
-            out << "          \"nearClip\": " << o.camera.nearClip << ",\n";
-            out << "          \"farClip\": " << o.camera.farClip << ",\n";
-            out << "          \"clearColor\": [" << o.camera.clearColor.r << ", " << o.camera.clearColor.g << ", " << o.camera.clearColor.b << ", " << o.camera.clearColor.a << "]\n";
-            out << "        }";
-        }
-        if (o.hasCinemachine) {
-            const auto cinemachineTypeStr = [](CinemachineCameraType t) -> const char* {
-                switch (t) {
-                    case CinemachineCameraType::Follow:          return "Follow";
-                    case CinemachineCameraType::LookAt:          return "LookAt";
-                    case CinemachineCameraType::FollowAndLookAt: return "FollowAndLookAt";
-                }
-                return "FollowAndLookAt";
-            };
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Cinemachine\",\n";
-            out << "          \"enabled\": " << (o.cinemachine.enabled ? "true" : "false") << ",\n";
-            out << "          \"cameraType\": \"" << cinemachineTypeStr(o.cinemachine.type) << "\",\n";
-            out << "          \"followTargetId\": \"" << JsonEscape(o.cinemachine.followTargetId) << "\",\n";
-            out << "          \"lookAtTargetId\": \"" << JsonEscape(o.cinemachine.lookAtTargetId) << "\",\n";
-            out << "          \"followOffset\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
-            out << "          \"pitchOffset\": " << o.transform.rotationEuler.x << ",\n";
-            out << "          \"yawOffset\": " << o.transform.rotationEuler.y << ",\n";
-            out << "          \"lockTargetPitchRoll\": " << (o.cinemachine.lockTargetPitchRoll ? "true" : "false") << ",\n";
-            out << "          \"positionDamping\": " << o.cinemachine.positionDamping << ",\n";
-            out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << ",\n";
-            out << "          \"priority\": " << o.cinemachine.priority << ",\n";
-            out << "          \"blendDuration\": " << o.cinemachine.blendDuration << "\n";
-            out << "        }";
-        }
-        if (o.hasLight) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Light\",\n";
-            out << "          \"enabled\": " << (o.light.enabled ? "true" : "false") << ",\n";
-            out << "          \"castShadows\": " << (o.light.castShadows ? "true" : "false") << ",\n";
-            out << "          \"lightType\": \"" << LightTypeToString(o.light.type) << "\",\n";
-            out << "          \"color\": [" << o.light.color.r << ", " << o.light.color.g << ", " << o.light.color.b << "],\n";
-            out << "          \"intensity\": " << o.light.intensity << ",\n";
-            out << "          \"range\": " << o.light.range << ",\n";
-            out << "          \"spotAngleDegrees\": " << o.light.spotAngleDegrees << "\n";
-            out << "        }";
-        }
-        if (o.hasReflectionProbe) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"ReflectionProbe\",\n";
-            out << "          \"enabled\": " << (o.reflectionProbe.enabled ? "true" : "false") << ",\n";
-            out << "          \"boxSize\": [" << o.reflectionProbe.boxSize.x << ", " << o.reflectionProbe.boxSize.y << ", " << o.reflectionProbe.boxSize.z << "],\n";
-            out << "          \"blendDistance\": " << o.reflectionProbe.blendDistance << ",\n";
-            out << "          \"intensity\": " << o.reflectionProbe.intensity << ",\n";
-            out << "          \"resolution\": " << o.reflectionProbe.resolution << ",\n";
-            out << "          \"bakedCubemapPath\": \"" << JsonEscape(NormalizeSlashes(o.reflectionProbe.bakedCubemapPath)) << "\"\n";
-            out << "        }";
-        }
-        if (o.hasAudioListener) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"AudioListener\",\n";
-            out << "          \"enabled\": " << (o.audioListener.enabled ? "true" : "false") << "\n";
-            out << "        }";
-        }
-        if (o.hasAudioSource) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"AudioSource\",\n";
-            out << "          \"enabled\": " << (o.audioSource.enabled ? "true" : "false") << ",\n";
-            out << "          \"clipPath\": \"" << JsonEscape(o.audioSource.clipPath) << "\",\n";
-            out << "          \"volume\": " << o.audioSource.volume << ",\n";
-            out << "          \"pitch\": " << o.audioSource.pitch << ",\n";
-            out << "          \"loop\": " << (o.audioSource.loop ? "true" : "false") << ",\n";
-            out << "          \"playOnAwake\": " << (o.audioSource.playOnAwake ? "true" : "false") << ",\n";
-            out << "          \"spatialBlend\": " << o.audioSource.spatialBlend << ",\n";
-            out << "          \"minDistance\": " << o.audioSource.minDistance << ",\n";
-            out << "          \"maxDistance\": " << o.audioSource.maxDistance << "\n";
-            out << "        }";
-        }
-        if (o.hasVehicleSound) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"VehicleSound\",\n";
-            out << "          \"enabled\": " << (o.vehicleSound.enabled ? "true" : "false") << ",\n";
-            out << "          \"profilePath\": \"" << JsonEscape(o.vehicleSound.profilePath) << "\"\n";
-            out << "        }";
-        }
-        if (o.hasTrackGenerator) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"TrackGenerator\",\n";
-            out << "          \"enabled\": " << (o.trackGenerator.enabled ? "true" : "false") << ",\n";
-            out << "          \"trackSourcePath\": \"" << JsonEscape(o.trackGenerator.trackSourcePath) << "\",\n";
-            out << "          \"roadObjectId\": \"" << JsonEscape(o.trackGenerator.roadObjectId) << "\",\n";
-            out << "          \"shoulderObjectId\": \"" << JsonEscape(o.trackGenerator.shoulderObjectId) << "\"\n";
-            out << "        }";
-        }
-        out << "\n";
-        out << "      ]\n";
-        out << "    }" << (i + 1 < objects_.size() ? ",\n" : "\n");
+        WriteSceneObjectJson(out, objects_[i], true);
+        out << (i + 1 < objects_.size() ? ",\n" : "\n");
     }
     out << "  ],\n";
     out << "  \"hierarchyClosed\": [";
@@ -766,280 +1010,27 @@ bool SceneEditor::SaveObjectAsPrefab(int objectIndex, const std::string& path) {
         SceneObject o = objects_[subtree[si]];
         if (si == 0) o.parentId.clear();  // prefab root has no external parent
 
-        const std::string meshType = o.meshFilter.meshType.empty() ? o.type : o.meshFilter.meshType;
-        out << "    {\n";
-        out << "      \"id\": \"" << JsonEscape(o.id) << "\",\n";
-        out << "      \"parentId\": \"" << JsonEscape(o.parentId) << "\",\n";
-        out << "      \"name\": \"" << JsonEscape(o.name) << "\",\n";
-        out << "      \"tag\": \"" << JsonEscape(o.tag.empty() ? "Untagged" : o.tag) << "\",\n";
-        out << "      \"type\": \"" << JsonEscape(o.type) << "\",\n";
-        out << "      \"physicsLayer\": " << ClampPhysicsLayerIndex(o.physicsLayer) << ",\n";
-        out << "      \"enabled\": " << (o.enabled ? "true" : "false") << ",\n";
-        SceneObject orderedObject = o;
-        SyncInspectorComponentOrder(orderedObject);
-        out << "      \"componentOrder\": [";
-        for (std::size_t orderIndex = 0; orderIndex < orderedObject.inspectorComponentOrder.size(); ++orderIndex) {
-            out << "\"" << InspectorComponentTypeToString(orderedObject.inspectorComponentOrder[orderIndex]) << "\"";
-            if (orderIndex + 1 < orderedObject.inspectorComponentOrder.size()) out << ", ";
-        }
-        out << "],\n";
-        out << "      \"components\": [\n";
-        out << "        {\n";
-        out << "          \"type\": \"Transform\",\n";
-        out << "          \"position\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
-        out << "          \"rotationEuler\": [" << o.transform.rotationEuler.x << ", " << o.transform.rotationEuler.y << ", " << o.transform.rotationEuler.z << "],\n";
-        out << "          \"scale\": [" << o.transform.scale.x << ", " << o.transform.scale.y << ", " << o.transform.scale.z << "]\n";
-        out << "        }";
-        if (o.hasMeshFilter) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"MeshFilter\",\n";
-            out << "          \"enabled\": " << (o.meshFilter.enabled ? "true" : "false") << ",\n";
-            out << "          \"meshType\": \"" << JsonEscape(meshType) << "\",\n";
-            out << "          \"sourcePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.sourcePath)) << "\",\n";
-            out << "          \"assetId\": \"" << JsonEscape(o.meshFilter.assetId.empty() ? ModelChildAssetId(o.meshFilter.sourcePath, o.meshFilter.meshIndex) : o.meshFilter.assetId) << "\",\n";
-            out << "          \"meshIndex\": " << o.meshFilter.meshIndex << ",\n";
-            out << "          \"importedMaterialName\": \"" << JsonEscape(o.meshFilter.importedMaterialName) << "\",\n";
-            out << "          \"diffuseTexturePath\": \"" << JsonEscape(NormalizeSlashes(o.meshFilter.diffuseTexturePath)) << "\"";
-            const glm::vec3& po = o.meshFilter.pivotOffset;
-            if (po.x != 0.0f || po.y != 0.0f || po.z != 0.0f) {
-                out << ",\n          \"pivotOffset\": [" << po.x << ", " << po.y << ", " << po.z << "]";
-            }
-            WriteMeshLodSettings(out, o.meshFilter, "          ");
-            out << "\n        }";
-        }
-        if (o.hasMeshRenderer) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"MeshRenderer\",\n";
-            out << "          \"enabled\": " << (o.meshRenderer.enabled ? "true" : "false") << ",\n";
-            out << "          \"materialId\": \"" << JsonEscape(o.meshRenderer.materialId.empty() ? "pbr_default" : o.meshRenderer.materialId) << "\",\n";
-            out << "          \"color\": [" << o.meshRenderer.color.r << ", " << o.meshRenderer.color.g << ", " << o.meshRenderer.color.b << ", " << o.meshRenderer.color.a << "]\n";
-            out << "        }";
-        }
-        if (o.hasScriptComponent) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Script\",\n";
-            out << "          \"enabled\": " << (o.scriptComponent.enabled ? "true" : "false") << ",\n";
-            out << "          \"attachments\": [\n";
-            for (std::size_t scriptIndex = 0; scriptIndex < o.scriptComponent.attachments.size(); ++scriptIndex) {
-                const ObjectScriptAttachment& script = o.scriptComponent.attachments[scriptIndex];
-                out << "            {\n";
-                out << "              \"enabled\": " << (script.enabled ? "true" : "false") << ",\n";
-                out << "              \"scriptName\": \"" << JsonEscape(script.scriptName) << "\",\n";
-                out << "              \"scriptPath\": \"" << JsonEscape(NormalizeSlashes(script.scriptPath)) << "\"";
-                if (!script.fields.empty()) {
-                    out << ",\n              \"fields\": [\n";
-                    for (std::size_t fieldIndex = 0; fieldIndex < script.fields.size(); ++fieldIndex) {
-                        const ScriptFieldEntry& field = script.fields[fieldIndex];
-                        out << "                {\n";
-                        out << "                  \"name\": \"" << JsonEscape(field.name) << "\",\n";
-                        out << "                  \"type\": \"" << ScriptFieldTypeToString(field.type) << "\",\n";
-                        WriteScriptFieldValue(out, field);
-                        out << "                }" << (fieldIndex + 1 < script.fields.size() ? ",\n" : "\n");
-                    }
-                    out << "              ]\n            }";
-                } else {
-                    out << "\n            }";
-                }
-                out << (scriptIndex + 1 < o.scriptComponent.attachments.size() ? ",\n" : "\n");
-            }
-            out << "          ]\n        }";
-        }
-        if (o.hasRigidbody) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Rigidbody\",\n";
-            out << "          \"enabled\": " << (o.rigidbody.enabled ? "true" : "false") << ",\n";
-            out << "          \"bodyType\": \"" << RigidbodyBodyTypeToString(o.rigidbody.bodyType) << "\",\n";
-            out << "          \"mass\": " << o.rigidbody.mass << ",\n";
-            out << "          \"useGravity\": " << (o.rigidbody.useGravity ? "true" : "false") << ",\n";
-            out << "          \"linearDamping\": " << o.rigidbody.linearDamping << ",\n";
-            out << "          \"angularDamping\": " << o.rigidbody.angularDamping << ",\n";
-            out << "          \"friction\": " << o.rigidbody.friction << ",\n";
-            out << "          \"restitution\": " << o.rigidbody.restitution << ",\n";
-            out << "          \"velocity\": [" << o.rigidbody.velocity.x << ", " << o.rigidbody.velocity.y << ", " << o.rigidbody.velocity.z << "],\n";
-            out << "          \"angularVelocity\": [" << o.rigidbody.angularVelocity.x << ", " << o.rigidbody.angularVelocity.y << ", " << o.rigidbody.angularVelocity.z << "],\n";
-            out << "          \"freezePosition\": [" << (o.rigidbody.freezePositionX ? "true" : "false") << ", " << (o.rigidbody.freezePositionY ? "true" : "false") << ", " << (o.rigidbody.freezePositionZ ? "true" : "false") << "],\n";
-            out << "          \"freezeRotation\": [" << (o.rigidbody.freezeRotationX ? "true" : "false") << ", " << (o.rigidbody.freezeRotationY ? "true" : "false") << ", " << (o.rigidbody.freezeRotationZ ? "true" : "false") << "]\n";
-            out << "        }";
-        }
-        if (o.hasVehicle) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Vehicle\",\n";
-            out << "          \"enabled\": " << (o.vehicle.enabled ? "true" : "false") << ",\n";
-            out << "          \"configPath\": \"" << JsonEscape(NormalizeSlashes(o.vehicle.configPath)) << "\",\n";
-            out << "          \"inputProfileId\": \"" << JsonEscape(o.vehicle.inputProfileId) << "\",\n";
-            out << "          \"preferredInputDevice\": \"" << InputDevicePreferenceToStorage(o.vehicle.preferredInputDevice) << "\",\n";
-            out << "          \"preferredInputDeviceId\": \"" << JsonEscape(o.vehicle.preferredInputDeviceId) << "\",\n";
-            out << "          \"chassisObjectIds\": [";
-            for (std::size_t chassisIndex = 0; chassisIndex < o.vehicle.chassisObjectIds.size(); ++chassisIndex) {
-                out << (chassisIndex == 0 ? "" : ", ") << "\"" << JsonEscape(o.vehicle.chassisObjectIds[chassisIndex]) << "\"";
-            }
-            out << "],\n";
-            out << "          \"wheelBindings\": [\n";
-            for (std::size_t wheelIndex = 0; wheelIndex < o.vehicle.wheelBindings.size(); ++wheelIndex) {
-                const VehicleWheelBinding& binding = o.vehicle.wheelBindings[wheelIndex];
-                out << "            {\n";
-                out << "              \"wheelName\": \"" << JsonEscape(binding.wheelName) << "\",\n";
-                out << "              \"objectId\": \"" << JsonEscape(binding.objectId) << "\",\n";
-                out << "              \"visualRotationEuler\": [" << binding.visualRotationEuler.x << ", " << binding.visualRotationEuler.y << ", " << binding.visualRotationEuler.z << "]\n";
-                out << "            }" << (wheelIndex + 1 < o.vehicle.wheelBindings.size() ? ",\n" : "\n");
-            }
-            out << "          ]\n        }";
-        }
-        if (o.hasCharacterController) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"CharacterController\",\n";
-            out << "          \"enabled\": " << (o.characterController.enabled ? "true" : "false") << ",\n";
-            out << "          \"height\": " << o.characterController.height << ",\n";
-            out << "          \"radius\": " << o.characterController.radius << ",\n";
-            out << "          \"center\": [" << o.characterController.center.x << ", " << o.characterController.center.y << ", " << o.characterController.center.z << "],\n";
-            out << "          \"stepHeight\": " << o.characterController.stepHeight << ",\n";
-            out << "          \"slopeLimitDegrees\": " << o.characterController.slopeLimitDegrees << ",\n";
-            out << "          \"maxStrength\": " << o.characterController.maxStrength << ",\n";
-            out << "          \"mass\": " << o.characterController.mass << "\n";
-            out << "        }";
-        }
-        const SceneColliderType colliderType = GetActiveColliderType(o);
-        if (colliderType != SceneColliderType::None) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Collider\",\n";
-            out << "          \"colliderType\": \"" << SceneColliderTypeLabel(colliderType) << "\"";
-            if (colliderType == SceneColliderType::Box) {
-                out << ",\n          \"enabled\": " << (o.boxCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.boxCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"center\": [" << o.boxCollider.center.x << ", " << o.boxCollider.center.y << ", " << o.boxCollider.center.z << "],\n";
-                out << "          \"size\": [" << o.boxCollider.size.x << ", " << o.boxCollider.size.y << ", " << o.boxCollider.size.z << "]\n";
-            } else if (colliderType == SceneColliderType::Sphere) {
-                out << ",\n          \"enabled\": " << (o.sphereCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.sphereCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"center\": [" << o.sphereCollider.center.x << ", " << o.sphereCollider.center.y << ", " << o.sphereCollider.center.z << "],\n";
-                out << "          \"radius\": " << o.sphereCollider.radius << "\n";
-            } else if (colliderType == SceneColliderType::Capsule) {
-                out << ",\n          \"enabled\": " << (o.capsuleCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.capsuleCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"center\": [" << o.capsuleCollider.center.x << ", " << o.capsuleCollider.center.y << ", " << o.capsuleCollider.center.z << "],\n";
-                out << "          \"radius\": " << o.capsuleCollider.radius << ",\n";
-                out << "          \"height\": " << o.capsuleCollider.height << "\n";
-            } else if (colliderType == SceneColliderType::Plane) {
-                out << ",\n          \"enabled\": " << (o.planeCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.planeCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"normal\": [" << o.planeCollider.normal.x << ", " << o.planeCollider.normal.y << ", " << o.planeCollider.normal.z << "],\n";
-                out << "          \"offset\": " << o.planeCollider.offset << ",\n";
-                out << "          \"infinite\": " << (o.planeCollider.infinite ? "true" : "false") << ",\n";
-                out << "          \"halfExtent\": " << o.planeCollider.halfExtent << "\n";
-            } else if (colliderType == SceneColliderType::Mesh) {
-                out << ",\n          \"enabled\": " << (o.meshCollider.enabled ? "true" : "false") << ",\n";
-                out << "          \"isTrigger\": " << (o.meshCollider.isTrigger ? "true" : "false") << ",\n";
-                out << "          \"buildQuality\": \"" << MeshColliderBuildQualityToString(o.meshCollider.buildQuality) << "\",\n";
-                out << "          \"mode\": \"" << MeshColliderModeToString(o.meshCollider.mode) << "\"\n";
-            }
-            out << ",\n";
-            WriteColliderSurface(out, o.colliderSurface, "          ");
-            out << "\n";
-            out << "        }";
-        }
-        if (o.hasCamera) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Camera\",\n";
-            out << "          \"enabled\": " << (o.camera.enabled ? "true" : "false") << ",\n";
-            out << "          \"isMain\": " << (o.camera.isMain ? "true" : "false") << ",\n";
-            out << "          \"fieldOfViewDegrees\": " << o.camera.fieldOfViewDegrees << ",\n";
-            out << "          \"nearClip\": " << o.camera.nearClip << ",\n";
-            out << "          \"farClip\": " << o.camera.farClip << ",\n";
-            out << "          \"clearColor\": [" << o.camera.clearColor.r << ", " << o.camera.clearColor.g << ", " << o.camera.clearColor.b << ", " << o.camera.clearColor.a << "]\n";
-            out << "        }";
-        }
-        if (o.hasCinemachine) {
-            const auto cinemachineTypeStr = [](CinemachineCameraType t) -> const char* {
-                switch (t) {
-                    case CinemachineCameraType::Follow:          return "Follow";
-                    case CinemachineCameraType::LookAt:          return "LookAt";
-                    case CinemachineCameraType::FollowAndLookAt: return "FollowAndLookAt";
-                }
-                return "FollowAndLookAt";
-            };
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Cinemachine\",\n";
-            out << "          \"enabled\": " << (o.cinemachine.enabled ? "true" : "false") << ",\n";
-            out << "          \"cameraType\": \"" << cinemachineTypeStr(o.cinemachine.type) << "\",\n";
-            out << "          \"followTargetId\": \"" << JsonEscape(o.cinemachine.followTargetId) << "\",\n";
-            out << "          \"lookAtTargetId\": \"" << JsonEscape(o.cinemachine.lookAtTargetId) << "\",\n";
-            out << "          \"followOffset\": [" << o.transform.position.x << ", " << o.transform.position.y << ", " << o.transform.position.z << "],\n";
-            out << "          \"pitchOffset\": " << o.transform.rotationEuler.x << ",\n";
-            out << "          \"yawOffset\": " << o.transform.rotationEuler.y << ",\n";
-            out << "          \"lockTargetPitchRoll\": " << (o.cinemachine.lockTargetPitchRoll ? "true" : "false") << ",\n";
-            out << "          \"positionDamping\": " << o.cinemachine.positionDamping << ",\n";
-            out << "          \"rotationDamping\": " << o.cinemachine.rotationDamping << ",\n";
-            out << "          \"priority\": " << o.cinemachine.priority << ",\n";
-            out << "          \"blendDuration\": " << o.cinemachine.blendDuration << "\n";
-            out << "        }";
-        }
-        if (o.hasLight) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"Light\",\n";
-            out << "          \"enabled\": " << (o.light.enabled ? "true" : "false") << ",\n";
-            out << "          \"castShadows\": " << (o.light.castShadows ? "true" : "false") << ",\n";
-            out << "          \"lightType\": \"" << LightTypeToString(o.light.type) << "\",\n";
-            out << "          \"color\": [" << o.light.color.r << ", " << o.light.color.g << ", " << o.light.color.b << "],\n";
-            out << "          \"intensity\": " << o.light.intensity << ",\n";
-            out << "          \"range\": " << o.light.range << ",\n";
-            out << "          \"spotAngleDegrees\": " << o.light.spotAngleDegrees << "\n";
-            out << "        }";
-        }
-        if (o.hasAudioListener) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"AudioListener\",\n";
-            out << "          \"enabled\": " << (o.audioListener.enabled ? "true" : "false") << "\n";
-            out << "        }";
-        }
-        if (o.hasAudioSource) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"AudioSource\",\n";
-            out << "          \"enabled\": " << (o.audioSource.enabled ? "true" : "false") << ",\n";
-            out << "          \"clipPath\": \"" << JsonEscape(o.audioSource.clipPath) << "\",\n";
-            out << "          \"volume\": " << o.audioSource.volume << ",\n";
-            out << "          \"pitch\": " << o.audioSource.pitch << ",\n";
-            out << "          \"loop\": " << (o.audioSource.loop ? "true" : "false") << ",\n";
-            out << "          \"playOnAwake\": " << (o.audioSource.playOnAwake ? "true" : "false") << ",\n";
-            out << "          \"spatialBlend\": " << o.audioSource.spatialBlend << ",\n";
-            out << "          \"minDistance\": " << o.audioSource.minDistance << ",\n";
-            out << "          \"maxDistance\": " << o.audioSource.maxDistance << "\n";
-            out << "        }";
-        }
-        if (o.hasVehicleSound) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"VehicleSound\",\n";
-            out << "          \"enabled\": " << (o.vehicleSound.enabled ? "true" : "false") << ",\n";
-            out << "          \"profilePath\": \"" << JsonEscape(o.vehicleSound.profilePath) << "\"\n";
-            out << "        }";
-        }
-        if (o.hasTrackGenerator) {
-            out << ",\n";
-            out << "        {\n";
-            out << "          \"type\": \"TrackGenerator\",\n";
-            out << "          \"enabled\": " << (o.trackGenerator.enabled ? "true" : "false") << ",\n";
-            out << "          \"trackSourcePath\": \"" << JsonEscape(o.trackGenerator.trackSourcePath) << "\",\n";
-            out << "          \"roadObjectId\": \"" << JsonEscape(o.trackGenerator.roadObjectId) << "\",\n";
-            out << "          \"shoulderObjectId\": \"" << JsonEscape(o.trackGenerator.shoulderObjectId) << "\"\n";
-            out << "        }";
-        }
-        out << "\n      ]\n    }";
+        WriteSceneObjectJson(out, o, false);
         out << (si + 1 < subtree.size() ? ",\n" : "\n");
     }
     out << "  ]\n}\n";
-    return out.good();
+    if (!out.good()) return false;
+
+    // Creating a prefab from live objects links them as an instance of it,
+    // so Apply/Revert work immediately without re-instantiating.
+    PushUndoState();
+    const std::string storedPrefabPath = NormalizeSlashes(path);
+    const std::string instanceRootId = objects_[objectIndex].id;
+    for (int subtreeIndex : subtree) {
+        SceneObject& linked = objects_[subtreeIndex];
+        linked.sourcePrefabPath = storedPrefabPath;
+        linked.prefabInstanceRootId = instanceRootId;
+        linked.prefabLocalId = linked.id;
+        linked.prefabOverriddenComponents.clear();
+        linked.prefabStructureOverridden = false;
+    }
+    if (onDirty_) onDirty_();
+    return true;
 }
 
 void SceneEditor::Load(const std::string& path) {
@@ -1184,6 +1175,24 @@ void SceneEditor::Load(const std::string& path) {
                         so.inspectorComponentOrder.push_back(componentType);
                     }
                 }
+            }
+
+            if (auto prefabLinkIt = o.find("prefabLink"); prefabLinkIt != o.end() && prefabLinkIt->second.is_object()) {
+                const auto& prefabLink = prefabLinkIt->second.as_object();
+                ReadString(prefabLink, "sourcePrefabPath", so.sourcePrefabPath);
+                so.sourcePrefabPath = NormalizeSlashes(so.sourcePrefabPath);
+                ReadString(prefabLink, "prefabInstanceRootId", so.prefabInstanceRootId);
+                ReadString(prefabLink, "prefabLocalId", so.prefabLocalId);
+                if (auto overridesIt = prefabLink.find("overriddenComponents"); overridesIt != prefabLink.end() && overridesIt->second.is_array()) {
+                    for (const auto& overrideValue : overridesIt->second.as_array()) {
+                        if (!overrideValue.is_string()) continue;
+                        SceneComponentType overriddenType;
+                        if (SceneComponentTypeFromString(overrideValue.as_string(), overriddenType)) {
+                            so.prefabOverriddenComponents.insert(overriddenType);
+                        }
+                    }
+                }
+                ReadBool(prefabLink, "structureOverridden", so.prefabStructureOverridden);
             }
 
             bool hasLegacyMeshRendererData = false;
@@ -1712,14 +1721,27 @@ void SceneEditor::Load(const std::string& path) {
                     } else if (componentType == "ReflectionProbe") {
                         so.hasReflectionProbe = true;
                         ReadBool(component, "enabled", so.reflectionProbe.enabled);
+                        if (auto shape = component.find("shape"); shape != component.end() && shape->second.is_string()) {
+                            so.reflectionProbe.shape = shape->second.as_string() == "Sphere"
+                                ? ReflectionProbeShape::Sphere
+                                : ReflectionProbeShape::Box;
+                        }
                         ReadVec3(component, "boxSize", so.reflectionProbe.boxSize);
                         so.reflectionProbe.boxSize = (glm::max)(so.reflectionProbe.boxSize, glm::vec3(0.1f));
+                        if (auto radius = component.find("sphereRadius"); radius != component.end() && radius->second.is_number()) so.reflectionProbe.sphereRadius = (std::max)(0.1f, static_cast<float>(radius->second.as_number()));
                         if (auto blend = component.find("blendDistance"); blend != component.end() && blend->second.is_number()) so.reflectionProbe.blendDistance = (std::max)(0.01f, static_cast<float>(blend->second.as_number()));
                         if (auto intensity = component.find("intensity"); intensity != component.end() && intensity->second.is_number()) so.reflectionProbe.intensity = (std::clamp)(static_cast<float>(intensity->second.as_number()), 0.0f, 4.0f);
                         if (auto resolution = component.find("resolution"); resolution != component.end() && resolution->second.is_number()) {
                             const int value = static_cast<int>(resolution->second.as_number());
                             so.reflectionProbe.resolution = value <= 64 ? 64 : (value <= 128 ? 128 : (value <= 256 ? 256 : 512));
                         }
+                        if (auto updateMode = component.find("updateMode"); updateMode != component.end() && updateMode->second.is_string()) {
+                            so.reflectionProbe.updateMode = updateMode->second.as_string() == "Realtime"
+                                ? ReflectionProbeUpdateMode::Realtime
+                                : ReflectionProbeUpdateMode::Baked;
+                        }
+                        if (auto updateDistance = component.find("realtimeUpdateDistance"); updateDistance != component.end() && updateDistance->second.is_number()) so.reflectionProbe.realtimeUpdateDistance = (std::max)(0.0f, static_cast<float>(updateDistance->second.as_number()));
+                        if (auto facesPerFrame = component.find("realtimeFacesPerFrame"); facesPerFrame != component.end() && facesPerFrame->second.is_number()) so.reflectionProbe.realtimeFacesPerFrame = (std::clamp)(static_cast<int>(facesPerFrame->second.as_number()), 1, 6);
                         ReadString(component, "bakedCubemapPath", so.reflectionProbe.bakedCubemapPath);
                         so.reflectionProbe.bakedCubemapPath = NormalizeSlashes(so.reflectionProbe.bakedCubemapPath);
                     } else if (componentType == "AudioListener") {
@@ -1972,6 +1994,18 @@ void SceneEditor::Load(const std::string& path) {
                 object.parentId.clear();
             }
         }
+        // A prefab link is only meaningful while its instance root exists;
+        // clear dangling links so stale metadata never drives Apply/Revert.
+        for (SceneObject& object : objects_) {
+            if (object.sourcePrefabPath.empty()) continue;
+            if (object.prefabInstanceRootId.empty() || FindObjectIndexById(object.prefabInstanceRootId) < 0) {
+                object.sourcePrefabPath.clear();
+                object.prefabInstanceRootId.clear();
+                object.prefabLocalId.clear();
+                object.prefabOverriddenComponents.clear();
+                object.prefabStructureOverridden = false;
+            }
+        }
         if (!objects_.empty()) {
             Select(0);
         }
@@ -1991,7 +2025,7 @@ void SceneEditor::Load(const std::string& path) {
     NormalizeSelection();
 }
 
-bool SceneEditor::InstantiatePrefab(const std::string& path) {
+bool SceneEditor::ParsePrefabFileObjects(const std::string& path, std::vector<SceneObject>& outObjects, bool resolveMeshes) {
     using namespace raceman::physics::json;
     using raceman::physics::json::Value;
     using raceman::physics::json::parse;
@@ -2017,7 +2051,6 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
     };
     std::unordered_map<std::string, MeshCache> meshAssetCache;
 
-    std::vector<SceneObject> newObjects;
     try {
         Value root = parse(buffer.str());
         if (!root.is_object()) return false;
@@ -2327,48 +2360,55 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
             if (so.meshRenderer.materialId.empty()) so.meshRenderer.materialId = "pbr_default";
             if (so.meshFilter.meshType == "Mesh" && so.meshFilter.meshIndex < 0) so.meshFilter.meshIndex = 0;
 
-            const std::string meshType = so.meshFilter.meshType.empty() ? std::string("Mesh") : so.meshFilter.meshType;
-            if (so.hasMeshFilter && IsBuiltInPrimitiveMeshType(meshType)) {
-                ConfigureBuiltInPrimitive(so, meshType, builtInPrimitiveMeshes_);
-            } else if (so.hasMeshFilter && meshType == "Mesh" && !so.meshFilter.sourcePath.empty()) {
-                try {
-                    const std::string cacheKey = NormalizeSlashes(so.meshFilter.sourcePath);
-                    MeshCache& cacheEntry = meshAssetCache[cacheKey];
-                    if (!cacheEntry.attempted) {
-                        cacheEntry.attempted = true;
-                        cacheEntry.loaded = TryLoadMeshAsset(so.meshFilter.sourcePath, cacheEntry.resolvedPath, cacheEntry.model, cacheEntry.infos);
-                    }
-                    if (cacheEntry.loaded && so.meshFilter.meshIndex >= 0 && so.meshFilter.meshIndex < static_cast<int>(cacheEntry.infos.size())) {
-                        so.meshFilter.meshType = "Mesh";
-                        so.meshFilter.sourcePath = cacheEntry.resolvedPath;
-                        ApplyMeshInfoToSceneObject(so, cacheEntry.infos[static_cast<std::size_t>(so.meshFilter.meshIndex)], cacheEntry.model);
-                        so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
-                    }
-                } catch (...) {}
+            if (resolveMeshes) {
+                const std::string meshType = so.meshFilter.meshType.empty() ? std::string("Mesh") : so.meshFilter.meshType;
+                if (so.hasMeshFilter && IsBuiltInPrimitiveMeshType(meshType)) {
+                    ConfigureBuiltInPrimitive(so, meshType, builtInPrimitiveMeshes_);
+                } else if (so.hasMeshFilter && meshType == "Mesh" && !so.meshFilter.sourcePath.empty()) {
+                    try {
+                        const std::string cacheKey = NormalizeSlashes(so.meshFilter.sourcePath);
+                        MeshCache& cacheEntry = meshAssetCache[cacheKey];
+                        if (!cacheEntry.attempted) {
+                            cacheEntry.attempted = true;
+                            cacheEntry.loaded = TryLoadMeshAsset(so.meshFilter.sourcePath, cacheEntry.resolvedPath, cacheEntry.model, cacheEntry.infos);
+                        }
+                        if (cacheEntry.loaded && so.meshFilter.meshIndex >= 0 && so.meshFilter.meshIndex < static_cast<int>(cacheEntry.infos.size())) {
+                            so.meshFilter.meshType = "Mesh";
+                            so.meshFilter.sourcePath = cacheEntry.resolvedPath;
+                            ApplyMeshInfoToSceneObject(so, cacheEntry.infos[static_cast<std::size_t>(so.meshFilter.meshIndex)], cacheEntry.model);
+                            so.meshFilter.assetId = ModelChildAssetId(so.meshFilter.sourcePath, so.meshFilter.meshIndex);
+                        }
+                    } catch (...) {}
+                }
+
+                for (MeshLodLevel& level : so.meshFilter.lodLevels) {
+                    if (level.sourcePath.empty()) continue;
+                    try {
+                        const std::string cacheKey = NormalizeSlashes(level.sourcePath);
+                        MeshCache& cacheEntry = meshAssetCache[cacheKey];
+                        if (!cacheEntry.attempted) {
+                            cacheEntry.attempted = true;
+                            cacheEntry.loaded = TryLoadMeshAsset(level.sourcePath, cacheEntry.resolvedPath, cacheEntry.model, cacheEntry.infos);
+                        }
+                        if (cacheEntry.loaded && level.meshIndex >= 0 && level.meshIndex < static_cast<int>(cacheEntry.infos.size())) {
+                            level.sourcePath = cacheEntry.resolvedPath;
+                            ApplyMeshInfoToLodLevel(level, cacheEntry.infos[static_cast<std::size_t>(level.meshIndex)], cacheEntry.model);
+                        }
+                    } catch (...) {}
+                }
             }
 
-            for (MeshLodLevel& level : so.meshFilter.lodLevels) {
-                if (level.sourcePath.empty()) continue;
-                try {
-                    const std::string cacheKey = NormalizeSlashes(level.sourcePath);
-                    MeshCache& cacheEntry = meshAssetCache[cacheKey];
-                    if (!cacheEntry.attempted) {
-                        cacheEntry.attempted = true;
-                        cacheEntry.loaded = TryLoadMeshAsset(level.sourcePath, cacheEntry.resolvedPath, cacheEntry.model, cacheEntry.infos);
-                    }
-                    if (cacheEntry.loaded && level.meshIndex >= 0 && level.meshIndex < static_cast<int>(cacheEntry.infos.size())) {
-                        level.sourcePath = cacheEntry.resolvedPath;
-                        ApplyMeshInfoToLodLevel(level, cacheEntry.infos[static_cast<std::size_t>(level.meshIndex)], cacheEntry.model);
-                    }
-                } catch (...) {}
-            }
-
-            newObjects.push_back(std::move(so));
+            outObjects.push_back(std::move(so));
         }
     } catch (...) {
         return false;
     }
+    return true;
+}
 
+bool SceneEditor::InstantiatePrefab(const std::string& path) {
+    std::vector<SceneObject> newObjects;
+    if (!ParsePrefabFileObjects(path, newObjects, true)) return false;
     if (newObjects.empty()) return false;
 
     // Remap all IDs to new unique IDs so there are no collisions with the existing scene.
@@ -2378,6 +2418,9 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
         idRemap.emplace(so.id, MakeId("gameobject"));
     }
     for (auto& so : newObjects) {
+        // The id as stored in the prefab file is the stable prefab-local
+        // identity; remember it before the live scene id is remapped away.
+        so.prefabLocalId = so.id;
         so.id = idRemap[so.id];
         auto parentIt = idRemap.find(so.parentId);
         so.parentId = (parentIt != idRemap.end()) ? parentIt->second : std::string{};
@@ -2389,6 +2432,14 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
             auto li = idRemap.find(so.cinemachine.lookAtTargetId);
             if (li != idRemap.end()) so.cinemachine.lookAtTargetId = li->second;
         }
+    }
+    const std::string storedPrefabPath = NormalizeSlashes(path);
+    const std::string instanceRootId = newObjects.front().id;
+    for (auto& so : newObjects) {
+        so.sourcePrefabPath = storedPrefabPath;
+        so.prefabInstanceRootId = instanceRootId;
+        so.prefabOverriddenComponents.clear();
+        so.prefabStructureOverridden = false;
     }
 
     // Deduplicate names against existing scene objects so nothing is confusingly
@@ -2428,6 +2479,490 @@ bool SceneEditor::InstantiatePrefab(const std::string& path) {
 
     if (onDirty_) onDirty_();
     return true;
+}
+
+namespace {
+
+std::string SerializeComponentJson(const SceneObject& o, SceneComponentType type) {
+    if (!SerializedComponentPresent(o, type)) return {};
+    std::ostringstream out;
+    WriteSceneObjectComponentBody(out, o, type);
+    return out.str();
+}
+
+} // namespace
+
+const SceneEditor::PrefabSourceDocument* SceneEditor::GetOrLoadPrefabSourceDocument(const std::string& sourcePrefabPath) {
+    if (sourcePrefabPath.empty()) return nullptr;
+    const std::string key = NormalizeSlashes(sourcePrefabPath);
+    auto cached = prefabSourceCache_.find(key);
+    if (cached == prefabSourceCache_.end()) {
+        PrefabSourceDocument document;
+        document.path = key;
+        // Meshes are resolved so Revert can restore fully-working mesh filters,
+        // not just the serialized path fields.
+        document.valid = ParsePrefabFileObjects(key, document.objects, true);
+        for (int i = 0; i < static_cast<int>(document.objects.size()); ++i) {
+            document.byLocalId.emplace(document.objects[static_cast<std::size_t>(i)].id, i);
+        }
+        cached = prefabSourceCache_.emplace(key, std::move(document)).first;
+    }
+    return cached->second.valid ? &cached->second : nullptr;
+}
+
+void SceneEditor::InvalidatePrefabSourceDocument(const std::string& sourcePrefabPath) {
+    prefabSourceCache_.erase(NormalizeSlashes(sourcePrefabPath));
+}
+
+bool SceneEditor::IsPrefabInstance(int objectIndex) const {
+    return objectIndex >= 0 && objectIndex < static_cast<int>(objects_.size()) &&
+        !objects_[static_cast<std::size_t>(objectIndex)].sourcePrefabPath.empty();
+}
+
+bool SceneEditor::IsPrefabInstanceRoot(int objectIndex) const {
+    if (!IsPrefabInstance(objectIndex)) return false;
+    const SceneObject& object = objects_[static_cast<std::size_t>(objectIndex)];
+    return object.id == object.prefabInstanceRootId;
+}
+
+bool SceneEditor::HasComponentOverride(int objectIndex, SceneComponentType componentType) const {
+    if (!IsPrefabInstance(objectIndex)) return false;
+    return objects_[static_cast<std::size_t>(objectIndex)].prefabOverriddenComponents.count(componentType) > 0;
+}
+
+SceneObject SceneEditor::NormalizeInstanceObjectForPrefabComparison(const SceneObject& object) const {
+    SceneObject normalized = object;
+    if (object.prefabInstanceRootId.empty()) return normalized;
+    // Live scene ids -> prefab-local ids, across every object of this instance.
+    std::unordered_map<std::string, std::string> liveToLocal;
+    for (const SceneObject& candidate : objects_) {
+        if (candidate.prefabInstanceRootId != object.prefabInstanceRootId) continue;
+        if (candidate.prefabLocalId.empty()) continue;
+        liveToLocal.emplace(candidate.id, candidate.prefabLocalId);
+    }
+    RemapVehicleObjectReferences(normalized, liveToLocal);
+    RemapScriptObjectReferences(normalized, liveToLocal);
+    if (normalized.hasCinemachine) {
+        if (const auto followIt = liveToLocal.find(normalized.cinemachine.followTargetId); followIt != liveToLocal.end()) {
+            normalized.cinemachine.followTargetId = followIt->second;
+        }
+        if (const auto lookAtIt = liveToLocal.find(normalized.cinemachine.lookAtTargetId); lookAtIt != liveToLocal.end()) {
+            normalized.cinemachine.lookAtTargetId = lookAtIt->second;
+        }
+    }
+    if (normalized.hasTrackGenerator) {
+        if (const auto roadIt = liveToLocal.find(normalized.trackGenerator.roadObjectId); roadIt != liveToLocal.end()) {
+            normalized.trackGenerator.roadObjectId = roadIt->second;
+        }
+        if (const auto shoulderIt = liveToLocal.find(normalized.trackGenerator.shoulderObjectId); shoulderIt != liveToLocal.end()) {
+            normalized.trackGenerator.shoulderObjectId = shoulderIt->second;
+        }
+    }
+    return normalized;
+}
+
+void SceneEditor::RefreshPrefabOverrideFlags(int objectIndex) {
+    if (objectIndex < 0 || objectIndex >= static_cast<int>(objects_.size())) return;
+    SceneObject& object = objects_[static_cast<std::size_t>(objectIndex)];
+    if (object.sourcePrefabPath.empty()) return;
+
+    const PrefabSourceDocument* document = GetOrLoadPrefabSourceDocument(object.sourcePrefabPath);
+    if (document == nullptr) return;
+
+    const auto sourceIt = object.prefabLocalId.empty()
+        ? document->byLocalId.end()
+        : document->byLocalId.find(object.prefabLocalId);
+    if (sourceIt == document->byLocalId.end()) {
+        // Added locally relative to the prefab: a structural override, with no
+        // per-component comparison target.
+        object.prefabStructureOverridden = true;
+        object.prefabOverriddenComponents.clear();
+        return;
+    }
+    object.prefabStructureOverridden = false;
+
+    const SceneObject& source = document->objects[static_cast<std::size_t>(sourceIt->second)];
+    const SceneObject normalized = NormalizeInstanceObjectForPrefabComparison(object);
+    const bool isInstanceRoot = object.id == object.prefabInstanceRootId;
+
+    object.prefabOverriddenComponents.clear();
+    for (SceneComponentType componentType : kSerializedComponentOrder) {
+        // Instance root placement is expected to vary; never an override.
+        if (componentType == SceneComponentType::Transform && isInstanceRoot) continue;
+        if (SerializeComponentJson(normalized, componentType) != SerializeComponentJson(source, componentType)) {
+            object.prefabOverriddenComponents.insert(componentType);
+        }
+    }
+}
+
+namespace {
+
+void CopyComponentData(SceneObject& destination, const SceneObject& source, SceneComponentType type) {
+    switch (type) {
+    case SceneComponentType::Transform:
+        destination.transform = source.transform;
+        break;
+    case SceneComponentType::MeshFilter:
+        destination.hasMeshFilter = source.hasMeshFilter;
+        destination.meshFilter = source.meshFilter;
+        break;
+    case SceneComponentType::MeshRenderer:
+        destination.hasMeshRenderer = source.hasMeshRenderer;
+        destination.meshRenderer = source.meshRenderer;
+        break;
+    case SceneComponentType::Script:
+        destination.hasScriptComponent = source.hasScriptComponent;
+        destination.scriptComponent = source.scriptComponent;
+        break;
+    case SceneComponentType::Rigidbody:
+        destination.hasRigidbody = source.hasRigidbody;
+        destination.rigidbody = source.rigidbody;
+        break;
+    case SceneComponentType::Vehicle:
+        destination.hasVehicle = source.hasVehicle;
+        destination.vehicle = source.vehicle;
+        break;
+    case SceneComponentType::CharacterController:
+        destination.hasCharacterController = source.hasCharacterController;
+        destination.characterController = source.characterController;
+        break;
+    case SceneComponentType::BoxCollider:
+    case SceneComponentType::SphereCollider:
+    case SceneComponentType::CapsuleCollider:
+    case SceneComponentType::PlaneCollider:
+    case SceneComponentType::MeshCollider:
+        destination.hasBoxCollider = source.hasBoxCollider;
+        destination.boxCollider = source.boxCollider;
+        destination.hasSphereCollider = source.hasSphereCollider;
+        destination.sphereCollider = source.sphereCollider;
+        destination.hasCapsuleCollider = source.hasCapsuleCollider;
+        destination.capsuleCollider = source.capsuleCollider;
+        destination.hasPlaneCollider = source.hasPlaneCollider;
+        destination.planeCollider = source.planeCollider;
+        destination.hasMeshCollider = source.hasMeshCollider;
+        destination.meshCollider = source.meshCollider;
+        destination.colliderSurface = source.colliderSurface;
+        break;
+    case SceneComponentType::Camera:
+        destination.hasCamera = source.hasCamera;
+        destination.camera = source.camera;
+        break;
+    case SceneComponentType::Cinemachine:
+        destination.hasCinemachine = source.hasCinemachine;
+        destination.cinemachine = source.cinemachine;
+        break;
+    case SceneComponentType::Light:
+        destination.hasLight = source.hasLight;
+        destination.light = source.light;
+        break;
+    case SceneComponentType::ReflectionProbe:
+        destination.hasReflectionProbe = source.hasReflectionProbe;
+        destination.reflectionProbe = source.reflectionProbe;
+        break;
+    case SceneComponentType::AudioListener:
+        destination.hasAudioListener = source.hasAudioListener;
+        destination.audioListener = source.audioListener;
+        break;
+    case SceneComponentType::AudioSource:
+        destination.hasAudioSource = source.hasAudioSource;
+        destination.audioSource = source.audioSource;
+        break;
+    case SceneComponentType::VehicleSound:
+        destination.hasVehicleSound = source.hasVehicleSound;
+        destination.vehicleSound = source.vehicleSound;
+        break;
+    case SceneComponentType::TrackGenerator:
+        destination.hasTrackGenerator = source.hasTrackGenerator;
+        destination.trackGenerator = source.trackGenerator;
+        break;
+    }
+}
+
+bool WritePrefabFile(const std::string& path, const std::vector<SceneObject>& prefabObjects) {
+    const fs::path targetPath = ResolveEditorPath(path);
+    try { fs::create_directories(targetPath.parent_path()); } catch (...) {}
+    std::ofstream out(targetPath, std::ios::trunc);
+    if (!out.good()) return false;
+    out << "{\n  \"prefab\": true,\n  \"objects\": [\n";
+    for (std::size_t i = 0; i < prefabObjects.size(); ++i) {
+        WriteSceneObjectJson(out, prefabObjects[i], false);
+        out << (i + 1 < prefabObjects.size() ? ",\n" : "\n");
+    }
+    out << "  ]\n}\n";
+    return out.good();
+}
+
+} // namespace
+
+SceneObject SceneEditor::TranslatePrefabObjectToInstance(const SceneObject& source, const std::string& instanceRootId) const {
+    SceneObject translated = source;
+    std::unordered_map<std::string, std::string> localToLive;
+    for (const SceneObject& candidate : objects_) {
+        if (candidate.prefabInstanceRootId != instanceRootId) continue;
+        if (candidate.prefabLocalId.empty()) continue;
+        localToLive.emplace(candidate.prefabLocalId, candidate.id);
+    }
+    RemapVehicleObjectReferences(translated, localToLive);
+    RemapScriptObjectReferences(translated, localToLive);
+    if (translated.hasCinemachine) {
+        if (const auto followIt = localToLive.find(translated.cinemachine.followTargetId); followIt != localToLive.end()) {
+            translated.cinemachine.followTargetId = followIt->second;
+        }
+        if (const auto lookAtIt = localToLive.find(translated.cinemachine.lookAtTargetId); lookAtIt != localToLive.end()) {
+            translated.cinemachine.lookAtTargetId = lookAtIt->second;
+        }
+    }
+    if (translated.hasTrackGenerator) {
+        if (const auto roadIt = localToLive.find(translated.trackGenerator.roadObjectId); roadIt != localToLive.end()) {
+            translated.trackGenerator.roadObjectId = roadIt->second;
+        }
+        if (const auto shoulderIt = localToLive.find(translated.trackGenerator.shoulderObjectId); shoulderIt != localToLive.end()) {
+            translated.trackGenerator.shoulderObjectId = shoulderIt->second;
+        }
+    }
+    return translated;
+}
+
+void SceneEditor::RevertComponentToPrefab(int objectIndex, SceneComponentType componentType) {
+    if (!IsPrefabInstance(objectIndex)) return;
+    if (componentType == SceneComponentType::Transform && IsPrefabInstanceRoot(objectIndex)) return;
+    SceneObject& object = objects_[static_cast<std::size_t>(objectIndex)];
+    const PrefabSourceDocument* document = GetOrLoadPrefabSourceDocument(object.sourcePrefabPath);
+    if (document == nullptr || object.prefabLocalId.empty()) return;
+    const auto sourceIt = document->byLocalId.find(object.prefabLocalId);
+    if (sourceIt == document->byLocalId.end()) return;
+
+    PushUndoState();
+    const SceneObject translated = TranslatePrefabObjectToInstance(
+        document->objects[static_cast<std::size_t>(sourceIt->second)], object.prefabInstanceRootId);
+    CopyComponentData(object, translated, componentType);
+    object.prefabOverriddenComponents.erase(componentType);
+    if (onDirty_) onDirty_();
+}
+
+void SceneEditor::RevertObjectToPrefab(int objectIndex) {
+    if (!IsPrefabInstance(objectIndex)) return;
+    SceneObject& object = objects_[static_cast<std::size_t>(objectIndex)];
+    const PrefabSourceDocument* document = GetOrLoadPrefabSourceDocument(object.sourcePrefabPath);
+    if (document == nullptr || object.prefabLocalId.empty()) return;
+    const auto sourceIt = document->byLocalId.find(object.prefabLocalId);
+    if (sourceIt == document->byLocalId.end()) return;
+
+    PushUndoState();
+    const SceneObject translated = TranslatePrefabObjectToInstance(
+        document->objects[static_cast<std::size_t>(sourceIt->second)], object.prefabInstanceRootId);
+    const bool isInstanceRoot = object.id == object.prefabInstanceRootId;
+    for (SceneComponentType componentType : kSerializedComponentOrder) {
+        if (componentType == SceneComponentType::Transform && isInstanceRoot) continue;
+        CopyComponentData(object, translated, componentType);
+    }
+    object.prefabOverriddenComponents.clear();
+    if (onDirty_) onDirty_();
+}
+
+void SceneEditor::RevertInstanceToPrefab(int instanceRootIndex) {
+    if (!IsPrefabInstance(instanceRootIndex)) return;
+    const std::string rootId = objects_[static_cast<std::size_t>(instanceRootIndex)].prefabInstanceRootId;
+    const PrefabSourceDocument* document =
+        GetOrLoadPrefabSourceDocument(objects_[static_cast<std::size_t>(instanceRootIndex)].sourcePrefabPath);
+    if (document == nullptr) return;
+
+    PushUndoState();
+    std::vector<int> structuralAdditions;
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        SceneObject& object = objects_[static_cast<std::size_t>(i)];
+        if (object.prefabInstanceRootId != rootId || object.sourcePrefabPath.empty()) continue;
+        const auto sourceIt = object.prefabLocalId.empty()
+            ? document->byLocalId.end()
+            : document->byLocalId.find(object.prefabLocalId);
+        if (sourceIt == document->byLocalId.end()) {
+            // Locally added relative to the prefab; Revert All discards it.
+            structuralAdditions.push_back(i);
+            continue;
+        }
+        const SceneObject translated = TranslatePrefabObjectToInstance(
+            document->objects[static_cast<std::size_t>(sourceIt->second)], rootId);
+        const bool isInstanceRoot = object.id == rootId;
+        for (SceneComponentType componentType : kSerializedComponentOrder) {
+            if (componentType == SceneComponentType::Transform && isInstanceRoot) continue;
+            CopyComponentData(object, translated, componentType);
+        }
+        object.prefabOverriddenComponents.clear();
+        object.prefabStructureOverridden = false;
+    }
+    for (auto it = structuralAdditions.rbegin(); it != structuralAdditions.rend(); ++it) {
+        objects_.erase(objects_.begin() + *it);
+    }
+    NormalizeSelection();
+    if (onDirty_) onDirty_();
+}
+
+void SceneEditor::PropagateApplyToSiblingInstances(const std::string& sourcePrefabPath,
+                                                   const std::string& appliedPrefabLocalId,
+                                                   SceneComponentType componentType,
+                                                   int excludeObjectIndex) {
+    if (excludeObjectIndex < 0 || excludeObjectIndex >= static_cast<int>(objects_.size())) return;
+    const std::string key = NormalizeSlashes(sourcePrefabPath);
+    const SceneObject& appliedObject = objects_[static_cast<std::size_t>(excludeObjectIndex)];
+    const SceneObject normalizedApplied = NormalizeInstanceObjectForPrefabComparison(appliedObject);
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        if (i == excludeObjectIndex) continue;
+        SceneObject& sibling = objects_[static_cast<std::size_t>(i)];
+        if (sibling.prefabLocalId != appliedPrefabLocalId) continue;
+        if (NormalizeSlashes(sibling.sourcePrefabPath) != key) continue;
+        // Sibling placement stays local even when everything else follows.
+        if (componentType == SceneComponentType::Transform && sibling.id == sibling.prefabInstanceRootId) continue;
+        // A sibling's own override wins over an Apply from another instance.
+        if (sibling.prefabOverriddenComponents.count(componentType) > 0) continue;
+        const SceneObject translated = TranslatePrefabObjectToInstance(normalizedApplied, sibling.prefabInstanceRootId);
+        CopyComponentData(sibling, translated, componentType);
+    }
+}
+
+void SceneEditor::ApplyComponentToPrefab(int objectIndex, SceneComponentType componentType) {
+    if (!IsPrefabInstance(objectIndex)) return;
+    if (componentType == SceneComponentType::Transform && IsPrefabInstanceRoot(objectIndex)) return;
+    SceneObject& object = objects_[static_cast<std::size_t>(objectIndex)];
+    if (object.prefabLocalId.empty()) return; // structural addition: use Apply All on the instance
+
+    // Always start from a fresh read of the file so a concurrent edit of the
+    // prefab by another instance's Apply is never overwritten with stale data.
+    std::vector<SceneObject> prefabObjects;
+    if (!ParsePrefabFileObjects(object.sourcePrefabPath, prefabObjects, false)) return;
+    SceneObject* target = nullptr;
+    for (SceneObject& candidate : prefabObjects) {
+        if (candidate.id == object.prefabLocalId) { target = &candidate; break; }
+    }
+    if (target == nullptr) return;
+
+    PushUndoState();
+    const SceneObject normalized = NormalizeInstanceObjectForPrefabComparison(object);
+    CopyComponentData(*target, normalized, componentType);
+    if (!WritePrefabFile(object.sourcePrefabPath, prefabObjects)) return;
+    object.prefabOverriddenComponents.erase(componentType);
+    InvalidatePrefabSourceDocument(object.sourcePrefabPath);
+    PropagateApplyToSiblingInstances(object.sourcePrefabPath, object.prefabLocalId, componentType, objectIndex);
+    if (onDirty_) onDirty_();
+    if (console_) console_->AddLog("Applied component to prefab: " + object.sourcePrefabPath);
+}
+
+void SceneEditor::ApplyObjectToPrefab(int objectIndex) {
+    if (!IsPrefabInstance(objectIndex)) return;
+    SceneObject& object = objects_[static_cast<std::size_t>(objectIndex)];
+    if (object.prefabLocalId.empty()) return;
+    if (object.prefabOverriddenComponents.empty()) return;
+
+    std::vector<SceneObject> prefabObjects;
+    if (!ParsePrefabFileObjects(object.sourcePrefabPath, prefabObjects, false)) return;
+    SceneObject* target = nullptr;
+    for (SceneObject& candidate : prefabObjects) {
+        if (candidate.id == object.prefabLocalId) { target = &candidate; break; }
+    }
+    if (target == nullptr) return;
+
+    PushUndoState();
+    const SceneObject normalized = NormalizeInstanceObjectForPrefabComparison(object);
+    const std::set<SceneComponentType> appliedTypes = object.prefabOverriddenComponents;
+    const bool isInstanceRoot = object.id == object.prefabInstanceRootId;
+    for (SceneComponentType componentType : appliedTypes) {
+        if (componentType == SceneComponentType::Transform && isInstanceRoot) continue;
+        CopyComponentData(*target, normalized, componentType);
+    }
+    if (!WritePrefabFile(object.sourcePrefabPath, prefabObjects)) return;
+    object.prefabOverriddenComponents.clear();
+    InvalidatePrefabSourceDocument(object.sourcePrefabPath);
+    for (SceneComponentType componentType : appliedTypes) {
+        if (componentType == SceneComponentType::Transform && isInstanceRoot) continue;
+        PropagateApplyToSiblingInstances(object.sourcePrefabPath, object.prefabLocalId, componentType, objectIndex);
+    }
+    if (onDirty_) onDirty_();
+    if (console_) console_->AddLog("Applied object overrides to prefab: " + object.sourcePrefabPath);
+}
+
+void SceneEditor::ApplyInstanceToPrefab(int instanceRootIndex) {
+    if (!IsPrefabInstance(instanceRootIndex)) return;
+    const std::string rootId = objects_[static_cast<std::size_t>(instanceRootIndex)].prefabInstanceRootId;
+    const std::string prefabPath = objects_[static_cast<std::size_t>(instanceRootIndex)].sourcePrefabPath;
+
+    std::vector<int> instanceIndices;
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        if (objects_[static_cast<std::size_t>(i)].prefabInstanceRootId == rootId &&
+            !objects_[static_cast<std::size_t>(i)].sourcePrefabPath.empty()) {
+            instanceIndices.push_back(i);
+        }
+    }
+    if (instanceIndices.empty()) return;
+
+    PushUndoState();
+    // Structural additions get a permanent prefab-local identity before any
+    // normalization so cross-references to them translate correctly.
+    for (int index : instanceIndices) {
+        SceneObject& object = objects_[static_cast<std::size_t>(index)];
+        if (object.prefabLocalId.empty()) {
+            object.prefabLocalId = MakeId("prefab_local");
+        }
+    }
+
+    // Rebuild the prefab entirely from this instance: additions are included,
+    // objects deleted locally simply are not written, and every component
+    // carries this instance's current values.
+    std::unordered_map<std::string, std::string> liveToLocal;
+    for (int index : instanceIndices) {
+        const SceneObject& object = objects_[static_cast<std::size_t>(index)];
+        liveToLocal.emplace(object.id, object.prefabLocalId);
+    }
+    std::vector<SceneObject> prefabObjects;
+    prefabObjects.reserve(instanceIndices.size());
+    for (int index : instanceIndices) {
+        const SceneObject& object = objects_[static_cast<std::size_t>(index)];
+        SceneObject prefabObject = NormalizeInstanceObjectForPrefabComparison(object);
+        prefabObject.id = object.prefabLocalId;
+        if (object.id == rootId) {
+            prefabObject.parentId.clear();
+        } else {
+            const auto parentIt = liveToLocal.find(object.parentId);
+            prefabObject.parentId = (parentIt != liveToLocal.end()) ? parentIt->second : std::string{};
+        }
+        prefabObjects.push_back(std::move(prefabObject));
+    }
+    if (!WritePrefabFile(prefabPath, prefabObjects)) return;
+    InvalidatePrefabSourceDocument(prefabPath);
+
+    for (int index : instanceIndices) {
+        SceneObject& object = objects_[static_cast<std::size_t>(index)];
+        object.prefabOverriddenComponents.clear();
+        object.prefabStructureOverridden = false;
+    }
+    // Live value propagation to sibling instances (structure is not patched
+    // into siblings in v1 — the updated prefab affects future instantiations).
+    for (int index : instanceIndices) {
+        const SceneObject& object = objects_[static_cast<std::size_t>(index)];
+        const bool isInstanceRoot = object.id == rootId;
+        for (SceneComponentType componentType : kSerializedComponentOrder) {
+            if (componentType == SceneComponentType::Transform && isInstanceRoot) continue;
+            if (!SerializedComponentPresent(object, componentType) &&
+                componentType != SceneComponentType::Transform) continue;
+            PropagateApplyToSiblingInstances(prefabPath, object.prefabLocalId, componentType, index);
+        }
+    }
+    if (onDirty_) onDirty_();
+    if (console_) console_->AddLog("Applied instance to prefab: " + prefabPath);
+}
+
+void SceneEditor::UnpackPrefabInstance(int objectIndex) {
+    if (!IsPrefabInstance(objectIndex)) return;
+    const std::string rootId = objects_[static_cast<std::size_t>(objectIndex)].prefabInstanceRootId;
+    PushUndoState();
+    for (SceneObject& object : objects_) {
+        if (object.prefabInstanceRootId != rootId) continue;
+        object.sourcePrefabPath.clear();
+        object.prefabInstanceRootId.clear();
+        object.prefabLocalId.clear();
+        object.prefabOverriddenComponents.clear();
+        object.prefabStructureOverridden = false;
+    }
+    if (onDirty_) onDirty_();
+    if (console_) console_->AddLog("Unpacked prefab instance.");
 }
 
 void SceneEditor::LoadProject() {

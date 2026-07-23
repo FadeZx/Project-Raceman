@@ -13,8 +13,8 @@
       "components": [
         {
           "type": "Transform",
-          "position": [0, 0, 0],
-          "rotationEuler": [-90, -90, 0],
+          "position": [0, -0.1, -0.2],
+          "rotationEuler": [270, -90, 0],
           "scale": [1, 1, 1]
         }
       ]
@@ -911,7 +911,7 @@
         {
           "type": "MeshRenderer",
           "enabled": true,
-          "materialId": "redbullgt3_glass",
+          "materialId": "Emission",
           "color": [1, 1, 1, 1]
         }
       ]
@@ -1106,7 +1106,7 @@
         {
           "type": "MeshRenderer",
           "enabled": true,
-          "materialId": "redbullgt3_glass",
+          "materialId": "Emissive_1",
           "color": [1, 1, 1, 1]
         }
       ]

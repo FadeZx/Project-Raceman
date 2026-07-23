@@ -240,6 +240,7 @@ private:
     void RenderPlayModeLoadingPopup();
     void TickPendingSceneSave();
     void TickReflectionProbeBake();
+    void TickRealtimeReflectionProbes();
     void RenderSceneSavePopup();
     int HotReloadRuntimeVehiclesForConfig(const std::string& configPath, const physics::VehicleConfig& config);
     void StartCollisionBake(std::vector<std::pair<PhysicsColliderDesc, std::string>> jobs, std::string title);
@@ -256,6 +257,8 @@ private:
     void UpdateGizmo(Renderer& renderer);
     void UpdateImGuizmo();
     void SubmitGizmo(Renderer& renderer);
+    void SubmitColliderWireframe(Renderer& renderer, int objectIndex, const glm::vec4& colorOverride, bool useColorOverride);
+    void SubmitAllColliders(Renderer& renderer);
     void SubmitCullingDebug(Renderer& renderer);
     void TrySelectObjectAtMouse(Renderer& renderer);
     void PushUndoState();
@@ -295,6 +298,7 @@ private:
     std::vector<std::pair<std::string, std::string>> ScanProjectScripts() const;
     bool SyncAttachmentScriptFields(ObjectScriptAttachment& attachment);
     bool CreateMaterialAsset(const std::string& requestedName, std::string* outMaterialId = nullptr, const std::string& shaderId = "pbr");
+    bool CreateMaterialVariant(const std::string& baseMaterialId, const std::string& requestedName, std::string* outMaterialId = nullptr);
     bool CreateShaderGraphAsset(const std::string& requestedName, std::string* outGraphPath = nullptr);
     bool SaveShaderGraphAsset();
     bool CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath = nullptr);
@@ -303,6 +307,37 @@ private:
     bool CreateProjectFolder(const std::string& requestedName);
     bool SaveObjectAsPrefab(int objectIndex, const std::string& path);
     bool InstantiatePrefab(const std::string& path);
+
+    // Linked prefab instances: override queries and Apply/Revert operations.
+    struct PrefabSourceDocument {
+        std::string path;
+        bool valid{false};
+        std::vector<SceneObject> objects;                 // as stored in the file; ids ARE prefab-local ids
+        std::unordered_map<std::string, int> byLocalId;   // prefab-local id -> index into objects
+    };
+    bool ParsePrefabFileObjects(const std::string& path, std::vector<SceneObject>& outObjects, bool resolveMeshes);
+    const PrefabSourceDocument* GetOrLoadPrefabSourceDocument(const std::string& sourcePrefabPath);
+    void InvalidatePrefabSourceDocument(const std::string& sourcePrefabPath);
+    bool IsPrefabInstance(int objectIndex) const;
+    bool IsPrefabInstanceRoot(int objectIndex) const;
+    bool HasComponentOverride(int objectIndex, SceneComponentType componentType) const;
+    void RefreshPrefabOverrideFlags(int objectIndex);
+    // Copy of the object with live cross-object id references translated to
+    // prefab-local ids so it can be compared with / written into prefab data.
+    SceneObject NormalizeInstanceObjectForPrefabComparison(const SceneObject& object) const;
+    // Reverse translation: prefab-local id references -> this instance's live ids.
+    SceneObject TranslatePrefabObjectToInstance(const SceneObject& source, const std::string& instanceRootId) const;
+    void RevertComponentToPrefab(int objectIndex, SceneComponentType componentType);
+    void RevertObjectToPrefab(int objectIndex);
+    void RevertInstanceToPrefab(int instanceRootIndex);
+    void ApplyComponentToPrefab(int objectIndex, SceneComponentType componentType);
+    void ApplyObjectToPrefab(int objectIndex);
+    void ApplyInstanceToPrefab(int instanceRootIndex);
+    void UnpackPrefabInstance(int objectIndex);
+    void PropagateApplyToSiblingInstances(const std::string& sourcePrefabPath,
+                                          const std::string& appliedPrefabLocalId,
+                                          SceneComponentType componentType,
+                                          int excludeObjectIndex);
     void SyncScriptProjectFiles(bool logResult = true);
     void OpenMaterialEditor(const std::string& materialId);
     void OpenShaderGraphEditor(const std::string& graphPath);
@@ -467,6 +502,8 @@ private:
     char createScriptNameBuffer_[128]{};
     char createMaterialNameBuffer_[128]{};
     char createVehicleConfigNameBuffer_[128]{};
+    char assetPickerSearchBuffer_[128]{};
+    bool showAssetPickerCreatePopup_{false};
     char createTagNameBuffer_[128]{};
     bool showCreateProjectAssetPopup_{false};
     ProjectCreateAssetType createProjectAssetType_{ProjectCreateAssetType::None};
@@ -476,6 +513,9 @@ private:
     bool showSavePrefabPopup_{false};
     int pendingPrefabObjectIndex_{-1};
     char savePrefabNameBuffer_[128]{};
+    bool showCreateMaterialVariantPopup_{false};
+    std::string pendingMaterialVariantBaseId_;
+    char createMaterialVariantNameBuffer_[128]{};
 
     struct RuntimeScriptInstance {
         std::string objectId;
@@ -576,6 +616,7 @@ private:
     std::vector<glm::mat4> gizmoDragStartWorldMatrices_;
     bool gizmoDirtyDuringDrag_{false};
     bool showCullingDebug_{false};
+    bool showAllColliders_{false};
     bool enablePhysicsCulling_{true};
     bool enableFrustumCulling_{true};
     bool showFrustumCullDebug_{false};
@@ -758,6 +799,10 @@ private:
         std::string objectId;
         EditorProgressTask window;
     } reflectionProbeBake_;
+    // Rotates realtime updates across every in-range probe so one probe per
+    // frame gets fresh faces without starving the others.
+    std::size_t realtimeProbeRoundRobin_{0};
+    std::unordered_map<std::string, PrefabSourceDocument> prefabSourceCache_;
     std::function<void()> onDirty_{};
     std::function<void(const glm::vec3&, float)> onFocusObject_{};
     std::function<void(const glm::mat4&)> onEditorCameraViewChanged_{};

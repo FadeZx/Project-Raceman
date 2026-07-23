@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -56,7 +57,9 @@ enum class SceneComponentType {
     SphereCollider,
     CapsuleCollider,
     PlaneCollider,
+    MeshCollider,
     Camera,
+    Cinemachine,
     Light,
     ReflectionProbe,
     AudioListener,
@@ -340,12 +343,29 @@ struct LightComponent {
     float spotAngleDegrees{30.0f};
 };
 
+enum class ReflectionProbeShape {
+    Box,
+    Sphere
+};
+
+enum class ReflectionProbeUpdateMode {
+    Baked,
+    Realtime
+};
+
 struct ReflectionProbeComponent {
     bool enabled{true};
+    ReflectionProbeShape shape{ReflectionProbeShape::Box};
     glm::vec3 boxSize{10.0f};
+    float sphereRadius{5.0f};
     float blendDistance{1.0f};
     float intensity{1.0f};
     int resolution{256};
+    ReflectionProbeUpdateMode updateMode{ReflectionProbeUpdateMode::Baked};
+    // Realtime probes only refresh while the camera is within this distance of
+    // the influence volume, keeping garages/tunnels cheap when off-screen.
+    float realtimeUpdateDistance{50.0f};
+    int realtimeFacesPerFrame{1};
     std::string bakedCubemapPath;
 };
 
@@ -384,6 +404,14 @@ struct SceneObject {
     std::string tag{"Untagged"};
     std::string type;
     int physicsLayer{0};
+    // Prefab link. Empty sourcePrefabPath means this object is not part of a
+    // prefab instance. prefabLocalId is the id this object has *inside* the
+    // prefab file, stable across instantiations; live scene ids are remapped.
+    std::string sourcePrefabPath;
+    std::string prefabInstanceRootId;
+    std::string prefabLocalId;
+    std::set<SceneComponentType> prefabOverriddenComponents;
+    bool prefabStructureOverridden{false};
     std::vector<SceneInspectorComponentType> inspectorComponentOrder;
     Transform transform;
     bool enabled{true};

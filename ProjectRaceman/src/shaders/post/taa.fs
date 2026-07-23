@@ -18,6 +18,21 @@ uniform float uFeedback;
 uniform float uSharpness;
 uniform bool uDebugView;
 
+float Luma(vec3 color) {
+    return dot(color, vec3(0.2126, 0.7152, 0.0722));
+}
+
+// Clip toward the neighborhood box center instead of a hard per-channel clamp.
+// This keeps the history hue intact while still rejecting stale energy.
+vec3 ClipToAabb(vec3 color, vec3 minimum, vec3 maximum) {
+    vec3 center = 0.5 * (maximum + minimum);
+    vec3 extents = 0.5 * (maximum - minimum) + 0.0001;
+    vec3 offset = color - center;
+    vec3 unitOffset = abs(offset) / extents;
+    float maxUnit = max(unitOffset.x, max(unitOffset.y, unitOffset.z));
+    return maxUnit > 1.0 ? center + offset / maxUnit : color;
+}
+
 vec3 RGBToYCoCg(vec3 color) {
     float y = dot(color, vec3(0.25, 0.5, 0.25));
     float co = color.r - color.b;
@@ -136,6 +151,12 @@ void main() {
     vec3 firstMoment = vec3(0.0);
     vec3 secondMoment = vec3(0.0);
     vec3 crossSum = vec3(0.0);
+    // Reconstruct the current pixel on the unjittered output grid with a small
+    // Blackman-Harris-style kernel. Every jittered sample then contributes real
+    // subpixel coverage, which is where most of the added anti-aliasing comes from.
+    vec2 jitterPixels = uCurrentJitterUv / max(uTexelSize, vec2(0.000001));
+    vec3 filteredCurrent = vec3(0.0);
+    float filteredWeight = 0.0;
     for (int y = -1; y <= 1; ++y) {
         for (int x = -1; x <= 1; ++x) {
             vec2 sampleUV = clamp(currentUV + vec2(x, y) * uTexelSize, vec2(0.0), vec2(1.0));
@@ -146,8 +167,13 @@ void main() {
             firstMoment += sampleYCoCg;
             secondMoment += sampleYCoCg * sampleYCoCg;
             if (x == 0 || y == 0) crossSum += sampleColor;
+            vec2 pixelOffset = vec2(x, y) + jitterPixels;
+            float kernelWeight = exp(-2.29 * dot(pixelOffset, pixelOffset));
+            filteredCurrent += sampleColor * kernelWeight;
+            filteredWeight += kernelWeight;
         }
     }
+    filteredCurrent = filteredWeight > 0.0001 ? filteredCurrent / filteredWeight : current.rgb;
 
     vec3 mean = firstMoment / 9.0;
     vec3 variance = max(secondMoment / 9.0 - mean * mean, vec3(0.0));
@@ -160,12 +186,14 @@ void main() {
 
     // Variance clipping is tighter during motion and prevents old high-contrast
     // samples from trailing behind the vehicle.
-    float varianceGamma = mix(1.5, 0.75, motionAmount);
+    // Wide clip box when static: with full-pixel jitter the 3x3 min/max moves
+    // every frame, and a tight box re-clips converged edge history into dancing.
+    float varianceGamma = mix(2.5, 0.75, motionAmount);
     vec3 varianceMin = mean - standardDeviation * varianceGamma;
     vec3 varianceMax = mean + standardDeviation * varianceGamma;
     vec3 clipMin = max(neighborhoodMin, varianceMin);
     vec3 clipMax = min(neighborhoodMax, varianceMax);
-    historyYCoCg = clamp(historyYCoCg, clipMin, clipMax);
+    historyYCoCg = ClipToAabb(historyYCoCg, clipMin, clipMax);
     vec3 clippedHistory = max(ExpandHdr(YCoCgToRGB(historyYCoCg)), vec3(0.0));
 
     vec4 historySurface = historyOnScreen ? texture(uHistorySurfaceTexture, historyUV) : currentSurface;
@@ -182,17 +210,29 @@ void main() {
         normalConfidence = smoothstep(0.45, 0.90, normalSimilarity);
     }
 
+    // Disocclusion only exists under motion. When the pixel is still, jitter
+    // alternates foreground/background samples at silhouettes, which would fail
+    // the depth/normal tests every frame and keep edges permanently unconverged.
+    float rejectionEnable = clamp(motionPixels / 2.0, 0.0, 1.0);
+    depthConfidence = mix(1.0, depthConfidence, rejectionEnable);
+    normalConfidence = mix(1.0, normalConfidence, rejectionEnable);
+
     // Rapid color changes act as a lightweight reactive mask for reflections,
     // transparencies and other pixels that cannot safely keep long history.
-    float relativeColorDifference = length(current.rgb - clippedHistory) /
-        max(0.25, dot(current.rgb, vec3(0.2126, 0.7152, 0.0722)) + 0.25);
+    // Compare the jitter-stabilized reconstruction, not the raw jittered sample,
+    // so static geometric edges do not read as "changing" every frame.
+    float relativeColorDifference = length(filteredCurrent - clippedHistory) /
+        max(0.25, Luma(filteredCurrent) + 0.25);
     float reactiveAmount = clamp(relativeColorDifference * 1.5, 0.0, 1.0);
 
     float feedback = historyOnScreen ? uFeedback : 0.0;
     feedback *= depthConfidence;
     feedback *= normalConfidence;
-    feedback *= mix(1.0, 0.35, motionAmount);
-    feedback *= mix(1.0, 0.10, reactiveAmount);
+    // Keep most history during motion; the motion-tightened variance clip
+    // already rejects stale energy. Cutting harder than this makes the image
+    // shimmer exactly when the car is moving.
+    feedback *= mix(1.0, 0.80, motionAmount);
+    feedback *= mix(1.0, 0.30, reactiveAmount);
 
     // Build confidence over the first 32 accepted frames instead of applying a
     // large global history weight immediately after exposure or disocclusion.
@@ -207,9 +247,17 @@ void main() {
     float newHistoryAge = mix(historyAgeStep, continuedAge, retentionConfidence);
     FragSurfaceHistory = vec4(log2(1.0 + currentViewDepth), currentEncodedNormal, newHistoryAge);
 
-    vec3 resolved = mix(current.rgb, clippedHistory, clamp(feedback, 0.0, 0.98));
+    // Inverse-luminance weighting suppresses HDR fireflies and shimmer: bright
+    // outliers contribute proportionally less to the blend than stable history.
+    feedback = clamp(feedback, 0.0, 0.98);
+    float currentWeight = (1.0 - feedback) / (1.0 + Luma(filteredCurrent));
+    float historyWeight = feedback / (1.0 + Luma(clippedHistory));
+    vec3 resolved = (filteredCurrent * currentWeight + clippedHistory * historyWeight) /
+        max(currentWeight + historyWeight, 0.0001);
+    // Sharpen from the stabilized reconstruction; sharpening from the raw
+    // jittered sample re-injects per-frame shimmer at edges.
     vec3 crossAverage = crossSum / 5.0;
-    resolved += (current.rgb - crossAverage) * uSharpness;
+    resolved += (filteredCurrent - crossAverage) * uSharpness;
     resolved = max(resolved, vec3(0.0));
 
     if (uDebugView) {

@@ -1616,7 +1616,9 @@ unsigned int SceneEditor::GetModelChildThumbnailTexture(const std::string& impor
     cmd.diffuseTextureId = info.diffuseTextureId;
     cmd.useDiffuseTexture = info.diffuseTextureId != 0;
 
-    if (const Material* material = materialManager_.Get(resolvedMaterialId)) {
+    if (materialManager_.Exists(resolvedMaterialId)) {
+        const Material resolvedMaterialValue = materialManager_.Resolve(resolvedMaterialId);
+        const Material* material = &resolvedMaterialValue;
         cmd.shaderId = material->shader;
         cmd.color = {
             material->albedoColor[0],
@@ -1812,7 +1814,9 @@ unsigned int SceneEditor::GetModelPackageThumbnailTexture(const std::string& imp
         cmd.useDiffuseTexture = info.diffuseTextureId != 0;
         cmd.modelMatrix = glm::translate(glm::mat4(1.0f), -center);
 
-        if (const Material* material = materialManager_.Get(resolvedMaterialId)) {
+        if (materialManager_.Exists(resolvedMaterialId)) {
+            const Material resolvedMaterialValue = materialManager_.Resolve(resolvedMaterialId);
+            const Material* material = &resolvedMaterialValue;
             cmd.shaderId = material->shader;
             cmd.color = {
                 material->albedoColor[0],
@@ -3202,6 +3206,12 @@ void SceneEditor::RenderProjectPanel() {
                                 if (ImGui::MenuItem("Edit")) {
                                     OpenMaterialEditor(MaterialIdFromAssetPath(file));
                                 }
+                                if (ImGui::MenuItem("Create Variant")) {
+                                    pendingMaterialVariantBaseId_ = MaterialIdFromAssetPath(file);
+                                    const std::string defaultName = pendingMaterialVariantBaseId_ + "_variant";
+                                    std::snprintf(createMaterialVariantNameBuffer_, sizeof(createMaterialVariantNameBuffer_), "%s", defaultName.c_str());
+                                    showCreateMaterialVariantPopup_ = true;
+                                }
                                 if (ImGui::MenuItem("Open in Default App")) {
                                     if (OpenProjectAssetInDefaultEditor(file)) {
                                         if (console_) {
@@ -3561,6 +3571,33 @@ void SceneEditor::RenderProjectPanel() {
                 if (showSavePrefabPopup_) {
                     ImGui::OpenPopup("Save Prefab");
                     showSavePrefabPopup_ = false;
+                }
+                if (showCreateMaterialVariantPopup_) {
+                    ImGui::OpenPopup("Create Material Variant");
+                    showCreateMaterialVariantPopup_ = false;
+                }
+                if (ImGui::BeginPopupModal("Create Material Variant", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::TextDisabled("Base: %s", pendingMaterialVariantBaseId_.c_str());
+                    ImGui::SetNextItemWidth(260.0f);
+                    if (ImGui::IsWindowAppearing()) {
+                        ImGui::SetKeyboardFocusHere();
+                    }
+                    const bool enterPressed = ImGui::InputText("Name##materialVariantName", createMaterialVariantNameBuffer_, sizeof(createMaterialVariantNameBuffer_),
+                        ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+                    const bool submit = ImGui::Button("Create") || enterPressed;
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+                        pendingMaterialVariantBaseId_.clear();
+                        ImGui::CloseCurrentPopup();
+                    }
+                    if (submit && !pendingMaterialVariantBaseId_.empty()) {
+                        std::string newMaterialId;
+                        if (CreateMaterialVariant(pendingMaterialVariantBaseId_, createMaterialVariantNameBuffer_, &newMaterialId)) {
+                            pendingMaterialVariantBaseId_.clear();
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                    ImGui::EndPopup();
                 }
                 if (ImGui::BeginPopupModal("Save Prefab", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                     ImGui::TextUnformatted("Save as Prefab");

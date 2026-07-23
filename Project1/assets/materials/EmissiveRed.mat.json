@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "name": "EmissiveRed",
+  "shader": "emissive",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0,
+  "roughness": 1,
+  "clearCoat": 0,
+  "clearCoatRoughness": 0.1,
+  "anisotropy": 0,
+  "transmission": 0,
+  "alphaMode": "Opaque",
+  "alphaCutoff": 0.5,
+  "doubleSided": false,
+  "emissiveColor": [1, 0, 0],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "",
+    "normal": "",
+    "metallic": "",
+    "roughness": "",
+    "ao": ""
+  },
+  "properties": {
+    "albedoColor": { "type": "vec4", "value": [1, 1, 1, 1] },
+    "emissiveIntensity": { "type": "float", "value": 6.373 },
+    "albedoTexture": { "type": "texture2D", "value": "" },
+    "emissiveColor": { "type": "vec3", "value": [1, 1, 1] },
+    "emissiveTexture": { "type": "texture2D", "value": "" },
+    "uvTiling": { "type": "vec2", "value": [1, 1] },
+    "uvOffset": { "type": "vec2", "value": [0, 0] }
+  }
+}

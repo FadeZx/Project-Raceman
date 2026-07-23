@@ -473,7 +473,14 @@ void SceneEditor::RenderScenePanel() {
                         }
                         ImGui::SetNextItemOpen(openState, ImGuiCond_Always);
                     }
+                    const bool isPrefabInstanceRow = IsPrefabInstance(i);
+                    if (isPrefabInstanceRow) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.78f, 1.0f, 1.0f));
+                    }
                     const bool open = ImGui::TreeNodeEx(objects_[i].name.c_str(), flags);
+                    if (isPrefabInstanceRow) {
+                        ImGui::PopStyleColor();
+                    }
                     if (ImGui::IsItemHovered() || ImGui::IsItemFocused()) {
                         hierarchyKeyboardTargetObjectId_ = objectId;
                     }
@@ -584,6 +591,25 @@ void SceneEditor::RenderScenePanel() {
                             pendingPrefabObjectIndex_ = i;
                             std::snprintf(savePrefabNameBuffer_, sizeof(savePrefabNameBuffer_), "%s", objects_[i].name.c_str());
                             showSavePrefabPopup_ = true;
+                        }
+                        if (IsPrefabInstance(i) && ImGui::BeginMenu("Prefab")) {
+                            ImGui::TextDisabled("%s", ProjectAssetDisplayFilename(objects_[i].sourcePrefabPath).c_str());
+                            ImGui::Separator();
+                            if (ImGui::MenuItem("Apply All to Prefab")) {
+                                ApplyInstanceToPrefab(i);
+                            }
+                            if (ImGui::MenuItem("Revert All")) {
+                                RevertInstanceToPrefab(i);
+                                hierarchyChanged = true;
+                            }
+                            if (ImGui::MenuItem("Select Prefab Asset")) {
+                                SelectProjectFile(objects_[i].sourcePrefabPath);
+                            }
+                            ImGui::Separator();
+                            if (ImGui::MenuItem("Unpack Prefab")) {
+                                UnpackPrefabInstance(i);
+                            }
+                            ImGui::EndMenu();
                         }
                         ImGui::EndPopup();
                     }

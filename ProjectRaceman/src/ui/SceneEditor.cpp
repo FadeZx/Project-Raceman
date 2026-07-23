@@ -1065,6 +1065,65 @@ void SceneEditor::TickReflectionProbeBake() {
     reflectionProbeBake_ = {};
 }
 
+void SceneEditor::TickRealtimeReflectionProbes() {
+    if (renderer_ == nullptr || !renderer_->GetSettings().profile.reflections) return;
+    // A modal bake already owns the capture framebuffer this frame.
+    if (!reflectionProbeBake_.objectId.empty()) return;
+
+    glm::mat4 gameView{1.0f};
+    glm::mat4 gameProj{1.0f};
+    glm::vec3 cameraPosition{0.0f};
+    if (scriptsRunning_ && TryGetGameCamera(gameView, gameProj, 1.0f)) {
+        cameraPosition = glm::vec3(glm::inverse(gameView)[3]);
+    } else if (hasEditorCameraMatrices_) {
+        cameraPosition = glm::vec3(glm::inverse(editorCameraView_)[3]);
+    } else {
+        return;
+    }
+
+    struct RealtimeProbeCandidate {
+        int objectIndex{0};
+        float distanceOutside{0.0f};
+    };
+    std::vector<RealtimeProbeCandidate> candidates;
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& object = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !object.hasReflectionProbe || !object.reflectionProbe.enabled ||
+            object.reflectionProbe.updateMode != ReflectionProbeUpdateMode::Realtime) continue;
+        const glm::mat4 worldMatrix = GetObjectWorldMatrix(i);
+        const glm::vec3 probePosition = glm::vec3(worldMatrix[3]);
+        const glm::vec3 worldScale{
+            glm::length(glm::vec3(worldMatrix[0])),
+            glm::length(glm::vec3(worldMatrix[1])),
+            glm::length(glm::vec3(worldMatrix[2]))};
+        float distanceOutside = 0.0f;
+        if (object.reflectionProbe.shape == ReflectionProbeShape::Sphere) {
+            const float radius = (std::max)(object.reflectionProbe.sphereRadius *
+                (std::max)(worldScale.x, (std::max)(worldScale.y, worldScale.z)), 0.05f);
+            distanceOutside = (std::max)(glm::length(cameraPosition - probePosition) - radius, 0.0f);
+        } else {
+            const glm::vec3 extents = (glm::max)(object.reflectionProbe.boxSize * worldScale * 0.5f, glm::vec3(0.05f));
+            distanceOutside = glm::length((glm::max)(glm::abs(cameraPosition - probePosition) - extents, glm::vec3(0.0f)));
+        }
+        // Selective updates: only refresh probes the camera is close enough to see.
+        if (distanceOutside > (std::max)(object.reflectionProbe.realtimeUpdateDistance, 0.0f)) continue;
+        candidates.push_back({i, distanceOutside});
+    }
+    if (candidates.empty()) return;
+
+    std::sort(candidates.begin(), candidates.end(),
+        [](const RealtimeProbeCandidate& left, const RealtimeProbeCandidate& right) {
+            return left.distanceOutside < right.distanceOutside;
+        });
+    const RealtimeProbeCandidate& chosen = candidates[realtimeProbeRoundRobin_++ % candidates.size()];
+    const SceneObject& object = objects_[chosen.objectIndex];
+    const glm::vec3 capturePosition = glm::vec3(GetObjectWorldMatrix(chosen.objectIndex)[3]);
+    renderer_->UpdateRealtimeReflectionProbe(
+        object.id, capturePosition, object.reflectionProbe.resolution,
+        (std::clamp)(object.reflectionProbe.realtimeFacesPerFrame, 1, 6),
+        [this]() { SubmitDraws(*renderer_, false); });
+}
+
 void SceneEditor::RenderSceneSavePopup() {
     // Rendered centrally by EditorProgressService after all editor panels.
 }
@@ -1083,6 +1142,7 @@ void SceneEditor::RenderUI(float deltaTime) {
     timingStart = glfwGetTime();
     TickPendingSceneSave();
     TickReflectionProbeBake();
+    TickRealtimeReflectionProbes();
     RenderSceneSavePopup();
     TickPlayModeLoading();          // check if async physics build is done; finalize on main thread
     RenderPlayModeLoadingPopup();   // show modal progress UI while building (before dockspace so ID stack is clean)
@@ -1375,6 +1435,73 @@ void SceneEditor::RenderViewportPanel() {
         }
         ImGui::Separator();
     };
+    auto renderSceneViewToolbar = [&]() {
+        if (renderer_ == nullptr) {
+            return;
+        }
+        auto& profile = renderer_->GetSettings().profile;
+        const char* shadingModeNames[] = {
+            "Shaded",
+            "Wireframe",
+            "Collision View",
+            "Plain (No Post)",
+            "Motion Vectors",
+            "SSAO",
+            "Shadow Cascades",
+            "SSR",
+            "TAA Resolve",
+            "IBL: Diffuse Irradiance",
+            "IBL: Raw Environment",
+            "IBL: Final Specular",
+        };
+        int shadingModeIndex = 0;
+        if (profile.wireframeView) shadingModeIndex = 1;
+        else if (showAllColliders_) shadingModeIndex = 2;
+        else if (profile.plainView) shadingModeIndex = 3;
+        else if (profile.motionBlurDebugView) shadingModeIndex = 4;
+        else if (profile.ssaoDebugView) shadingModeIndex = 5;
+        else if (profile.shadowCascadeDebugView) shadingModeIndex = 6;
+        else if (profile.ssrDebugView) shadingModeIndex = 7;
+        else if (profile.taaDebugView) shadingModeIndex = 8;
+        else if (profile.iblDebugMode == 1) shadingModeIndex = 9;
+        else if (profile.iblDebugMode == 2) shadingModeIndex = 10;
+        else if (profile.iblDebugMode == 3) shadingModeIndex = 11;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
+        ImGui::TextDisabled("Shading");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(190.0f);
+        if (ImGui::Combo("##SceneViewShadingMode", &shadingModeIndex, shadingModeNames, IM_ARRAYSIZE(shadingModeNames))) {
+            profile.wireframeView = false;
+            profile.plainView = false;
+            profile.motionBlurDebugView = false;
+            profile.ssaoDebugView = false;
+            profile.shadowCascadeDebugView = false;
+            profile.ssrDebugView = false;
+            profile.taaDebugView = false;
+            profile.iblDebugMode = 0;
+            showAllColliders_ = false;
+            switch (shadingModeIndex) {
+            case 1: profile.wireframeView = true; break;
+            case 2: showAllColliders_ = true; break;
+            case 3: profile.plainView = true; break;
+            case 4: profile.motionBlurDebugView = true; break;
+            case 5: profile.ssaoDebugView = true; break;
+            case 6: profile.shadowCascadeDebugView = true; break;
+            case 7: profile.ssrDebugView = true; break;
+            case 8: profile.taaDebugView = true; break;
+            case 9: profile.iblDebugMode = 1; break;
+            case 10: profile.iblDebugMode = 2; break;
+            case 11: profile.iblDebugMode = 3; break;
+            default: break;
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Swap what the Scene View displays: lit result or a raw render-pass debug view.");
+        }
+        ImGui::PopStyleVar();
+        ImGui::Separator();
+    };
     auto renderViewportSurface = [&](const char* childName,
                                      SceneEditorActiveViewport viewportType,
                                      unsigned int textureId,
@@ -1487,6 +1614,7 @@ void SceneEditor::RenderViewportPanel() {
         bool sceneWindowOpen = ImGui::Begin("Scene View", nullptr, sceneWindowFlags);
         if (sceneWindowOpen) {
             HandlePanelHeadingDoubleClick("Scene View");
+            renderSceneViewToolbar();
             renderViewportSurface("SceneViewportSurface", SceneEditorActiveViewport::Scene, sceneViewportTextureId_, sceneViewportPos_, sceneViewportSize_, sceneViewportHovered_);
             HandleTrackDrawingInput();
             // Accept scene asset drops from the project browser onto the viewport.
@@ -2197,6 +2325,20 @@ void SceneEditor::PasteObjectsFromClipboard() {
             }
             if (const auto lookAtIt = idRemap.find(copy.cinemachine.lookAtTargetId); lookAtIt != idRemap.end()) {
                 copy.cinemachine.lookAtTargetId = lookAtIt->second;
+            }
+        }
+        if (!copy.sourcePrefabPath.empty()) {
+            // A pasted copy of a full prefab instance is itself a linked
+            // instance; a pasted fragment (instance root not included in the
+            // copied set) becomes plain objects.
+            if (const auto rootIt = idRemap.find(copy.prefabInstanceRootId); rootIt != idRemap.end()) {
+                copy.prefabInstanceRootId = rootIt->second;
+            } else {
+                copy.sourcePrefabPath.clear();
+                copy.prefabInstanceRootId.clear();
+                copy.prefabLocalId.clear();
+                copy.prefabOverriddenComponents.clear();
+                copy.prefabStructureOverridden = false;
             }
         }
         objects_.push_back(std::move(copy));
@@ -5441,33 +5583,66 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
             glm::length(glm::vec3(worldMatrix[0])),
             glm::length(glm::vec3(worldMatrix[1])),
             glm::length(glm::vec3(worldMatrix[2]))};
+        probe.shape = object.reflectionProbe.shape == ReflectionProbeShape::Sphere
+            ? ReflectionProbeVolumeShape::Sphere
+            : ReflectionProbeVolumeShape::Box;
         probe.boxExtents = (glm::max)(object.reflectionProbe.boxSize * worldScale * 0.5f, glm::vec3(0.05f));
+        probe.sphereRadius = (std::max)(object.reflectionProbe.sphereRadius *
+            (std::max)(worldScale.x, (std::max)(worldScale.y, worldScale.z)), 0.05f);
         probe.blendDistance = object.reflectionProbe.blendDistance;
         probe.intensity = object.reflectionProbe.intensity;
-        if (!object.reflectionProbe.bakedCubemapPath.empty()) {
+        if (object.reflectionProbe.updateMode == ReflectionProbeUpdateMode::Realtime) {
+            probe.cubemapTexture = renderer.GetRealtimeReflectionProbeTexture(object.id);
+        }
+        if (probe.cubemapTexture == 0 && !object.reflectionProbe.bakedCubemapPath.empty()) {
             probe.cubemapTexture = renderer.LoadReflectionProbeCubemap(
                 ResolveEditorPath(object.reflectionProbe.bakedCubemapPath).string());
         }
         renderer.SubmitReflectionProbe(probe);
         if (editorInteraction && selectedIndex_ == i) {
-            const glm::vec3 minimum = probe.position - probe.boxExtents;
-            const glm::vec3 maximum = probe.position + probe.boxExtents;
-            const glm::vec3 corners[8] = {
-                {minimum.x, minimum.y, minimum.z}, {maximum.x, minimum.y, minimum.z},
-                {maximum.x, maximum.y, minimum.z}, {minimum.x, maximum.y, minimum.z},
-                {minimum.x, minimum.y, maximum.z}, {maximum.x, minimum.y, maximum.z},
-                {maximum.x, maximum.y, maximum.z}, {minimum.x, maximum.y, maximum.z}};
-            const int edges[12][2] = {
-                {0,1},{1,2},{2,3},{3,0}, {4,5},{5,6},{6,7},{7,4},
-                {0,4},{1,5},{2,6},{3,7}};
-            for (const auto& edge : edges) {
+            const glm::vec4 influenceColor{0.25f, 0.8f, 1.0f, 0.9f};
+            auto submitInfluenceLine = [&](const glm::vec3& start, const glm::vec3& end) {
                 DebugLineCommand line;
-                line.start = corners[edge[0]];
-                line.end = corners[edge[1]];
-                line.color = glm::vec4(0.25f, 0.8f, 1.0f, 0.9f);
+                line.start = start;
+                line.end = end;
+                line.color = influenceColor;
                 line.width = 1.5f;
                 line.depthMode = DebugLineDepthMode::DepthTestedOverlay;
                 renderer.SubmitLine(line);
+            };
+            if (probe.shape == ReflectionProbeVolumeShape::Sphere) {
+                constexpr int kCircleSegments = 32;
+                constexpr float kTwoPi = 6.28318530718f;
+                for (int axis = 0; axis < 3; ++axis) {
+                    for (int segment = 0; segment < kCircleSegments; ++segment) {
+                        const float angleA = kTwoPi * static_cast<float>(segment) / kCircleSegments;
+                        const float angleB = kTwoPi * static_cast<float>(segment + 1) / kCircleSegments;
+                        auto circlePoint = [&](float angle) {
+                            const float u = std::cos(angle) * probe.sphereRadius;
+                            const float v = std::sin(angle) * probe.sphereRadius;
+                            switch (axis) {
+                            case 0: return probe.position + glm::vec3(0.0f, u, v);
+                            case 1: return probe.position + glm::vec3(u, 0.0f, v);
+                            default: return probe.position + glm::vec3(u, v, 0.0f);
+                            }
+                        };
+                        submitInfluenceLine(circlePoint(angleA), circlePoint(angleB));
+                    }
+                }
+            } else {
+                const glm::vec3 minimum = probe.position - probe.boxExtents;
+                const glm::vec3 maximum = probe.position + probe.boxExtents;
+                const glm::vec3 corners[8] = {
+                    {minimum.x, minimum.y, minimum.z}, {maximum.x, minimum.y, minimum.z},
+                    {maximum.x, maximum.y, minimum.z}, {minimum.x, maximum.y, minimum.z},
+                    {minimum.x, minimum.y, maximum.z}, {maximum.x, minimum.y, maximum.z},
+                    {maximum.x, maximum.y, maximum.z}, {minimum.x, maximum.y, maximum.z}};
+                const int edges[12][2] = {
+                    {0,1},{1,2},{2,3},{3,0}, {4,5},{5,6},{6,7},{7,4},
+                    {0,4},{1,5},{2,6},{3,7}};
+                for (const auto& edge : edges) {
+                    submitInfluenceLine(corners[edge[0]], corners[edge[1]]);
+                }
             }
         }
     }
@@ -5624,9 +5799,10 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
                 // edge of the view; Renderer culls them against the light volume.
                 if (renderer.GetSettings().profile.shadows) {
                     cmd.materialId = o.meshRenderer.materialId.empty() ? std::string("pbr_default") : o.meshRenderer.materialId;
-                    if (const Material* material = materialManager_.Get(cmd.materialId)) {
-                        cmd.doubleSided = material->doubleSided;
-                        cmd.transparent = ToLowerCopy(material->alphaMode) == "blend";
+                    if (materialManager_.Exists(cmd.materialId)) {
+                        const Material resolvedShadowMaterial = materialManager_.Resolve(cmd.materialId);
+                        cmd.doubleSided = resolvedShadowMaterial.doubleSided;
+                        cmd.transparent = ToLowerCopy(resolvedShadowMaterial.alphaMode) == "blend";
                     }
                     if (!cmd.transparent) {
                         renderer.SubmitShadowCaster(cmd);
@@ -5638,7 +5814,9 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
         }
 
         cmd.materialId = o.meshRenderer.materialId.empty() ? std::string("pbr_default") : o.meshRenderer.materialId;
-        if (const Material* material = materialManager_.Get(cmd.materialId)) {
+        if (materialManager_.Exists(cmd.materialId)) {
+            const Material resolvedMaterialValue = materialManager_.Resolve(cmd.materialId);
+            const Material* material = &resolvedMaterialValue;
             cmd.shaderId = material->shader;
             cmd.color = {
                 material->albedoColor[0],
@@ -5705,6 +5883,9 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
 
     if (editorInteraction) {
         SubmitGizmo(renderer);
+        if (showAllColliders_) {
+            SubmitAllColliders(renderer);
+        }
         SubmitCullingDebug(renderer);
     }
 }

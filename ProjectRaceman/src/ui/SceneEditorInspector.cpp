@@ -660,7 +660,11 @@ bool RenderRemovableComponentHeader(const char* label,
                                     SceneInspectorComponentType* outDraggedType = nullptr,
                                     SceneInspectorComponentType* outDropTargetType = nullptr,
                                     bool* outHeaderActive = nullptr,
-                                    bool* outHeaderToggledOpen = nullptr) {
+                                    bool* outHeaderToggledOpen = nullptr,
+                                    bool showPrefabMenu = false,
+                                    bool isPrefabOverridden = false,
+                                    bool* outApplyToPrefabRequested = nullptr,
+                                    bool* outRevertToPrefabRequested = nullptr) {
     ImGui::PushID(id);
     const ImVec4 accent = ComponentHeaderAccent(label);
     ImGuiStorage* storage = ImGui::GetStateStorage();
@@ -733,6 +737,10 @@ bool RenderRemovableComponentHeader(const char* label,
         drawList->AddRect(ImVec2(rowMin.x + 1.0f, rowMin.y + 1.0f), ImVec2(rowMax.x - 1.0f, rowMax.y - 1.0f), IM_COL32(230, 248, 255, 170), 2.0f, 0, 1.0f);
         drawList->AddRectFilled(ImVec2(rowMin.x, rowMin.y), ImVec2(rowMin.x + 4.0f, rowMax.y), focusColor, 2.0f);
     }
+    if (showPrefabMenu && isPrefabOverridden && !rowHighlighted) {
+        // Unity-style override accent: a blue bar down the left edge of the header.
+        drawList->AddRectFilled(ImVec2(rowMin.x, rowMin.y), ImVec2(rowMin.x + 4.0f, rowMax.y), IM_COL32(80, 160, 240, 255), 2.0f);
+    }
     const ImU32 textColor = ImGui::GetColorU32(ImGuiCol_Text);
     const float arrowX = rowMin.x + 12.0f;
     const float arrowY = rowMin.y + rowHeight * 0.5f;
@@ -786,6 +794,20 @@ bool RenderRemovableComponentHeader(const char* label,
         ImGui::SetNextItemAllowOverlap();
         removeRequested = ImGui::Button("Remove", ImVec2(removeButtonWidth, removeMax.y - removeMin.y));
         ImGui::SetCursorScreenPos(restorePos);
+    }
+    if (showPrefabMenu) {
+        if (rowHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && !mouseOnRemove && !mouseOnCheckbox) {
+            ImGui::OpenPopup("##componentPrefabMenu");
+        }
+        if (ImGui::BeginPopup("##componentPrefabMenu")) {
+            if (ImGui::MenuItem("Apply to Prefab", nullptr, false, isPrefabOverridden)) {
+                if (outApplyToPrefabRequested != nullptr) *outApplyToPrefabRequested = true;
+            }
+            if (ImGui::MenuItem("Revert", nullptr, false, isPrefabOverridden)) {
+                if (outRevertToPrefabRequested != nullptr) *outRevertToPrefabRequested = true;
+            }
+            ImGui::EndPopup();
+        }
     }
     ImGui::PopID();
     return open;
@@ -1025,6 +1047,11 @@ void SceneEditor::RenderInspectorPanel() {
             RenderMultiSelectionInspector();
         } else if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())) {
             SceneObject& obj = objects_[selectedIndex_];
+            const bool objectIsPrefabInstance = IsPrefabInstance(selectedIndex_);
+            if (objectIsPrefabInstance && !inspectorEditActive_) {
+                // Cheap: diffs only the single selected object, once per frame.
+                RefreshPrefabOverrideFlags(selectedIndex_);
+            }
             auto beginInspectorContinuousEdit = [&]() {
                 if (!inspectorEditActive_) {
                     PushUndoState();
@@ -1034,8 +1061,34 @@ void SceneEditor::RenderInspectorPanel() {
             auto endInspectorContinuousEdit = [&]() {
                 if (ImGui::IsItemDeactivated()) {
                     inspectorEditActive_ = false;
+                    if (objectIsPrefabInstance) RefreshPrefabOverrideFlags(selectedIndex_);
                 }
             };
+            auto handlePrefabComponentMenu = [&](bool applyRequested, bool revertRequested, SceneComponentType componentType) {
+                if (applyRequested) ApplyComponentToPrefab(selectedIndex_, componentType);
+                if (revertRequested) RevertComponentToPrefab(selectedIndex_, componentType);
+            };
+
+            if (objectIsPrefabInstance) {
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.16f, 0.24f, 1.0f));
+                ImGui::BeginChild("##PrefabInstanceBanner", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize);
+                ImGui::TextColored(ImVec4(0.55f, 0.78f, 1.0f, 1.0f), "Prefab Instance");
+                ImGui::TextWrapped("%s", ProjectAssetDisplayFilename(obj.sourcePrefabPath).c_str());
+                if (ImGui::SmallButton("Apply All")) {
+                    ApplyInstanceToPrefab(selectedIndex_);
+                }
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Revert All")) {
+                    RevertInstanceToPrefab(selectedIndex_);
+                }
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Unpack")) {
+                    UnpackPrefabInstance(selectedIndex_);
+                }
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+                ImGui::Spacing();
+            }
 
             // Name
             bool objectEnabled = obj.enabled;
@@ -1456,12 +1509,16 @@ void SceneEditor::RenderInspectorPanel() {
             bool meshFilterEnabledChanged = false;
             bool meshFilterHeaderActive = false;
             bool meshFilterHeaderToggledOpen = false;
+            bool meshFilterApplyRequested = false;
+            bool meshFilterRevertRequested = false;
             const bool meshFilterEnabledBefore = obj.meshFilter.enabled;
             if (obj.hasMeshFilter) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::MeshFilter;
                 const std::string meshFilterComponentKey = prepareComponentOpenState(SceneInspectorComponentType::MeshFilter);
-                meshFilterOpen = RenderRemovableComponentHeader("Mesh Filter", "MeshFilterHeader", GetComponentIconTexture("component-mesh-filter.png"), &obj.meshFilter.enabled, meshFilterEnabledChanged, removeMeshFilter, &componentType, &reorderDraggedType, &reorderTargetType, &meshFilterHeaderActive, &meshFilterHeaderToggledOpen);
+                meshFilterOpen = RenderRemovableComponentHeader("Mesh Filter", "MeshFilterHeader", GetComponentIconTexture("component-mesh-filter.png"), &obj.meshFilter.enabled, meshFilterEnabledChanged, removeMeshFilter, &componentType, &reorderDraggedType, &reorderTargetType, &meshFilterHeaderActive, &meshFilterHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::MeshFilter), &meshFilterApplyRequested, &meshFilterRevertRequested);
                 finishComponentHeaderState(meshFilterComponentKey, SceneInspectorComponentType::MeshFilter, meshFilterHeaderActive, meshFilterHeaderToggledOpen, meshFilterOpen);
+                handlePrefabComponentMenu(meshFilterApplyRequested, meshFilterRevertRequested, SceneComponentType::MeshFilter);
             }
             if (removeMeshFilter) {
                 PushUndoState();
@@ -1678,12 +1735,16 @@ void SceneEditor::RenderInspectorPanel() {
             bool meshRendererEnabledChanged = false;
             bool meshRendererHeaderActive = false;
             bool meshRendererHeaderToggledOpen = false;
+            bool meshRendererApplyRequested = false;
+            bool meshRendererRevertRequested = false;
             const bool meshRendererEnabledBefore = obj.meshRenderer.enabled;
             if (obj.hasMeshRenderer) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::MeshRenderer;
                 const std::string meshRendererComponentKey = prepareComponentOpenState(SceneInspectorComponentType::MeshRenderer);
-                meshRendererOpen = RenderRemovableComponentHeader("Mesh Renderer", "MeshRendererHeader", GetComponentIconTexture("component-mesh-renderer.png"), &obj.meshRenderer.enabled, meshRendererEnabledChanged, removeMeshRenderer, &componentType, &reorderDraggedType, &reorderTargetType, &meshRendererHeaderActive, &meshRendererHeaderToggledOpen);
+                meshRendererOpen = RenderRemovableComponentHeader("Mesh Renderer", "MeshRendererHeader", GetComponentIconTexture("component-mesh-renderer.png"), &obj.meshRenderer.enabled, meshRendererEnabledChanged, removeMeshRenderer, &componentType, &reorderDraggedType, &reorderTargetType, &meshRendererHeaderActive, &meshRendererHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::MeshRenderer), &meshRendererApplyRequested, &meshRendererRevertRequested);
                 finishComponentHeaderState(meshRendererComponentKey, SceneInspectorComponentType::MeshRenderer, meshRendererHeaderActive, meshRendererHeaderToggledOpen, meshRendererOpen);
+                handlePrefabComponentMenu(meshRendererApplyRequested, meshRendererRevertRequested, SceneComponentType::MeshRenderer);
             }
             if (removeMeshRenderer) {
                 PushUndoState();
@@ -1769,10 +1830,16 @@ void SceneEditor::RenderInspectorPanel() {
                     bool scriptEnabledChanged = false;
                     const bool scriptEnabledBefore = script.enabled;
                     ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
+                    bool scriptApplyRequested = false;
+                    bool scriptRevertRequested = false;
                     const bool scriptTreeOpen = RenderRemovableComponentHeader(
                         header.c_str(), headerKey.c_str(),
                         GetComponentIconTexture("component-script.png"),
-                        &script.enabled, scriptEnabledChanged, removeScript);
+                        &script.enabled, scriptEnabledChanged, removeScript,
+                        nullptr, nullptr, nullptr, nullptr, nullptr,
+                        objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::Script),
+                        &scriptApplyRequested, &scriptRevertRequested);
+                    handlePrefabComponentMenu(scriptApplyRequested, scriptRevertRequested, SceneComponentType::Script);
 
                     if (removeScript) {
                         removeScriptAt = scriptIndex;
@@ -1853,12 +1920,16 @@ void SceneEditor::RenderInspectorPanel() {
             bool rigidbodyEnabledChanged = false;
             bool rigidbodyHeaderActive = false;
             bool rigidbodyHeaderToggledOpen = false;
+            bool rigidbodyApplyRequested = false;
+            bool rigidbodyRevertRequested = false;
             const bool rigidbodyEnabledBefore = obj.rigidbody.enabled;
             if (obj.hasRigidbody) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Rigidbody;
                 const std::string rigidbodyComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Rigidbody);
-                rigidbodyOpen = RenderRemovableComponentHeader("Rigidbody", "RigidbodyHeader", GetComponentIconTexture("component-rigidbody.png"), &obj.rigidbody.enabled, rigidbodyEnabledChanged, removeRigidbody, &componentType, &reorderDraggedType, &reorderTargetType, &rigidbodyHeaderActive, &rigidbodyHeaderToggledOpen);
+                rigidbodyOpen = RenderRemovableComponentHeader("Rigidbody", "RigidbodyHeader", GetComponentIconTexture("component-rigidbody.png"), &obj.rigidbody.enabled, rigidbodyEnabledChanged, removeRigidbody, &componentType, &reorderDraggedType, &reorderTargetType, &rigidbodyHeaderActive, &rigidbodyHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::Rigidbody), &rigidbodyApplyRequested, &rigidbodyRevertRequested);
                 finishComponentHeaderState(rigidbodyComponentKey, SceneInspectorComponentType::Rigidbody, rigidbodyHeaderActive, rigidbodyHeaderToggledOpen, rigidbodyOpen);
+                handlePrefabComponentMenu(rigidbodyApplyRequested, rigidbodyRevertRequested, SceneComponentType::Rigidbody);
             }
             if (removeRigidbody) {
                 PushUndoState();
@@ -2000,11 +2071,15 @@ void SceneEditor::RenderInspectorPanel() {
             bool characterControllerEnabledChanged = false;
             bool characterControllerHeaderActive = false;
             bool characterControllerHeaderToggledOpen = false;
+            bool characterControllerApplyRequested = false;
+            bool characterControllerRevertRequested = false;
             const bool characterControllerEnabledBefore = obj.characterController.enabled;
             if (obj.hasCharacterController) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::CharacterController;
                 const std::string characterControllerComponentKey = prepareComponentOpenState(SceneInspectorComponentType::CharacterController);
-                characterControllerOpen = RenderRemovableComponentHeader("Character Controller", "CharacterControllerHeader", GetComponentIconTexture("component-character-controller.png"), &obj.characterController.enabled, characterControllerEnabledChanged, removeCharacterController, &componentType, &reorderDraggedType, &reorderTargetType, &characterControllerHeaderActive, &characterControllerHeaderToggledOpen);
+                characterControllerOpen = RenderRemovableComponentHeader("Character Controller", "CharacterControllerHeader", GetComponentIconTexture("component-character-controller.png"), &obj.characterController.enabled, characterControllerEnabledChanged, removeCharacterController, &componentType, &reorderDraggedType, &reorderTargetType, &characterControllerHeaderActive, &characterControllerHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::CharacterController), &characterControllerApplyRequested, &characterControllerRevertRequested);
+                handlePrefabComponentMenu(characterControllerApplyRequested, characterControllerRevertRequested, SceneComponentType::CharacterController);
                 finishComponentHeaderState(characterControllerComponentKey, SceneInspectorComponentType::CharacterController, characterControllerHeaderActive, characterControllerHeaderToggledOpen, characterControllerOpen);
             }
             if (removeCharacterController) {
@@ -2114,6 +2189,17 @@ void SceneEditor::RenderInspectorPanel() {
 
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Collider;
                 const std::string colliderComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Collider);
+                SceneComponentType colliderComponentType = SceneComponentType::BoxCollider;
+                switch (colliderType) {
+                case SceneColliderType::Box: colliderComponentType = SceneComponentType::BoxCollider; break;
+                case SceneColliderType::Sphere: colliderComponentType = SceneComponentType::SphereCollider; break;
+                case SceneColliderType::Capsule: colliderComponentType = SceneComponentType::CapsuleCollider; break;
+                case SceneColliderType::Plane: colliderComponentType = SceneComponentType::PlaneCollider; break;
+                case SceneColliderType::Mesh: colliderComponentType = SceneComponentType::MeshCollider; break;
+                case SceneColliderType::None: break;
+                }
+                bool colliderApplyRequested = false;
+                bool colliderRevertRequested = false;
                 colliderOpen = RenderRemovableComponentHeader(
                     "Collider",
                     "ColliderHeader",
@@ -2125,8 +2211,13 @@ void SceneEditor::RenderInspectorPanel() {
                     &reorderDraggedType,
                     &reorderTargetType,
                     &colliderHeaderActive,
-                    &colliderHeaderToggledOpen);
+                    &colliderHeaderToggledOpen,
+                    objectIsPrefabInstance,
+                    HasComponentOverride(selectedIndex_, colliderComponentType),
+                    &colliderApplyRequested,
+                    &colliderRevertRequested);
                 finishComponentHeaderState(colliderComponentKey, SceneInspectorComponentType::Collider, colliderHeaderActive, colliderHeaderToggledOpen, colliderOpen);
+                handlePrefabComponentMenu(colliderApplyRequested, colliderRevertRequested, colliderComponentType);
 
                 if (removeCollider) {
                     PushUndoState();
@@ -2434,11 +2525,15 @@ void SceneEditor::RenderInspectorPanel() {
             bool cameraEnabledChanged = false;
             bool cameraHeaderActive = false;
             bool cameraHeaderToggledOpen = false;
+            bool cameraApplyRequested = false;
+            bool cameraRevertRequested = false;
             const bool cameraEnabledBefore = obj.camera.enabled;
             if (obj.hasCamera) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Camera;
                 const std::string cameraComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Camera);
-                cameraOpen = RenderRemovableComponentHeader("Camera", "CameraHeader", GetComponentIconTexture("component-camera.png"), &obj.camera.enabled, cameraEnabledChanged, removeCamera, &componentType, &reorderDraggedType, &reorderTargetType, &cameraHeaderActive, &cameraHeaderToggledOpen);
+                cameraOpen = RenderRemovableComponentHeader("Camera", "CameraHeader", GetComponentIconTexture("component-camera.png"), &obj.camera.enabled, cameraEnabledChanged, removeCamera, &componentType, &reorderDraggedType, &reorderTargetType, &cameraHeaderActive, &cameraHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::Camera), &cameraApplyRequested, &cameraRevertRequested);
+                handlePrefabComponentMenu(cameraApplyRequested, cameraRevertRequested, SceneComponentType::Camera);
                 finishComponentHeaderState(cameraComponentKey, SceneInspectorComponentType::Camera, cameraHeaderActive, cameraHeaderToggledOpen, cameraOpen);
             }
             if (removeCamera) {
@@ -2507,11 +2602,15 @@ void SceneEditor::RenderInspectorPanel() {
             bool cinemachineEnabledChanged = false;
             bool cinemachineHeaderActive = false;
             bool cinemachineHeaderToggledOpen = false;
+            bool cinemachineApplyRequested = false;
+            bool cinemachineRevertRequested = false;
             const bool cinemachineEnabledBefore = obj.cinemachine.enabled;
             if (obj.hasCinemachine) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Cinemachine;
                 const std::string cinemachineComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Cinemachine);
-                cinemachineOpen = RenderRemovableComponentHeader("Virtual Camera", "CinemachineHeader", GetComponentIconTexture("component-cinemachine.png"), &obj.cinemachine.enabled, cinemachineEnabledChanged, removeCinemachine, &componentType, &reorderDraggedType, &reorderTargetType, &cinemachineHeaderActive, &cinemachineHeaderToggledOpen);
+                cinemachineOpen = RenderRemovableComponentHeader("Virtual Camera", "CinemachineHeader", GetComponentIconTexture("component-cinemachine.png"), &obj.cinemachine.enabled, cinemachineEnabledChanged, removeCinemachine, &componentType, &reorderDraggedType, &reorderTargetType, &cinemachineHeaderActive, &cinemachineHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::Cinemachine), &cinemachineApplyRequested, &cinemachineRevertRequested);
+                handlePrefabComponentMenu(cinemachineApplyRequested, cinemachineRevertRequested, SceneComponentType::Cinemachine);
                 finishComponentHeaderState(cinemachineComponentKey, SceneInspectorComponentType::Cinemachine, cinemachineHeaderActive, cinemachineHeaderToggledOpen, cinemachineOpen);
             }
             if (removeCinemachine) {
@@ -2709,11 +2808,15 @@ void SceneEditor::RenderInspectorPanel() {
             bool lightEnabledChanged = false;
             bool lightHeaderActive = false;
             bool lightHeaderToggledOpen = false;
+            bool lightApplyRequested = false;
+            bool lightRevertRequested = false;
             const bool lightEnabledBefore = obj.light.enabled;
             if (obj.hasLight) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::Light;
                 const std::string lightComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Light);
-                lightOpen = RenderRemovableComponentHeader("Light", "LightHeader", GetComponentIconTexture("component-light.png"), &obj.light.enabled, lightEnabledChanged, removeLight, &componentType, &reorderDraggedType, &reorderTargetType, &lightHeaderActive, &lightHeaderToggledOpen);
+                lightOpen = RenderRemovableComponentHeader("Light", "LightHeader", GetComponentIconTexture("component-light.png"), &obj.light.enabled, lightEnabledChanged, removeLight, &componentType, &reorderDraggedType, &reorderTargetType, &lightHeaderActive, &lightHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::Light), &lightApplyRequested, &lightRevertRequested);
+                handlePrefabComponentMenu(lightApplyRequested, lightRevertRequested, SceneComponentType::Light);
                 finishComponentHeaderState(lightComponentKey, SceneInspectorComponentType::Light, lightHeaderActive, lightHeaderToggledOpen, lightOpen);
             }
             if (removeLight) {
@@ -2797,6 +2900,8 @@ void SceneEditor::RenderInspectorPanel() {
             bool probeEnabledChanged = false;
             bool probeHeaderActive = false;
             bool probeHeaderToggledOpen = false;
+            bool probeApplyRequested = false;
+            bool probeRevertRequested = false;
             const bool probeEnabledBefore = obj.reflectionProbe.enabled;
             if (obj.hasReflectionProbe) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::ReflectionProbe;
@@ -2804,9 +2909,12 @@ void SceneEditor::RenderInspectorPanel() {
                 probeOpen = RenderRemovableComponentHeader("Reflection Probe", "ReflectionProbeHeader",
                     GetComponentIconTexture("component-light.png"), &obj.reflectionProbe.enabled,
                     probeEnabledChanged, removeProbe, &componentType, &reorderDraggedType, &reorderTargetType,
-                    &probeHeaderActive, &probeHeaderToggledOpen);
+                    &probeHeaderActive, &probeHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::ReflectionProbe),
+                    &probeApplyRequested, &probeRevertRequested);
                 finishComponentHeaderState(probeComponentKey, SceneInspectorComponentType::ReflectionProbe,
                     probeHeaderActive, probeHeaderToggledOpen, probeOpen);
+                handlePrefabComponentMenu(probeApplyRequested, probeRevertRequested, SceneComponentType::ReflectionProbe);
             }
             if (removeProbe) {
                 PushUndoState();
@@ -2821,13 +2929,32 @@ void SceneEditor::RenderInspectorPanel() {
                 if (onDirty_) onDirty_();
             }
             if (obj.hasReflectionProbe && probeOpen) {
-                glm::vec3 boxSize = obj.reflectionProbe.boxSize;
-                if (ImGui::DragFloat3("Box Size##ReflectionProbe", &boxSize.x, 0.1f, 0.1f, 10000.0f)) {
-                    beginInspectorContinuousEdit();
-                    obj.reflectionProbe.boxSize = (glm::max)(boxSize, glm::vec3(0.1f));
+                const char* shapeItems[] = {"Box", "Sphere"};
+                int shapeIndex = obj.reflectionProbe.shape == ReflectionProbeShape::Sphere ? 1 : 0;
+                if (ImGui::Combo("Shape##ReflectionProbe", &shapeIndex, shapeItems, 2)) {
+                    PushUndoState();
+                    obj.reflectionProbe.shape = shapeIndex == 1
+                        ? ReflectionProbeShape::Sphere
+                        : ReflectionProbeShape::Box;
                     if (onDirty_) onDirty_();
                 }
-                endInspectorContinuousEdit();
+                if (obj.reflectionProbe.shape == ReflectionProbeShape::Sphere) {
+                    float sphereRadius = obj.reflectionProbe.sphereRadius;
+                    if (ImGui::DragFloat("Radius##ReflectionProbe", &sphereRadius, 0.1f, 0.1f, 10000.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.reflectionProbe.sphereRadius = (std::max)(0.1f, sphereRadius);
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                } else {
+                    glm::vec3 boxSize = obj.reflectionProbe.boxSize;
+                    if (ImGui::DragFloat3("Box Size##ReflectionProbe", &boxSize.x, 0.1f, 0.1f, 10000.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.reflectionProbe.boxSize = (glm::max)(boxSize, glm::vec3(0.1f));
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                }
                 float blendDistance = obj.reflectionProbe.blendDistance;
                 if (ImGui::DragFloat("Blend Distance##ReflectionProbe", &blendDistance, 0.05f, 0.01f, 1000.0f)) {
                     beginInspectorContinuousEdit();
@@ -2850,6 +2977,35 @@ void SceneEditor::RenderInspectorPanel() {
                     obj.reflectionProbe.resolution = 64 << resolutionIndex;
                     if (onDirty_) onDirty_();
                 }
+                const char* updateModeItems[] = {"Baked", "Realtime"};
+                int updateModeIndex = obj.reflectionProbe.updateMode == ReflectionProbeUpdateMode::Realtime ? 1 : 0;
+                if (ImGui::Combo("Update Mode##ReflectionProbe", &updateModeIndex, updateModeItems, 2)) {
+                    PushUndoState();
+                    obj.reflectionProbe.updateMode = updateModeIndex == 1
+                        ? ReflectionProbeUpdateMode::Realtime
+                        : ReflectionProbeUpdateMode::Baked;
+                    if (renderer_ != nullptr && obj.reflectionProbe.updateMode == ReflectionProbeUpdateMode::Baked) {
+                        renderer_->ReleaseRealtimeReflectionProbe(obj.id);
+                    }
+                    if (onDirty_) onDirty_();
+                }
+                if (obj.reflectionProbe.updateMode == ReflectionProbeUpdateMode::Realtime) {
+                    float updateDistance = obj.reflectionProbe.realtimeUpdateDistance;
+                    if (ImGui::DragFloat("Update Distance##ReflectionProbe", &updateDistance, 0.5f, 0.0f, 10000.0f)) {
+                        beginInspectorContinuousEdit();
+                        obj.reflectionProbe.realtimeUpdateDistance = (std::max)(0.0f, updateDistance);
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                    int facesPerFrame = obj.reflectionProbe.realtimeFacesPerFrame;
+                    if (ImGui::SliderInt("Faces Per Frame##ReflectionProbe", &facesPerFrame, 1, 6)) {
+                        beginInspectorContinuousEdit();
+                        obj.reflectionProbe.realtimeFacesPerFrame = (std::clamp)(facesPerFrame, 1, 6);
+                        if (onDirty_) onDirty_();
+                    }
+                    endInspectorContinuousEdit();
+                    ImGui::TextDisabled("Refreshes while the camera is within the update distance.");
+                }
                 const bool bakePending = !reflectionProbeBake_.objectId.empty();
                 ImGui::BeginDisabled(renderer_ == nullptr || bakePending);
                 if (ImGui::Button(obj.reflectionProbe.bakedCubemapPath.empty() ? "Bake Probe" : "Bake Probe Again")) {
@@ -2862,6 +3018,8 @@ void SceneEditor::RenderInspectorPanel() {
                     ImGui::SameLine();
                     ImGui::TextDisabled("Baked");
                     ImGui::TextWrapped("%s", obj.reflectionProbe.bakedCubemapPath.c_str());
+                } else if (obj.reflectionProbe.updateMode == ReflectionProbeUpdateMode::Realtime) {
+                    ImGui::TextDisabled("Realtime capture; bake for a fallback when out of range.");
                 } else {
                     ImGui::TextDisabled("Not baked; using the project skybox fallback.");
                 }
@@ -2874,11 +3032,15 @@ void SceneEditor::RenderInspectorPanel() {
             bool audioListenerEnabledChanged = false;
             bool audioListenerHeaderActive = false;
             bool audioListenerHeaderToggledOpen = false;
+            bool audioListenerApplyRequested = false;
+            bool audioListenerRevertRequested = false;
             const bool audioListenerEnabledBefore = obj.audioListener.enabled;
             if (obj.hasAudioListener) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::AudioListener;
                 const std::string audioListenerComponentKey = prepareComponentOpenState(SceneInspectorComponentType::AudioListener);
-                audioListenerOpen = RenderRemovableComponentHeader("Audio Listener", "AudioListenerHeader", GetComponentIconTexture("component-audio-listener.png"), &obj.audioListener.enabled, audioListenerEnabledChanged, removeAudioListener, &componentType, &reorderDraggedType, &reorderTargetType, &audioListenerHeaderActive, &audioListenerHeaderToggledOpen);
+                audioListenerOpen = RenderRemovableComponentHeader("Audio Listener", "AudioListenerHeader", GetComponentIconTexture("component-audio-listener.png"), &obj.audioListener.enabled, audioListenerEnabledChanged, removeAudioListener, &componentType, &reorderDraggedType, &reorderTargetType, &audioListenerHeaderActive, &audioListenerHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::AudioListener), &audioListenerApplyRequested, &audioListenerRevertRequested);
+                handlePrefabComponentMenu(audioListenerApplyRequested, audioListenerRevertRequested, SceneComponentType::AudioListener);
                 finishComponentHeaderState(audioListenerComponentKey, SceneInspectorComponentType::AudioListener, audioListenerHeaderActive, audioListenerHeaderToggledOpen, audioListenerOpen);
             }
             if (removeAudioListener) {
@@ -2904,11 +3066,15 @@ void SceneEditor::RenderInspectorPanel() {
             bool audioSourceEnabledChanged = false;
             bool audioSourceHeaderActive = false;
             bool audioSourceHeaderToggledOpen = false;
+            bool audioSourceApplyRequested = false;
+            bool audioSourceRevertRequested = false;
             const bool audioSourceEnabledBefore = obj.audioSource.enabled;
             if (obj.hasAudioSource) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::AudioSource;
                 const std::string audioSourceComponentKey = prepareComponentOpenState(SceneInspectorComponentType::AudioSource);
-                audioSourceOpen = RenderRemovableComponentHeader("Audio Source", "AudioSourceHeader", GetComponentIconTexture("component-audio-source.png"), &obj.audioSource.enabled, audioSourceEnabledChanged, removeAudioSource, &componentType, &reorderDraggedType, &reorderTargetType, &audioSourceHeaderActive, &audioSourceHeaderToggledOpen);
+                audioSourceOpen = RenderRemovableComponentHeader("Audio Source", "AudioSourceHeader", GetComponentIconTexture("component-audio-source.png"), &obj.audioSource.enabled, audioSourceEnabledChanged, removeAudioSource, &componentType, &reorderDraggedType, &reorderTargetType, &audioSourceHeaderActive, &audioSourceHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::AudioSource), &audioSourceApplyRequested, &audioSourceRevertRequested);
+                handlePrefabComponentMenu(audioSourceApplyRequested, audioSourceRevertRequested, SceneComponentType::AudioSource);
                 finishComponentHeaderState(audioSourceComponentKey, SceneInspectorComponentType::AudioSource, audioSourceHeaderActive, audioSourceHeaderToggledOpen, audioSourceOpen);
             }
             if (removeAudioSource) {
@@ -3001,11 +3167,15 @@ void SceneEditor::RenderInspectorPanel() {
             bool vehicleSoundEnabledChanged = false;
             bool vehicleSoundHeaderActive = false;
             bool vehicleSoundHeaderToggledOpen = false;
+            bool vehicleSoundApplyRequested = false;
+            bool vehicleSoundRevertRequested = false;
             const bool vehicleSoundEnabledBefore = obj.vehicleSound.enabled;
             if (obj.hasVehicleSound) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::VehicleSound;
                 const std::string vehicleSoundComponentKey = prepareComponentOpenState(SceneInspectorComponentType::VehicleSound);
-                vehicleSoundOpen = RenderRemovableComponentHeader("Vehicle Sound", "VehicleSoundHeader", GetComponentIconTexture("component-vehicle-sound.png"), &obj.vehicleSound.enabled, vehicleSoundEnabledChanged, removeVehicleSound, &componentType, &reorderDraggedType, &reorderTargetType, &vehicleSoundHeaderActive, &vehicleSoundHeaderToggledOpen);
+                vehicleSoundOpen = RenderRemovableComponentHeader("Vehicle Sound", "VehicleSoundHeader", GetComponentIconTexture("component-vehicle-sound.png"), &obj.vehicleSound.enabled, vehicleSoundEnabledChanged, removeVehicleSound, &componentType, &reorderDraggedType, &reorderTargetType, &vehicleSoundHeaderActive, &vehicleSoundHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::VehicleSound), &vehicleSoundApplyRequested, &vehicleSoundRevertRequested);
+                handlePrefabComponentMenu(vehicleSoundApplyRequested, vehicleSoundRevertRequested, SceneComponentType::VehicleSound);
                 finishComponentHeaderState(vehicleSoundComponentKey, SceneInspectorComponentType::VehicleSound, vehicleSoundHeaderActive, vehicleSoundHeaderToggledOpen, vehicleSoundOpen);
             }
             if (removeVehicleSound) {
@@ -3054,11 +3224,15 @@ void SceneEditor::RenderInspectorPanel() {
             bool trackGeneratorEnabledChanged = false;
             bool trackGeneratorHeaderActive = false;
             bool trackGeneratorHeaderToggledOpen = false;
+            bool trackGeneratorApplyRequested = false;
+            bool trackGeneratorRevertRequested = false;
             const bool trackGeneratorEnabledBefore = obj.trackGenerator.enabled;
             if (obj.hasTrackGenerator) {
                 SceneInspectorComponentType componentType = SceneInspectorComponentType::TrackGenerator;
                 const std::string trackGeneratorComponentKey = prepareComponentOpenState(SceneInspectorComponentType::TrackGenerator);
-                trackGeneratorOpen = RenderRemovableComponentHeader("Track Generator", "TrackGeneratorHeader", GetComponentIconTexture("asset-track.png"), &obj.trackGenerator.enabled, trackGeneratorEnabledChanged, removeTrackGenerator, &componentType, &reorderDraggedType, &reorderTargetType, &trackGeneratorHeaderActive, &trackGeneratorHeaderToggledOpen);
+                trackGeneratorOpen = RenderRemovableComponentHeader("Track Generator", "TrackGeneratorHeader", GetComponentIconTexture("asset-track.png"), &obj.trackGenerator.enabled, trackGeneratorEnabledChanged, removeTrackGenerator, &componentType, &reorderDraggedType, &reorderTargetType, &trackGeneratorHeaderActive, &trackGeneratorHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::TrackGenerator), &trackGeneratorApplyRequested, &trackGeneratorRevertRequested);
+                handlePrefabComponentMenu(trackGeneratorApplyRequested, trackGeneratorRevertRequested, SceneComponentType::TrackGenerator);
                 finishComponentHeaderState(trackGeneratorComponentKey, SceneInspectorComponentType::TrackGenerator, trackGeneratorHeaderActive, trackGeneratorHeaderToggledOpen, trackGeneratorOpen);
             }
             if (removeTrackGenerator) {
@@ -4197,6 +4371,9 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
     const char* windowTitle = pickingLodMesh ? "Select LOD Mesh" : (pickingMesh ? "Select Project Mesh" : (pickingVehicleConfig ? "Select Vehicle Config" : "Select Project Material"));
     bool pickerOpen = true;
     if (ImGui::Begin(windowTitle, &pickerOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking)) {
+        if (ImGui::IsWindowAppearing()) {
+            assetPickerSearchBuffer_[0] = '\0';
+        }
         if (!pickerOpen || (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape))) {
             assetPickerMode_ = ProjectAssetPickerMode::None;
             pickerOpen = false;
@@ -4224,44 +4401,65 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
             if (ImGui::Button("Refresh")) {
                 RefreshProjectFiles();
             }
-
-            if (pickingMaterial) {
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(190.0f);
-                ImGui::InputText("##newMaterialName", createMaterialNameBuffer_, sizeof(createMaterialNameBuffer_));
-                ImGui::SameLine();
-                if (ImGui::Button("Add Material")) {
-                    std::string newMaterialId;
-                    if (CreateMaterialAsset(createMaterialNameBuffer_, &newMaterialId)) {
-                        createMaterialNameBuffer_[0] = '\0';
-                        AssignMaterialToSelected(newMaterialId);
-                        assetPickerMode_ = ProjectAssetPickerMode::None;
-                        pickerOpen = false;
-                    }
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Create a material and assign it to the selected object.");
-                }
-            } else if (pickingVehicleConfig) {
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(190.0f);
-                ImGui::InputText("##newVehicleConfigName", createVehicleConfigNameBuffer_, sizeof(createVehicleConfigNameBuffer_));
-                ImGui::SameLine();
-                if (ImGui::Button("Add Vehicle Profile")) {
-                    std::string newConfigPath;
-                    if (CreateVehicleConfigAsset(createVehicleConfigNameBuffer_, &newConfigPath)) {
-                        createVehicleConfigNameBuffer_[0] = '\0';
-                        AssignVehicleConfigToSelected(newConfigPath);
-                        OpenVehicleConfigEditor(newConfigPath);
-                        assetPickerMode_ = ProjectAssetPickerMode::None;
-                        pickerOpen = false;
-                    }
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Create a vehicle profile and assign it to the selected vehicle.");
-                }
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() * 1.2f - ImGui::GetStyle().ItemSpacing.x);
+            ImGui::InputTextWithHint("##ProjectAssetPickerSearch", "Search...", assetPickerSearchBuffer_, sizeof(assetPickerSearchBuffer_));
+            ImGui::SameLine();
+            const bool canCreate = pickingMaterial || pickingVehicleConfig;
+            ImGui::BeginDisabled(!canCreate);
+            if (ImGui::Button("+")) {
+                createMaterialNameBuffer_[0] = '\0';
+                createVehicleConfigNameBuffer_[0] = '\0';
+                showAssetPickerCreatePopup_ = true;
+            }
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered() && canCreate) {
+                ImGui::SetTooltip(pickingMaterial ? "Create a new material" : "Create a new vehicle profile");
             }
 
+            if (showAssetPickerCreatePopup_) {
+                ImGui::OpenPopup("Create Asset##AssetPickerCreate");
+                showAssetPickerCreatePopup_ = false;
+            }
+            if (ImGui::BeginPopupModal("Create Asset##AssetPickerCreate", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                char* nameBuffer = pickingMaterial ? createMaterialNameBuffer_ : createVehicleConfigNameBuffer_;
+                const std::size_t nameBufferSize = pickingMaterial ? sizeof(createMaterialNameBuffer_) : sizeof(createVehicleConfigNameBuffer_);
+                ImGui::TextUnformatted(pickingMaterial ? "New Material" : "New Vehicle Profile");
+                ImGui::SetNextItemWidth(260.0f);
+                if (ImGui::IsWindowAppearing()) {
+                    ImGui::SetKeyboardFocusHere();
+                }
+                const bool enterPressed = ImGui::InputText("Name##assetPickerCreateName", nameBuffer, nameBufferSize,
+                    ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+                const bool submit = ImGui::Button("Create") || enterPressed;
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+                    ImGui::CloseCurrentPopup();
+                }
+                if (submit && nameBuffer[0] != '\0') {
+                    if (pickingMaterial) {
+                        std::string newMaterialId;
+                        if (CreateMaterialAsset(nameBuffer, &newMaterialId)) {
+                            AssignMaterialToSelected(newMaterialId);
+                            ImGui::CloseCurrentPopup();
+                            assetPickerMode_ = ProjectAssetPickerMode::None;
+                            pickerOpen = false;
+                        }
+                    } else if (pickingVehicleConfig) {
+                        std::string newConfigPath;
+                        if (CreateVehicleConfigAsset(nameBuffer, &newConfigPath)) {
+                            AssignVehicleConfigToSelected(newConfigPath);
+                            OpenVehicleConfigEditor(newConfigPath);
+                            ImGui::CloseCurrentPopup();
+                            assetPickerMode_ = ProjectAssetPickerMode::None;
+                            pickerOpen = false;
+                        }
+                    }
+                }
+                ImGui::EndPopup();
+            }
+
+            const std::string searchLower = ToLowerCopy(assetPickerSearchBuffer_);
             bool found = false;
             if (ImGui::BeginChild("ProjectAssetPickerList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing() * 2.0f), true)) {
                 for (const std::string& file : projectFiles_) {
@@ -4271,9 +4469,13 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
                     if (!matches) {
                         continue;
                     }
+                    const std::string displayName = ProjectAssetDisplayFilename(file);
+                    if (!searchLower.empty() && ToLowerCopy(displayName).find(searchLower) == std::string::npos) {
+                        continue;
+                    }
 
                     found = true;
-                    const std::string label = ProjectAssetDisplayFilename(file) + "##" + file;
+                    const std::string label = displayName + "##" + file;
                     if (ImGui::Selectable(label.c_str())) {
                         if (pickingMesh) {
                             if (pickingLodMesh) {
@@ -4295,10 +4497,14 @@ void SceneEditor::RenderProjectAssetPickerPopup() {
                 }
 
                 if (!found) {
-                    ImGui::TextDisabled("%s",
-                        pickingMesh
-                            ? "No mesh assets found in project assets."
-                            : (pickingVehicleConfig ? "No vehicle config files found in project assets." : "No material files found in project assets."));
+                    if (!searchLower.empty()) {
+                        ImGui::TextDisabled("No assets match \"%s\".", assetPickerSearchBuffer_);
+                    } else {
+                        ImGui::TextDisabled("%s",
+                            pickingMesh
+                                ? "No mesh assets found in project assets."
+                                : (pickingVehicleConfig ? "No vehicle config files found in project assets." : "No material files found in project assets."));
+                    }
                 }
             }
             ImGui::EndChild();
@@ -4354,6 +4560,63 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         material->name = nameBuf;
         materialChanged = true;
     }
+
+    // Base Material picker: selecting a base turns this into a variant whose
+    // fields resolve lazily from the base unless explicitly overridden below.
+    {
+        const std::vector<std::string> allMaterialIds = materialManager_.ListMaterialIds();
+        std::string basePreview = material->baseMaterialId.empty() ? "None (independent material)" : material->baseMaterialId;
+        if (ImGui::BeginCombo("Base Material##materialBase", basePreview.c_str())) {
+            if (ImGui::Selectable("None (independent material)", material->baseMaterialId.empty())) {
+                material->baseMaterialId.clear();
+                materialChanged = true;
+            }
+            for (const std::string& candidateId : allMaterialIds) {
+                if (candidateId == materialId) continue;
+                if (materialManager_.WouldCreateCycle(materialId, candidateId)) continue;
+                const bool selected = candidateId == material->baseMaterialId;
+                if (ImGui::Selectable(candidateId.c_str(), selected)) {
+                    material->baseMaterialId = candidateId;
+                    materialChanged = true;
+                }
+                if (selected) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Fields below are inherited from the base unless overridden. Editing a field automatically marks it as an override.");
+        }
+    }
+
+    const bool isMaterialVariant = !material->baseMaterialId.empty();
+    const Material inheritedMaterialSnapshot = isMaterialVariant
+        ? materialManager_.Resolve(material->baseMaterialId)
+        : Material{};
+    // Returns true if the field is editable this frame; when not overridden,
+    // the widget is disabled and shows the live inherited value.
+    auto beginFieldOverrideScope = [&](const std::string& fieldId) -> bool {
+        if (!isMaterialVariant) return true;
+        const bool overridden = material->overriddenFieldIds.count(fieldId) > 0;
+        if (!overridden) ImGui::BeginDisabled();
+        return overridden;
+    };
+    auto endFieldOverrideScope = [&](const std::string& fieldId, bool wasEditable) {
+        if (!isMaterialVariant) return;
+        if (!wasEditable) {
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::SmallButton((std::string("Override##ovr_") + fieldId).c_str())) {
+                material->overriddenFieldIds.insert(fieldId);
+                materialChanged = true;
+            }
+        } else {
+            ImGui::SameLine();
+            if (ImGui::SmallButton((std::string("Revert##rev_") + fieldId).c_str())) {
+                material->overriddenFieldIds.erase(fieldId);
+                materialChanged = true;
+            }
+        }
+    };
 
     std::string shaderId = ShaderRegistry::NormalizeShaderId(material->shader);
     int currentShaderIndex = 0;
@@ -4578,6 +4841,12 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         graphProperties = ShaderRegistry::Resolve("pbr").properties;
         properties = &graphProperties;
     }
+    auto showInheritedIfNotOverridden = [&](const std::string& fieldId, auto&& applyInherited) {
+        if (isMaterialVariant && material->overriddenFieldIds.count(fieldId) == 0) {
+            applyInherited();
+        }
+    };
+
     for (const ShaderDefinition::Property& property : *properties) {
         if (property.type == MaterialPropertyType::Texture2D && !textureHeaderShown) {
             ImGui::Separator();
@@ -4585,48 +4854,122 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
             textureHeaderShown = true;
         }
         if (property.id == "albedoColor") {
+            showInheritedIfNotOverridden("albedoColor", [&] { for (int i = 0; i < 4; ++i) material->albedoColor[i] = inheritedMaterialSnapshot.albedoColor[i]; });
+            const bool editable = beginFieldOverrideScope("albedoColor");
             materialChanged |= ImGui::ColorEdit4(property.label.c_str(), material->albedoColor);
+            endFieldOverrideScope("albedoColor", editable);
         } else if (property.id == "emissiveColor") {
+            showInheritedIfNotOverridden("emissiveColor", [&] { for (int i = 0; i < 3; ++i) material->emissiveColor[i] = inheritedMaterialSnapshot.emissiveColor[i]; });
+            const bool editable = beginFieldOverrideScope("emissiveColor");
             materialChanged |= ImGui::ColorEdit3(property.label.c_str(), material->emissiveColor);
+            endFieldOverrideScope("emissiveColor", editable);
         } else if (property.id == "metallic") {
+            showInheritedIfNotOverridden("metallic", [&] { material->metallic = inheritedMaterialSnapshot.metallic; });
+            const bool editable = beginFieldOverrideScope("metallic");
             materialChanged |= ImGui::SliderFloat(property.label.c_str(), &material->metallic, property.minValue, property.maxValue);
+            endFieldOverrideScope("metallic", editable);
         } else if (property.id == "roughness") {
+            showInheritedIfNotOverridden("roughness", [&] { material->roughness = inheritedMaterialSnapshot.roughness; });
+            const bool editable = beginFieldOverrideScope("roughness");
             materialChanged |= ImGui::SliderFloat(property.label.c_str(), &material->roughness, property.minValue, property.maxValue);
+            endFieldOverrideScope("roughness", editable);
         } else if (property.id == "uvTiling") {
+            showInheritedIfNotOverridden("uvTiling", [&] { material->uvTiling[0] = inheritedMaterialSnapshot.uvTiling[0]; material->uvTiling[1] = inheritedMaterialSnapshot.uvTiling[1]; });
+            const bool editable = beginFieldOverrideScope("uvTiling");
             materialChanged |= ImGui::DragFloat2(property.label.c_str(), material->uvTiling, 0.01f, property.minValue, property.maxValue);
+            endFieldOverrideScope("uvTiling", editable);
         } else if (property.id == "uvOffset") {
+            showInheritedIfNotOverridden("uvOffset", [&] { material->uvOffset[0] = inheritedMaterialSnapshot.uvOffset[0]; material->uvOffset[1] = inheritedMaterialSnapshot.uvOffset[1]; });
+            const bool editable = beginFieldOverrideScope("uvOffset");
             materialChanged |= ImGui::DragFloat2(property.label.c_str(), material->uvOffset, 0.01f, property.minValue, property.maxValue);
+            endFieldOverrideScope("uvOffset", editable);
         } else if (property.id == "albedoTexture") {
+            showInheritedIfNotOverridden("texAlbedo", [&] { material->texAlbedo = inheritedMaterialSnapshot.texAlbedo; });
+            const bool editable = beginFieldOverrideScope("texAlbedo");
             editTexturePath(property.label.c_str(), "matTexAlbedo", material->texAlbedo);
+            endFieldOverrideScope("texAlbedo", editable);
         } else if (property.id == "normalTexture") {
+            showInheritedIfNotOverridden("texNormal", [&] { material->texNormal = inheritedMaterialSnapshot.texNormal; });
+            const bool editable = beginFieldOverrideScope("texNormal");
             editTexturePath(property.label.c_str(), "matTexNormal", material->texNormal);
+            endFieldOverrideScope("texNormal", editable);
         } else if (property.id == "metallicTexture") {
+            showInheritedIfNotOverridden("texMetallic", [&] { material->texMetallic = inheritedMaterialSnapshot.texMetallic; });
+            const bool editable = beginFieldOverrideScope("texMetallic");
             editTexturePath(property.label.c_str(), "matTexMetallic", material->texMetallic);
+            endFieldOverrideScope("texMetallic", editable);
         } else if (property.id == "roughnessTexture") {
+            showInheritedIfNotOverridden("texRoughness", [&] { material->texRoughness = inheritedMaterialSnapshot.texRoughness; });
+            const bool editable = beginFieldOverrideScope("texRoughness");
             editTexturePath(property.label.c_str(), "matTexRoughness", material->texRoughness);
+            endFieldOverrideScope("texRoughness", editable);
         } else if (property.id == "aoTexture") {
+            showInheritedIfNotOverridden("texAo", [&] { material->texAo = inheritedMaterialSnapshot.texAo; });
+            const bool editable = beginFieldOverrideScope("texAo");
             editTexturePath(property.label.c_str(), "matTexAo", material->texAo);
+            endFieldOverrideScope("texAo", editable);
         } else {
+            const std::string dynamicFieldId = std::string("prop:") + property.id;
+            showInheritedIfNotOverridden(dynamicFieldId, [&] {
+                if (const auto it = inheritedMaterialSnapshot.properties.find(property.id); it != inheritedMaterialSnapshot.properties.end()) {
+                    material->properties[property.id] = it->second;
+                }
+            });
+            const bool editable = beginFieldOverrideScope(dynamicFieldId);
             editDynamicProperty(property);
+            endFieldOverrideScope(dynamicFieldId, editable);
         }
     }
 
     ImGui::Separator();
     if (ImGui::TreeNodeEx("Advanced Surface", ImGuiTreeNodeFlags_DefaultOpen)) {
-        materialChanged |= ImGui::SliderFloat("Clear Coat", &material->clearCoat, 0.0f, 1.0f);
-        materialChanged |= ImGui::SliderFloat("Clear Coat Roughness", &material->clearCoatRoughness, 0.02f, 1.0f);
-        materialChanged |= ImGui::SliderFloat("Anisotropy", &material->anisotropy, -1.0f, 1.0f);
-        materialChanged |= ImGui::SliderFloat("Transmission", &material->transmission, 0.0f, 1.0f);
+        showInheritedIfNotOverridden("clearCoat", [&] { material->clearCoat = inheritedMaterialSnapshot.clearCoat; });
+        {
+            const bool editable = beginFieldOverrideScope("clearCoat");
+            materialChanged |= ImGui::SliderFloat("Clear Coat", &material->clearCoat, 0.0f, 1.0f);
+            endFieldOverrideScope("clearCoat", editable);
+        }
+        showInheritedIfNotOverridden("clearCoatRoughness", [&] { material->clearCoatRoughness = inheritedMaterialSnapshot.clearCoatRoughness; });
+        {
+            const bool editable = beginFieldOverrideScope("clearCoatRoughness");
+            materialChanged |= ImGui::SliderFloat("Clear Coat Roughness", &material->clearCoatRoughness, 0.02f, 1.0f);
+            endFieldOverrideScope("clearCoatRoughness", editable);
+        }
+        showInheritedIfNotOverridden("anisotropy", [&] { material->anisotropy = inheritedMaterialSnapshot.anisotropy; });
+        {
+            const bool editable = beginFieldOverrideScope("anisotropy");
+            materialChanged |= ImGui::SliderFloat("Anisotropy", &material->anisotropy, -1.0f, 1.0f);
+            endFieldOverrideScope("anisotropy", editable);
+        }
+        showInheritedIfNotOverridden("transmission", [&] { material->transmission = inheritedMaterialSnapshot.transmission; });
+        {
+            const bool editable = beginFieldOverrideScope("transmission");
+            materialChanged |= ImGui::SliderFloat("Transmission", &material->transmission, 0.0f, 1.0f);
+            endFieldOverrideScope("transmission", editable);
+        }
+        showInheritedIfNotOverridden("alphaMode", [&] { material->alphaMode = inheritedMaterialSnapshot.alphaMode; });
         const char* alphaModes[] = {"Opaque", "Mask", "Blend"};
         int alphaModeIndex = material->alphaMode == "Mask" ? 1 : material->alphaMode == "Blend" ? 2 : 0;
-        if (ImGui::Combo("Alpha Mode", &alphaModeIndex, alphaModes, 3)) {
-            material->alphaMode = alphaModes[alphaModeIndex];
-            materialChanged = true;
+        {
+            const bool editable = beginFieldOverrideScope("alphaMode");
+            if (ImGui::Combo("Alpha Mode", &alphaModeIndex, alphaModes, 3)) {
+                material->alphaMode = alphaModes[alphaModeIndex];
+                materialChanged = true;
+            }
+            endFieldOverrideScope("alphaMode", editable);
         }
         if (material->alphaMode == "Mask") {
+            showInheritedIfNotOverridden("alphaCutoff", [&] { material->alphaCutoff = inheritedMaterialSnapshot.alphaCutoff; });
+            const bool editable = beginFieldOverrideScope("alphaCutoff");
             materialChanged |= ImGui::SliderFloat("Alpha Cutoff", &material->alphaCutoff, 0.0f, 1.0f);
+            endFieldOverrideScope("alphaCutoff", editable);
         }
-        materialChanged |= ImGui::Checkbox("Double Sided", &material->doubleSided);
+        showInheritedIfNotOverridden("doubleSided", [&] { material->doubleSided = inheritedMaterialSnapshot.doubleSided; });
+        {
+            const bool editable = beginFieldOverrideScope("doubleSided");
+            materialChanged |= ImGui::Checkbox("Double Sided", &material->doubleSided);
+            endFieldOverrideScope("doubleSided", editable);
+        }
         ImGui::TreePop();
     }
 
@@ -4771,6 +5114,59 @@ bool SceneEditor::CreateMaterialAsset(const std::string& requestedName, std::str
     }
     return true;
 }
+
+bool SceneEditor::CreateMaterialVariant(const std::string& baseMaterialId, const std::string& requestedName, std::string* outMaterialId) {
+    if (!materialManager_.Exists(baseMaterialId)) {
+        materialManager_.LoadAll();
+    }
+    const Material* baseMaterial = materialManager_.Get(baseMaterialId);
+    if (baseMaterial == nullptr) {
+        if (console_) console_->AddError("Base material not found: " + baseMaterialId);
+        return false;
+    }
+
+    std::string materialId = TrimCopyLocal(requestedName);
+    const std::string suffix = ".mat";
+    if (EndsWith(ToLowerCopy(materialId), suffix)) {
+        materialId.resize(materialId.size() - suffix.size());
+    }
+    for (char& ch : materialId) {
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (std::isspace(uch)) ch = '_';
+        else if (!std::isalnum(uch) && ch != '_' && ch != '-') ch = '_';
+    }
+    materialId = TrimCopyLocal(materialId);
+    if (materialId.empty()) {
+        if (console_) console_->AddError("Material name must contain letters or numbers.");
+        return false;
+    }
+    if (materialManager_.Exists(materialId)) {
+        if (console_) console_->AddError("Material already exists: " + materialId);
+        return false;
+    }
+
+    // Start from the base's current values so the file is well-formed even
+    // before anything is overridden; Resolve() re-derives non-overridden
+    // fields live from the base regardless of what's stored here.
+    Material variant = *baseMaterial;
+    variant.name = materialId;
+    variant.baseMaterialId = baseMaterialId;
+    variant.overriddenFieldIds.clear();
+
+    // Note: placed under the assets root (MaterialManager's default path),
+    // not the currently browsed project folder; drag it into place afterward
+    // like any other asset if a specific folder is wanted.
+    if (!materialManager_.Save(materialId, variant)) {
+        if (console_) console_->AddError("Failed to create material variant: " + materialId);
+        return false;
+    }
+    materialManager_.LoadAll();
+    RefreshProjectFiles();
+    if (outMaterialId) *outMaterialId = materialId;
+    if (console_) console_->AddLog("Created material variant: " + materialId + " (base: " + baseMaterialId + ")");
+    return true;
+}
+
 bool SceneEditor::AssignMaterialToSelected(const std::string& materialId) {
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size()) || materialId.empty()) {
         return false;

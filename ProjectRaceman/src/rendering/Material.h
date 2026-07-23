@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <array>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -54,6 +55,14 @@ struct Material {
     std::string texAo;
 
     std::unordered_map<std::string, MaterialPropertyValue> properties;
+
+    // Material variants: empty baseMaterialId means an independent/base
+    // material. Fields whose id appears in overriddenFieldIds override the
+    // base; all other fields are inherited and resolved lazily via
+    // MaterialManager::Resolve(). Dynamic `properties` entries are keyed as
+    // "prop:<name>" in overriddenFieldIds.
+    std::string baseMaterialId;
+    std::set<std::string> overriddenFieldIds;
 };
 
 class MaterialManager {
@@ -72,9 +81,17 @@ public:
 
     std::vector<std::string> ListMaterialIds() const;
 
+    // Flattened effective material: walks the baseMaterialId chain root->leaf
+    // and applies only the fields each level marks as overridden. Cycle-safe.
+    Material Resolve(const std::string& id) const;
+    // True if setting candidateId's base to proposedBaseId would create a
+    // cycle (including candidateId == proposedBaseId).
+    bool WouldCreateCycle(const std::string& candidateId, const std::string& proposedBaseId) const;
+
 private:
     std::unordered_map<std::string, Material> materials_;
     std::unordered_map<std::string, std::string> materialPaths_;
+    mutable std::unordered_map<std::string, Material> resolveCache_;
     static std::string MaterialPath(const std::string& id);
     static bool LoadOne(const std::string& path, Material& out);
 };

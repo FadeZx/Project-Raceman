@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "name": "Emission",
+  "shader": "emissive",
+  "albedoColor": [1, 1, 1, 1],
+  "metallic": 0,
+  "roughness": 0.5,
+  "clearCoat": 0,
+  "clearCoatRoughness": 0.02,
+  "anisotropy": 0,
+  "transmission": 0,
+  "alphaMode": "Opaque",
+  "alphaCutoff": 0.5,
+  "doubleSided": false,
+  "emissiveColor": [0.771028, 0.771028, 0.771028],
+  "uvTiling": [1, 1],
+  "uvOffset": [0, 0],
+  "textures": {
+    "albedo": "",
+    "normal": "",
+    "metallic": "",
+    "roughness": "",
+    "ao": ""
+  },
+  "properties": {
+    "emissiveIntensity": { "type": "float", "value": 4.657 },
+    "albedoColor": { "type": "vec4", "value": [1, 1, 1, 1] },
+    "albedoTexture": { "type": "texture2D", "value": "" },
+    "alphaCutoff": { "type": "float", "value": 0 },
+    "metallic": { "type": "float", "value": 0 },
+    "aoTexture": { "type": "texture2D", "value": "" },
+    "emissiveTexture": { "type": "texture2D", "value": "" },
+    "emissiveColor": { "type": "vec3", "value": [0, 0, 0] },
+    "metallicTexture": { "type": "texture2D", "value": "" },
+    "normalTexture": { "type": "texture2D", "value": "" },
+    "roughness": { "type": "float", "value": 0.5 },
+    "roughnessTexture": { "type": "texture2D", "value": "" },
+    "uvOffset": { "type": "vec2", "value": [0, 0] },
+    "uvTiling": { "type": "vec2", "value": [1, 1] }
+  }
+}

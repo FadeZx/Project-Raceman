@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "pivotMode": 0,
+  "importMaterials": true,
+  "materialLocation": 0,
+  "materialRemapNaming": 0,
+  "materialRemapSearch": 0,
+  "materials": [
+    {
+      "meshIndex": 0,
+      "meshName": "Chevrolet.Wheel.Ft.R",
+      "importedMaterialName": "wheel",
+      "materialId": "chevrolet-nascar-flwheel_wheel"
+    }
+  ],
+  "collisions": [
+    {
+      "meshIndex": 0,
+      "meshName": "Chevrolet.Wheel.Ft.R",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    }
+  ]
+}
