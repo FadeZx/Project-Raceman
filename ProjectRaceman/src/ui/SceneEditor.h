@@ -199,6 +199,16 @@ private:
                                                  int width,
                                                  int height);
     void ClearModelChildThumbnailCache(const std::string& importPath, int meshIndex);
+    // Renders (and caches) a lit sphere textured with the given material for use
+    // as its browser icon, Unity-style. Returns 0 if the material/renderer is
+    // unavailable.
+    unsigned int GetMaterialPreviewTexture(const std::string& materialId, int width, int height);
+    // As above but for an already-resolved material value (per-object instances),
+    // keyed by an explicit cache key.
+    unsigned int GetMaterialPreviewTextureForMaterial(const std::string& cacheKey, const Material& resolved, int width, int height);
+    // Effective material for an object: its embedded per-object instance override
+    // resolved against the shared base, or just the shared material.
+    Material ResolveObjectMaterial(const MeshRendererComponent& meshRenderer) const;
     bool RefreshModelAssetInspectorCache(bool forceReload);
     void RenderMaterialInspector();
     void RenderShaderGraphEditorWindow();
@@ -208,6 +218,14 @@ private:
                                          SceneInspectorComponentType& reorderDraggedType,
                                          SceneInspectorComponentType& reorderTargetType);
     void RenderMaterialProperties(const std::string& materialId, bool showBackButton);
+    // Inline editor for an object's embedded per-object material instance
+    // (edits meshRenderer.materialOverride, saves to the scene, never to disk).
+    void RenderMaterialOverrideEditor(MeshRendererComponent& meshRenderer, const std::string& objectPreviewKey);
+    // Shared material-editor body used by both the asset editor and the embedded
+    // instance editor. `assetId` is the on-disk id (empty for instances);
+    // `lockedBaseId` is the fixed inherited base for instances.
+    void RenderMaterialEditor(Material* material, bool isEmbeddedInstance, const std::string& assetId,
+                              const std::string& lockedBaseId, const std::string& previewCacheKey, bool showBackButton);
     void RenderProjectAssetPickerPopup();
     unsigned int GetComponentIconTexture(const std::string& filename);
     void HandleEditorShortcuts();
@@ -516,6 +534,10 @@ private:
     bool showCreateMaterialVariantPopup_{false};
     std::string pendingMaterialVariantBaseId_;
     char createMaterialVariantNameBuffer_[128]{};
+    // When set, the variant produced by the Create Material Variant popup is
+    // assigned to the current selection (used by the object Material slot's
+    // "Create Variant" action, mirroring Unity's create-and-assign flow).
+    bool pendingMaterialVariantAssignToSelection_{false};
 
     struct RuntimeScriptInstance {
         std::string objectId;
@@ -735,6 +757,32 @@ private:
         int height{0};
     };
     std::unordered_map<std::string, ModelThumbnailCacheEntry> modelThumbnailCache_;
+    // Unity-style material thumbnails: a lit sphere rendered with the material.
+    // Keyed by material id; each entry re-renders in place when the material's
+    // resolved content hash changes, so editing a material refreshes its icon.
+    struct MaterialPreviewCacheEntry {
+        unsigned int framebuffer{0};
+        unsigned int texture{0};
+        unsigned int depthRenderbuffer{0};
+        int width{0};
+        int height{0};
+        std::size_t contentHash{0};
+        bool rendered{false};
+    };
+    std::unordered_map<std::string, MaterialPreviewCacheEntry> materialPreviewCache_;
+    unsigned int materialPreviewSphereVao_{0};
+    unsigned int materialPreviewSphereVbo_{0};
+    unsigned int materialPreviewSphereEbo_{0};
+    unsigned int materialPreviewSphereIndexCount_{0};
+    // HDR intermediate + ACES/sRGB resolve so previews get the same tone mapping
+    // as the viewport (raw HDR would clip emissive/bright materials to white).
+    unsigned int materialPreviewHdrFbo_{0};
+    unsigned int materialPreviewHdrColor_{0};
+    unsigned int materialPreviewHdrDepth_{0};
+    int materialPreviewHdrWidth_{0};
+    int materialPreviewHdrHeight_{0};
+    unsigned int materialPreviewTonemapProgram_{0};
+    unsigned int materialPreviewFullscreenVao_{0};
     std::vector<MaterialHistoryState> materialUndoStack_;
     std::vector<MaterialHistoryState> materialRedoStack_;
     bool materialEditActive_{false};

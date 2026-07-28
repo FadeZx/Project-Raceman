@@ -51,6 +51,7 @@ inline bool ReadVec3(const raceman::physics::json::Object& object, const std::st
 inline bool ReadVec4(const raceman::physics::json::Object& object, const std::string& key, glm::vec4& out);
 inline bool ReadBool(const raceman::physics::json::Object& object, const std::string& key, bool& out);
 inline bool ReadString(const raceman::physics::json::Object& object, const std::string& key, std::string& out);
+inline void ReadMeshRendererMaterialOverride(const raceman::physics::json::Object& component, MeshRendererComponent& meshRenderer);
 
 enum class SceneColliderType {
     None,
@@ -1371,6 +1372,21 @@ inline bool ReadString(const raceman::physics::json::Object& object, const std::
     }
     out = it->second.as_string();
     return true;
+}
+
+// Reads an optional embedded per-object material instance from a MeshRenderer
+// component object. The override's base is pinned to the component's materialId
+// so live inheritance always resolves against the shared material.
+inline void ReadMeshRendererMaterialOverride(const raceman::physics::json::Object& component, MeshRendererComponent& meshRenderer) {
+    auto it = component.find("materialOverride");
+    if (it == component.end() || !it->second.is_object()) {
+        return;
+    }
+    meshRenderer.hasMaterialOverride = true;
+    meshRenderer.materialOverride = Material{};
+    ReadMaterialFromJson(it->second, meshRenderer.materialOverride);
+    meshRenderer.materialOverride.baseMaterialId =
+        meshRenderer.materialId.empty() ? std::string("pbr_default") : meshRenderer.materialId;
 }
 
 inline std::string RigidbodyBodyTypeToString(RigidbodyBodyType bodyType) {

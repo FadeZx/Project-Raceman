@@ -48,6 +48,29 @@ enum class AntiAliasingMode {
     SMAA
 };
 
+// Scene View draw modes, mirroring Unity's shading dropdown and Unreal's view
+// modes. These are editor preview state only: the Game View always renders with
+// the project's graphics profile, so what ships is never changed by whatever the
+// Scene View happens to be displaying. The cheap modes additionally skip the
+// passes they cannot show, so previewing in Wireframe or Unlit costs far less
+// than a full lit frame.
+enum class SceneViewShadingMode {
+    Shaded,
+    ShadedWireframe,
+    Wireframe,
+    Unlit,
+    Plain,
+    MotionVectors,
+    Ssao,
+    ShadowCascades,
+    Ssr,
+    TaaResolve,
+    IblDiffuseIrradiance,
+    IblRawEnvironment,
+    IblFinalSpecular,
+    Count
+};
+
 struct GraphicsProfile {
     int version{1};
     RenderStyle style{RenderStyle::Realistic};
@@ -117,8 +140,13 @@ struct GraphicsProfile {
     float minimumResolutionScale{0.75f};
     int dynamicResolutionTargetFps{60};
     float exposure{1.0f};
-    // Scene View debug shading modes, not persisted as look/quality choices.
+    // Resolved view-mode state, written by ResolveProfileForTarget from
+    // RendererSettings::sceneViewShading. Do not set these directly and do not
+    // persist them: they are always cleared for the Game View, and so are the
+    // *DebugView flags and iblDebugMode declared above.
     bool wireframeView{false};
+    bool wireframeOverlay{false};
+    bool forceUnlitShading{false};
     bool plainView{false};
     float stylizedBands{4.0f};
     float stylizedRimStrength{0.35f};
@@ -130,6 +158,9 @@ struct RendererSettings {
     glm::vec3 editorClearColor{0.02f, 0.02f, 0.02f};
     bool enableDrawCallSorting{true};
     GraphicsProfile profile{};
+    // Scene View only, and deliberately not persisted with the project's look
+    // settings. The Game View ignores this entirely.
+    SceneViewShadingMode sceneViewShading{SceneViewShadingMode::Shaded};
 };
 
 struct DisplayHdrCapabilities {
@@ -310,6 +341,10 @@ public:
     float GetEnvironmentAverageLuminance() const { return environmentAverageLuminance_; }
     RendererSettings& GetSettings() { return settings_; }
     const RendererSettings& GetSettings() const { return settings_; }
+    // Profile actually used to draw `target`: the project profile untouched for
+    // the Game View, and the project profile with the Scene View shading mode
+    // folded in for the Scene View.
+    GraphicsProfile ResolveProfileForTarget(ViewportRenderTarget target) const;
     const RendererConfig& GetConfig() const;
     const RendererViewport& GetViewport() const { return viewport_; }
     const RendererFrameStats& GetFrameStats() const { return frameStats_; }
@@ -397,6 +432,13 @@ private:
     void DestroyViewportTarget(ViewportTarget& target);
     ViewportTarget& GetViewportTarget(ViewportRenderTarget target);
     const ViewportTarget& GetViewportTarget(ViewportRenderTarget target) const;
+    // The profile in force for whatever is rendering right now. Outside a
+    // viewport pass - resource allocation, reflection probe bakes - this falls
+    // back to the project profile, so Scene View overrides can never leak into
+    // baked data or into the Game View's render targets.
+    const GraphicsProfile& Profile() const {
+        return viewportTargetActive_ ? activeProfile_ : settings_.profile;
+    }
 
     RendererConfig config_{};
     RendererViewport viewport_{};
@@ -474,6 +516,7 @@ private:
     std::unordered_map<std::string, std::unique_ptr<Shader>> materialShaders_;
     ViewportRenderTarget activeViewportTarget_{ViewportRenderTarget::Scene};
     bool viewportTargetActive_{false};
+    GraphicsProfile activeProfile_{};
     glm::mat4 view_{1.0f};
     glm::mat4 proj_{1.0f};
     glm::mat4 unjitteredProj_{1.0f};

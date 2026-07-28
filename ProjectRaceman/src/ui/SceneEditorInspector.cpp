@@ -1782,6 +1782,16 @@ void SceneEditor::RenderInspectorPanel() {
                     if (ImGui::MenuItem("Edit")) {
                         OpenMaterialEditor(materialId);
                     }
+                    // Unity-style: create a variant of the assigned material and
+                    // immediately assign it back to the selection, so tweaks stay
+                    // local to this object without touching the shared base.
+                    if (ImGui::MenuItem("Create Variant")) {
+                        pendingMaterialVariantBaseId_ = materialId;
+                        pendingMaterialVariantAssignToSelection_ = true;
+                        const std::string defaultName = materialId + "_variant";
+                        std::snprintf(createMaterialVariantNameBuffer_, sizeof(createMaterialVariantNameBuffer_), "%s", defaultName.c_str());
+                        showCreateMaterialVariantPopup_ = true;
+                    }
                     ImGui::EndPopup();
                 }
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
@@ -1806,8 +1816,77 @@ void SceneEditor::RenderInspectorPanel() {
                 if (ImGui::Button("Edit##materialProperties")) {
                     OpenMaterialEditor(materialId);
                 }
+                ImGui::SameLine();
+                if (ImGui::Button("Create Variant##meshMaterialVariant")) {
+                    pendingMaterialVariantBaseId_ = materialId;
+                    pendingMaterialVariantAssignToSelection_ = true;
+                    const std::string defaultName = materialId + "_variant";
+                    std::snprintf(createMaterialVariantNameBuffer_, sizeof(createMaterialVariantNameBuffer_), "%s", defaultName.c_str());
+                    showCreateMaterialVariantPopup_ = true;
+                }
+
+                const bool hasInstance = obj.meshRenderer.hasMaterialOverride;
+                const std::string instancePreviewKey = std::string("objinst:") + obj.id;
+                // Per-object material instance: an embedded live-inherit variant
+                // edited here and applied only to this object; no browser asset.
+                if (!hasInstance) {
+                    if (ImGui::Button("Create Material Instance##createMatInstance")) {
+                        PushUndoState();
+                        obj.meshRenderer.hasMaterialOverride = true;
+                        obj.meshRenderer.materialOverride = Material{};
+                        obj.meshRenderer.materialOverride.baseMaterialId = materialId;
+                        obj.meshRenderer.materialOverride.overriddenFieldIds.clear();
+                        obj.meshRenderer.materialOverride.name = materialId + " (Instance)";
+                        if (onDirty_) onDirty_();
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Create a per-object copy you can tweak without changing the shared material or adding a browser asset.");
+                    }
+                } else {
+                    ImGui::SameLine();
+                    if (ImGui::Button("Revert to Shared##revertMatInstance")) {
+                        PushUndoState();
+                        obj.meshRenderer.hasMaterialOverride = false;
+                        obj.meshRenderer.materialOverride = Material{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
+
                 if (material != nullptr) {
-                    ImGui::ColorButton("Albedo Preview", ImVec4(material->albedoColor[0], material->albedoColor[1], material->albedoColor[2], material->albedoColor[3]));
+                    // Unity-style lit-sphere preview of the material actually used
+                    // by this object (instance override applied when present).
+                    const unsigned int slotPreview = hasInstance
+                        ? GetMaterialPreviewTextureForMaterial(instancePreviewKey, ResolveObjectMaterial(obj.meshRenderer), 112, 112)
+                        : GetMaterialPreviewTexture(materialId, 112, 112);
+                    if (slotPreview != 0) {
+                        ImGui::Image(static_cast<ImTextureID>(slotPreview), ImVec2(56.0f, 56.0f),
+                                     ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+                        ImGui::SameLine();
+                    }
+                    ImGui::BeginGroup();
+                    if (hasInstance) {
+                        ImGui::TextColored(ImVec4(0.55f, 0.80f, 1.0f, 1.0f), "Instance of %s", materialId.c_str());
+                    } else if (material->baseMaterialId.empty()) {
+                        ImGui::TextDisabled("Base material");
+                    } else {
+                        ImGui::TextDisabled("Variant of %s", material->baseMaterialId.c_str());
+                    }
+                    const Material albedoSource = ResolveObjectMaterial(obj.meshRenderer);
+                    ImGui::ColorButton("Albedo Preview", ImVec4(albedoSource.albedoColor[0], albedoSource.albedoColor[1], albedoSource.albedoColor[2], albedoSource.albedoColor[3]));
+                    ImGui::EndGroup();
+
+                    // Inline, editable material properties. When an instance is
+                    // active it edits the embedded override (scene-saved); else
+                    // the shared asset (Unity shows the material under the renderer).
+                    const char* inlineLabel = hasInstance ? "Material Instance##inlineMaterial" : "Material Properties##inlineMaterial";
+                    if (ImGui::TreeNodeEx(inlineLabel, ImGuiTreeNodeFlags_None)) {
+                        if (hasInstance) {
+                            RenderMaterialOverrideEditor(obj.meshRenderer, instancePreviewKey);
+                        } else {
+                            RenderMaterialProperties(materialId, false);
+                        }
+                        ImGui::TreePop();
+                    }
                 } else {
                     ImGui::TextDisabled("Material asset not loaded.");
                 }
@@ -4546,24 +4625,78 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         return;
     }
 
-    ImGui::PushID(materialId.c_str());
-    ImGui::TextUnformatted("Material Asset");
-    ImGui::TextWrapped("ID: %s", materialId.c_str());
+    RenderMaterialEditor(material, false, materialId, std::string(), materialId, showBackButton);
+}
+
+void SceneEditor::RenderMaterialOverrideEditor(MeshRendererComponent& meshRenderer, const std::string& objectPreviewKey) {
+    const std::string baseId = meshRenderer.materialId.empty() ? std::string("pbr_default") : meshRenderer.materialId;
+    // Keep the embedded instance anchored to the currently-assigned shared
+    // material so live inheritance always tracks the right base.
+    meshRenderer.materialOverride.baseMaterialId = baseId;
+    RenderMaterialEditor(&meshRenderer.materialOverride, true, std::string(), baseId, objectPreviewKey, false);
+}
+
+void SceneEditor::RenderMaterialEditor(Material* material, bool isEmbeddedInstance, const std::string& assetId,
+                                       const std::string& lockedBaseId, const std::string& previewCacheKey, bool showBackButton) {
+    if (material == nullptr) {
+        return;
+    }
+
+    const std::string idScope = !assetId.empty() ? assetId : previewCacheKey;
+    ImGui::PushID(idScope.c_str());
+
+    // Resolved material for the preview thumbnails (instance overrides applied).
+    auto resolveForPreview = [&]() -> Material {
+        return isEmbeddedInstance
+            ? materialManager_.ResolveWithOverride(lockedBaseId, *material)
+            : materialManager_.Resolve(assetId);
+    };
+
+    // Unity-style header: a small lit-sphere thumbnail beside the name/id, with
+    // a right-click "Create Variant" action (asset editor only).
+    const float headerThumbSize = 40.0f;
+    const unsigned int headerPreview = GetMaterialPreviewTextureForMaterial(previewCacheKey, resolveForPreview(), 80, 80);
+    if (headerPreview != 0) {
+        ImGui::Image(static_cast<ImTextureID>(headerPreview), ImVec2(headerThumbSize, headerThumbSize),
+                     ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+    } else {
+        ImGui::Dummy(ImVec2(headerThumbSize, headerThumbSize));
+    }
+    if (!isEmbeddedInstance && ImGui::BeginPopupContextItem("MaterialHeaderContext")) {
+        if (ImGui::MenuItem("Create Variant")) {
+            pendingMaterialVariantBaseId_ = assetId;
+            pendingMaterialVariantAssignToSelection_ = false;
+            const std::string defaultName = assetId + "_variant";
+            std::snprintf(createMaterialVariantNameBuffer_, sizeof(createMaterialVariantNameBuffer_), "%s", defaultName.c_str());
+            showCreateMaterialVariantPopup_ = true;
+        }
+        ImGui::EndPopup();
+    }
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    if (isEmbeddedInstance) {
+        ImGui::TextUnformatted("Material Instance");
+        ImGui::TextWrapped("Instance of: %s", lockedBaseId.c_str());
+    } else {
+        ImGui::TextUnformatted(material->baseMaterialId.empty() ? "Material Asset" : "Material Variant");
+        ImGui::TextWrapped("ID: %s", assetId.c_str());
+    }
+    ImGui::EndGroup();
     ImGui::Separator();
 
     const Material beforeEdit = *material;
     bool materialChanged = false;
 
-    char nameBuf[128];
-    std::snprintf(nameBuf, sizeof(nameBuf), "%s", material->name.c_str());
-    if (ImGui::InputText("Name##materialName", nameBuf, sizeof(nameBuf))) {
-        material->name = nameBuf;
-        materialChanged = true;
-    }
+    if (!isEmbeddedInstance) {
+        char nameBuf[128];
+        std::snprintf(nameBuf, sizeof(nameBuf), "%s", material->name.c_str());
+        if (ImGui::InputText("Name##materialName", nameBuf, sizeof(nameBuf))) {
+            material->name = nameBuf;
+            materialChanged = true;
+        }
 
-    // Base Material picker: selecting a base turns this into a variant whose
-    // fields resolve lazily from the base unless explicitly overridden below.
-    {
+        // Base Material picker: selecting a base turns this into a variant whose
+        // fields resolve lazily from the base unless explicitly overridden below.
         const std::vector<std::string> allMaterialIds = materialManager_.ListMaterialIds();
         std::string basePreview = material->baseMaterialId.empty() ? "None (independent material)" : material->baseMaterialId;
         if (ImGui::BeginCombo("Base Material##materialBase", basePreview.c_str())) {
@@ -4572,8 +4705,8 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
                 materialChanged = true;
             }
             for (const std::string& candidateId : allMaterialIds) {
-                if (candidateId == materialId) continue;
-                if (materialManager_.WouldCreateCycle(materialId, candidateId)) continue;
+                if (candidateId == assetId) continue;
+                if (materialManager_.WouldCreateCycle(assetId, candidateId)) continue;
                 const bool selected = candidateId == material->baseMaterialId;
                 if (ImGui::Selectable(candidateId.c_str(), selected)) {
                     material->baseMaterialId = candidateId;
@@ -4588,9 +4721,10 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         }
     }
 
-    const bool isMaterialVariant = !material->baseMaterialId.empty();
+    const bool isMaterialVariant = isEmbeddedInstance ? true : !material->baseMaterialId.empty();
+    const std::string inheritBaseId = isEmbeddedInstance ? lockedBaseId : material->baseMaterialId;
     const Material inheritedMaterialSnapshot = isMaterialVariant
-        ? materialManager_.Resolve(material->baseMaterialId)
+        ? materialManager_.Resolve(inheritBaseId)
         : Material{};
     // Returns true if the field is editable this frame; when not overridden,
     // the widget is disabled and shows the live inherited value.
@@ -4720,9 +4854,12 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
         RenderShaderGraphParametersPreview(editableShaderGraphPath);
     }
 
+    // For an embedded instance there is no asset file; resolve texture paths
+    // relative to the shared base material's location instead.
+    const std::string materialLookupId = assetId.empty() ? lockedBaseId : assetId;
     std::string materialProjectPath;
     for (const std::string& file : projectFiles_) {
-        if (IsMaterialAssetPath(file) && MaterialIdFromAssetPath(file) == materialId) {
+        if (IsMaterialAssetPath(file) && MaterialIdFromAssetPath(file) == materialLookupId) {
             materialProjectPath = file;
             break;
         }
@@ -4974,14 +5111,42 @@ void SceneEditor::RenderMaterialProperties(const std::string& materialId, bool s
     }
 
     if (materialChanged && !materialEditActive_) {
-        PushMaterialUndoState(beforeEdit);
+        if (isEmbeddedInstance) {
+            PushUndoState();
+        } else {
+            PushMaterialUndoState(beforeEdit);
+        }
         materialEditActive_ = true;
     }
-    if (materialChanged && !materialManager_.Save(materialId, *material) && console_) {
-        console_->AddError("Failed to auto-save material: " + materialId);
+    if (materialChanged) {
+        if (isEmbeddedInstance) {
+            // Embedded instance lives in the scene object: mark the scene dirty
+            // rather than writing a .mat.json to the browser.
+            if (onDirty_) onDirty_();
+        } else if (!materialManager_.Save(assetId, *material) && console_) {
+            console_->AddError("Failed to auto-save material: " + assetId);
+        }
     }
     if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
         materialEditActive_ = false;
+    }
+
+    // Unity-style large preview panel: a lit sphere shaded with this material,
+    // pinned to the bottom of the material editor.
+    ImGui::Separator();
+    if (ImGui::CollapsingHeader("Preview", ImGuiTreeNodeFlags_DefaultOpen)) {
+        const float available = ImGui::GetContentRegionAvail().x;
+        const float previewDim = (std::min)(available, 180.0f);
+        const int previewPixels = (std::max)(64, static_cast<int>(previewDim));
+        const unsigned int preview = GetMaterialPreviewTextureForMaterial(previewCacheKey, resolveForPreview(), previewPixels, previewPixels);
+        if (preview != 0) {
+            const float offsetX = (std::max)(0.0f, (available - previewDim) * 0.5f);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+            ImGui::Image(static_cast<ImTextureID>(preview), ImVec2(previewDim, previewDim),
+                         ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+        } else {
+            ImGui::TextDisabled("Preview unavailable.");
+        }
     }
 
     if (showBackButton) {

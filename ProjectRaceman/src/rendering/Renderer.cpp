@@ -144,8 +144,8 @@ void Renderer::EnsureViewportRenderTarget(ViewportRenderTarget target, int width
     height = (std::max)(1, height);
     renderTarget.requestedWidth = width;
     renderTarget.requestedHeight = height;
-    if (settings_.profile.dynamicResolution) {
-        const float minimumScale = (std::clamp)(settings_.profile.minimumResolutionScale, 0.5f, 1.0f);
+    if (Profile().dynamicResolution) {
+        const float minimumScale = (std::clamp)(Profile().minimumResolutionScale, 0.5f, 1.0f);
         renderTarget.resolutionScale = (std::clamp)(renderTarget.resolutionScale, minimumScale, 1.0f);
     } else {
         renderTarget.resolutionScale = 1.0f;
@@ -153,8 +153,8 @@ void Renderer::EnsureViewportRenderTarget(ViewportRenderTarget target, int width
     width = (std::max)(1, static_cast<int>(std::lround(static_cast<float>(width) * renderTarget.resolutionScale)));
     height = (std::max)(1, static_cast<int>(std::lround(static_cast<float>(height) * renderTarget.resolutionScale)));
     int ssaoResolutionDivisor = 2;
-    if (settings_.profile.quality == GraphicsQualityTier::Low) ssaoResolutionDivisor = 4;
-    if (settings_.profile.quality == GraphicsQualityTier::Ultra) ssaoResolutionDivisor = 1;
+    if (Profile().quality == GraphicsQualityTier::Low) ssaoResolutionDivisor = 4;
+    if (Profile().quality == GraphicsQualityTier::Ultra) ssaoResolutionDivisor = 1;
     const int desiredSsaoWidth = (std::max)(1, width / ssaoResolutionDivisor);
     const int desiredSsaoHeight = (std::max)(1, height / ssaoResolutionDivisor);
 
@@ -506,6 +506,14 @@ void Renderer::BeginFrameToViewportTarget(ViewportRenderTarget target, const glm
         return;
     }
 
+    // Resolve before anything reads Profile(). Everything from the dynamic
+    // resolution governor down to the final tonemap then runs against this
+    // target's own profile, which is how a cheap Scene View shading mode stops
+    // costing anything while the Game View keeps rendering the shipped look.
+    activeViewportTarget_ = target;
+    viewportTargetActive_ = true;
+    activeProfile_ = ResolveProfileForTarget(target);
+
     const double nowSeconds = SteadySeconds();
     if (renderTarget.lastFrameBeginSeconds > 0.0) {
         const float frameTimeMs = static_cast<float>((nowSeconds - renderTarget.lastFrameBeginSeconds) * 1000.0);
@@ -513,11 +521,11 @@ void Renderer::BeginFrameToViewportTarget(ViewportRenderTarget target, const glm
             renderTarget.smoothedFrameTimeMs = renderTarget.smoothedFrameTimeMs <= 0.0f
                 ? frameTimeMs
                 : renderTarget.smoothedFrameTimeMs * 0.90f + frameTimeMs * 0.10f;
-            if (settings_.profile.dynamicResolution) {
+            if (Profile().dynamicResolution) {
                 if (renderTarget.resolutionAdjustmentCooldown > 0) --renderTarget.resolutionAdjustmentCooldown;
                 if (renderTarget.resolutionAdjustmentCooldown <= 0) {
-                    const float targetFrameMs = 1000.0f / static_cast<float>((std::clamp)(settings_.profile.dynamicResolutionTargetFps, 30, 240));
-                    const float minimumScale = (std::clamp)(settings_.profile.minimumResolutionScale, 0.5f, 1.0f);
+                    const float targetFrameMs = 1000.0f / static_cast<float>((std::clamp)(Profile().dynamicResolutionTargetFps, 30, 240));
+                    const float minimumScale = (std::clamp)(Profile().minimumResolutionScale, 0.5f, 1.0f);
                     float newScale = renderTarget.resolutionScale;
                     if (renderTarget.smoothedFrameTimeMs > targetFrameMs * 1.06f) newScale -= 0.0625f;
                     else if (renderTarget.smoothedFrameTimeMs < targetFrameMs * 0.85f) newScale += 0.0625f;
@@ -532,9 +540,7 @@ void Renderer::BeginFrameToViewportTarget(ViewportRenderTarget target, const glm
     }
     renderTarget.lastFrameBeginSeconds = nowSeconds;
 
-    activeViewportTarget_ = target;
-    viewportTargetActive_ = true;
-    if (settings_.profile.antiAliasing == AntiAliasingMode::TAA) {
+    if (Profile().antiAliasing == AntiAliasingMode::TAA) {
         ++renderTarget.taaFrameIndex;
     } else {
         renderTarget.taaHistoryValid = false;
@@ -555,6 +561,108 @@ void Renderer::BeginFrameToViewportTarget(ViewportRenderTarget target, const glm
     glClearBufferfv(GL_COLOR, 2, noAmbient);
     const GLfloat noMaterial[4] = {0.0f, 1.0f, 0.0f, 0.0f};
     glClearBufferfv(GL_COLOR, 3, noMaterial);
+}
+
+GraphicsProfile Renderer::ResolveProfileForTarget(ViewportRenderTarget target) const {
+    GraphicsProfile resolved = settings_.profile;
+
+    // View modes are Scene View preview state. Clear every one of them first so
+    // the Game View is guaranteed to render the project's shipped look no matter
+    // what the editor is currently displaying.
+    resolved.wireframeView = false;
+    resolved.wireframeOverlay = false;
+    resolved.forceUnlitShading = false;
+    resolved.plainView = false;
+    resolved.motionBlurDebugView = false;
+    resolved.ssaoDebugView = false;
+    resolved.shadowCascadeDebugView = false;
+    resolved.ssrDebugView = false;
+    resolved.taaDebugView = false;
+    resolved.iblDebugMode = 0;
+    if (target != ViewportRenderTarget::Scene) {
+        return resolved;
+    }
+
+    // plainView already suppresses the screen-space and temporal post chain.
+    // Dropping shadows, IBL and reflections on top of it is what makes the
+    // unlit modes genuinely cheap rather than just visually flat: the cascaded
+    // shadow pass is usually the most expensive thing in the frame.
+    auto disableLighting = [&resolved]() {
+        resolved.shadows = false;
+        resolved.reflections = false;
+        resolved.screenSpaceReflections = false;
+        resolved.ssao = false;
+        resolved.localShadowLightLimit = 0;
+    };
+    auto disablePost = [&resolved]() {
+        resolved.plainView = true;
+        resolved.antiAliasing = AntiAliasingMode::None;
+        resolved.bloom = false;
+        resolved.depthOfField = false;
+        resolved.motionBlur = false;
+        resolved.weather = false;
+        resolved.particles = false;
+    };
+
+    switch (settings_.sceneViewShading) {
+    case SceneViewShadingMode::Shaded:
+        break;
+    case SceneViewShadingMode::ShadedWireframe:
+        resolved.wireframeOverlay = true;
+        break;
+    case SceneViewShadingMode::Wireframe:
+        resolved.wireframeView = true;
+        resolved.forceUnlitShading = true;
+        disableLighting();
+        disablePost();
+        break;
+    case SceneViewShadingMode::Unlit:
+        resolved.forceUnlitShading = true;
+        disableLighting();
+        disablePost();
+        break;
+    case SceneViewShadingMode::Plain:
+        // Lit, but with no post chain at all. Lighting and shadows stay on
+        // because judging light placement is the whole point of this mode.
+        disablePost();
+        break;
+    case SceneViewShadingMode::MotionVectors:
+        resolved.motionBlur = true;
+        resolved.motionBlurDebugView = true;
+        break;
+    case SceneViewShadingMode::Ssao:
+        resolved.ssao = true;
+        resolved.ssaoDebugView = true;
+        break;
+    case SceneViewShadingMode::ShadowCascades:
+        resolved.shadows = true;
+        resolved.shadowCascadeDebugView = true;
+        break;
+    case SceneViewShadingMode::Ssr:
+        resolved.reflections = true;
+        resolved.screenSpaceReflections = true;
+        resolved.ssrDebugView = true;
+        break;
+    case SceneViewShadingMode::TaaResolve:
+        resolved.antiAliasing = AntiAliasingMode::TAA;
+        resolved.taaDebugView = true;
+        break;
+    case SceneViewShadingMode::IblDiffuseIrradiance:
+        resolved.reflections = true;
+        resolved.iblDebugMode = 1;
+        break;
+    case SceneViewShadingMode::IblRawEnvironment:
+        resolved.reflections = true;
+        resolved.iblDebugMode = 2;
+        break;
+    case SceneViewShadingMode::IblFinalSpecular:
+        resolved.reflections = true;
+        resolved.iblDebugMode = 3;
+        break;
+    case SceneViewShadingMode::Count:
+        break;
+    }
+    return resolved;
 }
 
 void Renderer::EndFrameToViewportTarget() {
@@ -584,7 +692,7 @@ unsigned int Renderer::GetViewportRenderTargetTexture(ViewportRenderTarget targe
 }
 
 unsigned int Renderer::GetViewportHdrOutputTexture(ViewportRenderTarget target) const {
-    return settings_.profile.hdr ? GetViewportTarget(target).hdrOutputTexture : 0;
+    return Profile().hdr ? GetViewportTarget(target).hdrOutputTexture : 0;
 }
 
 unsigned int Renderer::GetViewportDepthTexture(ViewportRenderTarget target) const {
@@ -852,8 +960,8 @@ bool Renderer::CaptureReflectionProbeFaces(const glm::vec3& position,
         glViewport(0, 0, resolution, resolution);
         glDisable(GL_SCISSOR_TEST);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        glClearColor(settings_.profile.ambientColor.r, settings_.profile.ambientColor.g,
-                     settings_.profile.ambientColor.b, 1.0f);
+        glClearColor(Profile().ambientColor.r, Profile().ambientColor.g,
+                     Profile().ambientColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (environmentMaps_.source != 0 && reflectionCaptureSkyShader_) {
@@ -1237,10 +1345,10 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     // Plain View is the "no extra graphics" mode: every screen-space and
     // temporal post effect is skipped so the image is just the tonemapped
     // lit scene, matching Unity's minimal shaded-only viewport.
-    const bool plainViewActive = settings_.profile.plainView;
+    const bool plainViewActive = Profile().plainView;
 
     const glm::mat4 currentViewProjection = proj_ * view_;
-    const bool needsVelocity = settings_.profile.motionBlur || settings_.profile.antiAliasing == AntiAliasingMode::TAA;
+    const bool needsVelocity = Profile().motionBlur || Profile().antiAliasing == AntiAliasingMode::TAA;
     const bool velocityReady = needsVelocity && motionVectorShader_ && target.velocityFramebuffer != 0 &&
         target.velocityTexture != 0 && target.depthTexture != 0;
     if (velocityReady) {
@@ -1299,13 +1407,13 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     glDisable(GL_BLEND);
     glBindVertexArray(fullscreenQuad_);
 
-    const bool ssaoReady = !plainViewActive && settings_.profile.ssao && ssaoShader_ && ssaoBlurShader_ &&
+    const bool ssaoReady = !plainViewActive && Profile().ssao && ssaoShader_ && ssaoBlurShader_ &&
         ssaoCompositeShader_ && ssaoNoiseTexture_ != 0 && target.ssaoFramebuffer != 0 &&
         target.ssaoTexture != 0 && target.ssaoBlurFramebuffer != 0 && target.ssaoBlurTexture != 0 &&
         target.compositeFramebuffer != 0 && target.compositeTexture != 0 && target.ambientTexture != 0;
     if (ssaoReady) {
         int sampleCount = 24;
-        switch (settings_.profile.quality) {
+        switch (Profile().quality) {
         case GraphicsQualityTier::Low: sampleCount = 8; break;
         case GraphicsQualityTier::Medium: sampleCount = 16; break;
         case GraphicsQualityTier::Ultra: sampleCount = 32; break;
@@ -1318,8 +1426,8 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         ssaoShader_->setInt("uNormalTexture", 1);
         ssaoShader_->setInt("uNoiseTexture", 2);
         ssaoShader_->setInt("uSampleCount", sampleCount);
-        ssaoShader_->setFloat("uRadius", (std::clamp)(settings_.profile.ssaoRadius, 0.05f, 5.0f));
-        ssaoShader_->setFloat("uBias", (std::clamp)(settings_.profile.ssaoBias, 0.001f, 0.2f));
+        ssaoShader_->setFloat("uRadius", (std::clamp)(Profile().ssaoRadius, 0.05f, 5.0f));
+        ssaoShader_->setFloat("uBias", (std::clamp)(Profile().ssaoBias, 0.001f, 0.2f));
         ssaoShader_->setMat4("uProjection", proj_);
         ssaoShader_->setMat4("uInverseProjection", glm::inverse(proj_));
         ssaoShader_->setMat4("uView", view_);
@@ -1359,7 +1467,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         ssaoCompositeShader_->setInt("uAmbientTexture", 1);
         ssaoCompositeShader_->setInt("uSsaoTexture", 2);
         ssaoCompositeShader_->setInt("uNormalTexture", 3);
-        ssaoCompositeShader_->setFloat("uIntensity", (std::clamp)(settings_.profile.ssaoIntensity, 0.0f, 3.0f));
+        ssaoCompositeShader_->setFloat("uIntensity", (std::clamp)(Profile().ssaoIntensity, 0.0f, 3.0f));
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, target.hdrColorTexture);
         glActiveTexture(GL_TEXTURE1);
@@ -1372,9 +1480,9 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     }
 
     unsigned int postProcessSceneTexture = ssaoReady ? target.compositeTexture : target.hdrColorTexture;
-    const bool ssaoDebugActive = ssaoReady && settings_.profile.ssaoDebugView;
-    const bool ssrReady = !plainViewActive && !ssaoDebugActive && settings_.profile.reflections &&
-        settings_.profile.screenSpaceReflections && settings_.profile.iblDebugMode == 0 && ssrShader_ &&
+    const bool ssaoDebugActive = ssaoReady && Profile().ssaoDebugView;
+    const bool ssrReady = !plainViewActive && !ssaoDebugActive && Profile().reflections &&
+        Profile().screenSpaceReflections && Profile().iblDebugMode == 0 && ssrShader_ &&
         target.ssrFramebuffer != 0 && target.ssrTexture != 0 && target.materialTexture != 0;
     if (ssrReady) {
         glBindFramebuffer(GL_FRAMEBUFFER, target.ssrFramebuffer);
@@ -1388,11 +1496,11 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         ssrShader_->setMat4("uInverseProjection", glm::inverse(proj_));
         ssrShader_->setMat4("uView", view_);
         ssrShader_->setVec2("uTexelSize", 1.0f / static_cast<float>(target.width), 1.0f / static_cast<float>(target.height));
-        ssrShader_->setFloat("uIntensity", (std::clamp)(settings_.profile.ssrIntensity, 0.0f, 2.0f));
-        ssrShader_->setFloat("uMaxDistance", (std::clamp)(settings_.profile.ssrMaxDistance, 1.0f, 200.0f));
-        ssrShader_->setFloat("uThickness", (std::clamp)(settings_.profile.ssrThickness, 0.01f, 2.0f));
-        ssrShader_->setInt("uMaxSteps", (std::clamp)(settings_.profile.ssrSteps, 8, 96));
-        ssrShader_->setBool("uDebugView", settings_.profile.ssrDebugView);
+        ssrShader_->setFloat("uIntensity", (std::clamp)(Profile().ssrIntensity, 0.0f, 2.0f));
+        ssrShader_->setFloat("uMaxDistance", (std::clamp)(Profile().ssrMaxDistance, 1.0f, 200.0f));
+        ssrShader_->setFloat("uThickness", (std::clamp)(Profile().ssrThickness, 0.01f, 2.0f));
+        ssrShader_->setInt("uMaxSteps", (std::clamp)(Profile().ssrSteps, 8, 96));
+        ssrShader_->setBool("uDebugView", Profile().ssrDebugView);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, postProcessSceneTexture);
         glActiveTexture(GL_TEXTURE1);
@@ -1404,13 +1512,13 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         glDrawArrays(GL_TRIANGLES, 0, 3);
         postProcessSceneTexture = target.ssrTexture;
     }
-    const bool ssrDebugActive = ssrReady && settings_.profile.ssrDebugView;
+    const bool ssrDebugActive = ssrReady && Profile().ssrDebugView;
     const bool spatialDebugActive = ssaoDebugActive || ssrDebugActive;
-    const bool depthOfFieldReady = !plainViewActive && !spatialDebugActive && settings_.profile.depthOfField && depthOfFieldShader_ &&
+    const bool depthOfFieldReady = !plainViewActive && !spatialDebugActive && Profile().depthOfField && depthOfFieldShader_ &&
         target.depthOfFieldFramebuffer != 0 && target.depthOfFieldTexture != 0;
     if (depthOfFieldReady) {
         int sampleCount = 12;
-        switch (settings_.profile.quality) {
+        switch (Profile().quality) {
         case GraphicsQualityTier::Low: sampleCount = 6; break;
         case GraphicsQualityTier::Medium: sampleCount = 8; break;
         case GraphicsQualityTier::Ultra: sampleCount = 16; break;
@@ -1423,9 +1531,9 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         depthOfFieldShader_->setInt("uDepthTexture", 1);
         depthOfFieldShader_->setMat4("uInverseProjection", glm::inverse(proj_));
         depthOfFieldShader_->setVec2("uTexelSize", 1.0f / static_cast<float>(target.width), 1.0f / static_cast<float>(target.height));
-        depthOfFieldShader_->setFloat("uFocusDistance", (std::max)(0.01f, settings_.profile.depthOfFieldFocusDistance));
-        depthOfFieldShader_->setFloat("uFocusRange", (std::max)(0.01f, settings_.profile.depthOfFieldFocusRange));
-        depthOfFieldShader_->setFloat("uMaxRadiusPixels", (std::clamp)(settings_.profile.depthOfFieldMaxRadius, 0.5f, 24.0f));
+        depthOfFieldShader_->setFloat("uFocusDistance", (std::max)(0.01f, Profile().depthOfFieldFocusDistance));
+        depthOfFieldShader_->setFloat("uFocusRange", (std::max)(0.01f, Profile().depthOfFieldFocusRange));
+        depthOfFieldShader_->setFloat("uMaxRadiusPixels", (std::clamp)(Profile().depthOfFieldMaxRadius, 0.5f, 24.0f));
         depthOfFieldShader_->setInt("uSampleCount", sampleCount);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, postProcessSceneTexture);
@@ -1434,7 +1542,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         glDrawArrays(GL_TRIANGLES, 0, 3);
         postProcessSceneTexture = target.depthOfFieldTexture;
     }
-    const bool taaReady = !plainViewActive && !spatialDebugActive && settings_.profile.antiAliasing == AntiAliasingMode::TAA &&
+    const bool taaReady = !plainViewActive && !spatialDebugActive && Profile().antiAliasing == AntiAliasingMode::TAA &&
         velocityReady && taaShader_ && target.taaFramebuffers[0] != 0 && target.taaHistoryTextures[0] != 0 &&
         target.taaSurfaceHistoryTextures[0] != 0;
     if (taaReady) {
@@ -1464,9 +1572,9 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         taaShader_->setVec2("uTexelSize", 1.0f / static_cast<float>(target.width), 1.0f / static_cast<float>(target.height));
         // Below ~0.85 feedback TAA stops accumulating and the jitter shows as
         // raw shimmer, so the effective range is clamped away from that zone.
-        taaShader_->setFloat("uFeedback", target.taaHistoryValid ? (std::clamp)(settings_.profile.taaFeedback, 0.85f, 0.98f) : 0.0f);
-        taaShader_->setFloat("uSharpness", (std::clamp)(settings_.profile.taaSharpness, 0.0f, 0.5f));
-        taaShader_->setBool("uDebugView", settings_.profile.taaDebugView);
+        taaShader_->setFloat("uFeedback", target.taaHistoryValid ? (std::clamp)(Profile().taaFeedback, 0.85f, 0.98f) : 0.0f);
+        taaShader_->setFloat("uSharpness", (std::clamp)(Profile().taaSharpness, 0.0f, 0.5f));
+        taaShader_->setBool("uDebugView", Profile().taaDebugView);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, postProcessSceneTexture);
         glActiveTexture(GL_TEXTURE1);
@@ -1486,11 +1594,11 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         target.taaPreviousJitterUv = target.taaCurrentJitterUv;
         target.taaPreviousCameraPosition = cameraPosition;
         target.taaPreviousCameraForward = cameraForward;
-    } else if (settings_.profile.antiAliasing != AntiAliasingMode::TAA) {
+    } else if (Profile().antiAliasing != AntiAliasingMode::TAA) {
         target.taaHistoryValid = false;
     }
-    const bool motionBlurReady = !plainViewActive && !spatialDebugActive && !(taaReady && settings_.profile.taaDebugView) &&
-        settings_.profile.motionBlur && velocityReady &&
+    const bool motionBlurReady = !plainViewActive && !spatialDebugActive && !(taaReady && Profile().taaDebugView) &&
+        Profile().motionBlur && velocityReady &&
         motionBlurShader_ && target.motionBlurFramebuffer != 0 && target.motionBlurTexture != 0;
     if (motionBlurReady) {
         glBindFramebuffer(GL_FRAMEBUFFER, target.motionBlurFramebuffer);
@@ -1500,14 +1608,14 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         motionBlurShader_->setInt("uVelocityTexture", 1);
         motionBlurShader_->setInt("uDepthTexture", 2);
         motionBlurShader_->setFloat("uVelocityScale",
-            (std::clamp)(settings_.profile.motionBlurIntensity, 0.0f, 2.0f) *
-            (std::clamp)(settings_.profile.motionBlurShutterAngle, 0.0f, 360.0f) / 180.0f);
-        motionBlurShader_->setInt("uSampleCount", (std::clamp)(settings_.profile.motionBlurSamples, 4, 32));
-        motionBlurShader_->setFloat("uMaxRadiusPixels", (std::clamp)(settings_.profile.motionBlurMaxRadius, 1.0f, 64.0f));
+            (std::clamp)(Profile().motionBlurIntensity, 0.0f, 2.0f) *
+            (std::clamp)(Profile().motionBlurShutterAngle, 0.0f, 360.0f) / 180.0f);
+        motionBlurShader_->setInt("uSampleCount", (std::clamp)(Profile().motionBlurSamples, 4, 32));
+        motionBlurShader_->setFloat("uMaxRadiusPixels", (std::clamp)(Profile().motionBlurMaxRadius, 1.0f, 64.0f));
         motionBlurShader_->setFloat("uMinimumVelocityPixels",
-            (std::clamp)(settings_.profile.motionBlurMinimumVelocityPixels, 0.0f, 8.0f));
+            (std::clamp)(Profile().motionBlurMinimumVelocityPixels, 0.0f, 8.0f));
         motionBlurShader_->setVec2("uResolution", static_cast<float>(target.width), static_cast<float>(target.height));
-        motionBlurShader_->setBool("uDebugView", settings_.profile.motionBlurDebugView);
+        motionBlurShader_->setBool("uDebugView", Profile().motionBlurDebugView);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, postProcessSceneTexture);
         glActiveTexture(GL_TEXTURE1);
@@ -1517,13 +1625,13 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         glDrawArrays(GL_TRIANGLES, 0, 3);
         postProcessSceneTexture = target.motionBlurTexture;
     }
-    const bool weatherReady = !plainViewActive && !spatialDebugActive && !(taaReady && settings_.profile.taaDebugView) &&
-        settings_.profile.weather && settings_.profile.weatherIntensity > 0.001f && weatherShader_ &&
+    const bool weatherReady = !plainViewActive && !spatialDebugActive && !(taaReady && Profile().taaDebugView) &&
+        Profile().weather && Profile().weatherIntensity > 0.001f && weatherShader_ &&
         target.weatherFramebuffer != 0 && target.weatherTexture != 0;
     if (weatherReady) {
         float particleDensity = 0.0f;
-        if (settings_.profile.particles) {
-            switch (settings_.profile.quality) {
+        if (Profile().particles) {
+            switch (Profile().quality) {
             case GraphicsQualityTier::Low: particleDensity = 0.35f; break;
             case GraphicsQualityTier::Medium: particleDensity = 0.60f; break;
             case GraphicsQualityTier::Ultra: particleDensity = 1.25f; break;
@@ -1537,8 +1645,8 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         weatherShader_->setInt("uDepthTexture", 1);
         weatherShader_->setVec2("uResolution", static_cast<float>(target.width), static_cast<float>(target.height));
         weatherShader_->setFloat("uTime", static_cast<float>(std::fmod(SteadySeconds(), 4096.0)));
-        weatherShader_->setFloat("uIntensity", (std::clamp)(settings_.profile.weatherIntensity, 0.0f, 1.0f));
-        weatherShader_->setFloat("uWind", (std::clamp)(settings_.profile.weatherWind, -2.0f, 2.0f));
+        weatherShader_->setFloat("uIntensity", (std::clamp)(Profile().weatherIntensity, 0.0f, 1.0f));
+        weatherShader_->setFloat("uWind", (std::clamp)(Profile().weatherWind, -2.0f, 2.0f));
         weatherShader_->setFloat("uParticleDensity", particleDensity);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, postProcessSceneTexture);
@@ -1547,23 +1655,23 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         glDrawArrays(GL_TRIANGLES, 0, 3);
         postProcessSceneTexture = target.weatherTexture;
     }
-    const bool postDebugActive = plainViewActive || spatialDebugActive || (taaReady && settings_.profile.taaDebugView) ||
-        (motionBlurReady && settings_.profile.motionBlurDebugView);
+    const bool postDebugActive = plainViewActive || spatialDebugActive || (taaReady && Profile().taaDebugView) ||
+        (motionBlurReady && Profile().motionBlurDebugView);
 
-    const bool bloomReady = !postDebugActive && settings_.profile.bloom && bloomExtractShader_ && bloomBlurShader_ &&
+    const bool bloomReady = !postDebugActive && Profile().bloom && bloomExtractShader_ && bloomBlurShader_ &&
         target.bloomFramebuffers[0] != 0 && target.bloomTextures[0] != 0;
     if (bloomReady) {
         glViewport(0, 0, target.bloomWidth, target.bloomHeight);
         glBindFramebuffer(GL_FRAMEBUFFER, target.bloomFramebuffers[0]);
         bloomExtractShader_->use();
         bloomExtractShader_->setInt("uHdrScene", 0);
-        bloomExtractShader_->setFloat("uThreshold", (std::max)(0.0f, settings_.profile.bloomThreshold));
+        bloomExtractShader_->setFloat("uThreshold", (std::max)(0.0f, Profile().bloomThreshold));
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, postProcessSceneTexture);
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
         int blurIterations = 3;
-        switch (settings_.profile.quality) {
+        switch (Profile().quality) {
         case GraphicsQualityTier::Low: blurIterations = 1; break;
         case GraphicsQualityTier::Medium: blurIterations = 2; break;
         case GraphicsQualityTier::Ultra: blurIterations = 4; break;
@@ -1571,7 +1679,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         }
         bloomBlurShader_->use();
         bloomBlurShader_->setInt("uImage", 0);
-        const float radius = (std::clamp)(settings_.profile.bloomRadius, 0.25f, 3.0f);
+        const float radius = (std::clamp)(Profile().bloomRadius, 0.25f, 3.0f);
         for (int iteration = 0; iteration < blurIterations; ++iteration) {
             glBindFramebuffer(GL_FRAMEBUFFER, target.bloomFramebuffers[1]);
             bloomBlurShader_->setVec2("uTexelStep", radius / static_cast<float>(target.bloomWidth), 0.0f);
@@ -1590,27 +1698,27 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     toneMapShader_->setInt("uBloomTexture", 1);
     toneMapShader_->setInt("uSsaoTexture", 2);
     toneMapShader_->setBool("uDebugSsao", ssaoDebugActive);
-    toneMapShader_->setFloat("uSsaoIntensity", (std::clamp)(settings_.profile.ssaoIntensity, 0.0f, 3.0f));
+    toneMapShader_->setFloat("uSsaoIntensity", (std::clamp)(Profile().ssaoIntensity, 0.0f, 3.0f));
     toneMapShader_->setBool("uEnableBloom", bloomReady);
-    toneMapShader_->setFloat("uBloomIntensity", (std::max)(0.0f, settings_.profile.bloomIntensity));
-    toneMapShader_->setFloat("uExposure", (std::max)(0.01f, settings_.profile.exposure));
-    toneMapShader_->setBool("uEnableColorGrading", settings_.profile.colorGrading && !postDebugActive);
-    toneMapShader_->setFloat("uSaturation", (std::clamp)(settings_.profile.colorSaturation, 0.0f, 2.0f));
-    toneMapShader_->setFloat("uContrast", (std::clamp)(settings_.profile.colorContrast, 0.5f, 2.0f));
-    toneMapShader_->setFloat("uTemperature", (std::clamp)(settings_.profile.colorTemperature, -1.0f, 1.0f));
-    toneMapShader_->setFloat("uTint", (std::clamp)(settings_.profile.colorTint, -1.0f, 1.0f));
-    toneMapShader_->setBool("uEnableVignette", settings_.profile.vignette && !postDebugActive);
-    toneMapShader_->setFloat("uVignetteIntensity", (std::clamp)(settings_.profile.vignetteIntensity, 0.0f, 1.0f));
-    toneMapShader_->setFloat("uVignetteSmoothness", (std::clamp)(settings_.profile.vignetteSmoothness, 0.05f, 1.0f));
-    toneMapShader_->setBool("uEnableFilmGrain", settings_.profile.filmGrain && !postDebugActive);
-    toneMapShader_->setFloat("uFilmGrainIntensity", (std::clamp)(settings_.profile.filmGrainIntensity, 0.0f, 0.25f));
+    toneMapShader_->setFloat("uBloomIntensity", (std::max)(0.0f, Profile().bloomIntensity));
+    toneMapShader_->setFloat("uExposure", (std::max)(0.01f, Profile().exposure));
+    toneMapShader_->setBool("uEnableColorGrading", Profile().colorGrading && !postDebugActive);
+    toneMapShader_->setFloat("uSaturation", (std::clamp)(Profile().colorSaturation, 0.0f, 2.0f));
+    toneMapShader_->setFloat("uContrast", (std::clamp)(Profile().colorContrast, 0.5f, 2.0f));
+    toneMapShader_->setFloat("uTemperature", (std::clamp)(Profile().colorTemperature, -1.0f, 1.0f));
+    toneMapShader_->setFloat("uTint", (std::clamp)(Profile().colorTint, -1.0f, 1.0f));
+    toneMapShader_->setBool("uEnableVignette", Profile().vignette && !postDebugActive);
+    toneMapShader_->setFloat("uVignetteIntensity", (std::clamp)(Profile().vignetteIntensity, 0.0f, 1.0f));
+    toneMapShader_->setFloat("uVignetteSmoothness", (std::clamp)(Profile().vignetteSmoothness, 0.05f, 1.0f));
+    toneMapShader_->setBool("uEnableFilmGrain", Profile().filmGrain && !postDebugActive);
+    toneMapShader_->setFloat("uFilmGrainIntensity", (std::clamp)(Profile().filmGrainIntensity, 0.0f, 0.25f));
     toneMapShader_->setFloat("uTime", static_cast<float>(std::fmod(SteadySeconds(), 4096.0)));
-    const float paperWhiteNits = (std::clamp)(settings_.profile.hdrPaperWhiteNits, 80.0f, 500.0f);
-    const float peakBrightnessNits = (std::clamp)(settings_.profile.hdrPeakBrightnessNits,
+    const float paperWhiteNits = (std::clamp)(Profile().hdrPaperWhiteNits, 80.0f, 500.0f);
+    const float peakBrightnessNits = (std::clamp)(Profile().hdrPeakBrightnessNits,
         paperWhiteNits, 4000.0f);
     toneMapShader_->setFloat("uHdrPaperWhiteNits", paperWhiteNits);
     toneMapShader_->setFloat("uHdrPeakBrightnessNits", peakBrightnessNits);
-    toneMapShader_->setBool("uEnableFxaa", !plainViewActive && settings_.profile.antiAliasing == AntiAliasingMode::FXAA);
+    toneMapShader_->setBool("uEnableFxaa", !plainViewActive && Profile().antiAliasing == AntiAliasingMode::FXAA);
     toneMapShader_->setVec2("uInverseResolution",
         1.0f / static_cast<float>((std::max)(1, target.width)),
         1.0f / static_cast<float>((std::max)(1, target.height)));
@@ -1621,13 +1729,13 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, ssaoReady ? target.ssaoBlurTexture : 0);
 
-    const bool smaaReady = !postDebugActive && settings_.profile.antiAliasing == AntiAliasingMode::SMAA &&
+    const bool smaaReady = !postDebugActive && Profile().antiAliasing == AntiAliasingMode::SMAA &&
         smaaEdgeShader_ && smaaWeightsShader_ && smaaBlendShader_ &&
         smaaAreaTexture_ != 0 && smaaSearchTexture_ != 0 &&
         target.smaaColorFramebuffer != 0 && target.smaaEdgeFramebuffer != 0 && target.smaaWeightFramebuffer != 0;
 
     glViewport(0, 0, target.width, target.height);
-    const bool hdrOutputActive = settings_.profile.hdr && target.hdrOutputFramebuffer != 0;
+    const bool hdrOutputActive = Profile().hdr && target.hdrOutputFramebuffer != 0;
     if (hdrOutputActive) {
         glBindFramebuffer(GL_FRAMEBUFFER, smaaReady ? target.smaaHdrColorFramebuffer : target.hdrOutputFramebuffer);
         toneMapShader_->setInt("uOutputMode", 1);
@@ -1636,7 +1744,7 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     // Editor panels and the current GLFW default framebuffer are SDR. Keep a
     // display-referred preview separate from the unclamped scRGB HDR output.
     glBindFramebuffer(GL_FRAMEBUFFER, smaaReady ? target.smaaColorFramebuffer : target.outputFramebuffer);
-    toneMapShader_->setInt("uOutputMode", settings_.profile.hdr ? 2 : 0);
+    toneMapShader_->setInt("uOutputMode", Profile().hdr ? 2 : 0);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     if (smaaReady) {
@@ -1830,7 +1938,7 @@ const Renderer::ViewportTarget& Renderer::GetViewportTarget(ViewportRenderTarget
 
 void Renderer::SubmitMesh(const MeshDrawCommand& cmd) {
     drawList_.push_back(cmd);
-    if (viewportTargetActive_ && (settings_.profile.motionBlur || settings_.profile.antiAliasing == AntiAliasingMode::TAA)) {
+    if (viewportTargetActive_ && (Profile().motionBlur || Profile().antiAliasing == AntiAliasingMode::TAA)) {
         motionVectorDrawList_.push_back(cmd);
     }
     ++frameStats_.submittedMeshCount;
@@ -1931,9 +2039,17 @@ void Renderer::Flush() {
             const glm::vec3 rightCenterOffset = cameraPosition - right.position;
             return glm::dot(leftCenterOffset, leftCenterOffset) < glm::dot(rightCenterOffset, rightCenterOffset);
         });
-    auto commandIsTransparent = [](const MeshDrawCommand& cmd) {
-        const std::string shaderId = cmd.unlit ? std::string("unlit") : ShaderRegistry::NormalizeShaderId(cmd.shaderId);
-        return cmd.transparent || ShaderRegistry::Resolve(shaderId).transparent || cmd.color.a < 0.999f;
+    // Unlit Scene View modes swap every material for the flat unlit shader, so
+    // shader selection, sorting and transparency classification all have to
+    // agree on the substitution.
+    const bool forceUnlitShading = Profile().forceUnlitShading;
+    auto commandShaderId = [forceUnlitShading](const MeshDrawCommand& cmd) {
+        return (cmd.unlit || forceUnlitShading)
+            ? std::string("unlit")
+            : ShaderRegistry::NormalizeShaderId(cmd.shaderId);
+    };
+    auto commandIsTransparent = [&commandShaderId](const MeshDrawCommand& cmd) {
+        return cmd.transparent || ShaderRegistry::Resolve(commandShaderId(cmd)).transparent || cmd.color.a < 0.999f;
     };
     auto commandViewDepth = [&](const MeshDrawCommand& cmd) {
         const glm::vec3 sortCenter = cmd.hasTransparentSortBounds
@@ -1996,19 +2112,19 @@ void Renderer::Flush() {
     std::array<glm::mat4, 4> spotLightMatrices{glm::mat4(1.0f), glm::mat4(1.0f), glm::mat4(1.0f), glm::mat4(1.0f)};
     int spotShadowCount = 0;
     int pointShadowCount = 0;
-    if (settings_.profile.shadows && shadowLightIndex >= 0 &&
+    if (Profile().shadows && shadowLightIndex >= 0 &&
         (!opaqueCommands.empty() || !shadowCasterList_.empty()) && shadowDepthShader_) {
         int shadowResolution = 2048;
-        switch (settings_.profile.quality) {
+        switch (Profile().quality) {
         case GraphicsQualityTier::Low: shadowResolution = 1024; break;
         case GraphicsQualityTier::Medium: shadowResolution = 1536; break;
         case GraphicsQualityTier::Ultra: shadowResolution = 4096; break;
         case GraphicsQualityTier::High: break;
         }
-        if (settings_.profile.shadowResolution > 0) {
-            shadowResolution = settings_.profile.shadowResolution;
+        if (Profile().shadowResolution > 0) {
+            shadowResolution = Profile().shadowResolution;
         }
-        directionalCascadeCount = (std::clamp)(settings_.profile.shadowCascadeCount, 1, maxShadowCascades);
+        directionalCascadeCount = (std::clamp)(Profile().shadowCascadeCount, 1, maxShadowCascades);
         CreateShadowMaps(shadowResolution, directionalCascadeCount);
 
         float cameraNear = proj_[3][2] / (proj_[2][2] - 1.0f);
@@ -2018,7 +2134,7 @@ void Renderer::Flush() {
         if (!std::isfinite(cameraNear) || cameraNear < 0.001f) cameraNear = 0.1f;
         if (!std::isfinite(cameraFar) || cameraFar <= cameraNear) cameraFar = 1000.0f;
         const float shadowFar = (std::min)(cameraFar,
-            (std::clamp)(settings_.profile.shadowDistance, 10.0f, 1000.0f));
+            (std::clamp)(Profile().shadowDistance, 10.0f, 1000.0f));
         constexpr float splitLambda = 0.65f;
         for (int cascade = 0; cascade < directionalCascadeCount; ++cascade) {
             const float ratio = static_cast<float>(cascade + 1) / static_cast<float>(directionalCascadeCount);
@@ -2159,9 +2275,9 @@ void Renderer::Flush() {
         directionalShadowReady = true;
     }
 
-    if (settings_.profile.shadows && (!opaqueCommands.empty() || !shadowCasterList_.empty()) &&
+    if (Profile().shadows && (!opaqueCommands.empty() || !shadowCasterList_.empty()) &&
         shadowDepthShader_ && pointShadowDepthShader_) {
-        const int localLimit = (std::clamp)(settings_.profile.localShadowLightLimit, 0, 4);
+        const int localLimit = (std::clamp)(Profile().localShadowLightLimit, 0, 4);
         for (int i = 0; i < lightCount && spotShadowCount + pointShadowCount < localLimit; ++i) {
             const LightDrawCommand& light = lightDrawList_[static_cast<std::size_t>(i)];
             if (!light.castShadows || light.type == RenderLightType::Directional) continue;
@@ -2173,15 +2289,15 @@ void Renderer::Flush() {
         }
         int spotResolution = 1024;
         int pointResolution = 512;
-        switch (settings_.profile.quality) {
+        switch (Profile().quality) {
         case GraphicsQualityTier::Low: spotResolution = 256; pointResolution = 256; break;
         case GraphicsQualityTier::Medium: spotResolution = 512; pointResolution = 256; break;
         case GraphicsQualityTier::Ultra: spotResolution = 2048; pointResolution = 1024; break;
         case GraphicsQualityTier::High: break;
         }
-        if (settings_.profile.shadowResolution > 0) {
-            spotResolution = (std::clamp)(settings_.profile.shadowResolution / 2, 256, 2048);
-            pointResolution = (std::clamp)(settings_.profile.shadowResolution / 4, 256, 1024);
+        if (Profile().shadowResolution > 0) {
+            spotResolution = (std::clamp)(Profile().shadowResolution / 2, 256, 2048);
+            pointResolution = (std::clamp)(Profile().shadowResolution / 4, 256, 1024);
         }
         CreateLocalShadowMaps(spotResolution, spotShadowCount, pointResolution, pointShadowCount);
 
@@ -2298,11 +2414,11 @@ void Renderer::Flush() {
         shader.setInt("uMaterialMetallicTexture", 2);
         shader.setInt("uMaterialRoughnessTexture", 3);
         shader.setInt("uMaterialAoTexture", 4);
-        shader.setVec3("uAmbientColor", settings_.profile.ambientColor);
+        shader.setVec3("uAmbientColor", Profile().ambientColor);
         shader.setVec3("uCameraPosition", cameraPosition);
-        shader.setBool("uStylized", settings_.profile.style == RenderStyle::Stylized);
-        shader.setFloat("uStylizedBands", (std::max)(2.0f, settings_.profile.stylizedBands));
-        shader.setFloat("uStylizedRimStrength", (std::max)(0.0f, settings_.profile.stylizedRimStrength));
+        shader.setBool("uStylized", Profile().style == RenderStyle::Stylized);
+        shader.setFloat("uStylizedBands", (std::max)(2.0f, Profile().stylizedBands));
+        shader.setFloat("uStylizedRimStrength", (std::max)(0.0f, Profile().stylizedRimStrength));
         shader.setBool("uEnableDirectionalShadow", directionalShadowReady);
         shader.setInt("uShadowLightIndex", shadowLightIndex);
         shader.setMat4("uView", view_);
@@ -2330,14 +2446,14 @@ void Renderer::Flush() {
                 shader.setFloat("uPointShadowRanges" + index, (std::max)(0.1f, light.range));
             }
         }
-        shader.setFloat("uShadowSoftness", (std::clamp)(settings_.profile.shadowSoftness, 0.0f, 8.0f));
-        shader.setBool("uShadowCascadeDebugView", settings_.profile.shadowCascadeDebugView);
-        const bool iblEnabled = environmentMaps_.source != 0 && settings_.profile.reflections;
+        shader.setFloat("uShadowSoftness", (std::clamp)(Profile().shadowSoftness, 0.0f, 8.0f));
+        shader.setBool("uShadowCascadeDebugView", Profile().shadowCascadeDebugView);
+        const bool iblEnabled = environmentMaps_.source != 0 && Profile().reflections;
         shader.setBool("uEnableIbl", iblEnabled);
         shader.setBool("uUseBakedIbl", environmentReady_);
-        shader.setFloat("uEnvironmentIntensity", (std::clamp)(settings_.profile.environmentIntensity, 0.0f, 4.0f));
-        shader.setFloat("uReflectionIntensity", (std::clamp)(settings_.profile.reflectionIntensity, 0.0f, 4.0f));
-        shader.setInt("uIblDebugMode", settings_.profile.iblDebugMode);
+        shader.setFloat("uEnvironmentIntensity", (std::clamp)(Profile().environmentIntensity, 0.0f, 4.0f));
+        shader.setFloat("uReflectionIntensity", (std::clamp)(Profile().reflectionIntensity, 0.0f, 4.0f));
+        shader.setInt("uIblDebugMode", Profile().iblDebugMode);
         shader.setInt("uEnvironmentMap", 9);
         shader.setInt("uIrradianceMap", 10);
         shader.setInt("uPrefilterMap", 11);
@@ -2414,11 +2530,11 @@ void Renderer::Flush() {
     };
     std::string boundShaderId;
     auto drawMeshCommand = [&](const MeshDrawCommand& cmd) {
-        Shader* activeShader = resolveShader(cmd.unlit ? std::string("unlit") : cmd.shaderId);
+        const std::string currentShaderId = commandShaderId(cmd);
+        Shader* activeShader = resolveShader(currentShaderId);
         if (activeShader == nullptr) {
             return;
         }
-        const std::string currentShaderId = cmd.unlit ? std::string("unlit") : ShaderRegistry::NormalizeShaderId(cmd.shaderId);
         if (boundShaderId != currentShaderId) {
             bindCommonUniforms(*activeShader);
             bindLights(*activeShader);
@@ -2545,7 +2661,7 @@ void Renderer::Flush() {
         }
     };
 
-    if (settings_.profile.wireframeView) {
+    if (Profile().wireframeView) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDisable(GL_CULL_FACE);
     }
@@ -2555,8 +2671,51 @@ void Renderer::Flush() {
     for (const MeshDrawCommand* cmd : transparentCommands) {
         drawMeshCommand(*cmd);
     }
-    if (settings_.profile.wireframeView) {
+    if (Profile().wireframeView) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+
+    // Shaded Wireframe: re-draw the same geometry as flat lines over the lit
+    // result. This is the one mode that costs more than Shaded rather than
+    // less, so it stays a deliberate second pass instead of being folded into
+    // the main loop.
+    if (Profile().wireframeOverlay && debugLineShader_ != nullptr &&
+        (!opaqueCommands.empty() || !transparentCommands.empty())) {
+        debugLineShader_->use();
+        debugLineShader_->setMat4("uModel", glm::mat4(1.0f));
+        debugLineShader_->setVec2("uUvTiling", glm::vec2(1.0f));
+        debugLineShader_->setVec2("uUvOffset", glm::vec2(0.0f));
+        // The depth buffer is attached to the bound framebuffer, so it cannot
+        // also be sampled here. Depth-test the lines through GL instead.
+        debugLineShader_->setBool("uUseDepthTest", false);
+        debugLineShader_->setVec4("uColor", glm::vec4(0.34f, 0.38f, 0.44f, 1.0f));
+        // Only the lit color target should receive the overlay; the normal,
+        // ambient and material targets feed post effects and must stay intact.
+        glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        glColorMaski(2, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        glColorMaski(3, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glEnable(GL_POLYGON_OFFSET_LINE);
+        glPolygonOffset(-1.0f, -1.0f);
+        glDisable(GL_CULL_FACE);
+        glDisable(GL_BLEND);
+        glDepthMask(GL_FALSE);
+        glLineWidth(1.0f);
+        auto drawWireframeOverlay = [&](const MeshDrawCommand& cmd) {
+            debugLineShader_->setMat4("uMVP", proj_ * view_ * cmd.modelMatrix);
+            glBindVertexArray(cmd.vao);
+            glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, nullptr);
+            ++frameStats_.drawCallCount;
+        };
+        for (const MeshDrawCommand* cmd : opaqueCommands) drawWireframeOverlay(*cmd);
+        for (const MeshDrawCommand* cmd : transparentCommands) drawWireframeOverlay(*cmd);
+        glDepthMask(GL_TRUE);
+        glPolygonOffset(0.0f, 0.0f);
+        glDisable(GL_POLYGON_OFFSET_LINE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glColorMaski(3, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     }
     glBindVertexArray(0);
     drawList_.clear();
@@ -2583,12 +2742,12 @@ void Renderer::SetCamera(const glm::mat4& view, const glm::mat4& proj) {
     view_ = view;
     unjitteredProj_ = proj;
     proj_ = proj;
-    if (viewportTargetActive_ && settings_.profile.antiAliasing == AntiAliasingMode::TAA) {
+    if (viewportTargetActive_ && Profile().antiAliasing == AntiAliasingMode::TAA) {
         ViewportTarget& target = GetViewportTarget(activeViewportTarget_);
         target.taaCurrentJitterUv = glm::vec2(0.0f);
         if (target.width > 0 && target.height > 0) {
             const std::uint32_t sampleIndex = ((std::max)(1u, target.taaFrameIndex) - 1u) % 16u + 1u;
-            const float jitterStrength = (std::clamp)(settings_.profile.taaJitterStrength, 0.0f, 1.0f);
+            const float jitterStrength = (std::clamp)(Profile().taaJitterStrength, 0.0f, 1.0f);
             target.taaCurrentJitterUv = glm::vec2(
                 (Halton(sampleIndex, 2u) - 0.5f) * jitterStrength / static_cast<float>(target.width),
                 (Halton(sampleIndex, 3u) - 0.5f) * jitterStrength / static_cast<float>(target.height));

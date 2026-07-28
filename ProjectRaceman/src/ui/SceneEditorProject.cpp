@@ -2,6 +2,7 @@
 #include "NativeDialogs.h"
 #include "../physics/SimpleJson.h"
 #include "../rendering/ShaderRegistry.h"
+#include "../rendering/PrimitiveMeshes.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
@@ -1862,6 +1863,348 @@ unsigned int SceneEditor::GetModelPackageThumbnailTexture(const std::string& imp
     return entry.texture;
 }
 
+unsigned int SceneEditor::GetMaterialPreviewTexture(const std::string& materialId, int width, int height) {
+    const std::string resolvedMaterialId = materialId.empty() ? std::string("pbr_default") : materialId;
+    if (renderer_ == nullptr || !materialManager_.Exists(resolvedMaterialId)) {
+        return 0;
+    }
+    return GetMaterialPreviewTextureForMaterial(resolvedMaterialId, materialManager_.Resolve(resolvedMaterialId), width, height);
+}
+
+unsigned int SceneEditor::GetMaterialPreviewTextureForMaterial(const std::string& cacheKey, const Material& resolvedMaterial, int width, int height) {
+    width = (std::max)(32, width);
+    height = (std::max)(32, height);
+    if (renderer_ == nullptr) {
+        return 0;
+    }
+
+    // Lazily build the shared preview sphere on first use (needs a GL context,
+    // which we have here since this runs during panel rendering). Built inline
+    // rather than via PrimitiveMesh so the buffers persist with the editor.
+    if (materialPreviewSphereVao_ == 0) {
+        std::vector<PrimitiveMesh::Vertex> vertices;
+        std::vector<unsigned int> indices;
+        {
+            using V = PrimitiveMesh::Vertex;
+            constexpr float pi = 3.14159265358979323846f;
+            const int slices = 48;
+            const int stacks = 32;
+            vertices.reserve(static_cast<std::size_t>((stacks + 1) * (slices + 1)));
+            for (int stack = 0; stack <= stacks; ++stack) {
+                const float vCoord = static_cast<float>(stack) / static_cast<float>(stacks);
+                const float phi = vCoord * pi;
+                const float y = std::cos(phi) * 0.5f;
+                const float ringRadius = std::sin(phi) * 0.5f;
+                for (int slice = 0; slice <= slices; ++slice) {
+                    const float uCoord = static_cast<float>(slice) / static_cast<float>(slices);
+                    const float theta = uCoord * (2.0f * pi);
+                    const float x = std::cos(theta) * ringRadius;
+                    const float z = std::sin(theta) * ringRadius;
+                    const float nx = ringRadius > 0.0f ? x / 0.5f : 0.0f;
+                    const float ny = y / 0.5f;
+                    const float nz = ringRadius > 0.0f ? z / 0.5f : 0.0f;
+                    vertices.push_back(V{x, y, z, nx, ny, nz, uCoord, 1.0f - vCoord});
+                }
+            }
+            for (int stack = 0; stack < stacks; ++stack) {
+                for (int slice = 0; slice < slices; ++slice) {
+                    const unsigned int first = static_cast<unsigned int>(stack * (slices + 1) + slice);
+                    const unsigned int second = first + static_cast<unsigned int>(slices + 1);
+                    indices.push_back(first);
+                    indices.push_back(second);
+                    indices.push_back(first + 1);
+                    indices.push_back(first + 1);
+                    indices.push_back(second);
+                    indices.push_back(second + 1);
+                }
+            }
+        }
+        materialPreviewSphereIndexCount_ = static_cast<unsigned int>(indices.size());
+        glGenVertexArrays(1, &materialPreviewSphereVao_);
+        glGenBuffers(1, &materialPreviewSphereVbo_);
+        glGenBuffers(1, &materialPreviewSphereEbo_);
+        glBindVertexArray(materialPreviewSphereVao_);
+        glBindBuffer(GL_ARRAY_BUFFER, materialPreviewSphereVbo_);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertices.size() * sizeof(PrimitiveMesh::Vertex)), vertices.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, materialPreviewSphereEbo_);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(indices.size() * sizeof(unsigned int)), indices.data(), GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(PrimitiveMesh::Vertex), reinterpret_cast<void*>(0));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(PrimitiveMesh::Vertex), reinterpret_cast<void*>(3 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(PrimitiveMesh::Vertex), reinterpret_cast<void*>(6 * sizeof(float)));
+        glBindVertexArray(0);
+    }
+    if (materialPreviewSphereVao_ == 0 || materialPreviewSphereIndexCount_ == 0) {
+        return 0;
+    }
+
+    // Lazily build the ACES + sRGB resolve program and the empty fullscreen VAO.
+    if (materialPreviewTonemapProgram_ == 0) {
+        auto compile = [](GLenum stage, const char* src) -> GLuint {
+            const GLuint shader = glCreateShader(stage);
+            glShaderSource(shader, 1, &src, nullptr);
+            glCompileShader(shader);
+            GLint ok = GL_FALSE;
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+            if (!ok) {
+                char log[512];
+                glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
+                glDeleteShader(shader);
+                return 0;
+            }
+            return shader;
+        };
+        static const char* kVs =
+            "#version 450 core\n"
+            "out vec2 vUV;\n"
+            "void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);vUV=p;gl_Position=vec4(p*2.0-1.0,0.0,1.0);}\n";
+        static const char* kFs =
+            "#version 450 core\n"
+            "layout(location=0) out vec4 FragColor;\n"
+            "in vec2 vUV;\n"
+            "uniform sampler2D uHdrScene;\n"
+            "vec3 AcesFilm(vec3 c){const float a=2.51,b=0.03,cc=2.43,d=0.59,e=0.14;return clamp((c*(a*c+b))/(c*(cc*c+d)+e),0.0,1.0);}\n"
+            "vec3 EncodeSrgb(vec3 c){vec3 lo=c*12.92;vec3 hi=1.055*pow(max(c,vec3(0.0)),vec3(1.0/2.4))-0.055;return mix(hi,lo,lessThanEqual(c,vec3(0.0031308)));}\n"
+            "void main(){vec3 hdr=texture(uHdrScene,vUV).rgb;FragColor=vec4(EncodeSrgb(AcesFilm(hdr)),1.0);}\n";
+        const GLuint vs = compile(GL_VERTEX_SHADER, kVs);
+        const GLuint fs = compile(GL_FRAGMENT_SHADER, kFs);
+        if (vs != 0 && fs != 0) {
+            const GLuint program = glCreateProgram();
+            glAttachShader(program, vs);
+            glAttachShader(program, fs);
+            glLinkProgram(program);
+            GLint linked = GL_FALSE;
+            glGetProgramiv(program, GL_LINK_STATUS, &linked);
+            if (linked) {
+                materialPreviewTonemapProgram_ = program;
+            } else {
+                glDeleteProgram(program);
+            }
+        }
+        if (vs != 0) glDeleteShader(vs);
+        if (fs != 0) glDeleteShader(fs);
+    }
+    if (materialPreviewFullscreenVao_ == 0) {
+        glGenVertexArrays(1, &materialPreviewFullscreenVao_);
+    }
+    if (materialPreviewTonemapProgram_ == 0) {
+        return 0;
+    }
+
+    // Content hash so an edited material re-renders its icon in place. Fold in
+    // the fields that affect the shaded result.
+    std::size_t contentHash = 1469598103934665603ull;
+    auto hashCombine = [&contentHash](std::size_t value) {
+        contentHash ^= value + 0x9e3779b97f4a7c15ull + (contentHash << 6) + (contentHash >> 2);
+    };
+    auto hashFloat = [&](float value) { hashCombine(std::hash<float>{}(value)); };
+    auto hashString = [&](const std::string& value) { hashCombine(std::hash<std::string>{}(value)); };
+    hashString(resolvedMaterial.shader);
+    hashString(resolvedMaterial.alphaMode);
+    for (float c : resolvedMaterial.albedoColor) hashFloat(c);
+    for (float c : resolvedMaterial.emissiveColor) hashFloat(c);
+    hashFloat(resolvedMaterial.metallic);
+    hashFloat(resolvedMaterial.roughness);
+    hashFloat(resolvedMaterial.clearCoat);
+    hashFloat(resolvedMaterial.clearCoatRoughness);
+    hashFloat(resolvedMaterial.anisotropy);
+    hashFloat(resolvedMaterial.transmission);
+    hashFloat(resolvedMaterial.alphaCutoff);
+    hashFloat(resolvedMaterial.uvTiling[0]);
+    hashFloat(resolvedMaterial.uvTiling[1]);
+    hashFloat(resolvedMaterial.uvOffset[0]);
+    hashFloat(resolvedMaterial.uvOffset[1]);
+    hashCombine(resolvedMaterial.doubleSided ? 1u : 0u);
+    hashString(resolvedMaterial.texAlbedo);
+    hashString(resolvedMaterial.texNormal);
+    hashString(resolvedMaterial.texMetallic);
+    hashString(resolvedMaterial.texRoughness);
+    hashString(resolvedMaterial.texAo);
+    for (const auto& [propId, propValue] : resolvedMaterial.properties) {
+        hashString(propId);
+        for (float c : propValue.values) hashFloat(c);
+        hashCombine(propValue.boolValue ? 1u : 0u);
+        hashString(propValue.texturePath);
+    }
+
+    // Key by id + size so previews shown at several sizes at once (browser
+    // tile, inspector header, large preview panel) coexist instead of thrashing
+    // a single entry each frame.
+    const std::string sizedCacheKey = cacheKey + "|" + std::to_string(width) + "x" + std::to_string(height);
+    MaterialPreviewCacheEntry& entry = materialPreviewCache_[sizedCacheKey];
+    if (entry.rendered && entry.texture != 0 && entry.width == width && entry.height == height &&
+        entry.contentHash == contentHash) {
+        return entry.texture;
+    }
+
+    // Final texture ImGui samples: RGBA8 holding sRGB-encoded bytes from the
+    // resolve pass, so no decode-on-sample darkening.
+    if (entry.framebuffer == 0) glGenFramebuffers(1, &entry.framebuffer);
+    if (entry.texture == 0) glGenTextures(1, &entry.texture);
+    entry.width = width;
+    entry.height = height;
+    entry.contentHash = contentHash;
+
+    glBindTexture(GL_TEXTURE_2D, entry.texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Shared HDR intermediate the sphere is shaded into (linear, RGBA16F).
+    // Resized on demand; renders are cached, so this never thrashes per frame.
+    if (materialPreviewHdrFbo_ == 0) glGenFramebuffers(1, &materialPreviewHdrFbo_);
+    if (materialPreviewHdrColor_ == 0) glGenTextures(1, &materialPreviewHdrColor_);
+    if (materialPreviewHdrDepth_ == 0) glGenRenderbuffers(1, &materialPreviewHdrDepth_);
+    if (materialPreviewHdrWidth_ != width || materialPreviewHdrHeight_ != height) {
+        glBindTexture(GL_TEXTURE_2D, materialPreviewHdrColor_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glBindRenderbuffer(GL_RENDERBUFFER, materialPreviewHdrDepth_);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+        materialPreviewHdrWidth_ = width;
+        materialPreviewHdrHeight_ = height;
+    }
+
+    GLint previousFramebuffer = 0;
+    GLint previousViewport[4] = {0, 0, 0, 0};
+    GLboolean scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFramebuffer);
+    glGetIntegerv(GL_VIEWPORT, previousViewport);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, materialPreviewHdrFbo_);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, materialPreviewHdrColor_, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, materialPreviewHdrDepth_);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
+        glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+        if (scissorEnabled) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+        return 0;
+    }
+
+    glViewport(0, 0, width, height);
+    glDisable(GL_SCISSOR_TEST);
+    glEnable(GL_DEPTH_TEST);
+    // A soft neutral studio backdrop, in linear space (ACES lifts it to a
+    // pleasant mid grey like Unity's preview).
+    glClearColor(0.16f, 0.17f, 0.19f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    MeshDrawCommand cmd;
+    cmd.vao = materialPreviewSphereVao_;
+    cmd.indexCount = materialPreviewSphereIndexCount_;
+    cmd.materialId = cacheKey;
+    cmd.modelMatrix = glm::mat4(1.0f);
+    const Material* material = &resolvedMaterial;
+    cmd.shaderId = material->shader;
+    cmd.color = {material->albedoColor[0], material->albedoColor[1], material->albedoColor[2], material->albedoColor[3]};
+    cmd.emissiveColor = {material->emissiveColor[0], material->emissiveColor[1], material->emissiveColor[2]};
+    cmd.metallic = material->metallic;
+    cmd.roughness = material->roughness;
+    cmd.clearCoat = material->clearCoat;
+    cmd.clearCoatRoughness = material->clearCoatRoughness;
+    cmd.anisotropy = material->anisotropy;
+    cmd.transmission = material->transmission;
+    const std::string alphaMode = ToLowerCopy(material->alphaMode);
+    cmd.alphaCutoff = alphaMode == "mask" ? material->alphaCutoff : 0.0f;
+    cmd.doubleSided = material->doubleSided;
+    cmd.transparent = alphaMode == "blend";
+    cmd.transparentSortCenter = glm::vec3(0.0f);
+    cmd.hasTransparentSortBounds = true;
+    cmd.uvTiling = {material->uvTiling[0], material->uvTiling[1]};
+    cmd.uvOffset = {material->uvOffset[0], material->uvOffset[1]};
+    cmd.unlit = ToLowerCopy(material->shader) == "unlit";
+    cmd.materialTextureIds[0] = LoadPreviewTextureCached(material->texAlbedo, materialTextureCache_, console_, true);
+    cmd.materialTextureIds[1] = LoadPreviewTextureCached(material->texNormal, materialTextureCache_, console_);
+    cmd.materialTextureIds[2] = LoadPreviewTextureCached(material->texMetallic, materialTextureCache_, console_);
+    cmd.materialTextureIds[3] = LoadPreviewTextureCached(material->texRoughness, materialTextureCache_, console_);
+    cmd.materialTextureIds[4] = LoadPreviewTextureCached(material->texAo, materialTextureCache_, console_);
+    const ShaderDefinition& shaderDefinition = ShaderRegistry::Resolve(material->shader);
+    for (const ShaderDefinition::Property& property : shaderDefinition.properties) {
+        if (property.id == "albedoColor" || property.id == "emissiveColor" || property.id == "metallic" ||
+            property.id == "roughness" || property.id == "uvTiling" || property.id == "uvOffset" ||
+            property.id == "albedoTexture" || property.id == "normalTexture" || property.id == "metallicTexture" ||
+            property.id == "roughnessTexture" || property.id == "aoTexture") {
+            continue;
+        }
+        MeshDrawCommand::MaterialUniform uniform;
+        uniform.uniformName = property.uniformName;
+        uniform.textureUseUniform = property.textureUseUniform;
+        uniform.value.type = property.type;
+        uniform.value.values[0] = property.defaultValues[0];
+        uniform.value.values[1] = property.defaultValues[1];
+        uniform.value.values[2] = property.defaultValues[2];
+        uniform.value.values[3] = property.defaultValues[3];
+        uniform.value.boolValue = property.defaultBool;
+        if (auto propertyIt = material->properties.find(property.id); propertyIt != material->properties.end()) {
+            uniform.value = propertyIt->second;
+        }
+        if (uniform.value.type == MaterialPropertyType::Texture2D) {
+            uniform.textureId = LoadPreviewTextureCached(uniform.value.texturePath, materialTextureCache_, console_);
+        }
+        cmd.materialUniforms.push_back(uniform);
+    }
+    cmd.diffuseTextureId = cmd.materialTextureIds[0] != 0 ? cmd.materialTextureIds[0] : 0;
+    cmd.useDiffuseTexture = cmd.diffuseTextureId != 0;
+
+    const float aspect = static_cast<float>(width) / static_cast<float>(height);
+    const glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 1.7f);
+    const glm::mat4 view = glm::lookAt(cameraPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::mat4 proj = glm::perspective(glm::radians(34.0f), aspect, 0.01f, 10.0f);
+    renderer_->SetCamera(view, proj);
+
+    // Shaded into an HDR target and tone mapped below, so intensities can sit in
+    // real HDR range: a bright key plus a dim opposite fill, Unity-style. ACES
+    // rolls the highlights off instead of clipping, keeping emissive/bright
+    // materials colored rather than a flat white disc.
+    LightDrawCommand keyLight;
+    keyLight.type = RenderLightType::Directional;
+    keyLight.direction = glm::normalize(glm::vec3(-0.45f, -0.6f, -0.65f));
+    keyLight.color = glm::vec3(1.0f);
+    keyLight.intensity = 2.6f;
+    renderer_->SubmitLight(keyLight);
+    LightDrawCommand fillLight;
+    fillLight.type = RenderLightType::Directional;
+    fillLight.direction = glm::normalize(glm::vec3(0.55f, 0.25f, -0.4f));
+    fillLight.color = glm::vec3(1.0f);
+    fillLight.intensity = 0.7f;
+    renderer_->SubmitLight(fillLight);
+    renderer_->SubmitMesh(cmd);
+    renderer_->Flush();
+
+    // Resolve: ACES tone map + sRGB encode the HDR sphere into the 8-bit icon,
+    // matching the viewport's response.
+    glBindFramebuffer(GL_FRAMEBUFFER, entry.framebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, entry.texture, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
+        glViewport(0, 0, width, height);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_BLEND);
+        glDisable(GL_CULL_FACE);
+        glUseProgram(materialPreviewTonemapProgram_);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, materialPreviewHdrColor_);
+        glUniform1i(glGetUniformLocation(materialPreviewTonemapProgram_, "uHdrScene"), 0);
+        glBindVertexArray(materialPreviewFullscreenVao_);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+        glUseProgram(0);
+        entry.rendered = true;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
+    glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+    if (scissorEnabled) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+    return entry.texture;
+}
+
 void SceneEditor::ClearModelChildThumbnailCache(const std::string& importPath, int meshIndex) {
     const std::string prefix = NormalizeSlashes(importPath) + "|" + std::to_string(meshIndex) + "|";
     for (auto it = modelThumbnailCache_.begin(); it != modelThumbnailCache_.end();) {
@@ -3138,6 +3481,14 @@ void SceneEditor::RenderProjectPanel() {
                                                                                        static_cast<int>(iconSize), static_cast<int>(iconSize));
                             }
                         }
+                    } else if (isMaterial && renamingProjectFile_ != file) {
+                        // Unity-style lit-sphere thumbnail for material assets.
+                        const ImVec2 tilePos = ImGui::GetCursorScreenPos();
+                        const bool tileVisible = tilePos.y + tileHeight >= visibleTileMinY && tilePos.y <= visibleTileMaxY;
+                        if (tileVisible) {
+                            const int previewSize = static_cast<int>(iconSize * 2.0f);
+                            packagePreviewTexture = GetMaterialPreviewTexture(MaterialIdFromAssetPath(file), previewSize, previewSize);
+                        }
                     }
 
                     ImGui::PushID(file.c_str());
@@ -3208,6 +3559,7 @@ void SceneEditor::RenderProjectPanel() {
                                 }
                                 if (ImGui::MenuItem("Create Variant")) {
                                     pendingMaterialVariantBaseId_ = MaterialIdFromAssetPath(file);
+                                    pendingMaterialVariantAssignToSelection_ = false;
                                     const std::string defaultName = pendingMaterialVariantBaseId_ + "_variant";
                                     std::snprintf(createMaterialVariantNameBuffer_, sizeof(createMaterialVariantNameBuffer_), "%s", defaultName.c_str());
                                     showCreateMaterialVariantPopup_ = true;
@@ -3588,12 +3940,17 @@ void SceneEditor::RenderProjectPanel() {
                     ImGui::SameLine();
                     if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
                         pendingMaterialVariantBaseId_.clear();
+                        pendingMaterialVariantAssignToSelection_ = false;
                         ImGui::CloseCurrentPopup();
                     }
                     if (submit && !pendingMaterialVariantBaseId_.empty()) {
                         std::string newMaterialId;
                         if (CreateMaterialVariant(pendingMaterialVariantBaseId_, createMaterialVariantNameBuffer_, &newMaterialId)) {
+                            if (pendingMaterialVariantAssignToSelection_ && !newMaterialId.empty()) {
+                                AssignMaterialToSelected(newMaterialId);
+                            }
                             pendingMaterialVariantBaseId_.clear();
+                            pendingMaterialVariantAssignToSelection_ = false;
                             ImGui::CloseCurrentPopup();
                         }
                     }

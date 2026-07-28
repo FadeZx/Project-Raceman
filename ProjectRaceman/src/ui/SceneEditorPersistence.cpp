@@ -503,7 +503,16 @@ void WriteSceneObjectComponentBody(std::ostream& out, const SceneObject& o, Scen
         out << "          \"materialId\": \"" << JsonEscape(o.meshRenderer.materialId.empty() ? "pbr_default" : o.meshRenderer.materialId) << "\",\n";
         out << "          \"color\": ";
         WriteJsonVec4(out, o.meshRenderer.color);
-        out << "\n";
+        if (o.meshRenderer.hasMaterialOverride) {
+            // Per-object material instance: an embedded live-inherit override,
+            // stored inline in the scene rather than as a browser .mat.json.
+            out << ",\n";
+            out << "          \"materialOverride\": {\n";
+            WriteMaterialJsonBody(out, o.meshRenderer.materialOverride, "            ");
+            out << "          }\n";
+        } else {
+            out << "\n";
+        }
         out << "        }";
         break;
     }
@@ -1344,6 +1353,7 @@ void SceneEditor::Load(const std::string& path) {
                         ReadBool(component, "enabled", so.meshRenderer.enabled);
                         ReadString(component, "materialId", so.meshRenderer.materialId);
                         ReadVec4(component, "color", so.meshRenderer.color);
+                        ReadMeshRendererMaterialOverride(component, so.meshRenderer);
                     } else if (componentType == "Script") {
                         so.hasScriptComponent = true;
                         ReadBool(component, "enabled", so.scriptComponent.enabled);
@@ -2141,6 +2151,7 @@ bool SceneEditor::ParsePrefabFileObjects(const std::string& path, std::vector<Sc
                         ReadBool(component, "enabled", so.meshRenderer.enabled);
                         ReadString(component, "materialId", so.meshRenderer.materialId);
                         ReadVec4(component, "color", so.meshRenderer.color);
+                        ReadMeshRendererMaterialOverride(component, so.meshRenderer);
                     } else if (componentType == "Script") {
                         so.hasScriptComponent = true;
                         ReadBool(component, "enabled", so.scriptComponent.enabled);
@@ -3029,7 +3040,6 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("taaJitterStrength"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.taaJitterStrength = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
                     }
-                    ReadBool(graphics, "taaDebugView", graphicsProfile_.taaDebugView);
                     ReadBool(graphics, "hdr", graphicsProfile_.hdr);
                     if (auto it = graphics.find("hdrPaperWhiteNits"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.hdrPaperWhiteNits = (std::clamp)(static_cast<float>(it->second.as_number()), 80.0f, 500.0f);
@@ -3078,7 +3088,6 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("motionBlurMinimumVelocityPixels"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.motionBlurMinimumVelocityPixels = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 8.0f);
                     }
-                    ReadBool(graphics, "motionBlurDebugView", graphicsProfile_.motionBlurDebugView);
                     ReadBool(graphics, "ssao", graphicsProfile_.ssao);
                     if (auto it = graphics.find("ssaoIntensity"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.ssaoIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 3.0f);
@@ -3089,7 +3098,6 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("ssaoBias"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.ssaoBias = (std::clamp)(static_cast<float>(it->second.as_number()), 0.001f, 0.2f);
                     }
-                    ReadBool(graphics, "ssaoDebugView", graphicsProfile_.ssaoDebugView);
                     ReadBool(graphics, "shadows", graphicsProfile_.shadows);
                     if (auto it = graphics.find("shadowResolution"); it != graphics.end() && it->second.is_number()) {
                         const int resolution = static_cast<int>(it->second.as_number());
@@ -3108,7 +3116,6 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("localShadowLightLimit"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.localShadowLightLimit = (std::clamp)(static_cast<int>(it->second.as_number()), 0, 4);
                     }
-                    ReadBool(graphics, "shadowCascadeDebugView", graphicsProfile_.shadowCascadeDebugView);
                     ReadBool(graphics, "reflections", graphicsProfile_.reflections);
                     if (auto it = graphics.find("environmentIntensity"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.environmentIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 4.0f);
@@ -3116,15 +3123,11 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("reflectionIntensity"); it != graphics.end() && it->second.is_number()) {
                         graphicsProfile_.reflectionIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 4.0f);
                     }
-                    if (auto it = graphics.find("iblDebugMode"); it != graphics.end() && it->second.is_number()) {
-                        graphicsProfile_.iblDebugMode = (std::clamp)(static_cast<int>(it->second.as_number()), 0, 3);
-                    }
                     ReadBool(graphics, "screenSpaceReflections", graphicsProfile_.screenSpaceReflections);
                     if (auto it = graphics.find("ssrIntensity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.ssrIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 2.0f);
                     if (auto it = graphics.find("ssrMaxDistance"); it != graphics.end() && it->second.is_number()) graphicsProfile_.ssrMaxDistance = (std::clamp)(static_cast<float>(it->second.as_number()), 1.0f, 200.0f);
                     if (auto it = graphics.find("ssrThickness"); it != graphics.end() && it->second.is_number()) graphicsProfile_.ssrThickness = (std::clamp)(static_cast<float>(it->second.as_number()), 0.01f, 2.0f);
                     if (auto it = graphics.find("ssrSteps"); it != graphics.end() && it->second.is_number()) graphicsProfile_.ssrSteps = (std::clamp)(static_cast<int>(it->second.as_number()), 8, 96);
-                    ReadBool(graphics, "ssrDebugView", graphicsProfile_.ssrDebugView);
                     ReadBool(graphics, "particles", graphicsProfile_.particles);
                     ReadBool(graphics, "weather", graphicsProfile_.weather);
                     if (auto it = graphics.find("weatherIntensity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.weatherIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
@@ -3450,7 +3453,6 @@ void SceneEditor::SaveProject() {
         out << "    \"taaFeedback\": " << graphicsProfile_.taaFeedback << ",\n";
         out << "    \"taaSharpness\": " << graphicsProfile_.taaSharpness << ",\n";
         out << "    \"taaJitterStrength\": " << graphicsProfile_.taaJitterStrength << ",\n";
-        out << "    \"taaDebugView\": " << (graphicsProfile_.taaDebugView ? "true" : "false") << ",\n";
         out << "    \"hdr\": " << (graphicsProfile_.hdr ? "true" : "false") << ",\n";
         out << "    \"hdrPaperWhiteNits\": " << graphicsProfile_.hdrPaperWhiteNits << ",\n";
         out << "    \"hdrPeakBrightnessNits\": " << graphicsProfile_.hdrPeakBrightnessNits << ",\n";
@@ -3478,29 +3480,24 @@ void SceneEditor::SaveProject() {
         out << "    \"motionBlurSamples\": " << graphicsProfile_.motionBlurSamples << ",\n";
         out << "    \"motionBlurMaxRadius\": " << graphicsProfile_.motionBlurMaxRadius << ",\n";
         out << "    \"motionBlurMinimumVelocityPixels\": " << graphicsProfile_.motionBlurMinimumVelocityPixels << ",\n";
-        out << "    \"motionBlurDebugView\": " << (graphicsProfile_.motionBlurDebugView ? "true" : "false") << ",\n";
         out << "    \"ssao\": " << (graphicsProfile_.ssao ? "true" : "false") << ",\n";
         out << "    \"ssaoIntensity\": " << graphicsProfile_.ssaoIntensity << ",\n";
         out << "    \"ssaoRadius\": " << graphicsProfile_.ssaoRadius << ",\n";
         out << "    \"ssaoBias\": " << graphicsProfile_.ssaoBias << ",\n";
-        out << "    \"ssaoDebugView\": " << (graphicsProfile_.ssaoDebugView ? "true" : "false") << ",\n";
         out << "    \"shadows\": " << (graphicsProfile_.shadows ? "true" : "false") << ",\n";
         out << "    \"shadowResolution\": " << graphicsProfile_.shadowResolution << ",\n";
         out << "    \"shadowSoftness\": " << graphicsProfile_.shadowSoftness << ",\n";
         out << "    \"shadowCascadeCount\": " << graphicsProfile_.shadowCascadeCount << ",\n";
         out << "    \"shadowDistance\": " << graphicsProfile_.shadowDistance << ",\n";
         out << "    \"localShadowLightLimit\": " << graphicsProfile_.localShadowLightLimit << ",\n";
-        out << "    \"shadowCascadeDebugView\": " << (graphicsProfile_.shadowCascadeDebugView ? "true" : "false") << ",\n";
         out << "    \"reflections\": " << (graphicsProfile_.reflections ? "true" : "false") << ",\n";
         out << "    \"environmentIntensity\": " << graphicsProfile_.environmentIntensity << ",\n";
         out << "    \"reflectionIntensity\": " << graphicsProfile_.reflectionIntensity << ",\n";
-        out << "    \"iblDebugMode\": " << graphicsProfile_.iblDebugMode << ",\n";
         out << "    \"screenSpaceReflections\": " << (graphicsProfile_.screenSpaceReflections ? "true" : "false") << ",\n";
         out << "    \"ssrIntensity\": " << graphicsProfile_.ssrIntensity << ",\n";
         out << "    \"ssrMaxDistance\": " << graphicsProfile_.ssrMaxDistance << ",\n";
         out << "    \"ssrThickness\": " << graphicsProfile_.ssrThickness << ",\n";
         out << "    \"ssrSteps\": " << graphicsProfile_.ssrSteps << ",\n";
-        out << "    \"ssrDebugView\": " << (graphicsProfile_.ssrDebugView ? "true" : "false") << ",\n";
         out << "    \"particles\": " << (graphicsProfile_.particles ? "true" : "false") << ",\n";
         out << "    \"weather\": " << (graphicsProfile_.weather ? "true" : "false") << ",\n";
         out << "    \"weatherIntensity\": " << graphicsProfile_.weatherIntensity << ",\n";

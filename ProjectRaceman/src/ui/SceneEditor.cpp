@@ -895,6 +895,50 @@ SceneEditor::~SceneEditor() {
             glDeleteFramebuffers(1, &entry.framebuffer);
         }
     }
+    for (const auto& [key, entry] : materialPreviewCache_) {
+        (void)key;
+        if (entry.depthRenderbuffer != 0) {
+            glDeleteRenderbuffers(1, &entry.depthRenderbuffer);
+        }
+        if (entry.texture != 0) {
+            glDeleteTextures(1, &entry.texture);
+        }
+        if (entry.framebuffer != 0) {
+            glDeleteFramebuffers(1, &entry.framebuffer);
+        }
+    }
+    if (materialPreviewSphereEbo_ != 0) {
+        glDeleteBuffers(1, &materialPreviewSphereEbo_);
+    }
+    if (materialPreviewSphereVbo_ != 0) {
+        glDeleteBuffers(1, &materialPreviewSphereVbo_);
+    }
+    if (materialPreviewSphereVao_ != 0) {
+        glDeleteVertexArrays(1, &materialPreviewSphereVao_);
+    }
+    if (materialPreviewHdrDepth_ != 0) {
+        glDeleteRenderbuffers(1, &materialPreviewHdrDepth_);
+    }
+    if (materialPreviewHdrColor_ != 0) {
+        glDeleteTextures(1, &materialPreviewHdrColor_);
+    }
+    if (materialPreviewHdrFbo_ != 0) {
+        glDeleteFramebuffers(1, &materialPreviewHdrFbo_);
+    }
+    if (materialPreviewFullscreenVao_ != 0) {
+        glDeleteVertexArrays(1, &materialPreviewFullscreenVao_);
+    }
+    if (materialPreviewTonemapProgram_ != 0) {
+        glDeleteProgram(materialPreviewTonemapProgram_);
+    }
+}
+
+Material SceneEditor::ResolveObjectMaterial(const MeshRendererComponent& meshRenderer) const {
+    const std::string baseId = meshRenderer.materialId.empty() ? std::string("pbr_default") : meshRenderer.materialId;
+    if (meshRenderer.hasMaterialOverride) {
+        return materialManager_.ResolveWithOverride(baseId, meshRenderer.materialOverride);
+    }
+    return materialManager_.Resolve(baseId);
 }
 
 void SceneEditor::SetConsole(Console* console) {
@@ -1439,65 +1483,63 @@ void SceneEditor::RenderViewportPanel() {
         if (renderer_ == nullptr) {
             return;
         }
-        auto& profile = renderer_->GetSettings().profile;
-        const char* shadingModeNames[] = {
-            "Shaded",
-            "Wireframe",
-            "Collision View",
-            "Plain (No Post)",
-            "Motion Vectors",
-            "SSAO",
-            "Shadow Cascades",
-            "SSR",
-            "TAA Resolve",
-            "IBL: Diffuse Irradiance",
-            "IBL: Raw Environment",
-            "IBL: Final Specular",
+        // Scene View shading affects this viewport only. Collision View is the
+        // one entry that is not a renderer mode: it draws shaded, plus the
+        // editor's collider overlay.
+        struct SceneViewShadingOption {
+            const char* label;
+            SceneViewShadingMode mode;
+            bool showColliders;
         };
+        static constexpr SceneViewShadingOption kShadingOptions[] = {
+            {"Shaded",                  SceneViewShadingMode::Shaded,               false},
+            {"Shaded Wireframe",        SceneViewShadingMode::ShadedWireframe,      false},
+            {"Wireframe",               SceneViewShadingMode::Wireframe,            false},
+            {"Unlit",                   SceneViewShadingMode::Unlit,                false},
+            {"Collision View",          SceneViewShadingMode::Shaded,               true},
+            {"Plain (No Post)",         SceneViewShadingMode::Plain,                false},
+            {"Motion Vectors",          SceneViewShadingMode::MotionVectors,        false},
+            {"SSAO",                    SceneViewShadingMode::Ssao,                 false},
+            {"Shadow Cascades",         SceneViewShadingMode::ShadowCascades,       false},
+            {"SSR",                     SceneViewShadingMode::Ssr,                  false},
+            {"TAA Resolve",             SceneViewShadingMode::TaaResolve,           false},
+            {"IBL: Diffuse Irradiance", SceneViewShadingMode::IblDiffuseIrradiance, false},
+            {"IBL: Raw Environment",    SceneViewShadingMode::IblRawEnvironment,    false},
+            {"IBL: Final Specular",     SceneViewShadingMode::IblFinalSpecular,     false},
+        };
+        static const char* kShadingOptionLabels[] = {
+            kShadingOptions[0].label,  kShadingOptions[1].label,  kShadingOptions[2].label,
+            kShadingOptions[3].label,  kShadingOptions[4].label,  kShadingOptions[5].label,
+            kShadingOptions[6].label,  kShadingOptions[7].label,  kShadingOptions[8].label,
+            kShadingOptions[9].label,  kShadingOptions[10].label, kShadingOptions[11].label,
+            kShadingOptions[12].label, kShadingOptions[13].label,
+        };
+        static_assert(IM_ARRAYSIZE(kShadingOptions) == IM_ARRAYSIZE(kShadingOptionLabels),
+                      "Scene View shading labels must stay in sync with the option table");
+
+        auto& rendererSettings = renderer_->GetSettings();
         int shadingModeIndex = 0;
-        if (profile.wireframeView) shadingModeIndex = 1;
-        else if (showAllColliders_) shadingModeIndex = 2;
-        else if (profile.plainView) shadingModeIndex = 3;
-        else if (profile.motionBlurDebugView) shadingModeIndex = 4;
-        else if (profile.ssaoDebugView) shadingModeIndex = 5;
-        else if (profile.shadowCascadeDebugView) shadingModeIndex = 6;
-        else if (profile.ssrDebugView) shadingModeIndex = 7;
-        else if (profile.taaDebugView) shadingModeIndex = 8;
-        else if (profile.iblDebugMode == 1) shadingModeIndex = 9;
-        else if (profile.iblDebugMode == 2) shadingModeIndex = 10;
-        else if (profile.iblDebugMode == 3) shadingModeIndex = 11;
+        for (int option = 0; option < IM_ARRAYSIZE(kShadingOptions); ++option) {
+            if (kShadingOptions[option].mode == rendererSettings.sceneViewShading &&
+                kShadingOptions[option].showColliders == showAllColliders_) {
+                shadingModeIndex = option;
+                break;
+            }
+        }
 
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
         ImGui::TextDisabled("Shading");
         ImGui::SameLine();
         ImGui::SetNextItemWidth(190.0f);
-        if (ImGui::Combo("##SceneViewShadingMode", &shadingModeIndex, shadingModeNames, IM_ARRAYSIZE(shadingModeNames))) {
-            profile.wireframeView = false;
-            profile.plainView = false;
-            profile.motionBlurDebugView = false;
-            profile.ssaoDebugView = false;
-            profile.shadowCascadeDebugView = false;
-            profile.ssrDebugView = false;
-            profile.taaDebugView = false;
-            profile.iblDebugMode = 0;
-            showAllColliders_ = false;
-            switch (shadingModeIndex) {
-            case 1: profile.wireframeView = true; break;
-            case 2: showAllColliders_ = true; break;
-            case 3: profile.plainView = true; break;
-            case 4: profile.motionBlurDebugView = true; break;
-            case 5: profile.ssaoDebugView = true; break;
-            case 6: profile.shadowCascadeDebugView = true; break;
-            case 7: profile.ssrDebugView = true; break;
-            case 8: profile.taaDebugView = true; break;
-            case 9: profile.iblDebugMode = 1; break;
-            case 10: profile.iblDebugMode = 2; break;
-            case 11: profile.iblDebugMode = 3; break;
-            default: break;
-            }
+        if (ImGui::Combo("##SceneViewShadingMode", &shadingModeIndex, kShadingOptionLabels, IM_ARRAYSIZE(kShadingOptionLabels))) {
+            const SceneViewShadingOption& selected = kShadingOptions[shadingModeIndex];
+            rendererSettings.sceneViewShading = selected.mode;
+            showAllColliders_ = selected.showColliders;
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Swap what the Scene View displays: lit result or a raw render-pass debug view.");
+            ImGui::SetTooltip("Scene View only - the Game View always renders the full shipped look.\n"
+                              "Wireframe and Unlit also skip shadows, reflections and the post chain,\n"
+                              "so use them to get the editor viewport back up to speed on heavy scenes.");
         }
         ImGui::PopStyleVar();
         ImGui::Separator();
@@ -3972,6 +4014,7 @@ void SceneEditor::Load(const std::string& path) {
             if (matIt != o.end() && matIt->second.is_string()) {
                 so.meshRenderer.materialId = matIt->second.as_string();
             }
+            ReadMeshRendererMaterialOverride(o, so.meshRenderer);
 
             auto sourceIt = o.find("sourcePath");
             if (sourceIt != o.end() && sourceIt->second.is_string()) {
@@ -4112,6 +4155,7 @@ void SceneEditor::Load(const std::string& path) {
                         ReadBool(component, "enabled", so.meshRenderer.enabled);
                         ReadString(component, "materialId", so.meshRenderer.materialId);
                         ReadVec4(component, "color", so.meshRenderer.color);
+                        ReadMeshRendererMaterialOverride(component, so.meshRenderer);
                     } else if (componentType == "Script") {
                         so.hasScriptComponent = true;
                         ReadBool(component, "enabled", so.scriptComponent.enabled);
@@ -5800,7 +5844,7 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
                 if (renderer.GetSettings().profile.shadows) {
                     cmd.materialId = o.meshRenderer.materialId.empty() ? std::string("pbr_default") : o.meshRenderer.materialId;
                     if (materialManager_.Exists(cmd.materialId)) {
-                        const Material resolvedShadowMaterial = materialManager_.Resolve(cmd.materialId);
+                        const Material resolvedShadowMaterial = ResolveObjectMaterial(o.meshRenderer);
                         cmd.doubleSided = resolvedShadowMaterial.doubleSided;
                         cmd.transparent = ToLowerCopy(resolvedShadowMaterial.alphaMode) == "blend";
                     }
@@ -5815,7 +5859,7 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
 
         cmd.materialId = o.meshRenderer.materialId.empty() ? std::string("pbr_default") : o.meshRenderer.materialId;
         if (materialManager_.Exists(cmd.materialId)) {
-            const Material resolvedMaterialValue = materialManager_.Resolve(cmd.materialId);
+            const Material resolvedMaterialValue = ResolveObjectMaterial(o.meshRenderer);
             const Material* material = &resolvedMaterialValue;
             cmd.shaderId = material->shader;
             cmd.color = {

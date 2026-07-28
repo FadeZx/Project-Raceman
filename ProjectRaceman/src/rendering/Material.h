@@ -1,11 +1,14 @@
 #pragma once
 #include <string>
 #include <array>
+#include <iosfwd>
 #include <set>
 #include <unordered_map>
 #include <vector>
 
 namespace raceman {
+
+namespace physics::json { struct Value; }
 
 enum class MaterialPropertyType {
     Float,
@@ -84,6 +87,10 @@ public:
     // Flattened effective material: walks the baseMaterialId chain root->leaf
     // and applies only the fields each level marks as overridden. Cycle-safe.
     Material Resolve(const std::string& id) const;
+    // Resolve `baseId` then apply `override`'s overriddenFieldIds on top. Used
+    // for per-object material instances that inherit a shared base but are not
+    // registered as their own asset. `override.baseMaterialId` is ignored.
+    Material ResolveWithOverride(const std::string& baseId, const Material& override) const;
     // True if setting candidateId's base to proposedBaseId would create a
     // cycle (including candidateId == proposedBaseId).
     bool WouldCreateCycle(const std::string& candidateId, const std::string& proposedBaseId) const;
@@ -95,5 +102,14 @@ private:
     static std::string MaterialPath(const std::string& id);
     static bool LoadOne(const std::string& path, Material& out);
 };
+
+// Serialize a material's body (every field, plus baseMaterial/overriddenFields)
+// as JSON object members, each line prefixed with `indent`. Shared by the
+// on-disk .mat.json writer and by embedded per-object material overrides. Does
+// not emit the surrounding braces.
+void WriteMaterialJsonBody(std::ostream& out, const Material& m, const std::string& indent);
+// Populate `out` from a parsed JSON object value (the same schema written by
+// WriteMaterialJsonBody / MaterialManager::Save). Returns false if not an object.
+bool ReadMaterialFromJson(const physics::json::Value& value, Material& out);
 
 } // namespace raceman

@@ -6463,7 +6463,7 @@
           "assetId": "assets/car/formula 1/F1_chasis.fbx#0",
           "meshIndex": 0,
           "importedMaterialName": "Mat",
-          "diffuseTexturePath": "Substance SpecGloss/Right ones/formula1_DefaultMaterial_Diffuse.png",
+          "diffuseTexturePath": "",
           "pivotOffset": [-0.683868, 53.4748, -0.00106049],
           "lodEnabled": false,
           "lodBias": 1,
@@ -20185,7 +20185,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script", "Collider"],
+      "componentOrder": ["Transform", "MeshFilter", "MeshRenderer", "Script"],
       "components": [
         {
           "type": "Transform",
@@ -20219,18 +20219,6 @@
           "enabled": true,
           "attachments": [
           ]
-        },
-        {
-          "type": "Collider",
-          "colliderType": "Mesh",
-          "enabled": true,
-          "isTrigger": false,
-          "buildQuality": "BuildQuality",
-          "mode": "TriangleMesh"
-,
-          "surface": {
-            "type": "Asphalt"
-          }
         }
       ]
     },
@@ -22931,6 +22919,6 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_1635", "gameobject_7", "gameobject_8", "gameobject_11", "gameobject_15", "gameobject_18"],
+  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_18", "gameobject_16", "gameobject_1635", "gameobject_7", "gameobject_8", "gameobject_11", "gameobject_15"],
   "inspectorComponentsClosed": ["mesh_393|Collider", "gameobject_64|Vehicle", "gameobject_11|Vehicle", "camera_1|Cinemachine", "gameobject_64|MeshRenderer", "mesh_146|MeshFilter"]
 }

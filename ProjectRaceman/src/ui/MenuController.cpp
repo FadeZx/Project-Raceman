@@ -30,13 +30,9 @@ std::string SceneDisplayName(const std::string& scenePath) {
 }
 
 void ApplyGraphicsPreset(GraphicsProfile& profile, GraphicsQualityTier tier) {
+    // Debug view flags are not touched here: they are Scene View state resolved
+    // per viewport by Renderer::ResolveProfileForTarget, not quality settings.
     profile.quality = tier;
-    profile.ssaoDebugView = false;
-    profile.motionBlurDebugView = false;
-    profile.taaDebugView = false;
-    profile.ssrDebugView = false;
-    profile.shadowCascadeDebugView = false;
-    profile.iblDebugMode = 0;
     profile.lod = true;
     profile.particles = true;
     profile.colorGrading = true;

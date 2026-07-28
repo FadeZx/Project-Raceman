@@ -12,6 +12,7 @@
 #include "../input/InputManager.h"
 #include "../physics/MeshColliderBuildQuality.h"
 #include "../physics/MeshColliderMode.h"
+#include "../rendering/Material.h"
 #include "../scripting/ObjectScript.h"
 
 class Model;
@@ -199,6 +200,12 @@ struct MeshRendererComponent {
     bool enabled{true};
     std::string materialId{"pbr_default"};
     glm::vec4 color{1.0f, 1.0f, 1.0f, 1.0f};
+    // Unity-style per-object material instance: an embedded live-inherit variant
+    // of `materialId`, applied only to this object and never written to the
+    // project browser. materialOverride.baseMaterialId is kept == materialId;
+    // materialOverride.overriddenFieldIds records which fields the instance edits.
+    bool hasMaterialOverride{false};
+    Material materialOverride;
 };
 
 struct ObjectScriptAttachment {

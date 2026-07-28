@@ -158,8 +158,17 @@ bool MaterialManager::LoadOne(const std::string& path, Material& out) {
     const std::string src = buf.str();
     try {
         Value root = parse(src);
-        if (!root.is_object()) return false;
-        const auto& obj = root.as_object();
+        return ReadMaterialFromJson(root, out);
+    } catch (...) {
+        return false;
+    }
+}
+
+bool ReadMaterialFromJson(const physics::json::Value& value, Material& out) {
+    using namespace raceman::physics::json;
+    try {
+        if (!value.is_object()) return false;
+        const auto& obj = value.as_object();
 
         auto getf = [&](const auto& o, const char* key, float& dst){
             auto it = o.find(key); if (it!=o.end() && it->second.is_number()) dst = static_cast<float>(it->second.as_number());
@@ -316,11 +325,25 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
     std::ofstream out(path, std::ios::trunc);
     if (!out.good()) return false;
 
+    Material named = m;
+    if (named.name.empty()) named.name = id;
     out << "{\n";
-    out << "  \"version\": 2,\n";
-    out << "  \"name\": \"" << JsonEscape(m.name.empty() ? id : m.name) << "\",\n";
-    out << "  \"baseMaterial\": \"" << JsonEscape(m.baseMaterialId) << "\",\n";
-    out << "  \"overriddenFields\": [";
+    WriteMaterialJsonBody(out, named, "  ");
+    out << "}\n";
+    // Any material's edit could affect a downstream variant chain; a whole
+    // cache clear is simple and correct given materials are edited far less
+    // often than they are rendered.
+    resolveCache_.clear();
+    return true;
+}
+
+void WriteMaterialJsonBody(std::ostream& out, const Material& m, const std::string& indent) {
+    const std::string i1 = indent;
+    const std::string i2 = indent + "  ";
+    out << i1 << "\"version\": 2,\n";
+    out << i1 << "\"name\": \"" << JsonEscape(m.name) << "\",\n";
+    out << i1 << "\"baseMaterial\": \"" << JsonEscape(m.baseMaterialId) << "\",\n";
+    out << i1 << "\"overriddenFields\": [";
     {
         bool firstField = true;
         for (const std::string& fieldId : m.overriddenFieldIds) {
@@ -331,32 +354,32 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
     }
     out << "],\n";
     const std::string shaderId = ShaderRegistry::NormalizeShaderId(m.shader.empty() ? std::string("pbr") : m.shader);
-    out << "  \"shader\": \"" << JsonEscape((ShaderRegistry::IsKnownShader(shaderId) || ShaderRegistry::IsGraphShaderId(shaderId)) ? shaderId : std::string("pbr")) << "\",\n";
-    out << "  \"albedoColor\": [" << m.albedoColor[0] << ", " << m.albedoColor[1] << ", " << m.albedoColor[2] << ", " << m.albedoColor[3] << "],\n";
-    out << "  \"metallic\": " << m.metallic << ",\n";
-    out << "  \"roughness\": " << m.roughness << ",\n";
-    out << "  \"clearCoat\": " << m.clearCoat << ",\n";
-    out << "  \"clearCoatRoughness\": " << m.clearCoatRoughness << ",\n";
-    out << "  \"anisotropy\": " << m.anisotropy << ",\n";
-    out << "  \"transmission\": " << m.transmission << ",\n";
-    out << "  \"alphaMode\": \"" << JsonEscape(m.alphaMode) << "\",\n";
-    out << "  \"alphaCutoff\": " << m.alphaCutoff << ",\n";
-    out << "  \"doubleSided\": " << (m.doubleSided ? "true" : "false") << ",\n";
-    out << "  \"emissiveColor\": [" << m.emissiveColor[0] << ", " << m.emissiveColor[1] << ", " << m.emissiveColor[2] << "],\n";
-    out << "  \"uvTiling\": [" << m.uvTiling[0] << ", " << m.uvTiling[1] << "],\n";
-    out << "  \"uvOffset\": [" << m.uvOffset[0] << ", " << m.uvOffset[1] << "],\n";
-    out << "  \"textures\": {\n";
-    out << "    \"albedo\": \"" << JsonEscape(m.texAlbedo) << "\",\n";
-    out << "    \"normal\": \"" << JsonEscape(m.texNormal) << "\",\n";
-    out << "    \"metallic\": \"" << JsonEscape(m.texMetallic) << "\",\n";
-    out << "    \"roughness\": \"" << JsonEscape(m.texRoughness) << "\",\n";
-    out << "    \"ao\": \"" << JsonEscape(m.texAo) << "\"\n";
-    out << "  },\n";
-    out << "  \"properties\": {\n";
+    out << i1 << "\"shader\": \"" << JsonEscape((ShaderRegistry::IsKnownShader(shaderId) || ShaderRegistry::IsGraphShaderId(shaderId)) ? shaderId : std::string("pbr")) << "\",\n";
+    out << i1 << "\"albedoColor\": [" << m.albedoColor[0] << ", " << m.albedoColor[1] << ", " << m.albedoColor[2] << ", " << m.albedoColor[3] << "],\n";
+    out << i1 << "\"metallic\": " << m.metallic << ",\n";
+    out << i1 << "\"roughness\": " << m.roughness << ",\n";
+    out << i1 << "\"clearCoat\": " << m.clearCoat << ",\n";
+    out << i1 << "\"clearCoatRoughness\": " << m.clearCoatRoughness << ",\n";
+    out << i1 << "\"anisotropy\": " << m.anisotropy << ",\n";
+    out << i1 << "\"transmission\": " << m.transmission << ",\n";
+    out << i1 << "\"alphaMode\": \"" << JsonEscape(m.alphaMode) << "\",\n";
+    out << i1 << "\"alphaCutoff\": " << m.alphaCutoff << ",\n";
+    out << i1 << "\"doubleSided\": " << (m.doubleSided ? "true" : "false") << ",\n";
+    out << i1 << "\"emissiveColor\": [" << m.emissiveColor[0] << ", " << m.emissiveColor[1] << ", " << m.emissiveColor[2] << "],\n";
+    out << i1 << "\"uvTiling\": [" << m.uvTiling[0] << ", " << m.uvTiling[1] << "],\n";
+    out << i1 << "\"uvOffset\": [" << m.uvOffset[0] << ", " << m.uvOffset[1] << "],\n";
+    out << i1 << "\"textures\": {\n";
+    out << i2 << "\"albedo\": \"" << JsonEscape(m.texAlbedo) << "\",\n";
+    out << i2 << "\"normal\": \"" << JsonEscape(m.texNormal) << "\",\n";
+    out << i2 << "\"metallic\": \"" << JsonEscape(m.texMetallic) << "\",\n";
+    out << i2 << "\"roughness\": \"" << JsonEscape(m.texRoughness) << "\",\n";
+    out << i2 << "\"ao\": \"" << JsonEscape(m.texAo) << "\"\n";
+    out << i1 << "},\n";
+    out << i1 << "\"properties\": {\n";
     std::size_t propertyIndex = 0;
     for (const auto& entry : m.properties) {
         const MaterialPropertyValue& property = entry.second;
-        out << "    \"" << JsonEscape(entry.first) << "\": { \"type\": \"" << MaterialPropertyTypeName(property.type) << "\", \"value\": ";
+        out << i2 << "\"" << JsonEscape(entry.first) << "\": { \"type\": \"" << MaterialPropertyTypeName(property.type) << "\", \"value\": ";
         if (property.type == MaterialPropertyType::Bool) {
             out << (property.boolValue ? "true" : "false");
         } else if (property.type == MaterialPropertyType::Texture2D) {
@@ -378,13 +401,7 @@ bool MaterialManager::Save(const std::string& id, const Material& m) {
         }
         out << "\n";
     }
-    out << "  }\n";
-    out << "}\n";
-    // Any material's edit could affect a downstream variant chain; a whole
-    // cache clear is simple and correct given materials are edited far less
-    // often than they are rendered.
-    resolveCache_.clear();
-    return true;
+    out << i1 << "}\n";
 }
 
 Material& MaterialManager::CreateDefault(const std::string& id, bool autoSave) {
@@ -471,6 +488,19 @@ Material MaterialManager::Resolve(const std::string& id) const {
     result.baseMaterialId.clear();
     result.overriddenFieldIds.clear();
     resolveCache_[id] = result;
+    return result;
+}
+
+Material MaterialManager::ResolveWithOverride(const std::string& baseId, const Material& override) const {
+    Material result = Resolve(baseId);
+    for (const std::string& fieldId : override.overriddenFieldIds) {
+        ApplyOverriddenField(result, override, fieldId);
+    }
+    // Identity metadata comes from the override; inheritance bookkeeping is
+    // already flattened into `result`.
+    result.name = override.name;
+    result.baseMaterialId.clear();
+    result.overriddenFieldIds.clear();
     return result;
 }
 
