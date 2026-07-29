@@ -483,6 +483,20 @@ inline bool IsShaderGraphAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".shadergraph.json");
 }
 
+// Hand-written GLSL source authored as an asset (as opposed to the .shadergraph.json
+// node document, or the engine's own shaders under src/shaders/).
+inline bool IsShaderSourceAssetPath(const std::string& path) {
+    const std::string ext = ToLowerCopy(fs::path(path).extension().string());
+    return ext == ".vs" || ext == ".fs";
+}
+
+// Shader sources emitted by the shader graph compiler. They live under assets/
+// like any other file, but hand edits are overwritten on the next graph save.
+inline bool IsGeneratedShaderAssetPath(const std::string& path) {
+    const std::string normalized = ToLowerCopy(NormalizeSlashes(path));
+    return normalized.find("generated-shaders/") != std::string::npos;
+}
+
 inline bool IsAudioAssetPath(const std::string& path) {
     const std::string ext = ToLowerCopy(fs::path(path).extension().string());
     return ext == ".wav" || ext == ".ogg" || ext == ".mp3" || ext == ".flac";

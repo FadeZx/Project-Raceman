@@ -1158,6 +1158,12 @@ bool SceneEditor::SaveShaderGraphAsset() {
     if (saved) {
         shaderGraphDirty_ = false;
         RefreshProjectFiles();
+        // The renderer caches compiled programs forever; without this the
+        // regenerated fragment shader would not reach the viewport until the
+        // editor restarted.
+        if (generated && renderer_ != nullptr) {
+            renderer_->InvalidateMaterialShader(ShaderGraphIdFromPath(inspectedShaderGraphPath_));
+        }
         if (console_) console_->AddLog(generated ? "Saved shader graph: " + inspectedShaderGraphPath_ : "Saved shader graph with validation error: " + error);
         return true;
     }

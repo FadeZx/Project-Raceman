@@ -229,6 +229,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\ui\SceneEditorHierarchy.cpp" />
     <ClCompile Include="src\ui\SceneEditorInspector.cpp" />
     <ClCompile Include="src\ui\SceneEditorProject.cpp" />
+    <ClCompile Include="src\ui\SceneEditorShaderCode.cpp" />
     <ClCompile Include="src\ui\SceneEditorShaderGraph.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleBuilder.cpp" />
     <ClCompile Include="src\ui\TrackGenerator.cpp" />

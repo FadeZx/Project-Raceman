@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <filesystem>
+#include <system_error>
 
 namespace fs = std::filesystem;
 
@@ -31,6 +33,89 @@ std::string SanitizeId(std::string value) {
 
 std::string NormalizeSlashes(std::string value) {
     std::replace(value.begin(), value.end(), '\\', '/');
+    return value;
+}
+
+// Same character policy as SanitizeId, but applied per path segment so the
+// folder structure of a code shader survives the round trip through its id.
+std::string SanitizeRelativePath(const std::string& value) {
+    std::string result;
+    result.reserve(value.size());
+    bool lastWasSlash = true;
+    for (const char ch : NormalizeSlashes(value)) {
+        if (ch == '/') {
+            if (!lastWasSlash) {
+                result.push_back('/');
+                lastWasSlash = true;
+            }
+            continue;
+        }
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (std::isalnum(uch) || ch == '_' || ch == '-' || ch == '.') {
+            result.push_back(static_cast<char>(std::tolower(uch)));
+        } else {
+            result.push_back('_');
+        }
+        lastWasSlash = false;
+    }
+    while (!result.empty() && result.back() == '/') {
+        result.pop_back();
+    }
+    return result;
+}
+
+// Shader ids address files relative to the active project's assets folder, but
+// the project directory name is not fixed - it is whichever sub-directory holds
+// project.raceman.json, and the launcher publishes it via RACEMAN_PROJECT_ROOT
+// (see SetProjectRootEnvironment in Main.cpp and FindProjectRoot in
+// SceneEditorInternal.h). Resolving against a hardcoded "Project/" made every
+// generated shader path miss whenever the project was named anything else, and
+// the renderer quietly fell back to pbr.
+std::string ProjectAssetsRoot() {
+    fs::path root;
+#if defined(_WIN32)
+    char* value = nullptr;
+    std::size_t length = 0;
+    if (_dupenv_s(&value, &length, "RACEMAN_PROJECT_ROOT") == 0 && value != nullptr) {
+        if (value[0] != '\0') {
+            root = value;
+        }
+        std::free(value);
+    }
+#else
+    if (const char* value = std::getenv("RACEMAN_PROJECT_ROOT")) {
+        if (value[0] != '\0') {
+            root = value;
+        }
+    }
+#endif
+    if (root.empty()) {
+        // Same auto-discovery the editor uses when the variable is not set.
+        std::error_code ec;
+        for (const auto& entry : fs::directory_iterator(fs::current_path(ec), ec)) {
+            if (entry.is_directory(ec) && fs::exists(entry.path() / "project.raceman.json", ec)) {
+                root = entry.path();
+                break;
+            }
+        }
+    }
+    if (root.empty()) {
+        root = "Project";
+    }
+    return NormalizeSlashes((root / "assets").lexically_normal().string());
+}
+
+// Strips a leading "assets/" so ids stay relative to the project assets root,
+// matching how the project browser addresses files.
+std::string StripAssetsPrefix(std::string value) {
+    value = NormalizeSlashes(std::move(value));
+    while (!value.empty() && value.front() == '/') {
+        value.erase(value.begin());
+    }
+    const std::string prefix = "assets/";
+    if (Lower(value).rfind(prefix, 0) == 0) {
+        value.erase(0, prefix.size());
+    }
     return value;
 }
 
@@ -191,10 +276,52 @@ bool ShaderRegistry::IsGraphShaderId(const std::string& id) {
     return Lower(id).rfind("graph:", 0) == 0;
 }
 
+bool ShaderRegistry::IsCodeShaderId(const std::string& id) {
+    return Lower(id).rfind("file:", 0) == 0;
+}
+
+bool ShaderRegistry::IsShaderSourceExtension(const std::string& extension) {
+    const std::string lower = Lower(extension);
+    return lower == ".vs" || lower == ".fs" || lower == "vs" || lower == "fs";
+}
+
+std::string ShaderRegistry::MakeCodeShaderId(const std::string& shaderAssetPath) {
+    fs::path path(StripAssetsPrefix(shaderAssetPath));
+    const std::string extension = Lower(path.extension().string());
+    if (IsShaderSourceExtension(extension)) {
+        path.replace_extension();
+    }
+    const std::string relative = SanitizeRelativePath(path.generic_string());
+    return relative.empty() ? std::string() : "file:" + relative;
+}
+
+bool ShaderRegistry::CodeShaderPathsForShaderId(const std::string& id,
+                                                std::string& outVertexPath,
+                                                std::string& outFragmentPath) {
+    outVertexPath.clear();
+    outFragmentPath.clear();
+    if (!IsCodeShaderId(id)) {
+        return false;
+    }
+    const std::string relative = SanitizeRelativePath(id.substr(std::string("file:").size()));
+    if (relative.empty()) {
+        return false;
+    }
+    const std::string base = ProjectAssetsRoot() + "/" + relative;
+    outVertexPath = base + ".vs";
+    outFragmentPath = base + ".fs";
+    return true;
+}
+
 bool ShaderRegistry::IsKnownShader(const std::string& id) {
     const std::string normalized = NormalizeShaderId(id);
     if (IsGraphShaderId(normalized)) {
         return !GraphFragmentPathForShaderId(normalized).empty();
+    }
+    if (IsCodeShaderId(normalized)) {
+        std::string vertexPath;
+        std::string fragmentPath;
+        return CodeShaderPathsForShaderId(normalized, vertexPath, fragmentPath) && fs::exists(fragmentPath);
     }
     const auto& shaders = BuiltInShaders();
     return std::any_of(shaders.begin(), shaders.end(), [&](const ShaderDefinition& shader) {
@@ -249,14 +376,14 @@ std::string ShaderRegistry::GraphFragmentPathForShaderId(const std::string& id) 
     if (name.empty()) {
         return {};
     }
-    return "Project/assets/generated-shaders/" + SanitizeId(name) + ".fs";
+    return ProjectAssetsRoot() + "/generated-shaders/" + SanitizeId(name) + ".fs";
 }
 
 Material ShaderRegistry::MakeDefaultMaterial(const std::string& id, const std::string& name) {
     Material material;
     material.name = name.empty() ? "NewMaterial" : name;
     material.shader = NormalizeShaderId(id);
-    if (!IsKnownShader(material.shader) && !IsGraphShaderId(material.shader)) {
+    if (!IsKnownShader(material.shader) && !IsGraphShaderId(material.shader) && !IsCodeShaderId(material.shader)) {
         material.shader = "pbr";
     }
     material.albedoColor[0] = 1.0f;

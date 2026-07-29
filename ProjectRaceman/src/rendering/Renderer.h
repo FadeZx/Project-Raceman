@@ -330,10 +330,30 @@ public:
     void Flush();
     void ResetFrameStats();
 
+    // Material shader cache management. Shader programs are compiled lazily in
+    // Flush() and cached forever; the editor needs to drop an entry when the
+    // shader source behind it changes on disk (a graph re-save, or a hand-edited
+    // .fs saved from the user's IDE).
+    void InvalidateMaterialShader(const std::string& shaderId);
+    void InvalidateAllMaterialShaders();
+    // Drops the cached program and rebuilds it immediately, reporting the GL
+    // info log on failure. The previously cached program is only replaced once
+    // the new one compiles and links, so a broken edit never blacks out the
+    // viewport. Must be called with the GL context current.
+    bool TryCompileMaterialShader(const std::string& shaderId, std::string& outLog);
+
     // Fallback camera setup used by simple pipeline; later swap to scene camera
     void SetCamera(const glm::mat4& view, const glm::mat4& proj);
     const glm::mat4& GetView() const { return view_; }
     const glm::mat4& GetProj() const { return proj_; }
+
+    // Asset previews should not inherit whatever sky the scene happens to have:
+    // a material reads very differently under a sunset than under a neutral
+    // studio, and a thumbnail is meant to describe the material, not the level.
+    // These install a fixed neutral studio environment (built once, on demand)
+    // for the draws issued between them, the way Unity previews materials.
+    void PushPreviewEnvironment();
+    void PopPreviewEnvironment();
 
     const EnvironmentMaps& GetEnvironmentMaps() const { return environmentMaps_; }
     bool HasEnvironmentSource() const { return environmentMaps_.source != 0; }
@@ -432,6 +452,24 @@ private:
     void DestroyViewportTarget(ViewportTarget& target);
     ViewportTarget& GetViewportTarget(ViewportRenderTarget target);
     const ViewportTarget& GetViewportTarget(ViewportRenderTarget target) const;
+    // Maps a material shader id (built-in, "graph:", or "file:") to the cache key
+    // and the vertex/fragment sources behind it, falling back to pbr when the
+    // fragment source is missing.
+    void ResolveMaterialShaderSources(const std::string& shaderId,
+                                      std::string& outCacheKey,
+                                      std::string& outVertexPath,
+                                      std::string& outFragmentPath) const;
+    Shader* AcquireMaterialShader(const std::string& shaderId);
+    // Convolves a source cubemap into irradiance + prefiltered reflection maps.
+    // Shared by the scene environment and the preview studio environment.
+    void BakeEnvironmentMaps(unsigned int sourceCubemap,
+                             EnvironmentMaps& outMaps,
+                             bool& outReady,
+                             float& outAverageLuminance);
+    // Procedural neutral studio cubemap: soft vertical gradient plus a key and
+    // fill softbox, so smooth metals show a readable reflection instead of a
+    // flat blown-out disc. Built once and reused.
+    void EnsureStudioEnvironment();
     // The profile in force for whatever is rendering right now. Outside a
     // viewport pass - resource allocation, reflection probe bakes - this falls
     // back to the project profile, so Scene View overrides can never leak into
@@ -456,6 +494,20 @@ private:
     };
     std::unordered_map<std::string, RealtimeReflectionProbeState> realtimeReflectionProbes_;
     EnvironmentMaps environmentMaps_{};
+    // Preview studio environment, and the scene state saved while it is active.
+    EnvironmentMaps studioEnvironmentMaps_{};
+    bool studioEnvironmentReady_{false};
+    float studioEnvironmentAverageLuminance_{0.0f};
+    bool studioEnvironmentBuildAttempted_{false};
+    unsigned int studioEnvironmentSource_{0};
+    int previewEnvironmentDepth_{0};
+    // True only while the studio environment is actually installed. The preview
+    // uniform overrides key off this, never off the depth counter, so a failed
+    // bake cannot leave them applied with no studio environment behind them.
+    bool previewEnvironmentApplied_{false};
+    EnvironmentMaps savedEnvironmentMaps_{};
+    bool savedEnvironmentReady_{false};
+    float savedEnvironmentAverageLuminance_{0.0f};
     RendererSettings settings_{};
     DisplayHdrCapabilities displayHdrCapabilities_{};
     unsigned int captureFbo_{0};

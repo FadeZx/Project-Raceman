@@ -219,7 +219,13 @@ bool ReadMaterialFromJson(const physics::json::Value& value, Material& out) {
             out.version = static_cast<int>(it->second.as_number());
         }
         out.shader = ShaderRegistry::NormalizeShaderId(out.shader);
-        if (!ShaderRegistry::IsKnownShader(out.shader) && !ShaderRegistry::IsGraphShaderId(out.shader)) {
+        // Graph and code shader ids are kept even when their source file is
+        // missing: the renderer falls back to pbr for the draw, but rewriting
+        // the material would silently destroy the user's assignment over
+        // something as recoverable as a file that has not been generated yet.
+        if (!ShaderRegistry::IsKnownShader(out.shader) &&
+            !ShaderRegistry::IsGraphShaderId(out.shader) &&
+            !ShaderRegistry::IsCodeShaderId(out.shader)) {
             out.shader = "pbr";
         }
         getf(obj, "metallic", out.metallic);
@@ -354,7 +360,8 @@ void WriteMaterialJsonBody(std::ostream& out, const Material& m, const std::stri
     }
     out << "],\n";
     const std::string shaderId = ShaderRegistry::NormalizeShaderId(m.shader.empty() ? std::string("pbr") : m.shader);
-    out << i1 << "\"shader\": \"" << JsonEscape((ShaderRegistry::IsKnownShader(shaderId) || ShaderRegistry::IsGraphShaderId(shaderId)) ? shaderId : std::string("pbr")) << "\",\n";
+    const bool shaderIdIsAuthored = ShaderRegistry::IsGraphShaderId(shaderId) || ShaderRegistry::IsCodeShaderId(shaderId);
+    out << i1 << "\"shader\": \"" << JsonEscape((ShaderRegistry::IsKnownShader(shaderId) || shaderIdIsAuthored) ? shaderId : std::string("pbr")) << "\",\n";
     out << i1 << "\"albedoColor\": [" << m.albedoColor[0] << ", " << m.albedoColor[1] << ", " << m.albedoColor[2] << ", " << m.albedoColor[3] << "],\n";
     out << i1 << "\"metallic\": " << m.metallic << ",\n";
     out << i1 << "\"roughness\": " << m.roughness << ",\n";

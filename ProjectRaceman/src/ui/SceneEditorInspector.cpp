@@ -1043,6 +1043,8 @@ void SceneEditor::RenderInspectorPanel() {
             RenderModelChildAssetInspector();
         } else if (selectedIndex_ < 0 && IsMeshAssetPath(selectedProjectFile_)) {
             RenderModelAssetInspector();
+        } else if (selectedIndex_ < 0 && IsShaderSourceAssetPath(selectedProjectFile_)) {
+            RenderShaderCodeAssetInspector();
         } else if (selectedIndices_.size() > 1) {
             RenderMultiSelectionInspector();
         } else if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(objects_.size())) {
@@ -4787,12 +4789,41 @@ void SceneEditor::RenderMaterialEditor(Material* material, bool isEmbeddedInstan
         }
     }
 
+    // Hand-written .fs assets under assets/, excluding the shader graph's own
+    // generated output (those are reachable through their graph instead).
+    std::vector<std::pair<std::string, std::string>> codeShaders;
+    std::string editableShaderCodePath;
+    for (const std::string& file : projectFiles_) {
+        if (!IsShaderSourceAssetPath(file) || IsGeneratedShaderAssetPath(file)) {
+            continue;
+        }
+        if (ToLowerCopy(fs::path(file).extension().string()) != ".fs") {
+            continue;
+        }
+        const std::string codeShaderId = ShaderRegistry::MakeCodeShaderId(file);
+        if (codeShaderId.empty()) {
+            continue;
+        }
+        codeShaders.push_back({codeShaderId, fs::path(file).stem().string()});
+        if (codeShaderId == shaderId) {
+            editableShaderCodePath = file;
+        }
+    }
+
     std::string shaderPreview = shaders[static_cast<std::size_t>(currentShaderIndex)].displayName;
     if (ShaderRegistry::IsGraphShaderId(shaderId)) {
         shaderPreview = shaderId;
         for (const auto& graphShader : graphShaders) {
             if (graphShader.first == shaderId) {
                 shaderPreview = graphShader.second + " (Shader Graph)";
+                break;
+            }
+        }
+    } else if (ShaderRegistry::IsCodeShaderId(shaderId)) {
+        shaderPreview = shaderId;
+        for (const auto& codeShader : codeShaders) {
+            if (codeShader.first == shaderId) {
+                shaderPreview = codeShader.second + " (Code)";
                 break;
             }
         }
@@ -4834,15 +4865,41 @@ void SceneEditor::RenderMaterialEditor(Material* material, bool isEmbeddedInstan
             ImGui::Separator();
             ImGui::Selectable(shaderId.c_str(), true);
         }
+        if (!codeShaders.empty()) {
+            ImGui::Separator();
+            ImGui::TextDisabled("Code Shaders");
+            for (const auto& codeShader : codeShaders) {
+                const bool selected = codeShader.first == shaderId;
+                const std::string label = codeShader.second + "##" + codeShader.first;
+                if (ImGui::Selectable(label.c_str(), selected)) {
+                    material->shader = codeShader.first;
+                    materialChanged = true;
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+        } else if (ShaderRegistry::IsCodeShaderId(shaderId)) {
+            ImGui::Separator();
+            ImGui::Selectable(shaderId.c_str(), true);
+        }
         ImGui::EndCombo();
     }
     ImGui::SameLine();
-    ImGui::BeginDisabled(editableShaderGraphPath.empty());
+    // Graph shaders open the node editor; code shaders open in the user's IDE.
+    const bool shaderIsEditable = !editableShaderGraphPath.empty() || !editableShaderCodePath.empty();
+    ImGui::BeginDisabled(!shaderIsEditable);
     if (ImGui::Button("Edit##materialShaderEdit", ImVec2(editButtonWidth, 0.0f))) {
-        OpenShaderGraphEditor(editableShaderGraphPath);
+        if (!editableShaderGraphPath.empty()) {
+            OpenShaderGraphEditor(editableShaderGraphPath);
+        } else if (OpenProjectAssetInDefaultEditor(editableShaderCodePath)) {
+            if (console_) console_->AddLog("Opened shader: " + editableShaderCodePath);
+        } else if (console_) {
+            console_->AddError("Failed to open shader: " + editableShaderCodePath);
+        }
     }
-    if (editableShaderGraphPath.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Built-in shaders are read-only engine shaders. Select or create a Shader Graph to edit shader logic.");
+    if (!shaderIsEditable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Built-in shaders are read-only engine shaders. Create a Shader Graph or a Shader (Code) asset to edit shader logic.");
     }
     ImGui::EndDisabled();
     ImGui::SameLine();

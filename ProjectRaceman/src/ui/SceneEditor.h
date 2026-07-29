@@ -12,6 +12,7 @@
 #include <atomic>
 #include <mutex>
 #include <utility>
+#include <filesystem>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -212,6 +213,10 @@ private:
     bool RefreshModelAssetInspectorCache(bool forceReload);
     void RenderMaterialInspector();
     void RenderShaderGraphEditorWindow();
+    // Inspector shown when a hand-written .vs/.fs asset is selected in the
+    // project browser. Editing happens in the user's IDE; this panel surfaces
+    // compile status, the GL error log, and a read-only source preview.
+    void RenderShaderCodeAssetInspector();
     void RenderVehicleConfigEditorWindow();
     void RenderVehicleSoundEditorWindow();
     void RenderVehicleComponentInspector(SceneObject& object,
@@ -319,6 +324,15 @@ private:
     bool CreateMaterialVariant(const std::string& baseMaterialId, const std::string& requestedName, std::string* outMaterialId = nullptr);
     bool CreateShaderGraphAsset(const std::string& requestedName, std::string* outGraphPath = nullptr);
     bool SaveShaderGraphAsset();
+    // Stamps out a starter .vs/.fs pair whose interface matches what the
+    // renderer binds, so the new shader renders correctly before it is edited.
+    bool CreateShaderCodeAsset(const std::string& requestedName, std::string* outFragmentPath = nullptr);
+    // Recompiles the shader behind a .vs/.fs asset and records the result.
+    // Returns false and logs to the console when compilation fails.
+    bool RecompileShaderCodeAsset(const std::string& shaderSourcePath, bool quiet = false);
+    // Polls the mtime of shader sources in use and recompiles the ones that
+    // changed on disk, so saving in an external IDE updates the viewport live.
+    void TickShaderCodeWatcher(float deltaTime);
     bool CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath = nullptr);
     bool CreateVehicleSoundAsset(const std::string& requestedName, std::string* outProfilePath = nullptr);
     bool CreateSceneAsset(const std::string& requestedName, std::string* outScenePath = nullptr);
@@ -490,6 +504,31 @@ private:
     float shaderGraphRoughness_{0.5f};
     bool shaderGraphLoaded_{false};
     bool shaderGraphDirty_{false};
+
+    // Hand-written code shaders. Compile results are keyed by the shader's
+    // project asset path ("shaders/water.fs") so the inspector can report on a
+    // file whether or not any material currently references it.
+    struct ShaderCodeStatus {
+        bool compiled{true};
+        std::string log;
+    };
+    std::unordered_map<std::string, ShaderCodeStatus> shaderCodeStatus_;
+    // mtime of each watched source, plus the time the change was first seen.
+    // Recompiles wait out a short debounce because IDEs write files in several
+    // steps and reading mid-write yields spurious syntax errors.
+    struct ShaderCodeWatchEntry {
+        std::filesystem::file_time_type modifiedTime{};
+        double pendingSince{0.0};
+        bool pending{false};
+        bool seen{false};
+    };
+    std::unordered_map<std::string, ShaderCodeWatchEntry> shaderCodeWatch_;
+    float shaderCodeWatchAccumulator_{0.0f};
+    // Read-only source preview for the inspector, refreshed only on mtime change.
+    std::string shaderCodePreviewPath_;
+    std::string shaderCodePreviewText_;
+    std::filesystem::file_time_type shaderCodePreviewModifiedTime_{};
+
     bool showVehicleConfigEditor_{false};
     std::string inspectedVehicleConfigPath_;
     physics::VehicleConfig inspectedVehicleConfig_{};
@@ -770,6 +809,9 @@ private:
         bool rendered{false};
     };
     std::unordered_map<std::string, MaterialPreviewCacheEntry> materialPreviewCache_;
+    // Material keys already reported by the preview texture diagnostic, so it
+    // logs once per material rather than on every re-render.
+    std::unordered_set<std::string> materialPreviewDiagnosticsLogged_;
     unsigned int materialPreviewSphereVao_{0};
     unsigned int materialPreviewSphereVbo_{0};
     unsigned int materialPreviewSphereEbo_{0};

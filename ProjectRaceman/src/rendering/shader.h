@@ -9,6 +9,7 @@
 #include <sstream>
 #include <iostream>
 #include <unordered_map>
+#include <vector>
 
 class Shader
 {
@@ -45,6 +46,10 @@ public:
         catch (std::ifstream::failure& e)
         {
             std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: " << e.what() << std::endl;
+            valid_ = false;
+            compileLog_ += "Could not read shader source: ";
+            compileLog_ += e.what();
+            compileLog_ += '\n';
         }
         const char* vShaderCode = vertexCode.c_str();
         const char* fShaderCode = fragmentCode.c_str();
@@ -140,7 +145,18 @@ public:
         return ID;
     }
 
+    // True when every stage compiled and the program linked. Callers that build
+    // shaders from user-authored source check this before caching the program,
+    // so a broken edit never replaces the last working one.
+    bool IsValid() const { return valid_; }
+
+    // Accumulated GL info logs for the failed stages; empty when IsValid().
+    const std::string& CompileLog() const { return compileLog_; }
+
 private:
+    bool valid_{true};
+    std::string compileLog_;
+
     // glGetUniformLocation does a driver-side name lookup; every setXxx call
     // used to pay that cost every frame for every uniform on every draw. This
     // cache turns repeat lookups (the overwhelming majority) into a local
@@ -159,27 +175,53 @@ private:
 
     // utility function for checking shader compilation/linking errors.
     // ------------------------------------------------------------------------
+    // GLSL drivers emit one line per diagnostic, so a shader with a handful of
+    // errors easily overruns a fixed 1024-byte buffer. Query the real length and
+    // size the buffer to it, otherwise the editor shows a truncated log.
+    static std::string fetchInfoLog(GLuint object, bool isProgram)
+    {
+        GLint length = 0;
+        if (isProgram) {
+            glGetProgramiv(object, GL_INFO_LOG_LENGTH, &length);
+        } else {
+            glGetShaderiv(object, GL_INFO_LOG_LENGTH, &length);
+        }
+        if (length <= 1) {
+            return {};
+        }
+        std::vector<GLchar> buffer(static_cast<std::size_t>(length));
+        GLsizei written = 0;
+        if (isProgram) {
+            glGetProgramInfoLog(object, length, &written, buffer.data());
+        } else {
+            glGetShaderInfoLog(object, length, &written, buffer.data());
+        }
+        return std::string(buffer.data(), static_cast<std::size_t>(written));
+    }
+
     void checkCompileErrors(GLuint shader, std::string type)
     {
-        GLint success;
-        GLchar infoLog[1024];
-        if (type != "PROGRAM")
-        {
-            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-            if (!success)
-            {
-                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-                std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-            }
-        }
-        else
-        {
+        GLint success = GL_FALSE;
+        const bool isProgram = type == "PROGRAM";
+        if (isProgram) {
             glGetProgramiv(shader, GL_LINK_STATUS, &success);
-            if (!success)
-            {
-                glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-                std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-            }
+        } else {
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+        }
+        if (success) {
+            return;
+        }
+
+        const std::string infoLog = fetchInfoLog(shader, isProgram);
+        const char* prefix = isProgram ? "ERROR::PROGRAM_LINKING_ERROR of type: " : "ERROR::SHADER_COMPILATION_ERROR of type: ";
+        std::cout << prefix << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+
+        valid_ = false;
+        compileLog_ += type;
+        compileLog_ += ":\n";
+        compileLog_ += infoLog;
+        if (!infoLog.empty() && infoLog.back() != '\n') {
+            compileLog_ += '\n';
         }
     }
 };

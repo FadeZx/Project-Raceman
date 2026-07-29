@@ -43,7 +43,8 @@ enum class ProjectCreateAssetType {
     VehicleSoundProfile,
     Track,
     Script,
-    ShaderGraph
+    ShaderGraph,
+    ShaderCode
 };
 
 enum class SceneComponentType {

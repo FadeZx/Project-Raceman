@@ -1224,6 +1224,10 @@ void SceneEditor::RenderUI(float deltaTime) {
     RenderViewportPanel();
     frameTimings_.viewportPanelMs = elapsedMs(timingStart);
 
+    // Picks up shader sources saved from an external IDE and recompiles them so
+    // the viewport reflects the edit without a restart.
+    TickShaderCodeWatcher(deltaTime);
+
     timingStart = glfwGetTime();
     RenderShaderGraphEditorWindow();
     RenderVehicleConfigEditorWindow();

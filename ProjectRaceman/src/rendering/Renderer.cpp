@@ -720,16 +720,24 @@ void Renderer::RenderCaptureCube() const {
 }
 
 void Renderer::SetupEnvironment(unsigned int sourceCubemap) {
-    environmentReady_ = false;
-    environmentAverageLuminance_ = 0.0f;
-    environmentMaps_.source = sourceCubemap;
+    BakeEnvironmentMaps(sourceCubemap, environmentMaps_, environmentReady_, environmentAverageLuminance_);
+}
+
+void Renderer::BakeEnvironmentMaps(unsigned int sourceCubemap,
+                                   EnvironmentMaps& outMaps,
+                                   bool& outReady,
+                                   float& outAverageLuminance) {
+    outReady = false;
+    outAverageLuminance = 0.0f;
+    outMaps.source = sourceCubemap;
+    outMaps.brdfLut = environmentMaps_.brdfLut;  // the BRDF LUT is view-independent and shared
     if (sourceCubemap == 0 || !irradianceShader_ || !prefilterShader_) return;
 
     if (captureFbo_ == 0) glGenFramebuffers(1, &captureFbo_);
     if (captureRbo_ == 0) glGenRenderbuffers(1, &captureRbo_);
 
-    if (environmentMaps_.irradiance == 0) glGenTextures(1, &environmentMaps_.irradiance);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, environmentMaps_.irradiance);
+    if (outMaps.irradiance == 0) glGenTextures(1, &outMaps.irradiance);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, outMaps.irradiance);
     for (unsigned int face = 0; face < 6; ++face) {
         glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB16F,
                      32, 32, 0, GL_RGB, GL_FLOAT, nullptr);
@@ -742,8 +750,8 @@ void Renderer::SetupEnvironment(unsigned int sourceCubemap) {
 
     constexpr int prefilterSize = 128;
     constexpr int prefilterMipCount = 5;
-    if (environmentMaps_.prefiltered == 0) glGenTextures(1, &environmentMaps_.prefiltered);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, environmentMaps_.prefiltered);
+    if (outMaps.prefiltered == 0) glGenTextures(1, &outMaps.prefiltered);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, outMaps.prefiltered);
     for (int mip = 0; mip < prefilterMipCount; ++mip) {
         const int mipSize = (std::max)(1, prefilterSize >> mip);
         for (unsigned int face = 0; face < 6; ++face) {
@@ -792,7 +800,7 @@ void Renderer::SetupEnvironment(unsigned int sourceCubemap) {
         irradianceShader_->setMat4("view", captureViews[face]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
-                               environmentMaps_.irradiance, 0);
+                               outMaps.irradiance, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         RenderCaptureCube();
     }
@@ -814,7 +822,7 @@ void Renderer::SetupEnvironment(unsigned int sourceCubemap) {
             prefilterShader_->setMat4("view", captureViews[face]);
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                    GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
-                                   environmentMaps_.prefiltered, mip);
+                                   outMaps.prefiltered, mip);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             RenderCaptureCube();
         }
@@ -823,7 +831,7 @@ void Renderer::SetupEnvironment(unsigned int sourceCubemap) {
     const GLenum environmentFramebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     const bool framebufferComplete = environmentFramebufferStatus == GL_FRAMEBUFFER_COMPLETE;
     std::array<float, 32 * 32 * 3> irradiancePixels{};
-    glBindTexture(GL_TEXTURE_CUBE_MAP, environmentMaps_.irradiance);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, outMaps.irradiance);
     glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, GL_FLOAT, irradiancePixels.data());
     double luminanceSum = 0.0;
     std::size_t validPixelCount = 0;
@@ -836,20 +844,149 @@ void Renderer::SetupEnvironment(unsigned int sourceCubemap) {
         ++validPixelCount;
     }
     if (validPixelCount > 0) {
-        environmentAverageLuminance_ = static_cast<float>(luminanceSum / static_cast<double>(validPixelCount));
+        outAverageLuminance = static_cast<float>(luminanceSum / static_cast<double>(validPixelCount));
     }
-    environmentReady_ = framebufferComplete && environmentMaps_.brdfLut != 0 &&
-        environmentAverageLuminance_ > 0.00001f;
+    outReady = framebufferComplete && outMaps.brdfLut != 0 &&
+        outAverageLuminance > 0.00001f;
     std::cout << "[Renderer] IBL environment: "
-              << (environmentReady_ ? "baked" : "source mip fallback")
+              << (outReady ? "baked" : "source mip fallback")
               << ", source face " << sourceResolution << " px"
-              << ", irradiance " << environmentAverageLuminance_
+              << ", irradiance " << outAverageLuminance
               << ", framebuffer 0x" << std::hex << environmentFramebufferStatus << std::dec
-              << ", brdf " << environmentMaps_.brdfLut << std::endl;
+              << ", brdf " << outMaps.brdfLut << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(previousFramebuffer));
     glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
     if (depthEnabled) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
     if (cullEnabled) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+}
+
+void Renderer::EnsureStudioEnvironment() {
+    if (studioEnvironmentBuildAttempted_) return;
+    studioEnvironmentBuildAttempted_ = true;
+
+    // A small photographic studio described analytically: a soft vertical
+    // gradient from a dark floor to a lighter ceiling, plus a bright key
+    // softbox and a dimmer, broader fill on the opposite side. The softboxes
+    // are what make a smooth metal readable - without a bright shape to
+    // reflect, a mirror sphere is a flat disc of whatever ambient it sees.
+    constexpr int faceSize = 64;
+    // Bright enough that swapping the scene's sky for this never makes a
+    // reflective material darker than it was; a dim studio would read as a
+    // regression on any project lit by a daylight skybox.
+    const glm::vec3 floorColor(0.20f, 0.20f, 0.22f);
+    const glm::vec3 horizonColor(0.62f, 0.63f, 0.66f);
+    const glm::vec3 ceilingColor(1.05f, 1.08f, 1.15f);
+
+    struct Softbox {
+        glm::vec3 direction;
+        float innerCos;
+        float outerCos;
+        glm::vec3 radiance;
+    };
+    const std::array<Softbox, 2> softboxes = {
+        // Key: tight and bright, high and slightly to the right.
+        Softbox{glm::normalize(glm::vec3(0.45f, 0.75f, 0.5f)),
+                std::cos(glm::radians(12.0f)), std::cos(glm::radians(30.0f)), glm::vec3(9.0f, 8.8f, 8.4f)},
+        // Fill: broad and dim, opposite side, keeps the shadow side from dying.
+        Softbox{glm::normalize(glm::vec3(-0.6f, 0.2f, -0.55f)),
+                std::cos(glm::radians(22.0f)), std::cos(glm::radians(55.0f)), glm::vec3(1.5f, 1.55f, 1.7f)},
+    };
+
+    const auto directionForTexel = [](int face, float u, float v) -> glm::vec3 {
+        switch (face) {
+        case 0: return glm::normalize(glm::vec3( 1.0f,   -v,   -u));
+        case 1: return glm::normalize(glm::vec3(-1.0f,   -v,    u));
+        case 2: return glm::normalize(glm::vec3(    u, 1.0f,    v));
+        case 3: return glm::normalize(glm::vec3(    u,-1.0f,   -v));
+        case 4: return glm::normalize(glm::vec3(    u,   -v, 1.0f));
+        default:return glm::normalize(glm::vec3(   -u,   -v,-1.0f));
+        }
+    };
+
+    if (studioEnvironmentSource_ == 0) glGenTextures(1, &studioEnvironmentSource_);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, studioEnvironmentSource_);
+    std::vector<float> facePixels(static_cast<std::size_t>(faceSize) * faceSize * 3);
+    for (int face = 0; face < 6; ++face) {
+        for (int y = 0; y < faceSize; ++y) {
+            for (int x = 0; x < faceSize; ++x) {
+                const float u = 2.0f * ((static_cast<float>(x) + 0.5f) / faceSize) - 1.0f;
+                const float v = 2.0f * ((static_cast<float>(y) + 0.5f) / faceSize) - 1.0f;
+                const glm::vec3 direction = directionForTexel(face, u, v);
+
+                // Gradient: floor -> horizon -> ceiling, smooth across the horizon.
+                glm::vec3 color;
+                if (direction.y >= 0.0f) {
+                    const float t = std::pow((std::min)(direction.y, 1.0f), 0.65f);
+                    color = glm::mix(horizonColor, ceilingColor, t);
+                } else {
+                    const float t = std::pow((std::min)(-direction.y, 1.0f), 0.5f);
+                    color = glm::mix(horizonColor, floorColor, t);
+                }
+
+                for (const Softbox& box : softboxes) {
+                    const float alignment = glm::dot(direction, box.direction);
+                    if (alignment <= box.outerCos) continue;
+                    const float falloff = (std::clamp)(
+                        (alignment - box.outerCos) / (std::max)(box.innerCos - box.outerCos, 0.0001f), 0.0f, 1.0f);
+                    // Smoothstep keeps the softbox edge soft, so the reflected
+                    // highlight has a gradient rather than a hard rim.
+                    color += box.radiance * (falloff * falloff * (3.0f - 2.0f * falloff));
+                }
+
+                const std::size_t pixel = (static_cast<std::size_t>(y) * faceSize + x) * 3;
+                facePixels[pixel + 0] = color.r;
+                facePixels[pixel + 1] = color.g;
+                facePixels[pixel + 2] = color.b;
+            }
+        }
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB16F,
+                     faceSize, faceSize, 0, GL_RGB, GL_FLOAT, facePixels.data());
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // When the prefilter bake is unavailable the shader falls back to sampling
+    // mips of the source cubemap for rough reflections, so it needs a mip chain.
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+    BakeEnvironmentMaps(studioEnvironmentSource_, studioEnvironmentMaps_,
+                        studioEnvironmentReady_, studioEnvironmentAverageLuminance_);
+}
+
+void Renderer::PushPreviewEnvironment() {
+    if (previewEnvironmentDepth_++ > 0) return;
+    EnsureStudioEnvironment();
+    if (studioEnvironmentMaps_.source == 0) {
+        // Studio bake unavailable; leave the scene environment in place so
+        // previews still render exactly as they did before. previewEnvironment-
+        // Applied_ stays false so the preview uniform overrides are skipped too
+        // - applying them without the studio environment would only darken the
+        // result.
+        return;
+    }
+    previewEnvironmentApplied_ = true;
+    savedEnvironmentMaps_ = environmentMaps_;
+    savedEnvironmentReady_ = environmentReady_;
+    savedEnvironmentAverageLuminance_ = environmentAverageLuminance_;
+    // The BRDF LUT is shared and may have been baked after the studio maps were
+    // built; pick up the current one rather than a stale zero.
+    studioEnvironmentMaps_.brdfLut = environmentMaps_.brdfLut;
+    studioEnvironmentReady_ = studioEnvironmentReady_ && environmentMaps_.brdfLut != 0;
+    environmentMaps_ = studioEnvironmentMaps_;
+    environmentReady_ = studioEnvironmentReady_;
+    environmentAverageLuminance_ = studioEnvironmentAverageLuminance_;
+}
+
+void Renderer::PopPreviewEnvironment() {
+    if (previewEnvironmentDepth_ == 0) return;
+    if (--previewEnvironmentDepth_ > 0) return;
+    if (!previewEnvironmentApplied_) return;
+    previewEnvironmentApplied_ = false;
+    environmentMaps_ = savedEnvironmentMaps_;
+    environmentReady_ = savedEnvironmentReady_;
+    environmentAverageLuminance_ = savedEnvironmentAverageLuminance_;
 }
 
 unsigned int Renderer::LoadReflectionProbeCubemap(const std::string& path) {
@@ -1956,34 +2093,95 @@ void Renderer::SubmitLight(const LightDrawCommand& cmd) {
 
 void Renderer::SubmitLine(const DebugLineCommand& cmd) { lineDrawList_.push_back(cmd); }
 
+void Renderer::ResolveMaterialShaderSources(const std::string& shaderId,
+                                            std::string& outCacheKey,
+                                            std::string& outVertexPath,
+                                            std::string& outFragmentPath) const {
+    const std::string normalized = ShaderRegistry::NormalizeShaderId(shaderId);
+    outCacheKey = normalized;
+    outVertexPath.clear();
+    outFragmentPath.clear();
+    if (ShaderRegistry::IsGraphShaderId(normalized)) {
+        outVertexPath = "src/shaders/default/default.vs";
+        outFragmentPath = ShaderRegistry::GraphFragmentPathForShaderId(normalized);
+    } else if (ShaderRegistry::IsCodeShaderId(normalized)) {
+        // A code shader owns both stages, but authoring only a fragment shader is
+        // the common case - pair it with the engine vertex shader when the .vs
+        // is absent so the material still renders.
+        ShaderRegistry::CodeShaderPathsForShaderId(normalized, outVertexPath, outFragmentPath);
+        if (outVertexPath.empty() || !std::filesystem::exists(outVertexPath)) {
+            outVertexPath = "src/shaders/default/default.vs";
+        }
+    } else {
+        const ShaderDefinition& definition = ShaderRegistry::Resolve(normalized);
+        outVertexPath = ShaderPathForId(definition, true);
+        outFragmentPath = ShaderPathForId(definition, false);
+    }
+    if (outFragmentPath.empty() || !std::filesystem::exists(outFragmentPath)) {
+        outCacheKey = "pbr";
+        outVertexPath = "src/shaders/default/default.vs";
+        outFragmentPath = "src/shaders/default/pbr.fs";
+    }
+}
+
+Shader* Renderer::AcquireMaterialShader(const std::string& shaderId) {
+    std::string cacheKey;
+    std::string vertexPath;
+    std::string fragmentPath;
+    ResolveMaterialShaderSources(shaderId, cacheKey, vertexPath, fragmentPath);
+
+    auto it = materialShaders_.find(cacheKey);
+    if (it != materialShaders_.end()) {
+        return it->second.get();
+    }
+    auto shader = std::make_unique<Shader>(vertexPath.c_str(), fragmentPath.c_str());
+    if (!shader->IsValid()) {
+        // Never cache a broken program: it would keep rendering garbage until the
+        // next explicit invalidation. Draw with pbr instead.
+        auto fallback = materialShaders_.find("pbr");
+        return fallback == materialShaders_.end() ? nullptr : fallback->second.get();
+    }
+    Shader* result = shader.get();
+    materialShaders_[cacheKey] = std::move(shader);
+    return result;
+}
+
+void Renderer::InvalidateMaterialShader(const std::string& shaderId) {
+    // A shader is always cached under its own normalized id; "pbr" is only ever
+    // borrowed as a fallback, so never drop it on behalf of another shader.
+    materialShaders_.erase(ShaderRegistry::NormalizeShaderId(shaderId));
+}
+
+void Renderer::InvalidateAllMaterialShaders() {
+    materialShaders_.clear();
+    materialShaders_["pbr"] = std::make_unique<Shader>("src/shaders/default/default.vs", "src/shaders/default/pbr.fs");
+}
+
+bool Renderer::TryCompileMaterialShader(const std::string& shaderId, std::string& outLog) {
+    outLog.clear();
+    std::string cacheKey;
+    std::string vertexPath;
+    std::string fragmentPath;
+    ResolveMaterialShaderSources(shaderId, cacheKey, vertexPath, fragmentPath);
+
+    const std::string normalized = ShaderRegistry::NormalizeShaderId(shaderId);
+    if (cacheKey == "pbr" && normalized != "pbr") {
+        outLog = "Shader source not found: " + fragmentPath;
+        return false;
+    }
+
+    auto shader = std::make_unique<Shader>(vertexPath.c_str(), fragmentPath.c_str());
+    if (!shader->IsValid()) {
+        outLog = shader->CompileLog();
+        return false;
+    }
+    materialShaders_[cacheKey] = std::move(shader);
+    return true;
+}
+
 void Renderer::Flush() {
     auto resolveShader = [&](const std::string& shaderId) -> Shader* {
-        const std::string normalized = ShaderRegistry::NormalizeShaderId(shaderId);
-        std::string cacheKey = normalized;
-        std::string vertexPath;
-        std::string fragmentPath;
-        if (ShaderRegistry::IsGraphShaderId(normalized)) {
-            cacheKey = normalized;
-            vertexPath = "src/shaders/default/default.vs";
-            fragmentPath = ShaderRegistry::GraphFragmentPathForShaderId(normalized);
-        } else {
-            const ShaderDefinition& definition = ShaderRegistry::Resolve(normalized);
-            vertexPath = ShaderPathForId(definition, true);
-            fragmentPath = ShaderPathForId(definition, false);
-        }
-        if (fragmentPath.empty() || !std::filesystem::exists(fragmentPath)) {
-            cacheKey = "pbr";
-            vertexPath = "src/shaders/default/default.vs";
-            fragmentPath = "src/shaders/default/pbr.fs";
-        }
-        auto it = materialShaders_.find(cacheKey);
-        if (it != materialShaders_.end()) {
-            return it->second.get();
-        }
-        auto shader = std::make_unique<Shader>(vertexPath.c_str(), fragmentPath.c_str());
-        Shader* result = shader.get();
-        materialShaders_[cacheKey] = std::move(shader);
-        return result;
+        return AcquireMaterialShader(shaderId);
     };
 
     // Draw editor meshes as real scene geometry, while preserving caller GL state.
@@ -2414,6 +2612,7 @@ void Renderer::Flush() {
         shader.setInt("uMaterialMetallicTexture", 2);
         shader.setInt("uMaterialRoughnessTexture", 3);
         shader.setInt("uMaterialAoTexture", 4);
+        const bool previewEnvironmentActive = previewEnvironmentApplied_;
         shader.setVec3("uAmbientColor", Profile().ambientColor);
         shader.setVec3("uCameraPosition", cameraPosition);
         shader.setBool("uStylized", Profile().style == RenderStyle::Stylized);
@@ -2448,12 +2647,20 @@ void Renderer::Flush() {
         }
         shader.setFloat("uShadowSoftness", (std::clamp)(Profile().shadowSoftness, 0.0f, 8.0f));
         shader.setBool("uShadowCascadeDebugView", Profile().shadowCascadeDebugView);
-        const bool iblEnabled = environmentMaps_.source != 0 && Profile().reflections;
+        // Previews force IBL on so a smooth metal always has something to
+        // reflect, even when the project has reflections switched off. Exposure
+        // and intensity stay on the project's values: overriding them was only
+        // ever cosmetic, and getting it wrong makes thumbnails darker than they
+        // were, so this override is deliberately additive only.
+        const bool iblEnabled = environmentMaps_.source != 0 &&
+            (previewEnvironmentActive || Profile().reflections);
         shader.setBool("uEnableIbl", iblEnabled);
         shader.setBool("uUseBakedIbl", environmentReady_);
         shader.setFloat("uEnvironmentIntensity", (std::clamp)(Profile().environmentIntensity, 0.0f, 4.0f));
         shader.setFloat("uReflectionIntensity", (std::clamp)(Profile().reflectionIntensity, 0.0f, 4.0f));
-        shader.setInt("uIblDebugMode", Profile().iblDebugMode);
+        // Debug views replace the shaded output entirely; a thumbnail must not
+        // silently become a debug visualisation.
+        shader.setInt("uIblDebugMode", previewEnvironmentActive ? 0 : Profile().iblDebugMode);
         shader.setInt("uEnvironmentMap", 9);
         shader.setInt("uIrradianceMap", 10);
         shader.setInt("uPrefilterMap", 11);

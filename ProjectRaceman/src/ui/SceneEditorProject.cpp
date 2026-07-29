@@ -25,6 +25,7 @@ const char* ProjectCreateAssetTypeTitle(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::Track) return "Create Track";
     if (type == ProjectCreateAssetType::Script) return "Create C++ Script";
     if (type == ProjectCreateAssetType::ShaderGraph) return "Create Shader Graph";
+    if (type == ProjectCreateAssetType::ShaderCode) return "Create Shader (Code)";
     return "Create Asset";
 }
 
@@ -37,6 +38,7 @@ const char* ProjectCreateAssetTypeDefaultName(ProjectCreateAssetType type) {
     if (type == ProjectCreateAssetType::Track) return "NewTrack";
     if (type == ProjectCreateAssetType::Script) return "NewScript";
     if (type == ProjectCreateAssetType::ShaderGraph) return "NewShaderGraph";
+    if (type == ProjectCreateAssetType::ShaderCode) return "NewShader";
     return "NewAsset";
 }
 
@@ -633,6 +635,7 @@ std::string AssetIconForProjectFile(const std::string& path) {
     if (IsSceneAssetPath(path))        return "asset-scene.png";
     if (IsMaterialAssetPath(path))     return "asset-material.png";
     if (IsShaderGraphAssetPath(path))  return "asset-shader-graph.png";
+    if (IsShaderSourceAssetPath(path)) return "asset-shader-graph.png";
     if (IsVehicleConfigAssetPath(path))return "asset-vehicle.png";
     if (IsVehicleSoundAssetPath(path)) return "asset-vehicle-sound.png";
     if (IsTrackAssetPath(path))        return "asset-track.png";
@@ -1013,7 +1016,8 @@ bool SaveImportedMaterialAssetToFolder(const std::string& materialId,
     }
 
     const std::string shaderId = ShaderRegistry::NormalizeShaderId(material.shader.empty() ? std::string("pbr") : material.shader);
-    const std::string savedShader = (ShaderRegistry::IsKnownShader(shaderId) || ShaderRegistry::IsGraphShaderId(shaderId)) ? shaderId : std::string("pbr");
+    const bool shaderIdIsAuthored = ShaderRegistry::IsGraphShaderId(shaderId) || ShaderRegistry::IsCodeShaderId(shaderId);
+    const std::string savedShader = (ShaderRegistry::IsKnownShader(shaderId) || shaderIdIsAuthored) ? shaderId : std::string("pbr");
     out << "{\n";
     out << "  \"version\": 1,\n";
     out << "  \"name\": \"" << JsonEscape(material.name.empty() ? materialId : material.name) << "\",\n";
@@ -2125,6 +2129,29 @@ unsigned int SceneEditor::GetMaterialPreviewTextureForMaterial(const std::string
     cmd.materialTextureIds[2] = LoadPreviewTextureCached(material->texMetallic, materialTextureCache_, console_);
     cmd.materialTextureIds[3] = LoadPreviewTextureCached(material->texRoughness, materialTextureCache_, console_);
     cmd.materialTextureIds[4] = LoadPreviewTextureCached(material->texAo, materialTextureCache_, console_);
+
+    // Diagnostic: reports what the preview actually resolved for this material,
+    // once per material, only when a re-render happens (so it cannot spam).
+    // Distinguishes "the resolved material has no texture paths" from "it has
+    // paths but they did not produce a GL texture" - the two failures look
+    // identical on screen (a white sphere) but have completely different causes.
+    if (console_ != nullptr && materialPreviewDiagnosticsLogged_.insert(cacheKey).second) {
+        const bool anyPath = !material->texAlbedo.empty() || !material->texNormal.empty() ||
+                             !material->texMetallic.empty() || !material->texRoughness.empty() ||
+                             !material->texAo.empty();
+        char buffer[512];
+        std::snprintf(buffer, sizeof(buffer),
+                      "[preview] %s shader=%s metallic=%.3f roughness=%.3f albedoTex=%s -> glTexture=%u",
+                      cacheKey.c_str(), material->shader.c_str(), material->metallic, material->roughness,
+                      material->texAlbedo.empty() ? "(none)" : material->texAlbedo.c_str(),
+                      cmd.materialTextureIds[0]);
+        if (anyPath && cmd.materialTextureIds[0] == 0 && !material->texAlbedo.empty()) {
+            console_->AddError(std::string(buffer) + "  <- albedo texture failed to bind");
+        } else {
+            console_->AddLog(buffer);
+        }
+    }
+
     const ShaderDefinition& shaderDefinition = ShaderRegistry::Resolve(material->shader);
     for (const ShaderDefinition::Property& property : shaderDefinition.properties) {
         if (property.id == "albedoColor" || property.id == "emissiveColor" || property.id == "metallic" ||
@@ -2159,6 +2186,14 @@ unsigned int SceneEditor::GetMaterialPreviewTextureForMaterial(const std::string
     const glm::mat4 proj = glm::perspective(glm::radians(34.0f), aspect, 0.01f, 10.0f);
     renderer_->SetCamera(view, proj);
 
+    // Light the sphere in a fixed neutral studio rather than the scene's sky, so
+    // a thumbnail describes the material and nothing else. This matters most for
+    // metals: with metallic near 1 the albedo is almost entirely suppressed
+    // (diffuse is scaled by 1 - metallic), so what a smooth metal shows is the
+    // environment it reflects. Against a plain sky that is a featureless bright
+    // disc; against the studio's softboxes it reads as shiny metal.
+    renderer_->PushPreviewEnvironment();
+
     // Shaded into an HDR target and tone mapped below, so intensities can sit in
     // real HDR range: a bright key plus a dim opposite fill, Unity-style. ACES
     // rolls the highlights off instead of clipping, keeping emissive/bright
@@ -2177,6 +2212,7 @@ unsigned int SceneEditor::GetMaterialPreviewTextureForMaterial(const std::string
     renderer_->SubmitLight(fillLight);
     renderer_->SubmitMesh(cmd);
     renderer_->Flush();
+    renderer_->PopPreviewEnvironment();
 
     // Resolve: ACES tone map + sRGB encode the HDR sphere into the 8-bit icon,
     // matching the viewport's response.
@@ -3466,6 +3502,7 @@ void SceneEditor::RenderProjectPanel() {
                     const bool isScene = IsSceneAssetPath(file);
                     const bool isPrefab = IsPrefabAssetPath(file);
                     const bool isShaderGraph = IsShaderGraphAssetPath(file);
+                    const bool isShaderSource = IsShaderSourceAssetPath(file);
                     const bool isTrack = IsTrackAssetPath(file);
                     const bool isVehicleConfig = IsVehicleConfigAssetPath(file);
                     const bool isVehicleSound = IsVehicleSoundAssetPath(file);
@@ -3585,6 +3622,17 @@ void SceneEditor::RenderProjectPanel() {
                                     } else if (console_) {
                                         console_->AddError("Failed to open project file: " + file);
                                     }
+                                }
+                            } else if (isShaderSource) {
+                                if (ImGui::MenuItem("Open in IDE")) {
+                                    if (OpenProjectAssetInDefaultEditor(file)) {
+                                        if (console_) console_->AddLog("Opened shader: " + file);
+                                    } else if (console_) {
+                                        console_->AddError("Failed to open shader: " + file);
+                                    }
+                                }
+                                if (ImGui::MenuItem("Recompile", nullptr, false, !IsGeneratedShaderAssetPath(file))) {
+                                    RecompileShaderCodeAsset(file, false);
                                 }
                             } else if (isShaderGraph) {
                                 if (ImGui::MenuItem("Edit")) {
@@ -3856,6 +3904,11 @@ void SceneEditor::RenderProjectPanel() {
                             std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
                             showCreateProjectAssetPopup_ = true;
                         }
+                        if (ImGui::MenuItem("Shader (Code)")) {
+                            createProjectAssetType_ = ProjectCreateAssetType::ShaderCode;
+                            std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
+                            showCreateProjectAssetPopup_ = true;
+                        }
                         if (ImGui::MenuItem("Track")) {
                             createProjectAssetType_ = ProjectCreateAssetType::Track;
                             std::snprintf(createProjectAssetNameBuffer_, sizeof(createProjectAssetNameBuffer_), "%s", ProjectCreateAssetTypeDefaultName(createProjectAssetType_));
@@ -4047,6 +4100,15 @@ void SceneEditor::RenderProjectPanel() {
                             if (created) {
                                 selectedProjectFile_ = graphPath;
                                 OpenShaderGraphEditor(graphPath);
+                            }
+                        } else if (createProjectAssetType_ == ProjectCreateAssetType::ShaderCode) {
+                            std::string fragmentPath;
+                            created = CreateShaderCodeAsset(createProjectAssetNameBuffer_, &fragmentPath);
+                            if (created) {
+                                selectedProjectFile_ = fragmentPath;
+                                // Editing happens in the user's IDE, so hand the
+                                // new fragment shader straight over to it.
+                                OpenProjectAssetInDefaultEditor(fragmentPath);
                             }
                         } else if (createProjectAssetType_ == ProjectCreateAssetType::VehicleProfile) {
                             created = CreateVehicleConfigAsset(createProjectAssetNameBuffer_, &createdVehicleConfigPath);

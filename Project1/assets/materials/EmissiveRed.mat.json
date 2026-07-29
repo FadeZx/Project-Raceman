@@ -1,6 +1,8 @@
 {
   "version": 2,
   "name": "EmissiveRed",
+  "baseMaterial": "",
+  "overriddenFields": [],
   "shader": "emissive",
   "albedoColor": [1, 1, 1, 1],
   "metallic": 0,
@@ -23,12 +25,12 @@
     "ao": ""
   },
   "properties": {
-    "albedoColor": { "type": "vec4", "value": [1, 1, 1, 1] },
     "emissiveIntensity": { "type": "float", "value": 6.373 },
+    "albedoColor": { "type": "vec4", "value": [1, 1, 1, 1] },
     "albedoTexture": { "type": "texture2D", "value": "" },
-    "emissiveColor": { "type": "vec3", "value": [1, 1, 1] },
-    "emissiveTexture": { "type": "texture2D", "value": "" },
     "uvTiling": { "type": "vec2", "value": [1, 1] },
+    "emissiveTexture": { "type": "texture2D", "value": "" },
+    "emissiveColor": { "type": "vec3", "value": [1, 1, 1] },
     "uvOffset": { "type": "vec2", "value": [0, 0] }
   }
 }
