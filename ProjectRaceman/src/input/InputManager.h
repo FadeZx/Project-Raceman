@@ -79,44 +79,94 @@ struct WheelSettingsProfile {
     std::string id{"default_wheel"};
     std::string displayName{"Default Wheel"};
     std::string deviceNamePattern;
+    // Lock-to-lock rotation the hardware/driver is configured for.
+    float steeringPhysicalRangeDegrees{900.0f};
+    // Rotation that maps to full in-game lock. Smaller than the physical range
+    // means the wheel reaches full lock before its end stops (soft lock).
     float steeringRangeDegrees{900.0f};
     float steeringSensitivity{1.0f};
     float steeringSaturation{1.0f};
     bool steeringInvert{false};
-    float steeringDeadzone{0.05f};
+    float steeringDeadzone{0.0f};
     float steeringCalibrationMin{-1.0f};
     float steeringCalibrationCenter{0.0f};
     float steeringCalibrationMax{1.0f};
     float steeringResponseExponent{1.0f};
+    // 0 = raw axis, 1 = heavily filtered. Applied per vehicle sample.
+    float steeringSmoothing{0.0f};
+    // 0 = constant lock, 1 = strongly reduced lock at top speed.
+    float steeringSpeedSensitivity{0.0f};
+    // Auto-return rate (units/s) used for devices that cannot self-centre.
+    float steeringReturnRate{0.0f};
     bool combinedPedals{false};
     bool throttleInvert{true};
     float throttleDeadzone{0.02f};
+    float throttleSaturation{1.0f};
     float throttleCalibrationMin{-1.0f};
     float throttleCalibrationCenter{-1.0f};
     float throttleCalibrationMax{1.0f};
     float throttleResponseExponent{1.0f};
     bool brakeInvert{true};
     float brakeDeadzone{0.02f};
+    float brakeSaturation{1.0f};
     float brakeCalibrationMin{-1.0f};
     float brakeCalibrationCenter{-1.0f};
     float brakeCalibrationMax{1.0f};
     float brakeResponseExponent{1.0f};
     bool clutchInvert{true};
     float clutchDeadzone{0.02f};
+    float clutchSaturation{1.0f};
     float clutchCalibrationMin{-1.0f};
     float clutchCalibrationCenter{-1.0f};
     float clutchCalibrationMax{1.0f};
     float clutchResponseExponent{1.0f};
     bool forceFeedbackEnabled{false};
+    bool forceFeedbackInvert{false};
     float forceFeedbackOverallStrength{0.75f};
     float forceFeedbackSelfAligningTorque{1.0f};
     float forceFeedbackRoadEffects{0.2f};
     float forceFeedbackSlipEffects{0.15f};
     float forceFeedbackCollisionEffects{0.35f};
+    float forceFeedbackKerbEffects{0.5f};
+    float forceFeedbackEngineEffects{0.0f};
+    float forceFeedbackLockupEffects{0.4f};
     float forceFeedbackDamper{0.1f};
     float forceFeedbackFriction{0.05f};
     float forceFeedbackSpring{0.0f};
+    // Static centring spring applied when the tyres cannot generate torque
+    // (standstill, airborne). Doubles as the wheel return rate.
+    float forceFeedbackCenteringSpring{0.25f};
+    // End-stop spring applied past the configured steering range.
+    float forceFeedbackSoftLock{0.6f};
+    float forceFeedbackSmoothing{0.15f};
     float forceFeedbackMinimumForce{0.0f};
+};
+
+// Per-frame force feedback request produced by the vehicle simulation and
+// consumed by the platform force feedback backend.
+struct WheelForceFeedbackState {
+    // Signed steering torque in [-1, 1]. Positive pulls the wheel clockwise.
+    float steeringTorque{0.0f};
+    // Dynamic condition strengths in [0, 1].
+    float damper{0.0f};
+    float friction{0.0f};
+    float centeringSpring{0.0f};
+    // Texture components in [0, 1]. They are kept apart so each one can be
+    // scaled by its own preset gain before being mixed into the device-side
+    // periodic effect.
+    float roadAmplitude{0.0f};
+    float slipAmplitude{0.0f};
+    float kerbAmplitude{0.0f};
+    float lockupAmplitude{0.0f};
+    // Combined amplitude, used by callers that do not separate components.
+    float vibrationAmplitude{0.0f};
+    float vibrationFrequencyHz{0.0f};
+    // Low frequency engine/drivetrain rumble.
+    float rumbleAmplitude{0.0f};
+    float rumbleFrequencyHz{0.0f};
+    // One-shot impact spike (kerbs, collisions) with its direction.
+    float impact{0.0f};
+    float impactDirection{0.0f};
 };
 
 class WheelForceFeedbackController;
@@ -164,9 +214,19 @@ public:
     void EnsureDefaultProfiles();
     void EnsureDefaultWheelSettingsProfiles();
     const std::vector<InputDeviceInfo>& GetConnectedDevices() const { return devices_; }
+    // First connected wheel, or nullptr when none is attached.
+    const InputDeviceInfo* FindPrimaryWheelDevice() const;
+    // Wheel preset that matches a device, falling back to the default preset.
+    const WheelSettingsProfile* FindWheelSettingsForDevice(const InputDeviceInfo& device) const;
+    // Normalized wheel position (-1..1) after calibration but before range,
+    // sensitivity and deadzone shaping. Used for soft lock and calibration UI.
+    float GetWheelSteeringPosition() const;
     void SetWheelForceFeedbackActive(bool active);
     bool IsWheelForceFeedbackActive() const { return wheelForceFeedbackActive_; }
+    void SetWheelForceFeedbackState(const WheelForceFeedbackState& state);
     void SetWheelForceFeedbackState(float steeringTorque, float damper, float vibration);
+    // Plays a short test pulse so users can confirm force feedback is alive.
+    void TriggerWheelForceFeedbackTest();
     void SetLogCallback(std::function<void(const std::string&)> callback);
     bool IsListeningForBinding() const { return listeningForBinding_; }
     void StartListeningForBinding(InputDeviceType deviceType, InputBindingSource source);
@@ -190,10 +250,36 @@ private:
         bool useKeyboard{false};
     };
 
+    enum class WheelAxisRole {
+        Steering,
+        Throttle,
+        Brake,
+        Clutch,
+        Generic
+    };
+
     void PollDevices();
-    float ResolveAxisFromBinding(const InputBinding& binding, const InputDeviceInfo* device) const;
-    bool ResolveDigitalFromBinding(const InputBinding& binding, const InputDeviceInfo* device) const;
-    bool ResolvePressedFromBinding(const InputBinding& binding, const InputDeviceInfo* device) const;
+    float ResolveAxisFromBinding(const InputBinding& binding,
+                                 const InputDeviceInfo* device,
+                                 std::string_view action = {}) const;
+    float ResolveWheelAxis(float rawValue,
+                           const InputBinding& binding,
+                           const InputDeviceInfo& device,
+                           std::string_view action) const;
+    float TuneAxisValue(float rawValue,
+                        const InputBinding& binding,
+                        const InputDeviceInfo* device,
+                        std::string_view action) const;
+    static WheelAxisRole ClassifyWheelAxisRole(std::string_view action);
+    static float ApplyBipolarCalibration(float rawValue, float minValue, float centerValue, float maxValue);
+    static float ApplyUnipolarCalibration(float rawValue, float minValue, float maxValue, bool invert);
+    static float ShapeUnipolarAxis(float value, float deadzone, float saturation, float responseExponent);
+    bool ResolveDigitalFromBinding(const InputBinding& binding,
+                                   const InputDeviceInfo* device,
+                                   std::string_view action = {}) const;
+    bool ResolvePressedFromBinding(const InputBinding& binding,
+                                   const InputDeviceInfo* device,
+                                   std::string_view action = {}) const;
     ResolvedDeviceSelection SelectDeviceForBinding(const InputBinding& binding,
                                                    InputDevicePreference preferredDevice,
                                                    std::string_view preferredSpecificDeviceId) const;
@@ -211,6 +297,10 @@ private:
     std::unordered_map<int, bool> mouseButtonPressed_;
     std::vector<std::function<void(int)>> keyCallbacks_;
     std::unordered_map<int, PolledButtonState> joystickButtons_;
+    // Previous frame raw axis samples, keyed the same way as joystickButtons_.
+    // Used to detect edges on axis bound as a button (paddles, sequential
+    // shifters and hat-driven controls).
+    std::unordered_map<int, float> previousAxisValues_;
     std::vector<InputDeviceInfo> devices_;
     std::vector<InputProfile> inputProfiles_;
     std::vector<WheelSettingsProfile> wheelSettingsProfiles_;
@@ -227,9 +317,8 @@ private:
     InputBindingSource listeningSource_{InputBindingSource::None};
     std::unordered_map<int, float> listeningAxisBaseline_;
     bool wheelForceFeedbackActive_{false};
-    float wheelForceFeedbackTorque_{0.0f};
-    float wheelForceFeedbackDamper_{0.0f};
-    float wheelForceFeedbackVibration_{0.0f};
+    double wheelForceFeedbackTestUntil_{0.0};
+    WheelForceFeedbackState wheelForceFeedbackState_{};
     std::function<void(const std::string&)> logCallback_;
     std::unique_ptr<WheelForceFeedbackController> wheelForceFeedbackController_;
 };

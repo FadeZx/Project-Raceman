@@ -507,7 +507,12 @@ void EnsureDefaultWheelSettingsProfiles(std::vector<WheelSettingsProfile>& profi
     profile.forceFeedbackRoadEffects = 0.35f;
     profile.forceFeedbackSlipEffects = 0.2f;
     profile.forceFeedbackCollisionEffects = 0.45f;
-    profile.forceFeedbackMinimumForce = 0.08f;
+    profile.forceFeedbackKerbEffects = 0.5f;
+    profile.forceFeedbackLockupEffects = 0.4f;
+    profile.forceFeedbackCenteringSpring = 0.25f;
+    profile.forceFeedbackSoftLock = 0.6f;
+    profile.forceFeedbackSmoothing = 0.15f;
+    profile.forceFeedbackMinimumForce = 0.05f;
     profiles.push_back(std::move(profile));
 }
 
@@ -4354,10 +4359,98 @@ void SceneEditor::RenderProjectInputSettings() {
             ImGui::TextDisabled("Target: %s", inputProfiles_[static_cast<std::size_t>(selectedInputProfileIndex_)].displayName.c_str());
         }
 
+        if (ImGui::CollapsingHeader("Detected Devices", ImGuiTreeNodeFlags_DefaultOpen)) {
+            const InputDeviceInfo* wheelDevice = inputManager_ != nullptr ? inputManager_->FindPrimaryWheelDevice() : nullptr;
+            if (inputManager_ == nullptr) {
+                ImGui::TextDisabled("Input manager unavailable.");
+            } else if (wheelDevice == nullptr) {
+                ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.2f, 1.0f), "No steering wheel detected.");
+                ImGui::TextDisabled("Connected devices:");
+                for (const InputDeviceInfo& device : inputManager_->GetConnectedDevices()) {
+                    if (device.type == InputDeviceType::Keyboard) {
+                        continue;
+                    }
+                    ImGui::BulletText("%s (%d axes, %d buttons)",
+                                      device.displayName.c_str(), device.axisCount, device.buttonCount);
+                }
+            } else {
+                ImGui::Text("Wheel: %s", wheelDevice->displayName.c_str());
+                ImGui::TextDisabled("%d axes, %d buttons", wheelDevice->axisCount, wheelDevice->buttonCount);
+                // Live axis readout: the fastest way to find which axis is the
+                // brake and whether a pedal is reading inverted.
+                for (std::size_t axisIndex = 0; axisIndex < wheelDevice->axes.size(); ++axisIndex) {
+                    const float raw = wheelDevice->axes[axisIndex];
+                    char label[64]{};
+                    std::snprintf(label, sizeof(label), "Axis %zu: %+.3f", axisIndex, raw);
+                    ImGui::ProgressBar((raw + 1.0f) * 0.5f, ImVec2(-1.0f, 0.0f), label);
+                }
+                if (ImGui::Button("Test Force Feedback")) {
+                    inputManager_->TriggerWheelForceFeedbackTest();
+                }
+                ImGui::SameLine();
+                ImGui::TextDisabled("Wheel should jolt left then right.");
+
+                // Pedal sets disagree about which end of the axis means
+                // "released", which is the usual reason a wheel arrives with
+                // the throttle already pinned. Sampling the resting position
+                // settles it in one click.
+                if (ImGui::Button("Calibrate Rest Position") && !inputProfiles_.empty()) {
+                    const int profileIndex = (std::max)(0,
+                        (std::min)(selectedInputProfileIndex_, static_cast<int>(inputProfiles_.size()) - 1));
+                    InputProfile& targetProfile = inputProfiles_[static_cast<std::size_t>(profileIndex)];
+                    auto restingValueForAction = [&](const char* action, float& outValue) {
+                        const InputBinding* binding = FindBindingForAction(targetProfile, InputDeviceType::Wheel, action);
+                        if (binding == nullptr || binding->axis < 0 ||
+                            binding->axis >= static_cast<int>(wheelDevice->axes.size())) {
+                            return false;
+                        }
+                        outValue = wheelDevice->axes[static_cast<std::size_t>(binding->axis)];
+                        return true;
+                    };
+                    auto calibratePedal = [&](const char* action, bool& invert, float& minValue, float& maxValue) {
+                        float resting = 0.0f;
+                        if (!restingValueForAction(action, resting)) {
+                            return;
+                        }
+                        // The pedal travels away from where it sits at rest.
+                        invert = resting > 0.0f;
+                        minValue = -1.0f;
+                        maxValue = 1.0f;
+                    };
+                    calibratePedal("throttle", wheelSettings.throttleInvert,
+                                   wheelSettings.throttleCalibrationMin, wheelSettings.throttleCalibrationMax);
+                    wheelSettings.throttleCalibrationCenter = wheelSettings.throttleCalibrationMin;
+                    calibratePedal("brake", wheelSettings.brakeInvert,
+                                   wheelSettings.brakeCalibrationMin, wheelSettings.brakeCalibrationMax);
+                    wheelSettings.brakeCalibrationCenter = wheelSettings.brakeCalibrationMin;
+                    calibratePedal("clutch", wheelSettings.clutchInvert,
+                                   wheelSettings.clutchCalibrationMin, wheelSettings.clutchCalibrationMax);
+                    wheelSettings.clutchCalibrationCenter = wheelSettings.clutchCalibrationMin;
+
+                    float steerResting = 0.0f;
+                    if (restingValueForAction("steer", steerResting)) {
+                        // Keep the centre strictly inside the range so both
+                        // halves of the axis stay normalisable.
+                        wheelSettings.steeringCalibrationCenter = (std::clamp)(steerResting, -0.9f, 0.9f);
+                        wheelSettings.steeringCalibrationMin = -1.0f;
+                        wheelSettings.steeringCalibrationMax = 1.0f;
+                    }
+                    projectSettingsChanged = true;
+                }
+                ImGui::SameLine();
+                ImGui::TextDisabled("Centre the wheel and lift off every pedal first.");
+            }
+        }
+
         if (ImGui::CollapsingHeader("Steering", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (ImGui::DragFloat("Hardware Range Degrees", &wheelSettings.steeringPhysicalRangeDegrees, 5.0f, 90.0f, 2000.0f, "%.0f")) {
+                projectSettingsChanged = true;
+            }
+            ImGui::TextDisabled("Lock-to-lock rotation set in the wheel's driver.");
             if (ImGui::DragFloat("Range Degrees", &wheelSettings.steeringRangeDegrees, 5.0f, 90.0f, 1440.0f, "%.0f")) {
                 projectSettingsChanged = true;
             }
+            ImGui::TextDisabled("Rotation mapped to full in-game lock. Below the hardware range creates a soft lock.");
             if (ImGui::DragFloat("Sensitivity", &wheelSettings.steeringSensitivity, 0.01f, 0.1f, 4.0f, "%.2f")) {
                 projectSettingsChanged = true;
             }
@@ -4382,6 +4475,17 @@ void SceneEditor::RenderProjectInputSettings() {
             if (ImGui::DragFloat("Steering Max", &wheelSettings.steeringCalibrationMax, 0.01f, -1.0f, 1.0f, "%.2f")) {
                 projectSettingsChanged = true;
             }
+            if (ImGui::DragFloat("Steering Smoothing", &wheelSettings.steeringSmoothing, 0.01f, 0.0f, 0.95f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Speed Sensitivity", &wheelSettings.steeringSpeedSensitivity, 0.01f, 0.0f, 0.9f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            ImGui::TextDisabled("Reduces steering lock as speed rises.");
+            if (ImGui::DragFloat("Return Rate", &wheelSettings.steeringReturnRate, 0.05f, 0.0f, 12.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            ImGui::TextDisabled("Centres the steering input on wheels without force feedback. Ignored when FFB is on, because the wheel centres itself.");
         }
 
         if (ImGui::CollapsingHeader("Pedals", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -4408,6 +4512,9 @@ void SceneEditor::RenderProjectInputSettings() {
             if (ImGui::DragFloat("Throttle Max", &wheelSettings.throttleCalibrationMax, 0.01f, -1.0f, 1.0f, "%.2f")) {
                 projectSettingsChanged = true;
             }
+            if (ImGui::DragFloat("Throttle Saturation", &wheelSettings.throttleSaturation, 0.01f, 0.1f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
 
             ImGui::SeparatorText("Brake");
             if (ImGui::Checkbox("Invert Brake", &wheelSettings.brakeInvert)) {
@@ -4428,6 +4535,10 @@ void SceneEditor::RenderProjectInputSettings() {
             if (ImGui::DragFloat("Brake Max", &wheelSettings.brakeCalibrationMax, 0.01f, -1.0f, 1.0f, "%.2f")) {
                 projectSettingsChanged = true;
             }
+            if (ImGui::DragFloat("Brake Saturation", &wheelSettings.brakeSaturation, 0.01f, 0.1f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            ImGui::TextDisabled("Lower saturation reaches full braking before the pedal bottoms out - useful for load cells.");
 
             ImGui::SeparatorText("Clutch");
             if (ImGui::Checkbox("Invert Clutch", &wheelSettings.clutchInvert)) {
@@ -4446,6 +4557,9 @@ void SceneEditor::RenderProjectInputSettings() {
                 projectSettingsChanged = true;
             }
             if (ImGui::DragFloat("Clutch Max", &wheelSettings.clutchCalibrationMax, 0.01f, -1.0f, 1.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Clutch Saturation", &wheelSettings.clutchSaturation, 0.01f, 0.1f, 1.0f, "%.2f")) {
                 projectSettingsChanged = true;
             }
         }
@@ -4478,10 +4592,33 @@ void SceneEditor::RenderProjectInputSettings() {
             if (ImGui::DragFloat("Spring", &wheelSettings.forceFeedbackSpring, 0.01f, 0.0f, 2.0f, "%.2f")) {
                 projectSettingsChanged = true;
             }
+            if (ImGui::DragFloat("Kerb Effects", &wheelSettings.forceFeedbackKerbEffects, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Lockup / Wheelspin", &wheelSettings.forceFeedbackLockupEffects, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Engine Rumble", &wheelSettings.forceFeedbackEngineEffects, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            if (ImGui::DragFloat("Centering Spring", &wheelSettings.forceFeedbackCenteringSpring, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            ImGui::TextDisabled("Return-to-centre force used when the tyres cannot generate one (stopped or airborne).");
+            if (ImGui::DragFloat("Soft Lock", &wheelSettings.forceFeedbackSoftLock, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
+            ImGui::TextDisabled("End-stop force past the configured steering range.");
+            if (ImGui::DragFloat("Smoothing", &wheelSettings.forceFeedbackSmoothing, 0.01f, 0.0f, 0.95f, "%.2f")) {
+                projectSettingsChanged = true;
+            }
             if (ImGui::DragFloat("Minimum Force", &wheelSettings.forceFeedbackMinimumForce, 0.01f, 0.0f, 1.0f, "%.2f")) {
                 projectSettingsChanged = true;
             }
-            ImGui::TextDisabled("Windows play mode now claims wheel FFB ownership and disables driver auto-centering. Vehicle-driven FFB forces are still minimal.");
+            if (ImGui::Checkbox("Invert Force Feedback", &wheelSettings.forceFeedbackInvert)) {
+                projectSettingsChanged = true;
+            }
+            ImGui::TextDisabled("Play mode claims the wheel, disables driver auto-centering and drives constant, periodic, damper, friction and spring effects from the tyre model.");
         }
     }
 

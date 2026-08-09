@@ -3328,7 +3328,11 @@ void SceneEditor::LoadProject() {
                             ReadString(wheelObject, "id", profile.id);
                             ReadString(wheelObject, "displayName", profile.displayName);
                             ReadString(wheelObject, "deviceNamePattern", profile.deviceNamePattern);
+                            if (auto it = wheelObject.find("steeringPhysicalRangeDegrees"); it != wheelObject.end() && it->second.is_number()) profile.steeringPhysicalRangeDegrees = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("steeringRangeDegrees"); it != wheelObject.end() && it->second.is_number()) profile.steeringRangeDegrees = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("steeringSmoothing"); it != wheelObject.end() && it->second.is_number()) profile.steeringSmoothing = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("steeringSpeedSensitivity"); it != wheelObject.end() && it->second.is_number()) profile.steeringSpeedSensitivity = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("steeringReturnRate"); it != wheelObject.end() && it->second.is_number()) profile.steeringReturnRate = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("steeringSensitivity"); it != wheelObject.end() && it->second.is_number()) profile.steeringSensitivity = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("steeringSaturation"); it != wheelObject.end() && it->second.is_number()) profile.steeringSaturation = static_cast<float>(it->second.as_number());
                             ReadBool(wheelObject, "steeringInvert", profile.steeringInvert);
@@ -3344,19 +3348,23 @@ void SceneEditor::LoadProject() {
                             if (auto it = wheelObject.find("throttleCalibrationCenter"); it != wheelObject.end() && it->second.is_number()) profile.throttleCalibrationCenter = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("throttleCalibrationMax"); it != wheelObject.end() && it->second.is_number()) profile.throttleCalibrationMax = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("throttleResponseExponent"); it != wheelObject.end() && it->second.is_number()) profile.throttleResponseExponent = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("throttleSaturation"); it != wheelObject.end() && it->second.is_number()) profile.throttleSaturation = static_cast<float>(it->second.as_number());
                             ReadBool(wheelObject, "brakeInvert", profile.brakeInvert);
                             if (auto it = wheelObject.find("brakeDeadzone"); it != wheelObject.end() && it->second.is_number()) profile.brakeDeadzone = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("brakeCalibrationMin"); it != wheelObject.end() && it->second.is_number()) profile.brakeCalibrationMin = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("brakeCalibrationCenter"); it != wheelObject.end() && it->second.is_number()) profile.brakeCalibrationCenter = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("brakeCalibrationMax"); it != wheelObject.end() && it->second.is_number()) profile.brakeCalibrationMax = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("brakeResponseExponent"); it != wheelObject.end() && it->second.is_number()) profile.brakeResponseExponent = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("brakeSaturation"); it != wheelObject.end() && it->second.is_number()) profile.brakeSaturation = static_cast<float>(it->second.as_number());
                             ReadBool(wheelObject, "clutchInvert", profile.clutchInvert);
                             if (auto it = wheelObject.find("clutchDeadzone"); it != wheelObject.end() && it->second.is_number()) profile.clutchDeadzone = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("clutchCalibrationMin"); it != wheelObject.end() && it->second.is_number()) profile.clutchCalibrationMin = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("clutchCalibrationCenter"); it != wheelObject.end() && it->second.is_number()) profile.clutchCalibrationCenter = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("clutchCalibrationMax"); it != wheelObject.end() && it->second.is_number()) profile.clutchCalibrationMax = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("clutchResponseExponent"); it != wheelObject.end() && it->second.is_number()) profile.clutchResponseExponent = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("clutchSaturation"); it != wheelObject.end() && it->second.is_number()) profile.clutchSaturation = static_cast<float>(it->second.as_number());
                             ReadBool(wheelObject, "forceFeedbackEnabled", profile.forceFeedbackEnabled);
+                            ReadBool(wheelObject, "forceFeedbackInvert", profile.forceFeedbackInvert);
                             if (auto it = wheelObject.find("forceFeedbackOverallStrength"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackOverallStrength = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("forceFeedbackSelfAligningTorque"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackSelfAligningTorque = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("forceFeedbackRoadEffects"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackRoadEffects = static_cast<float>(it->second.as_number());
@@ -3366,6 +3374,12 @@ void SceneEditor::LoadProject() {
                             if (auto it = wheelObject.find("forceFeedbackFriction"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackFriction = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("forceFeedbackSpring"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackSpring = static_cast<float>(it->second.as_number());
                             if (auto it = wheelObject.find("forceFeedbackMinimumForce"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackMinimumForce = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackKerbEffects"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackKerbEffects = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackEngineEffects"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackEngineEffects = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackLockupEffects"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackLockupEffects = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackCenteringSpring"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackCenteringSpring = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackSoftLock"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackSoftLock = static_cast<float>(it->second.as_number());
+                            if (auto it = wheelObject.find("forceFeedbackSmoothing"); it != wheelObject.end() && it->second.is_number()) profile.forceFeedbackSmoothing = static_cast<float>(it->second.as_number());
                             if (!profile.id.empty()) {
                                 wheelSettingsProfiles_.push_back(std::move(profile));
                             }
@@ -3603,7 +3617,11 @@ void SceneEditor::SaveProject() {
             out << "        \"id\": \"" << JsonEscape(wheel.id) << "\",\n";
             out << "        \"displayName\": \"" << JsonEscape(wheel.displayName) << "\",\n";
             out << "        \"deviceNamePattern\": \"" << JsonEscape(wheel.deviceNamePattern) << "\",\n";
+            out << "        \"steeringPhysicalRangeDegrees\": " << wheel.steeringPhysicalRangeDegrees << ",\n";
             out << "        \"steeringRangeDegrees\": " << wheel.steeringRangeDegrees << ",\n";
+            out << "        \"steeringSmoothing\": " << wheel.steeringSmoothing << ",\n";
+            out << "        \"steeringSpeedSensitivity\": " << wheel.steeringSpeedSensitivity << ",\n";
+            out << "        \"steeringReturnRate\": " << wheel.steeringReturnRate << ",\n";
             out << "        \"steeringSensitivity\": " << wheel.steeringSensitivity << ",\n";
             out << "        \"steeringSaturation\": " << wheel.steeringSaturation << ",\n";
             out << "        \"steeringInvert\": " << (wheel.steeringInvert ? "true" : "false") << ",\n";
@@ -3619,19 +3637,23 @@ void SceneEditor::SaveProject() {
             out << "        \"throttleCalibrationCenter\": " << wheel.throttleCalibrationCenter << ",\n";
             out << "        \"throttleCalibrationMax\": " << wheel.throttleCalibrationMax << ",\n";
             out << "        \"throttleResponseExponent\": " << wheel.throttleResponseExponent << ",\n";
+            out << "        \"throttleSaturation\": " << wheel.throttleSaturation << ",\n";
             out << "        \"brakeInvert\": " << (wheel.brakeInvert ? "true" : "false") << ",\n";
             out << "        \"brakeDeadzone\": " << wheel.brakeDeadzone << ",\n";
             out << "        \"brakeCalibrationMin\": " << wheel.brakeCalibrationMin << ",\n";
             out << "        \"brakeCalibrationCenter\": " << wheel.brakeCalibrationCenter << ",\n";
             out << "        \"brakeCalibrationMax\": " << wheel.brakeCalibrationMax << ",\n";
             out << "        \"brakeResponseExponent\": " << wheel.brakeResponseExponent << ",\n";
+            out << "        \"brakeSaturation\": " << wheel.brakeSaturation << ",\n";
             out << "        \"clutchInvert\": " << (wheel.clutchInvert ? "true" : "false") << ",\n";
             out << "        \"clutchDeadzone\": " << wheel.clutchDeadzone << ",\n";
             out << "        \"clutchCalibrationMin\": " << wheel.clutchCalibrationMin << ",\n";
             out << "        \"clutchCalibrationCenter\": " << wheel.clutchCalibrationCenter << ",\n";
             out << "        \"clutchCalibrationMax\": " << wheel.clutchCalibrationMax << ",\n";
             out << "        \"clutchResponseExponent\": " << wheel.clutchResponseExponent << ",\n";
+            out << "        \"clutchSaturation\": " << wheel.clutchSaturation << ",\n";
             out << "        \"forceFeedbackEnabled\": " << (wheel.forceFeedbackEnabled ? "true" : "false") << ",\n";
+            out << "        \"forceFeedbackInvert\": " << (wheel.forceFeedbackInvert ? "true" : "false") << ",\n";
             out << "        \"forceFeedbackOverallStrength\": " << wheel.forceFeedbackOverallStrength << ",\n";
             out << "        \"forceFeedbackSelfAligningTorque\": " << wheel.forceFeedbackSelfAligningTorque << ",\n";
             out << "        \"forceFeedbackRoadEffects\": " << wheel.forceFeedbackRoadEffects << ",\n";
@@ -3640,6 +3662,12 @@ void SceneEditor::SaveProject() {
             out << "        \"forceFeedbackDamper\": " << wheel.forceFeedbackDamper << ",\n";
             out << "        \"forceFeedbackFriction\": " << wheel.forceFeedbackFriction << ",\n";
             out << "        \"forceFeedbackSpring\": " << wheel.forceFeedbackSpring << ",\n";
+            out << "        \"forceFeedbackKerbEffects\": " << wheel.forceFeedbackKerbEffects << ",\n";
+            out << "        \"forceFeedbackEngineEffects\": " << wheel.forceFeedbackEngineEffects << ",\n";
+            out << "        \"forceFeedbackLockupEffects\": " << wheel.forceFeedbackLockupEffects << ",\n";
+            out << "        \"forceFeedbackCenteringSpring\": " << wheel.forceFeedbackCenteringSpring << ",\n";
+            out << "        \"forceFeedbackSoftLock\": " << wheel.forceFeedbackSoftLock << ",\n";
+            out << "        \"forceFeedbackSmoothing\": " << wheel.forceFeedbackSmoothing << ",\n";
             out << "        \"forceFeedbackMinimumForce\": " << wheel.forceFeedbackMinimumForce << "\n";
             out << "      }" << (wheelIndex + 1 < wheelSettingsProfiles_.size() ? ",\n" : "\n");
         }

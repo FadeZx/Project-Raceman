@@ -68,6 +68,62 @@ float ResolveKeyboardAxis(const InputManager& inputManager, const InputProfile& 
     return (std::clamp)(resolved, -1.0f, 1.0f);
 }
 
+// Wheel presets own the feel of the steering axis itself: filtering, the
+// speed-dependent lock reduction and, for devices that cannot centre
+// themselves, the return rate.
+void ApplyWheelSteeringFeel(RuntimeVehicleInstance& runtimeVehicle,
+                            const SceneObject& vehicleObject,
+                            InputManager& inputManager,
+                            ArcadeVehicleInput& input,
+                            float deltaTime) {
+    if (vehicleObject.vehicle.preferredInputDevice == InputDevicePreference::Keyboard ||
+        vehicleObject.vehicle.preferredInputDevice == InputDevicePreference::Gamepad) {
+        runtimeVehicle.smoothedWheelSteeringInitialized = false;
+        return;
+    }
+
+    const InputDeviceInfo* wheelDevice = inputManager.FindPrimaryWheelDevice();
+    if (wheelDevice == nullptr) {
+        runtimeVehicle.smoothedWheelSteeringInitialized = false;
+        return;
+    }
+    const WheelSettingsProfile* settings = inputManager.FindWheelSettingsForDevice(*wheelDevice);
+    if (settings == nullptr) {
+        return;
+    }
+
+    if (settings->steeringSpeedSensitivity > 0.0f) {
+        const float maxSpeed = (std::max)(1.0f, runtimeVehicle.config.arcadeHandling.maxForwardSpeed);
+        const float speedRatio = (std::clamp)(std::fabs(runtimeVehicle.arcadeSpeed) / maxSpeed, 0.0f, 1.0f);
+        input.steering *= 1.0f - (std::clamp)(settings->steeringSpeedSensitivity, 0.0f, 0.9f) * speedRatio;
+    }
+
+    if (!runtimeVehicle.smoothedWheelSteeringInitialized) {
+        runtimeVehicle.smoothedWheelSteering = input.steering;
+        runtimeVehicle.smoothedWheelSteeringInitialized = true;
+    }
+
+    // A device without force feedback holds whatever position it is left in,
+    // so an optional return rate walks the input back to centre for it. Wheels
+    // with force feedback centre physically and must never be fought here.
+    if (settings->steeringReturnRate > 0.0f && !settings->forceFeedbackEnabled) {
+        runtimeVehicle.smoothedWheelSteering = MoveTowards(
+            runtimeVehicle.smoothedWheelSteering, input.steering, deltaTime * settings->steeringReturnRate);
+        input.steering = runtimeVehicle.smoothedWheelSteering;
+        return;
+    }
+
+    const float smoothing = (std::clamp)(settings->steeringSmoothing, 0.0f, 0.95f);
+    if (smoothing > 0.0f) {
+        // Time-constant filter so the feel does not change with frame rate.
+        const float blend = (std::clamp)(deltaTime / (std::max)(0.001f, smoothing * 0.12f), 0.0f, 1.0f);
+        runtimeVehicle.smoothedWheelSteering += (input.steering - runtimeVehicle.smoothedWheelSteering) * blend;
+        input.steering = runtimeVehicle.smoothedWheelSteering;
+    } else {
+        runtimeVehicle.smoothedWheelSteering = input.steering;
+    }
+}
+
 } // namespace
 
 void SceneEditor::CaptureVehicleRuntimeInputActions(bool routeInput) {
@@ -134,6 +190,7 @@ ArcadeVehicleInput SampleArcadeVehicleInput(RuntimeVehicleInstance& runtimeVehic
             vehicleObject.vehicle.preferredInputDevice,
             vehicleObject.vehicle.preferredInputDeviceId);
 
+        bool keyboardSteeringActive = false;
         const InputProfile* activeProfile = inputManager->FindProfile(profileId);
         if (activeProfile == nullptr) {
             activeProfile = inputManager->FindProfile("default_vehicle");
@@ -162,6 +219,7 @@ ArcadeVehicleInput SampleArcadeVehicleInput(RuntimeVehicleInstance& runtimeVehic
 
             if (std::fabs(keyboardSteer) > 0.0f || std::fabs(runtimeVehicle.smoothedKeyboardSteering) > 0.0001f) {
                 input.steering = runtimeVehicle.smoothedKeyboardSteering;
+                keyboardSteeringActive = true;
             }
             if (keyboardThrottle > 0.0f || runtimeVehicle.smoothedKeyboardThrottle > 0.0001f) {
                 input.throttle = runtimeVehicle.smoothedKeyboardThrottle;
@@ -173,6 +231,14 @@ ArcadeVehicleInput SampleArcadeVehicleInput(RuntimeVehicleInstance& runtimeVehic
             runtimeVehicle.smoothedKeyboardSteering = 0.0f;
             runtimeVehicle.smoothedKeyboardThrottle = 0.0f;
             runtimeVehicle.smoothedKeyboardBrake = 0.0f;
+        }
+
+        // Only shape the axis when it is actually coming from the wheel;
+        // keyboard steering already has its own ramp.
+        if (!keyboardSteeringActive) {
+            ApplyWheelSteeringFeel(runtimeVehicle, vehicleObject, *inputManager, input, deltaTime);
+        } else {
+            runtimeVehicle.smoothedWheelSteeringInitialized = false;
         }
     } else {
         runtimeVehicle.smoothedKeyboardSteering = 0.0f;

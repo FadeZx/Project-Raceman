@@ -81,6 +81,36 @@ bool LooksLikeGamepadName(const char* name) {
         lower.find("gamepad") != std::string::npos ||
         lower.find("nintendo") != std::string::npos;
 }
+
+// Wheel bases, pedal sets and shifters ship under a wide range of product
+// names, and many of them contain "controller" or carry an SDL gamepad
+// mapping. They must be recognised before the gamepad heuristics run,
+// otherwise the six-axis gamepad layout hides the pedals and the wheel
+// bindings never resolve.
+bool LooksLikeWheelName(const char* name) {
+    static const char* kWheelNameFragments[] = {
+        "wheel", "steering", "driving force", "racing", "pedal", "pedals", "shifter", "handbrake",
+        "logitech g", "g25", "g27", "g29", "g920", "g923", "g pro racing", "pro racing wheel",
+        "thrustmaster", "t150", "t248", "t300", "t500", "t818", "tmx", "ts-pc", "ts-xw", "tx racing",
+        "fanatec", "clubsport", "csl", "csr", "podium",
+        "moza", "simucube", "simagic", "simxperience", "accuforce", "osw", "vrs directforce",
+        "asetek", "cammus", "pxn", "hori racing", "ricmotech", "leo bodnar", "sim-lab", "heusinkveld"
+    };
+    const std::string lower = ToLowerCopy(name != nullptr ? name : "");
+    if (lower.empty()) {
+        return false;
+    }
+    for (const char* fragment : kWheelNameFragments) {
+        if (lower.find(fragment) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+float SafeDivide(float numerator, float denominator) {
+    return numerator / ((std::abs)(denominator) < 0.0001f ? (denominator < 0.0f ? -0.0001f : 0.0001f) : denominator);
+}
 } // namespace
 
 InputManager::InputManager()
@@ -190,11 +220,11 @@ void InputManager::BeginFrame() {
     PollDevices();
     const bool wheelWindowFocused = window_ == nullptr || glfwGetWindowAttrib(window_, GLFW_FOCUSED) == GLFW_TRUE;
     if (wheelForceFeedbackController_) {
-        wheelForceFeedbackController_->SetEffectState(
-            wheelForceFeedbackTorque_,
-            wheelForceFeedbackDamper_,
-            wheelForceFeedbackVibration_);
-        wheelForceFeedbackController_->SyncDevices(devices_, wheelForceFeedbackActive_ && wheelWindowFocused);
+        const bool testActive = glfwGetTime() < wheelForceFeedbackTestUntil_;
+        wheelForceFeedbackController_->SetSteeringPosition(GetWheelSteeringPosition());
+        wheelForceFeedbackController_->SetEffectState(wheelForceFeedbackState_);
+        wheelForceFeedbackController_->SyncDevices(devices_,
+                                                   (wheelForceFeedbackActive_ || testActive) && wheelWindowFocused);
     }
 }
 
@@ -273,7 +303,7 @@ float InputManager::GetAxisForProfile(std::string_view profileId,
             continue;
         }
         const ResolvedDeviceSelection selection = SelectDeviceForBinding(binding, preferredDevice, preferredSpecificDeviceId);
-        const float value = ResolveAxisFromBinding(binding, selection.device);
+        const float value = ResolveAxisFromBinding(binding, selection.device, action);
         const float magnitude = std::abs(value);
         if (magnitude > bestMagnitude) {
             bestMagnitude = magnitude;
@@ -303,7 +333,7 @@ bool InputManager::IsActionDownForProfile(std::string_view profileId,
             continue;
         }
         const ResolvedDeviceSelection selection = SelectDeviceForBinding(binding, preferredDevice, preferredSpecificDeviceId);
-        if (ResolveDigitalFromBinding(binding, selection.device)) {
+        if (ResolveDigitalFromBinding(binding, selection.device, action)) {
             return true;
         }
     }
@@ -330,7 +360,7 @@ bool InputManager::WasActionPressedForProfile(std::string_view profileId,
             continue;
         }
         const ResolvedDeviceSelection selection = SelectDeviceForBinding(binding, preferredDevice, preferredSpecificDeviceId);
-        if (ResolvePressedFromBinding(binding, selection.device)) {
+        if (ResolvePressedFromBinding(binding, selection.device, action)) {
             return true;
         }
     }
@@ -402,9 +432,12 @@ void InputManager::EnsureDefaultProfiles() {
         {"shiftUp", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER},
         {"shiftDown", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_LEFT_BUMPER},
         {"reverse", InputDeviceType::Gamepad, InputBindingSource::Button, -1, -1, -1, -1, GLFW_GAMEPAD_BUTTON_Y},
-        {"steer", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 0, -1, false, 0.05f},
-        {"throttle", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 1, -1, true, 0.02f},
-        {"brake", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 2, -1, true, 0.02f},
+        // Wheel axis tuning comes from the matching wheel preset, so these
+        // bindings only need to name the axis.
+        {"steer", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 0, -1, false, 0.0f},
+        {"throttle", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 1, -1, true, 0.02f, -1.0f, -1.0f, 1.0f},
+        {"brake", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 2, -1, true, 0.02f, -1.0f, -1.0f, 1.0f},
+        {"clutch", InputDeviceType::Wheel, InputBindingSource::Axis, -1, -1, -1, 3, -1, true, 0.02f, -1.0f, -1.0f, 1.0f},
         {"handbrake", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 0},
         {"shiftUp", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 4},
         {"shiftDown", InputDeviceType::Wheel, InputBindingSource::Button, -1, -1, -1, -1, 5}
@@ -443,7 +476,12 @@ void InputManager::EnsureDefaultWheelSettingsProfiles() {
         profile.forceFeedbackRoadEffects = 0.35f;
         profile.forceFeedbackSlipEffects = 0.2f;
         profile.forceFeedbackCollisionEffects = 0.45f;
-        profile.forceFeedbackMinimumForce = 0.08f;
+        profile.forceFeedbackKerbEffects = 0.5f;
+        profile.forceFeedbackLockupEffects = 0.4f;
+        profile.forceFeedbackCenteringSpring = 0.25f;
+        profile.forceFeedbackSoftLock = 0.6f;
+        profile.forceFeedbackSmoothing = 0.15f;
+        profile.forceFeedbackMinimumForce = 0.05f;
         wheelSettingsProfiles_.push_back(std::move(profile));
     }
 }
@@ -452,23 +490,34 @@ void InputManager::SetWheelForceFeedbackActive(bool active) {
     wheelForceFeedbackActive_ = active;
     if (wheelForceFeedbackController_) {
         const bool wheelWindowFocused = window_ == nullptr || glfwGetWindowAttrib(window_, GLFW_FOCUSED) == GLFW_TRUE;
-        wheelForceFeedbackController_->SetEffectState(
-            wheelForceFeedbackTorque_,
-            wheelForceFeedbackDamper_,
-            wheelForceFeedbackVibration_);
+        wheelForceFeedbackController_->SetEffectState(wheelForceFeedbackState_);
         wheelForceFeedbackController_->SyncDevices(devices_, wheelForceFeedbackActive_ && wheelWindowFocused);
     }
 }
 
-void InputManager::SetWheelForceFeedbackState(float steeringTorque, float damper, float vibration) {
-    wheelForceFeedbackTorque_ = steeringTorque;
-    wheelForceFeedbackDamper_ = damper;
-    wheelForceFeedbackVibration_ = vibration;
+void InputManager::SetWheelForceFeedbackState(const WheelForceFeedbackState& state) {
+    wheelForceFeedbackState_ = state;
     if (wheelForceFeedbackController_) {
-        wheelForceFeedbackController_->SetEffectState(
-            wheelForceFeedbackTorque_,
-            wheelForceFeedbackDamper_,
-            wheelForceFeedbackVibration_);
+        wheelForceFeedbackController_->SetSteeringPosition(GetWheelSteeringPosition());
+        wheelForceFeedbackController_->SetEffectState(wheelForceFeedbackState_);
+    }
+}
+
+void InputManager::SetWheelForceFeedbackState(float steeringTorque, float damper, float vibration) {
+    WheelForceFeedbackState state;
+    state.steeringTorque = steeringTorque;
+    state.damper = damper;
+    state.vibrationAmplitude = vibration;
+    state.vibrationFrequencyHz = vibration > 0.0f ? 45.0f : 0.0f;
+    SetWheelForceFeedbackState(state);
+}
+
+void InputManager::TriggerWheelForceFeedbackTest() {
+    // The test pulse has to be able to run from the editor, where play mode has
+    // not claimed the wheel yet, so it opens a short ownership window.
+    wheelForceFeedbackTestUntil_ = glfwGetTime() + 1.0;
+    if (wheelForceFeedbackController_) {
+        wheelForceFeedbackController_->TriggerTestPulse();
     }
 }
 
@@ -576,6 +625,15 @@ void InputManager::ScrollCallback(GLFWwindow* window, double xoffset, double yof
 }
 
 void InputManager::PollDevices() {
+    // Snapshot the previous frame's axis samples before they are replaced so
+    // axis-as-button edges can be detected later in the frame.
+    previousAxisValues_.clear();
+    for (const InputDeviceInfo& device : devices_) {
+        for (int axisIndex = 0; axisIndex < static_cast<int>(device.axes.size()); ++axisIndex) {
+            previousAxisValues_[device.joystickId * 1000 + axisIndex] =
+                device.axes[static_cast<std::size_t>(axisIndex)];
+        }
+    }
     devices_.clear();
 
     InputDeviceInfo keyboard;
@@ -591,17 +649,30 @@ void InputManager::PollDevices() {
         }
 
         const char* joystickName = glfwGetJoystickName(joystickId);
+        int rawAxisCount = 0;
+        glfwGetJoystickAxes(joystickId, &rawAxisCount);
+
+        // Wheels win over the gamepad classification: a lot of wheel bases
+        // carry an SDL gamepad mapping, and routing them through the gamepad
+        // path collapses their axes into the six-axis pad layout.
+        const bool looksLikeWheel = LooksLikeWheelName(joystickName);
 #if RACEMAN_GLFW_HAS_GAMEPAD_API
-        const bool hasGamepadMapping = glfwJoystickIsGamepad(joystickId) == GLFW_TRUE;
-        const bool isGamepad = hasGamepadMapping || LooksLikeGamepadName(joystickName);
+        const bool hasGamepadMapping = !looksLikeWheel && glfwJoystickIsGamepad(joystickId) == GLFW_TRUE;
+        const bool isGamepad = !looksLikeWheel && (hasGamepadMapping || LooksLikeGamepadName(joystickName));
 #else
         const bool hasGamepadMapping = false;
-        const bool isGamepad = LooksLikeGamepadName(joystickName);
+        const bool isGamepad = !looksLikeWheel && LooksLikeGamepadName(joystickName);
 #endif
         InputDeviceInfo device;
         device.runtimeId = MakeJoystickRuntimeId(joystickId, joystickName);
         device.displayName = joystickName != nullptr ? joystickName : ("Joystick " + std::to_string(joystickId));
         device.type = InferJoystickType(isGamepad, joystickName);
+        // Unnamed direct input devices with more axes than a pad exposes are
+        // almost always a wheel + pedal set; treat them as a wheel so their
+        // bindings resolve instead of falling into the dead Unknown bucket.
+        if (device.type == InputDeviceType::Unknown && rawAxisCount >= 3) {
+            device.type = InputDeviceType::Wheel;
+        }
         device.joystickId = joystickId;
         device.connected = true;
         device.isGamepad = isGamepad;
@@ -701,7 +772,9 @@ void InputManager::PollDevices() {
     }
 }
 
-float InputManager::ResolveAxisFromBinding(const InputBinding& binding, const InputDeviceInfo* device) const {
+float InputManager::ResolveAxisFromBinding(const InputBinding& binding,
+                                           const InputDeviceInfo* device,
+                                           std::string_view action) const {
     switch (binding.source) {
     case InputBindingSource::Key:
         return (binding.key >= 0 && IsKeyDown(binding.key)) ? 1.0f : 0.0f;
@@ -714,7 +787,7 @@ float InputManager::ResolveAxisFromBinding(const InputBinding& binding, const In
         if (device == nullptr || binding.axis < 0 || binding.axis >= static_cast<int>(device->axes.size())) {
             return 0.0f;
         }
-        return ApplyAxisTuning(device->axes[static_cast<std::size_t>(binding.axis)], binding);
+        return TuneAxisValue(device->axes[static_cast<std::size_t>(binding.axis)], binding, device, action);
     case InputBindingSource::Button:
         if (device == nullptr || binding.button < 0 || binding.button >= static_cast<int>(device->buttons.size())) {
             return 0.0f;
@@ -726,7 +799,21 @@ float InputManager::ResolveAxisFromBinding(const InputBinding& binding, const In
     }
 }
 
-bool InputManager::ResolveDigitalFromBinding(const InputBinding& binding, const InputDeviceInfo* device) const {
+float InputManager::TuneAxisValue(float rawValue,
+                                  const InputBinding& binding,
+                                  const InputDeviceInfo* device,
+                                  std::string_view action) const {
+    // Wheels are shaped by their preset so that calibration edits take effect
+    // immediately instead of only when copied into the bindings.
+    if (device != nullptr && device->type == InputDeviceType::Wheel && !action.empty()) {
+        return ResolveWheelAxis(rawValue, binding, *device, action);
+    }
+    return ApplyAxisTuning(rawValue, binding);
+}
+
+bool InputManager::ResolveDigitalFromBinding(const InputBinding& binding,
+                                             const InputDeviceInfo* device,
+                                             std::string_view action) const {
     if (binding.source == InputBindingSource::Key) {
         return binding.key >= 0 && IsKeyDown(binding.key);
     }
@@ -736,10 +823,12 @@ bool InputManager::ResolveDigitalFromBinding(const InputBinding& binding, const 
                binding.button < static_cast<int>(device->buttons.size()) &&
                device->buttons[static_cast<std::size_t>(binding.button)] == GLFW_PRESS;
     }
-    return std::abs(ResolveAxisFromBinding(binding, device)) >= kDigitalPressThreshold;
+    return std::abs(ResolveAxisFromBinding(binding, device, action)) >= kDigitalPressThreshold;
 }
 
-bool InputManager::ResolvePressedFromBinding(const InputBinding& binding, const InputDeviceInfo* device) const {
+bool InputManager::ResolvePressedFromBinding(const InputBinding& binding,
+                                             const InputDeviceInfo* device,
+                                             std::string_view action) const {
     if (binding.source == InputBindingSource::Key) {
         return binding.key >= 0 && WasKeyPressed(binding.key);
     }
@@ -747,6 +836,23 @@ bool InputManager::ResolvePressedFromBinding(const InputBinding& binding, const 
         const int buttonKey = device->joystickId * 1000 + binding.button;
         auto it = joystickButtons_.find(buttonKey);
         return it != joystickButtons_.end() && it->second.pressed;
+    }
+    // Paddle shifters and sequential shifters frequently sit on an axis rather
+    // than a button, so an axis bound to a digital action needs edge
+    // detection too. The tuning is a pure function of the raw sample, so the
+    // previous frame's raw value can be shaped the same way and compared.
+    if (binding.source == InputBindingSource::Axis &&
+        device != nullptr &&
+        binding.axis >= 0 &&
+        binding.axis < static_cast<int>(device->axes.size())) {
+        const float current = std::abs(TuneAxisValue(device->axes[static_cast<std::size_t>(binding.axis)],
+                                                     binding, device, action));
+        auto it = previousAxisValues_.find(device->joystickId * 1000 + binding.axis);
+        if (it == previousAxisValues_.end()) {
+            return false;
+        }
+        const float previous = std::abs(TuneAxisValue(it->second, binding, device, action));
+        return current >= kDigitalPressThreshold && previous < kDigitalPressThreshold;
     }
     return false;
 }
@@ -807,26 +913,17 @@ std::string InputManager::MakeJoystickRuntimeId(int joystickId, const char* name
 }
 
 InputDeviceType InputManager::InferJoystickType(bool isGamepad, const char* name) {
+    if (LooksLikeWheelName(name)) {
+        return InputDeviceType::Wheel;
+    }
     if (isGamepad) {
         return InputDeviceType::Gamepad;
-    }
-    const std::string lowerName = ToLowerCopy(name != nullptr ? name : "");
-    if (lowerName.find("wheel") != std::string::npos ||
-        lowerName.find("logitech g") != std::string::npos ||
-        lowerName.find("thrustmaster") != std::string::npos ||
-        lowerName.find("fanatec") != std::string::npos ||
-        lowerName.find("pedal") != std::string::npos) {
-        return InputDeviceType::Wheel;
     }
     return InputDeviceType::Unknown;
 }
 
-float InputManager::ApplyAxisTuning(float rawValue, const InputBinding& binding) {
+float InputManager::ApplyBipolarCalibration(float rawValue, float minValue, float centerValue, float maxValue) {
     float value = rawValue;
-    const float minValue = binding.calibrationMin;
-    const float centerValue = binding.calibrationCenter;
-    const float maxValue = binding.calibrationMax;
-
     if (centerValue > minValue && maxValue > centerValue) {
         if (value >= centerValue) {
             value = (value - centerValue) / (std::max)(0.0001f, maxValue - centerValue);
@@ -834,8 +931,45 @@ float InputManager::ApplyAxisTuning(float rawValue, const InputBinding& binding)
             value = (value - centerValue) / (std::max)(0.0001f, centerValue - minValue);
         }
     }
+    return (std::clamp)(value, -1.0f, 1.0f);
+}
 
-    value = (std::max)(-1.0f, (std::min)(1.0f, value));
+float InputManager::ApplyUnipolarCalibration(float rawValue, float minValue, float maxValue, bool invert) {
+    // Pedals report a single travel range. SafeDivide keeps reversed ranges
+    // (max < min) working, which is how several wheels report a released
+    // pedal as +1 and a fully pressed pedal as -1.
+    float travel = SafeDivide(rawValue - minValue, maxValue - minValue);
+    travel = (std::clamp)(travel, 0.0f, 1.0f);
+    return invert ? 1.0f - travel : travel;
+}
+
+float InputManager::ShapeUnipolarAxis(float value, float deadzone, float saturation, float responseExponent) {
+    const float clampedDeadzone = (std::clamp)(deadzone, 0.0f, 0.95f);
+    const float clampedSaturation = (std::clamp)(saturation, clampedDeadzone + 0.05f, 1.0f);
+    float shaped = (value - clampedDeadzone) / (std::max)(0.0001f, clampedSaturation - clampedDeadzone);
+    shaped = (std::clamp)(shaped, 0.0f, 1.0f);
+    return std::pow(shaped, (std::max)(0.01f, responseExponent));
+}
+
+float InputManager::ApplyAxisTuning(float rawValue, const InputBinding& binding) {
+    // A binding whose calibration centre sits at (or outside) the minimum
+    // describes a one-directional travel - a pedal or a trigger - and must be
+    // mapped to 0..1. Treating it as a bipolar axis is what left released
+    // pedals reading full throttle.
+    const bool bipolar = binding.calibrationCenter > binding.calibrationMin &&
+                         binding.calibrationMax > binding.calibrationCenter;
+    if (!bipolar) {
+        const float travel = ApplyUnipolarCalibration(rawValue,
+                                                      binding.calibrationMin,
+                                                      binding.calibrationMax,
+                                                      binding.invert);
+        return ShapeUnipolarAxis(travel, binding.deadzone, 1.0f, binding.responseExponent);
+    }
+
+    float value = ApplyBipolarCalibration(rawValue,
+                                          binding.calibrationMin,
+                                          binding.calibrationCenter,
+                                          binding.calibrationMax);
     if (binding.invert) {
         value = -value;
     }
@@ -847,6 +981,152 @@ float InputManager::ApplyAxisTuning(float rawValue, const InputBinding& binding)
     const float normalized = (std::abs(value) - binding.deadzone) / (std::max)(0.0001f, 1.0f - binding.deadzone);
     const float curved = std::pow((std::max)(0.0f, normalized), (std::max)(0.01f, binding.responseExponent));
     return value < 0.0f ? -curved : curved;
+}
+
+InputManager::WheelAxisRole InputManager::ClassifyWheelAxisRole(std::string_view action) {
+    if (action == "steer" || action == "steering" || action == "moveX") {
+        return WheelAxisRole::Steering;
+    }
+    if (action == "throttle" || action == "accelerate") {
+        return WheelAxisRole::Throttle;
+    }
+    if (action == "brake") {
+        return WheelAxisRole::Brake;
+    }
+    if (action == "clutch") {
+        return WheelAxisRole::Clutch;
+    }
+    return WheelAxisRole::Generic;
+}
+
+float InputManager::ResolveWheelAxis(float raw,
+                                     const InputBinding& binding,
+                                     const InputDeviceInfo& device,
+                                     std::string_view action) const {
+    const WheelSettingsProfile* settings = FindWheelSettingsForDevice(device);
+    const WheelAxisRole role = ClassifyWheelAxisRole(action);
+    if (settings == nullptr || role == WheelAxisRole::Generic) {
+        return ApplyAxisTuning(raw, binding);
+    }
+
+    if (role == WheelAxisRole::Steering) {
+        float value = ApplyBipolarCalibration(raw,
+                                              settings->steeringCalibrationMin,
+                                              settings->steeringCalibrationCenter,
+                                              settings->steeringCalibrationMax);
+        if (settings->steeringInvert) {
+            value = -value;
+        }
+
+        // Map the physical rotation onto the rotation the game uses. A 900
+        // degree base driving a 540 degree car reaches full lock at 60% of its
+        // travel; the rest is the soft lock zone.
+        const float physicalRange = (std::max)(1.0f, settings->steeringPhysicalRangeDegrees);
+        const float usedRange = (std::clamp)(settings->steeringRangeDegrees, 1.0f, physicalRange);
+        value = (std::clamp)(value * (physicalRange / usedRange), -1.0f, 1.0f);
+
+        const float deadzone = (std::clamp)(settings->steeringDeadzone, 0.0f, 0.95f);
+        if (std::abs(value) <= deadzone) {
+            return 0.0f;
+        }
+        const float sign = value < 0.0f ? -1.0f : 1.0f;
+        float magnitude = (std::abs(value) - deadzone) / (std::max)(0.0001f, 1.0f - deadzone);
+        magnitude *= (std::max)(0.01f, settings->steeringSensitivity);
+        magnitude /= (std::max)(0.01f, settings->steeringSaturation);
+        magnitude = (std::clamp)(magnitude, 0.0f, 1.0f);
+        magnitude = std::pow(magnitude, (std::max)(0.01f, settings->steeringResponseExponent));
+        return sign * magnitude;
+    }
+
+    if (settings->combinedPedals && (role == WheelAxisRole::Throttle || role == WheelAxisRole::Brake)) {
+        // Combined pedal sets report one axis: positive is throttle, negative
+        // is brake, both measured from the resting centre.
+        const float split = ApplyBipolarCalibration(raw,
+                                                    settings->throttleCalibrationMin,
+                                                    settings->throttleCalibrationCenter,
+                                                    settings->throttleCalibrationMax);
+        const bool wantThrottle = role == WheelAxisRole::Throttle;
+        const float signedValue = settings->throttleInvert ? -split : split;
+        const float travel = wantThrottle ? (std::max)(0.0f, signedValue) : (std::max)(0.0f, -signedValue);
+        return ShapeUnipolarAxis(travel,
+                                 wantThrottle ? settings->throttleDeadzone : settings->brakeDeadzone,
+                                 wantThrottle ? settings->throttleSaturation : settings->brakeSaturation,
+                                 wantThrottle ? settings->throttleResponseExponent : settings->brakeResponseExponent);
+    }
+
+    float minValue = settings->throttleCalibrationMin;
+    float maxValue = settings->throttleCalibrationMax;
+    bool invert = settings->throttleInvert;
+    float deadzone = settings->throttleDeadzone;
+    float saturation = settings->throttleSaturation;
+    float exponent = settings->throttleResponseExponent;
+    if (role == WheelAxisRole::Brake) {
+        minValue = settings->brakeCalibrationMin;
+        maxValue = settings->brakeCalibrationMax;
+        invert = settings->brakeInvert;
+        deadzone = settings->brakeDeadzone;
+        saturation = settings->brakeSaturation;
+        exponent = settings->brakeResponseExponent;
+    } else if (role == WheelAxisRole::Clutch) {
+        minValue = settings->clutchCalibrationMin;
+        maxValue = settings->clutchCalibrationMax;
+        invert = settings->clutchInvert;
+        deadzone = settings->clutchDeadzone;
+        saturation = settings->clutchSaturation;
+        exponent = settings->clutchResponseExponent;
+    }
+
+    const float travel = ApplyUnipolarCalibration(raw, minValue, maxValue, invert);
+    return ShapeUnipolarAxis(travel, deadzone, saturation, exponent);
+}
+
+const InputDeviceInfo* InputManager::FindPrimaryWheelDevice() const {
+    auto it = std::find_if(devices_.begin(), devices_.end(), [](const InputDeviceInfo& device) {
+        return device.type == InputDeviceType::Wheel && device.connected;
+    });
+    return it != devices_.end() ? &(*it) : nullptr;
+}
+
+const WheelSettingsProfile* InputManager::FindWheelSettingsForDevice(const InputDeviceInfo& device) const {
+    const WheelSettingsProfile* best = nullptr;
+    std::size_t bestMatchLength = 0;
+    const std::string deviceName = ToLowerCopy(device.displayName);
+    for (const WheelSettingsProfile& profile : wheelSettingsProfiles_) {
+        if (profile.deviceNamePattern.empty()) {
+            continue;
+        }
+        const std::string pattern = ToLowerCopy(profile.deviceNamePattern);
+        if (deviceName.find(pattern) != std::string::npos && pattern.size() >= bestMatchLength) {
+            best = &profile;
+            bestMatchLength = pattern.size();
+        }
+    }
+    if (best != nullptr) {
+        return best;
+    }
+
+    auto it = std::find_if(wheelSettingsProfiles_.begin(), wheelSettingsProfiles_.end(),
+                           [](const WheelSettingsProfile& profile) { return profile.id == "default_wheel"; });
+    if (it != wheelSettingsProfiles_.end()) {
+        return &(*it);
+    }
+    return wheelSettingsProfiles_.empty() ? nullptr : &wheelSettingsProfiles_.front();
+}
+
+float InputManager::GetWheelSteeringPosition() const {
+    const InputDeviceInfo* wheel = FindPrimaryWheelDevice();
+    if (wheel == nullptr || wheel->axes.empty()) {
+        return 0.0f;
+    }
+    const WheelSettingsProfile* settings = FindWheelSettingsForDevice(*wheel);
+    if (settings == nullptr) {
+        return (std::clamp)(wheel->axes.front(), -1.0f, 1.0f);
+    }
+    const float value = ApplyBipolarCalibration(wheel->axes.front(),
+                                                settings->steeringCalibrationMin,
+                                                settings->steeringCalibrationCenter,
+                                                settings->steeringCalibrationMax);
+    return settings->steeringInvert ? -value : value;
 }
 
 const char* InputManager::GetDefaultCharacterProfileId() {

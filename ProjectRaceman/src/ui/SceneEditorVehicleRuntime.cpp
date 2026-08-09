@@ -189,9 +189,7 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         inputManager_->SetWheelForceFeedbackActive(wheelFfbAllowed);
     }
 
-    float strongestTorque = 0.0f;
-    float strongestDamper = 0.0f;
-    float strongestVibration = 0.0f;
+    WheelForceFeedbackState strongestSample{};
 
     for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
         if (runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
@@ -293,26 +291,48 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         telemetry.lateralSpeed = lateralSpeed;
         telemetry.slipAngle = runtimeVehicle.arcadeSlipAngle;
         telemetry.tractionScale = runtimeVehicle.arcadeTractionScale;
+        telemetry.yawRate = runtimeVehicle.arcadeYawRate;
+        telemetry.surfaceGrip = runtimeVehicle.arcadeSurfaceGrip;
+        telemetry.frontSlip = runtimeVehicle.arcadeFrontSlip;
+        telemetry.rearSlip = runtimeVehicle.arcadeRearSlip;
+        telemetry.tireScrub = runtimeVehicle.arcadeTireScrub;
+        telemetry.throttle = runtimeVehicle.arcadeThrottle;
+        telemetry.brake = runtimeVehicle.arcadeBrake;
+        telemetry.handbrake = runtimeVehicle.arcadeHandbrake;
+        telemetry.engineRPM = runtimeVehicle.arcadeEngineRPM;
+        telemetry.redlineRPM = redlineRPM;
+        telemetry.verticalVelocity = runtimeVehicle.arcadeVerticalVelocity;
+        telemetry.maxForwardSpeed = maxForwardSpeed;
         telemetry.wheels.resize((std::max<std::size_t>)(4, runtimeVehicle.config.wheels.size()));
         for (std::size_t wheelIndex = 0; wheelIndex < telemetry.wheels.size(); ++wheelIndex) {
             ArcadeVehicleWheelTelemetry& wheelState = telemetry.wheels[wheelIndex];
-            wheelState.normalForce = wheelIndex < runtimeVehicle.arcadeWheelContacts.size()
-                ? runtimeVehicle.arcadeWheelContacts[wheelIndex].normalForce
-                : 0.0f;
+            if (wheelIndex < runtimeVehicle.arcadeWheelContacts.size()) {
+                const RuntimeVehicleWheelContact& contact = runtimeVehicle.arcadeWheelContacts[wheelIndex];
+                wheelState.normalForce = contact.normalForce;
+                wheelState.slipAngle = contact.slipAngle;
+                wheelState.tractionScale = contact.tractionScale;
+                wheelState.suspensionTravel = contact.suspensionTravel;
+                wheelState.angularVelocity = contact.angularVelocity;
+                wheelState.grounded = contact.grounded;
+                wheelState.surfaceType = contact.surfaceType;
+            }
+            wheelState.steered = wheelIndex < runtimeVehicle.config.wheels.size() &&
+                                 runtimeVehicle.config.wheels[wheelIndex].maxSteerAngle > 0.01f;
         }
 
-        const WheelForceFeedbackSample ffbSample = BuildWheelForceFeedbackSample(telemetry, runtimeVehicle.config);
-        if (std::fabs(ffbSample.torque) >= std::fabs(strongestTorque)) {
-            strongestTorque = ffbSample.torque;
-            strongestDamper = ffbSample.damper;
-            strongestVibration = ffbSample.vibration;
+        const WheelForceFeedbackState ffbSample = BuildWheelForceFeedbackSample(
+            telemetry, runtimeVehicle.config, runtimeVehicle.forceFeedbackState, deltaTime);
+        // The wheel can only render one car, so the vehicle generating the most
+        // steering load wins - in practice the one the player is driving.
+        if (std::fabs(ffbSample.steeringTorque) >= std::fabs(strongestSample.steeringTorque)) {
+            strongestSample = ffbSample;
         }
     }
 
     if (inputManager_ != nullptr && wheelFfbAllowed) {
-        inputManager_->SetWheelForceFeedbackState(strongestTorque, strongestDamper, strongestVibration);
+        inputManager_->SetWheelForceFeedbackState(strongestSample);
     } else if (inputManager_ != nullptr) {
-        inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+        inputManager_->SetWheelForceFeedbackState(WheelForceFeedbackState{});
     }
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SceneEditorTypes.h"
+#include "SceneEditorVehicleTelemetry.h"
 #include "../physics/VehicleConfig.h"
 
 #include <glm/glm.hpp>
@@ -85,6 +86,9 @@ struct RuntimeVehicleInstance {
     float arcadeOversteerAmount{0.0f};
     float arcadeSpinAmount{0.0f};
     int arcadeGear{1};
+    float smoothedWheelSteering{0.0f};
+    bool smoothedWheelSteeringInitialized{false};
+    WheelForceFeedbackRuntimeState forceFeedbackState{};
     std::vector<WheelContact> arcadeWheelContacts;
 };
 
