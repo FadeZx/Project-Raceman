@@ -236,6 +236,31 @@ struct VehicleChassisConfig
     Vector3 centerOfMassOffset{0.0f, 0.0f, -0.2f};
 };
 
+// Rigid-body impact response for chassis collisions. The runtime solves a real
+// impulse from the chassis mass, yaw inertia, and the contact offset from the
+// centre of mass, so clipping a wall with the nose spins the car the way the
+// lever arm says it should instead of applying a flat scripted penalty.
+struct VehicleCollisionConfig
+{
+    bool enabled{true};
+    // Coefficient of restitution: 0 absorbs the hit, 1 bounces off elastically.
+    float restitution{0.15f};
+    // Coulomb friction coefficient along the contact tangent.
+    float friction{0.45f};
+    // Scales the spin the impulse's lever arm produces. 1 is physically neutral.
+    float yawResponse{1.0f};
+    // Ceiling on the spin a single impact may add, in degrees per second.
+    float maxImpactYawRate{160.0f};
+    // Closing speed below which a contact counts as resting and gets no impulse.
+    float minImpactSpeed{0.35f};
+    // Mass of what was hit, in kg. 0 means immovable world geometry.
+    float obstacleMass{0.0f};
+    // Extra kinetic energy bled off, scaled by how hard the hit was.
+    float energyLoss{0.20f};
+    // Ratio of the impulse that survives into the next frame's velocity.
+    float impulseRetention{1.0f};
+};
+
 struct VehicleSetupConfig
 {
     bool enabled{false};
@@ -251,6 +276,7 @@ struct VehicleConfig
     std::string name{"default"};
     VehicleSetupConfig setup{};
     VehicleChassisConfig chassis{};
+    VehicleCollisionConfig collision{};
     SuspensionConfig frontSuspension{};
     SuspensionConfig rearSuspension{};
     VehicleGroundContactConfig groundContact{};

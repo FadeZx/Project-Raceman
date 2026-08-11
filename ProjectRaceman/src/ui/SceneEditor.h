@@ -222,6 +222,8 @@ private:
     void RenderVehicleComponentInspector(SceneObject& object,
                                          SceneInspectorComponentType& reorderDraggedType,
                                          SceneInspectorComponentType& reorderTargetType);
+    // Chassis collision authoring: mode selection, shape list, and impact tuning.
+    void RenderVehicleChassisCollisionInspector(SceneObject& object);
     void RenderMaterialProperties(const std::string& materialId, bool showBackButton);
     // Inline editor for an object's embedded per-object material instance
     // (edits meshRenderer.materialOverride, saves to the scene, never to disk).
@@ -239,6 +241,12 @@ private:
     void CaptureVehicleRuntimeInputActions(bool routeInput);
     void BuildVehiclePhysicsBodyDescriptors(std::unordered_map<std::string, PhysicsBodyDesc>& outVehicleChassisBodies,
                                             std::unordered_set<std::string>& outConsumedVehiclePhysicsObjects);
+    // Resolves the authored chassis collision config into collider descriptors
+    // expressed in the vehicle's local space. Shared by the kinematic chassis body
+    // build and the runtime sweep so both always agree on the collision volume.
+    std::vector<PhysicsColliderDesc> BuildVehicleChassisColliderDescs(
+        int vehicleObjectIndex,
+        std::unordered_set<std::string>* outConsumedObjectIds) const;
     void BuildRuntimePhysicsDescriptors(std::vector<PhysicsBodyDesc>& outPhysicsBodies,
                                         std::vector<PhysicsCharacterDesc>& outPhysicsCharacters);
     void UpdatePhysics(float deltaTime);
@@ -281,6 +289,9 @@ private:
     void UpdateImGuizmo();
     void SubmitGizmo(Renderer& renderer);
     void SubmitColliderWireframe(Renderer& renderer, int objectIndex, const glm::vec4& colorOverride, bool useColorOverride);
+    // Wireframe for the vehicle chassis collision volume, drawn only when the
+    // component has Debug Draw enabled.
+    void SubmitVehicleChassisCollisionWireframe(Renderer& renderer, int objectIndex, const glm::vec4& colorOverride, bool useColorOverride);
     void SubmitAllColliders(Renderer& renderer);
     void SubmitCullingDebug(Renderer& renderer);
     void TrySelectObjectAtMouse(Renderer& renderer);

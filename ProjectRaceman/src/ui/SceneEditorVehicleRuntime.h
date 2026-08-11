@@ -2,6 +2,7 @@
 
 #include "SceneEditorTypes.h"
 #include "SceneEditorVehicleTelemetry.h"
+#include "../physics/PhysicsWorld.h"
 #include "../physics/VehicleConfig.h"
 
 #include <glm/glm.hpp>
@@ -90,6 +91,18 @@ struct RuntimeVehicleInstance {
     bool smoothedWheelSteeringInitialized{false};
     WheelForceFeedbackRuntimeState forceFeedbackState{};
     std::vector<WheelContact> arcadeWheelContacts;
+
+    // Chassis collision. The query shape is cooked once when the runtime is built;
+    // the config is copied so the fixed step never reads back into the scene graph.
+    VehicleChassisCollisionConfig chassisCollision;
+    PhysicsQueryShapeHandle chassisQueryShape;
+    std::vector<PhysicsColliderDesc> chassisColliderDescs;
+    bool chassisCollided{false};
+    float chassisImpactSpeed{0.0f};
+    float chassisNormalImpulse{0.0f};
+    float chassisYawImpulseDegrees{0.0f};
+    glm::vec3 chassisImpactNormal{0.0f};
+    glm::vec3 chassisContactPosition{0.0f};
 };
 
 } // namespace raceman

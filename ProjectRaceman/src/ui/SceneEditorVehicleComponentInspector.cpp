@@ -471,8 +471,16 @@ void SceneEditor::RenderVehicleComponentInspector(SceneObject& obj,
                     }
 
                     ImGui::PushID(chassisIndex);
-                    const std::string comboLabel = "Chassis Part##vehicleChassisPart";
-                    if (ImGui::BeginCombo(comboLabel.c_str(), preview.c_str())) {
+                    // Size the combo to leave room for the trailing Remove button, otherwise
+                    // the button lands outside the panel. The label is dropped because the
+                    // subsection header already reads "Chassis".
+                    const ImGuiStyle& chassisRowStyle = ImGui::GetStyle();
+                    const float chassisRemoveWidth =
+                        ImGui::CalcTextSize("Remove").x + chassisRowStyle.FramePadding.x * 2.0f;
+                    ImGui::SetNextItemWidth((std::max)(
+                        80.0f,
+                        ImGui::GetContentRegionAvail().x - chassisRemoveWidth - chassisRowStyle.ItemSpacing.x));
+                    if (ImGui::BeginCombo("##vehicleChassisPart", preview.c_str())) {
                         const bool noneSelected = selectedObjectIndex < 0;
                         if (ImGui::Selectable("(none)", noneSelected)) {
                             PushUndoState();
@@ -529,6 +537,11 @@ void SceneEditor::RenderVehicleComponentInspector(SceneObject& obj,
 
                 EndInspectorSubsection();
                 } // Chassis header
+
+                if (BeginInspectorSubsection("Chassis Collision", "VehicleChassisCollisionSection", vehicleAccent)) {
+                RenderVehicleChassisCollisionInspector(obj);
+                EndInspectorSubsection();
+                } // Chassis Collision header
 
                 raceman::physics::VehicleConfig loadedConfig;
                 if (TryLoadVehicleConfigForPath(obj.vehicle.configPath, loadedConfig)) {

@@ -201,6 +201,29 @@ struct PhysicsRaycastHit {
     std::string objectId;
 };
 
+struct PhysicsShapeCastHit {
+    bool hit{false};
+    glm::vec3 position{0.0f};
+    glm::vec3 normal{0.0f, 1.0f, 0.0f};
+    float distance{0.0f};
+    float fraction{1.0f};
+    std::string objectId;
+};
+
+struct PhysicsShapeOverlap {
+    glm::vec3 position{0.0f};
+    // Direction the query shape must move along to leave the obstacle.
+    glm::vec3 normal{0.0f, 1.0f, 0.0f};
+    float penetrationDepth{0.0f};
+    std::string objectId;
+};
+
+// Opaque compound shape built once from a collider list and reused for repeated
+// sweep/overlap queries. Building a Jolt shape per frame is far too expensive for
+// the vehicle chassis, which queries several times per fixed step.
+class PhysicsQueryShape;
+using PhysicsQueryShapeHandle = std::shared_ptr<const PhysicsQueryShape>;
+
 class PhysicsWorld {
 public:
     explicit PhysicsWorld(const PhysicsLayerCollisionMatrix& collisionMatrix = {});
@@ -250,6 +273,30 @@ public:
 
     bool Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::string* ignoreObjectId = nullptr) const;
     bool RaycastIgnoring(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::unordered_set<std::string>& ignoreObjectIds) const;
+
+    // Builds a reusable convex query shape. Returns null when the collider list
+    // yields nothing usable (empty list, unresolved mesh, non-convex mesh mode).
+    static PhysicsQueryShapeHandle CreateQueryShape(const std::vector<PhysicsColliderDesc>& colliders,
+                                                    const glm::vec3& scale = glm::vec3(1.0f));
+
+    // Sweeps shape from the given pose along displacement and returns the closest
+    // blocking hit. Hits whose surface normal has normal.y >= maxSurfaceNormalY are
+    // ignored so drivable ground does not register as a wall.
+    bool ShapeCast(const PhysicsQueryShapeHandle& shape,
+                   const glm::vec3& position,
+                   const glm::vec3& rotationEuler,
+                   const glm::vec3& displacement,
+                   PhysicsShapeCastHit& outHit,
+                   const std::unordered_set<std::string>& ignoreObjectIds,
+                   float maxSurfaceNormalY = 1.1f) const;
+
+    // Collects overlaps of shape at the given pose, deepest first.
+    bool CollideShape(const PhysicsQueryShapeHandle& shape,
+                      const glm::vec3& position,
+                      const glm::vec3& rotationEuler,
+                      std::vector<PhysicsShapeOverlap>& outOverlaps,
+                      const std::unordered_set<std::string>& ignoreObjectIds,
+                      float maxSurfaceNormalY = 1.1f) const;
     const PhysicsWorldStats& GetStats() const;
     PhysicsCullingDebugInfo GetCullingDebugInfo() const;
     static std::string GetCollisionShapeCacheDirectory();

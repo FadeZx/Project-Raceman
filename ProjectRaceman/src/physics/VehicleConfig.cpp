@@ -532,6 +532,49 @@ VehicleTireDynamicsConfig readTireDynamics(const json::Value &value)
     return tireDynamics;
 }
 
+VehicleCollisionConfig readCollision(const json::Value &value)
+{
+    VehicleCollisionConfig collision{};
+    const auto &obj = value.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end())
+    {
+        collision.enabled = it->second.as_bool();
+    }
+    if (auto it = obj.find("restitution"); it != obj.end())
+    {
+        collision.restitution = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("friction"); it != obj.end())
+    {
+        collision.friction = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("yawResponse"); it != obj.end())
+    {
+        collision.yawResponse = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("maxImpactYawRate"); it != obj.end())
+    {
+        collision.maxImpactYawRate = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("minImpactSpeed"); it != obj.end())
+    {
+        collision.minImpactSpeed = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("obstacleMass"); it != obj.end())
+    {
+        collision.obstacleMass = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("energyLoss"); it != obj.end())
+    {
+        collision.energyLoss = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("impulseRetention"); it != obj.end())
+    {
+        collision.impulseRetention = static_cast<float>(it->second.as_number());
+    }
+    return collision;
+}
+
 VehicleLoadTransferConfig readLoadTransfer(const json::Value &value)
 {
     VehicleLoadTransferConfig loadTransfer{};
@@ -871,6 +914,10 @@ VehicleConfig readVehicle(const json::Value &value)
     {
         config.loadTransfer = readLoadTransfer(it->second);
     }
+    if (auto it = obj.find("collision"); it != obj.end())
+    {
+        config.collision = readCollision(it->second);
+    }
     if (auto it = obj.find("yawDynamics"); it != obj.end())
     {
         config.yawDynamics = readYawDynamics(it->second);
@@ -1087,6 +1134,17 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
     stream << "    \"aeroBalance\": " << config.loadTransfer.aeroBalance << ",\n";
     stream << "    \"maxAeroGripBoost\": " << config.loadTransfer.maxAeroGripBoost << ",\n";
     stream << "    \"visualSmoothing\": " << config.loadTransfer.visualSmoothing << "\n";
+    stream << "  },\n";
+    stream << "  \"collision\": {\n";
+    stream << "    \"enabled\": " << (config.collision.enabled ? "true" : "false") << ",\n";
+    stream << "    \"restitution\": " << config.collision.restitution << ",\n";
+    stream << "    \"friction\": " << config.collision.friction << ",\n";
+    stream << "    \"yawResponse\": " << config.collision.yawResponse << ",\n";
+    stream << "    \"maxImpactYawRate\": " << config.collision.maxImpactYawRate << ",\n";
+    stream << "    \"minImpactSpeed\": " << config.collision.minImpactSpeed << ",\n";
+    stream << "    \"obstacleMass\": " << config.collision.obstacleMass << ",\n";
+    stream << "    \"energyLoss\": " << config.collision.energyLoss << ",\n";
+    stream << "    \"impulseRetention\": " << config.collision.impulseRetention << "\n";
     stream << "  },\n";
     stream << "  \"yawDynamics\": {\n";
     stream << "    \"enabled\": " << (config.yawDynamics.enabled ? "true" : "false") << ",\n";

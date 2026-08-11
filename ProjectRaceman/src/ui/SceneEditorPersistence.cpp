@@ -165,6 +165,146 @@ InputDevicePreference InputDevicePreferenceFromStorage(const std::string& value)
     return InputDevicePreference::Any;
 }
 
+// Defined further down with the rest of the scene-object writer helpers.
+void WriteJsonFloat(std::ostream& out, float value);
+void WriteJsonVec3(std::ostream& out, const glm::vec3& v);
+
+void WriteVehicleChassisCollision(std::ostream& out, const VehicleChassisCollisionConfig& config, const char* indent) {
+    out << indent << "\"chassisCollision\": {\n";
+    out << indent << "  \"enabled\": " << (config.enabled ? "true" : "false") << ",\n";
+    out << indent << "  \"mode\": \"" << VehicleChassisCollisionModeLabel(config.mode) << "\",\n";
+    out << indent << "  \"boxCenter\": ";
+    WriteJsonVec3(out, config.boxCenter);
+    out << ",\n";
+    out << indent << "  \"boxSize\": ";
+    WriteJsonVec3(out, config.boxSize);
+    out << ",\n";
+    out << indent << "  \"meshAssetPath\": \"" << JsonEscape(NormalizeSlashes(config.meshAssetPath)) << "\",\n";
+    out << indent << "  \"meshName\": \"" << JsonEscape(config.meshName) << "\",\n";
+    out << indent << "  \"meshIndex\": " << config.meshIndex << ",\n";
+    out << indent << "  \"skinWidth\": ";
+    WriteJsonFloat(out, config.skinWidth);
+    out << ",\n";
+    out << indent << "  \"maxSlideIterations\": " << config.maxSlideIterations << ",\n";
+    out << indent << "  \"enableDepenetration\": " << (config.enableDepenetration ? "true" : "false") << ",\n";
+    out << indent << "  \"maxDepenetrationPerStep\": ";
+    WriteJsonFloat(out, config.maxDepenetrationPerStep);
+    out << ",\n";
+    out << indent << "  \"debugDraw\": " << (config.debugDraw ? "true" : "false") << ",\n";
+    out << indent << "  \"shapes\": [\n";
+    for (std::size_t shapeIndex = 0; shapeIndex < config.shapes.size(); ++shapeIndex) {
+        const VehicleChassisShape& shape = config.shapes[shapeIndex];
+        out << indent << "    {\n";
+        out << indent << "      \"enabled\": " << (shape.enabled ? "true" : "false") << ",\n";
+        out << indent << "      \"name\": \"" << JsonEscape(shape.name) << "\",\n";
+        out << indent << "      \"type\": \"" << VehicleChassisShapeTypeLabel(shape.type) << "\",\n";
+        out << indent << "      \"center\": ";
+        WriteJsonVec3(out, shape.center);
+        out << ",\n";
+        out << indent << "      \"rotationEuler\": ";
+        WriteJsonVec3(out, shape.rotationEuler);
+        out << ",\n";
+        out << indent << "      \"size\": ";
+        WriteJsonVec3(out, shape.size);
+        out << ",\n";
+        out << indent << "      \"radius\": ";
+        WriteJsonFloat(out, shape.radius);
+        out << ",\n";
+        out << indent << "      \"height\": ";
+        WriteJsonFloat(out, shape.height);
+        out << ",\n";
+        out << indent << "      \"meshAssetPath\": \"" << JsonEscape(NormalizeSlashes(shape.meshAssetPath)) << "\",\n";
+        out << indent << "      \"meshName\": \"" << JsonEscape(shape.meshName) << "\",\n";
+        out << indent << "      \"meshIndex\": " << shape.meshIndex << "\n";
+        out << indent << "    }" << (shapeIndex + 1 < config.shapes.size() ? ",\n" : "\n");
+    }
+    out << indent << "  ]\n";
+    out << indent << "}";
+}
+
+// Returns false when the scene predates chassis collision, so the caller can pick a
+// migration default instead of silently changing how an existing car behaves.
+bool ReadVehicleChassisCollision(const raceman::physics::json::Object& component, VehicleChassisCollisionConfig& config) {
+    auto configIt = component.find("chassisCollision");
+    if (configIt == component.end() || !configIt->second.is_object()) {
+        return false;
+    }
+    const auto& configObject = configIt->second.as_object();
+
+    ReadBool(configObject, "enabled", config.enabled);
+    std::string mode;
+    if (ReadString(configObject, "mode", mode)) {
+        config.mode = VehicleChassisCollisionModeFromLabel(mode);
+    }
+    ReadVec3(configObject, "boxCenter", config.boxCenter);
+    ReadVec3(configObject, "boxSize", config.boxSize);
+    ReadString(configObject, "meshAssetPath", config.meshAssetPath);
+    config.meshAssetPath = NormalizeSlashes(config.meshAssetPath);
+    ReadString(configObject, "meshName", config.meshName);
+    if (auto it = configObject.find("meshIndex"); it != configObject.end() && it->second.is_number()) {
+        config.meshIndex = (std::max)(0, static_cast<int>(it->second.as_number()));
+    }
+    if (auto it = configObject.find("skinWidth"); it != configObject.end() && it->second.is_number()) {
+        config.skinWidth = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 0.5f);
+    }
+    if (auto it = configObject.find("maxSlideIterations"); it != configObject.end() && it->second.is_number()) {
+        config.maxSlideIterations = (std::clamp)(static_cast<int>(it->second.as_number()), 1, 8);
+    }
+    // wallFriction / restitution / impactSpeedLoss used to live here before the
+    // impact response moved into the vehicle profile. Older scenes still carry
+    // them; they are ignored rather than migrated because the impulse solver
+    // derives the equivalent behaviour from mass and inertia.
+    ReadBool(configObject, "enableDepenetration", config.enableDepenetration);
+    if (auto it = configObject.find("maxDepenetrationPerStep"); it != configObject.end() && it->second.is_number()) {
+        config.maxDepenetrationPerStep = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 2.0f);
+    }
+    ReadBool(configObject, "debugDraw", config.debugDraw);
+
+    config.shapes.clear();
+    if (auto shapesIt = configObject.find("shapes"); shapesIt != configObject.end() && shapesIt->second.is_array()) {
+        for (const auto& shapeValue : shapesIt->second.as_array()) {
+            if (!shapeValue.is_object()) {
+                continue;
+            }
+            const auto& shapeObject = shapeValue.as_object();
+            VehicleChassisShape shape;
+            ReadBool(shapeObject, "enabled", shape.enabled);
+            ReadString(shapeObject, "name", shape.name);
+            std::string type;
+            if (ReadString(shapeObject, "type", type)) {
+                shape.type = VehicleChassisShapeTypeFromLabel(type);
+            }
+            ReadVec3(shapeObject, "center", shape.center);
+            ReadVec3(shapeObject, "rotationEuler", shape.rotationEuler);
+            ReadVec3(shapeObject, "size", shape.size);
+            if (auto it = shapeObject.find("radius"); it != shapeObject.end() && it->second.is_number()) {
+                shape.radius = (std::max)(0.01f, static_cast<float>(it->second.as_number()));
+            }
+            if (auto it = shapeObject.find("height"); it != shapeObject.end() && it->second.is_number()) {
+                shape.height = (std::max)(0.01f, static_cast<float>(it->second.as_number()));
+            }
+            ReadString(shapeObject, "meshAssetPath", shape.meshAssetPath);
+            shape.meshAssetPath = NormalizeSlashes(shape.meshAssetPath);
+            ReadString(shapeObject, "meshName", shape.meshName);
+            if (auto it = shapeObject.find("meshIndex"); it != shapeObject.end() && it->second.is_number()) {
+                shape.meshIndex = (std::max)(0, static_cast<int>(it->second.as_number()));
+            }
+            config.shapes.push_back(std::move(shape));
+        }
+    }
+    return true;
+}
+
+// Scenes saved before chassis collision existed relied on child collider components
+// being picked up implicitly, so keep that behaviour for them rather than dropping
+// them onto an auto-fitted box that may not match what they authored.
+void ApplyLegacyVehicleChassisCollisionDefault(VehicleComponent& vehicle) {
+    vehicle.chassisCollision = VehicleChassisCollisionConfig{};
+    if (!vehicle.chassisObjectIds.empty()) {
+        vehicle.chassisCollision.mode = VehicleChassisCollisionMode::ChildColliders;
+    }
+}
+
 void WriteColliderSurface(std::ostream& out, const ColliderSurfaceConfig& surface, const char* indent) {
     out << indent << "\"surface\": {\n";
     out << indent << "  \"type\": \"" << TrackSurfaceTypeLabel(surface.type) << "\"\n";
@@ -606,7 +746,9 @@ void WriteSceneObjectComponentBody(std::ostream& out, const SceneObject& o, Scen
             out << "\n";
             out << "            }" << (wheelIndex + 1 < o.vehicle.wheelBindings.size() ? ",\n" : "\n");
         }
-        out << "          ]\n";
+        out << "          ],\n";
+        WriteVehicleChassisCollision(out, o.vehicle.chassisCollision, "          ");
+        out << "\n";
         out << "        }";
         break;
     }
@@ -1482,6 +1624,10 @@ void SceneEditor::Load(const std::string& path) {
                                 }
                             }
                         }
+                        so.vehicle.chassisCollision = VehicleChassisCollisionConfig{};
+                        if (!ReadVehicleChassisCollision(component, so.vehicle.chassisCollision)) {
+                            ApplyLegacyVehicleChassisCollisionDefault(so.vehicle);
+                        }
                     } else if (componentType == "CharacterController") {
                         so.hasCharacterController = true;
                         ReadBool(component, "enabled", so.characterController.enabled);
@@ -2239,6 +2385,10 @@ bool SceneEditor::ParsePrefabFileObjects(const std::string& path, std::vector<Sc
                                 ReadVec3(bo, "visualRotationEuler", binding.visualRotationEuler);
                                 if (!binding.wheelName.empty()) so.vehicle.wheelBindings.push_back(std::move(binding));
                             }
+                        }
+                        so.vehicle.chassisCollision = VehicleChassisCollisionConfig{};
+                        if (!ReadVehicleChassisCollision(component, so.vehicle.chassisCollision)) {
+                            ApplyLegacyVehicleChassisCollisionDefault(so.vehicle);
                         }
                     } else if (componentType == "CharacterController") {
                         so.hasCharacterController = true;

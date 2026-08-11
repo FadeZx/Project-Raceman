@@ -70,13 +70,39 @@ void SceneEditor::RebuildVehicleRuntime() {
                 [this](int index) { return GetObjectWorldMatrix(index); });
             runtimeVehicle.config = config;
 
+            // Cook the chassis collision volume once - the fixed step sweeps it
+            // several times per frame and rebuilding it there would be far too slow.
+            runtimeVehicle.chassisCollision = object.vehicle.chassisCollision;
+            runtimeVehicle.chassisColliderDescs = BuildVehicleChassisColliderDescs(objectIndex, nullptr);
+            if (!runtimeVehicle.chassisColliderDescs.empty()) {
+                const Transform vehicleWorld = TransformFromMatrix(vehicleWorldMatrix);
+                runtimeVehicle.chassisQueryShape =
+                    PhysicsWorld::CreateQueryShape(runtimeVehicle.chassisColliderDescs, glm::abs(vehicleWorld.scale));
+            }
+
+            const bool chassisCollisionRequested =
+                runtimeVehicle.chassisCollision.enabled &&
+                runtimeVehicle.chassisCollision.mode != VehicleChassisCollisionMode::None;
+            if (chassisCollisionRequested && runtimeVehicle.chassisQueryShape == nullptr) {
+                if (console_) {
+                    console_->AddWarning("Vehicle '" + object.name +
+                                         "' chassis collision produced no usable shape; falling back to the forward probe.");
+                }
+                std::fprintf(stdout,
+                             "[Vehicle] Chassis collision shape build failed for '%s' (%zu collider desc(s)).\n",
+                             object.name.c_str(),
+                             runtimeVehicle.chassisColliderDescs.size());
+                std::fflush(stdout);
+            }
+
             runtimeVehicles_.push_back(std::move(runtimeVehicle));
             std::fprintf(stdout,
-                         "[Vehicle] Loaded '%s' config='%s' with %zu wheels, chassisBody=%s\n",
+                         "[Vehicle] Loaded '%s' config='%s' with %zu wheels, chassisBody=%s, chassisShapes=%zu\n",
                          object.name.c_str(),
                          object.vehicle.configPath.empty() ? "<default>" : object.vehicle.configPath.c_str(),
                          config.wheels.size(),
-                         runtimeVehicles_.back().chassisBodyObjectId.empty() ? "<none>" : runtimeVehicles_.back().chassisBodyObjectId.c_str());
+                         runtimeVehicles_.back().chassisBodyObjectId.empty() ? "<none>" : runtimeVehicles_.back().chassisBodyObjectId.c_str(),
+                         runtimeVehicles_.back().chassisColliderDescs.size());
             std::fflush(stdout);
         } catch (const std::exception& ex) {
             if (console_) {

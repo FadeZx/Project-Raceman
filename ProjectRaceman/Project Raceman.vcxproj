@@ -157,6 +157,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="src\ui\SceneEditorVehicleDebug.h" />
     <ClInclude Include="src\ui\SceneEditorVehicleBuilder.h" />
     <ClInclude Include="src\ui\SceneEditorVehicleDynamics.h" />
+    <ClInclude Include="src\ui\SceneEditorVehicleChassisCollision.h" />
     <ClInclude Include="src\ui\SceneEditorVehicleGrounding.h" />
     <ClInclude Include="src\ui\SceneEditorVehicleInput.h" />
     <ClInclude Include="src\ui\SceneEditorVehicleRuntime.h" />
@@ -214,6 +215,8 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\ui\SceneEditorVehicleDebug.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleProfileEditor.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleDynamics.cpp" />
+    <ClCompile Include="src\ui\SceneEditorVehicleChassisCollision.cpp" />
+    <ClCompile Include="src\ui\SceneEditorVehicleChassisCollisionInspector.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleGrounding.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleInput.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehiclePhysicsBuild.cpp" />

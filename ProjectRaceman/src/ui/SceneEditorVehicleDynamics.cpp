@@ -419,7 +419,14 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
     } else {
         runtimeVehicle.arcadeChassisWorld.rotationEuler.y -=
             input.steering * fallbackSteerDegreesPerSecond * speedForSteer * highSpeedSteerScale * gripSteerScale * directionSign * deltaTime;
-        runtimeVehicle.arcadeYawRate = 0.0f;
+        // A chassis impact injects spin even when the profile's yaw dynamics are off,
+        // so let it play out and decay rather than hard-zeroing it here.
+        if (std::fabs(runtimeVehicle.arcadeYawRate) > 0.01f) {
+            runtimeVehicle.arcadeChassisWorld.rotationEuler.y += runtimeVehicle.arcadeYawRate * deltaTime;
+            runtimeVehicle.arcadeYawRate *= (std::clamp)(1.0f - deltaTime * 3.0f, 0.0f, 1.0f);
+        } else {
+            runtimeVehicle.arcadeYawRate = 0.0f;
+        }
         runtimeVehicle.arcadeYawTorque = 0.0f;
         runtimeVehicle.arcadeOversteerAmount = 0.0f;
         runtimeVehicle.arcadeSpinAmount = 0.0f;

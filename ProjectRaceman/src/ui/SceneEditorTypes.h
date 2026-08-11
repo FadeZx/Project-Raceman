@@ -262,6 +262,102 @@ struct VehicleWheelBinding {
     glm::vec3 visualRotationEuler{0.0f, 0.0f, 0.0f};
 };
 
+// How the chassis collision volume is authored. The vehicle is kinematic and driven
+// by the arcade solver, so every shape here must stay convex - Jolt cannot sweep a
+// triangle mesh as the moving shape.
+enum class VehicleChassisCollisionMode : std::uint8_t {
+    None,           // wheels-only grounding, no chassis response
+    AutoBox,        // single box auto-fitted to the vehicle's visual bounds
+    Box,            // single explicit box
+    Shapes,         // authored list of primitives
+    ConvexMesh,     // convex hull baked from a mesh asset
+    ChildColliders  // gather collider components from chassisObjectIds
+};
+
+enum class VehicleChassisShapeType : std::uint8_t {
+    Box,
+    Sphere,
+    Capsule,
+    ConvexMesh
+};
+
+struct VehicleChassisShape {
+    bool enabled{true};
+    std::string name{"Shape"};
+    VehicleChassisShapeType type{VehicleChassisShapeType::Box};
+    glm::vec3 center{0.0f, 0.0f, 0.0f};
+    glm::vec3 rotationEuler{0.0f, 0.0f, 0.0f};
+    glm::vec3 size{1.8f, 0.6f, 4.0f};
+    float radius{0.5f};
+    float height{1.0f};
+    std::string meshAssetPath;
+    std::string meshName;
+    int meshIndex{0};
+};
+
+struct VehicleChassisCollisionConfig {
+    bool enabled{true};
+    VehicleChassisCollisionMode mode{VehicleChassisCollisionMode::AutoBox};
+    std::vector<VehicleChassisShape> shapes;
+
+    // Single-box authoring (Box / AutoBox modes).
+    glm::vec3 boxCenter{0.0f, -0.2f, 0.0f};
+    glm::vec3 boxSize{1.8f, 0.6f, 4.0f};
+
+    // Convex-mesh authoring (ConvexMesh mode). Empty path falls back to the
+    // vehicle object's own mesh filter.
+    std::string meshAssetPath;
+    std::string meshName;
+    int meshIndex{0};
+
+    // Sweep/geometry settings. How the car *reacts* to a hit - restitution,
+    // friction, spin - is physics and lives in the vehicle profile's collision
+    // section, computed from chassis mass and yaw inertia.
+    float skinWidth{0.03f};
+    int maxSlideIterations{3};
+    bool enableDepenetration{true};
+    float maxDepenetrationPerStep{0.35f};
+    bool debugDraw{false};
+};
+
+inline const char* VehicleChassisCollisionModeLabel(VehicleChassisCollisionMode mode) {
+    switch (mode) {
+    case VehicleChassisCollisionMode::None: return "None";
+    case VehicleChassisCollisionMode::Box: return "Box";
+    case VehicleChassisCollisionMode::Shapes: return "Shapes";
+    case VehicleChassisCollisionMode::ConvexMesh: return "ConvexMesh";
+    case VehicleChassisCollisionMode::ChildColliders: return "ChildColliders";
+    case VehicleChassisCollisionMode::AutoBox:
+    default: return "AutoBox";
+    }
+}
+
+inline VehicleChassisCollisionMode VehicleChassisCollisionModeFromLabel(const std::string& value) {
+    if (value == "None") return VehicleChassisCollisionMode::None;
+    if (value == "Box") return VehicleChassisCollisionMode::Box;
+    if (value == "Shapes") return VehicleChassisCollisionMode::Shapes;
+    if (value == "ConvexMesh") return VehicleChassisCollisionMode::ConvexMesh;
+    if (value == "ChildColliders") return VehicleChassisCollisionMode::ChildColliders;
+    return VehicleChassisCollisionMode::AutoBox;
+}
+
+inline const char* VehicleChassisShapeTypeLabel(VehicleChassisShapeType type) {
+    switch (type) {
+    case VehicleChassisShapeType::Sphere: return "Sphere";
+    case VehicleChassisShapeType::Capsule: return "Capsule";
+    case VehicleChassisShapeType::ConvexMesh: return "ConvexMesh";
+    case VehicleChassisShapeType::Box:
+    default: return "Box";
+    }
+}
+
+inline VehicleChassisShapeType VehicleChassisShapeTypeFromLabel(const std::string& value) {
+    if (value == "Sphere") return VehicleChassisShapeType::Sphere;
+    if (value == "Capsule") return VehicleChassisShapeType::Capsule;
+    if (value == "ConvexMesh") return VehicleChassisShapeType::ConvexMesh;
+    return VehicleChassisShapeType::Box;
+}
+
 struct VehicleComponent {
     bool enabled{true};
     bool canTilt{true};
@@ -271,6 +367,7 @@ struct VehicleComponent {
     std::string preferredInputDeviceId;
     std::vector<std::string> chassisObjectIds;
     std::vector<VehicleWheelBinding> wheelBindings;
+    VehicleChassisCollisionConfig chassisCollision;
 };
 
 struct BoxColliderComponent {

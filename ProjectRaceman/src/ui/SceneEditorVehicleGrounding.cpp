@@ -1,6 +1,7 @@
 #include "SceneEditorVehicleGrounding.h"
 
 #include "SceneEditorInternal.h"
+#include "SceneEditorVehicleChassisCollision.h"
 #include "../physics/PhysicsWorld.h"
 
 #include <algorithm>
@@ -79,23 +80,77 @@ void ApplyArcadeVehicleGrounding(RuntimeVehicleInstance& runtimeVehicle,
     runtimeVehicle.arcadeLoadRollOffset += (targetLoadRoll - runtimeVehicle.arcadeLoadRollOffset) * loadVisualAlpha;
 
     glm::vec3 moveDelta = runtimeVehicle.arcadePlanarVelocity * deltaTime;
+    runtimeVehicle.chassisCollided = false;
+    runtimeVehicle.chassisImpactSpeed = 0.0f;
     if (physicsWorld != nullptr && glm::length(moveDelta) > 0.0001f) {
-        const glm::vec3 moveDir = glm::normalize(moveDelta);
-        const float obstacleSkin = (std::max)(0.0f, groundContact.obstacleSkin);
-        PhysicsRaycastHit obstacleHit;
-        if (physicsWorld->RaycastIgnoring(
-                runtimeVehicle.arcadeChassisWorld.position + glm::vec3(0.0f, groundContact.obstacleProbeHeight, 0.0f),
-                moveDir,
-                glm::length(moveDelta) + obstacleSkin,
-                obstacleHit,
-                ignoredObjectIds) &&
-            obstacleHit.hit &&
-            obstacleHit.normal.y < groundContact.wallNormalYMax) {
-            moveDelta = moveDir * (std::max)(0.0f, obstacleHit.distance - obstacleSkin);
-            speed = 0.0f;
-            lateralSpeed = 0.0f;
-            runtimeVehicle.arcadePlanarVelocity = glm::vec3(0.0f);
-            runtimeVehicle.arcadeSideSlipVelocity = 0.0f;
+        const VehicleChassisCollisionConfig& chassisCollision = runtimeVehicle.chassisCollision;
+        const bool useChassisShape = chassisCollision.enabled &&
+                                     chassisCollision.mode != VehicleChassisCollisionMode::None &&
+                                     runtimeVehicle.chassisQueryShape != nullptr;
+
+        if (useChassisShape) {
+            VehicleChassisImpactBody impactBody;
+            impactBody.mass = runtimeVehicle.config.chassis.mass;
+            impactBody.yawInertia = runtimeVehicle.config.chassis.yawInertia;
+            impactBody.collision = runtimeVehicle.config.collision;
+            // centerOfMassOffset is authored in vehicle space (Z up, Y forward),
+            // so convert before offsetting the world chassis position.
+            impactBody.centerOfMassWorld =
+                runtimeVehicle.arcadeChassisWorld.position +
+                yawRotation * VehicleVectorToScene(runtimeVehicle.config.chassis.centerOfMassOffset);
+
+            const VehicleChassisCollisionResult collision = ResolveVehicleChassisCollision(
+                runtimeVehicle.chassisQueryShape,
+                physicsWorld,
+                chassisCollision,
+                impactBody,
+                ignoredObjectIds,
+                runtimeVehicle.arcadeChassisWorld.position,
+                runtimeVehicle.arcadeChassisWorld.rotationEuler,
+                groundContact.wallNormalYMax,
+                moveDelta,
+                runtimeVehicle.arcadePlanarVelocity,
+                runtimeVehicle.arcadeYawRate);
+
+            if (collision.collided) {
+                runtimeVehicle.chassisCollided = true;
+                runtimeVehicle.chassisImpactSpeed = collision.impactSpeed;
+                runtimeVehicle.chassisImpactNormal = collision.impactNormal;
+                runtimeVehicle.chassisContactPosition = collision.contactPosition;
+                runtimeVehicle.chassisNormalImpulse = collision.normalImpulse;
+                runtimeVehicle.chassisYawImpulseDegrees = collision.yawImpulseDegrees;
+
+                // The impulse rewrote the velocity vector and the yaw rate, so
+                // re-derive the scalars the arcade solver carries between frames.
+                const glm::quat impactYaw = glm::angleAxis(
+                    glm::radians(runtimeVehicle.arcadeChassisWorld.rotationEuler.y), glm::vec3(0.0f, 1.0f, 0.0f));
+                const glm::vec3 forward = impactYaw * glm::vec3(0.0f, 0.0f, 1.0f);
+                const glm::vec3 impactRight = impactYaw * glm::vec3(1.0f, 0.0f, 0.0f);
+                speed = glm::dot(runtimeVehicle.arcadePlanarVelocity, forward);
+                lateralSpeed = glm::dot(runtimeVehicle.arcadePlanarVelocity, impactRight);
+                runtimeVehicle.arcadeSideSlipVelocity = lateralSpeed;
+            }
+        } else {
+            // No chassis volume authored - fall back to the single forward probe so
+            // wheels-only vehicles still stop at walls instead of driving through them.
+            const glm::vec3 moveDir = glm::normalize(moveDelta);
+            const float obstacleSkin = (std::max)(0.0f, groundContact.obstacleSkin);
+            PhysicsRaycastHit obstacleHit;
+            if (physicsWorld->RaycastIgnoring(
+                    runtimeVehicle.arcadeChassisWorld.position + glm::vec3(0.0f, groundContact.obstacleProbeHeight, 0.0f),
+                    moveDir,
+                    glm::length(moveDelta) + obstacleSkin,
+                    obstacleHit,
+                    ignoredObjectIds) &&
+                obstacleHit.hit &&
+                obstacleHit.normal.y < groundContact.wallNormalYMax) {
+                moveDelta = moveDir * (std::max)(0.0f, obstacleHit.distance - obstacleSkin);
+                speed = 0.0f;
+                lateralSpeed = 0.0f;
+                runtimeVehicle.arcadePlanarVelocity = glm::vec3(0.0f);
+                runtimeVehicle.arcadeSideSlipVelocity = 0.0f;
+                runtimeVehicle.chassisCollided = true;
+            }
         }
     }
 

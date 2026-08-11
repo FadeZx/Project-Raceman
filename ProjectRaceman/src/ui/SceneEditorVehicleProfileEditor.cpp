@@ -390,6 +390,24 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
             applyDragFloatEdit("Visual Smoothing", "##vehicleProfileLoadTransferVisualSmoothing", loadTransfer.visualSmoothing, 0.1f, 0.0f, 100.0f);
             endCard();
         };
+        auto renderCollisionSection = [&]() {
+            raceman::physics::VehicleCollisionConfig& collision = inspectedVehicleConfig_.collision;
+            beginCard("vehicleProfileCollision", "Collision", "Impact response solved from chassis mass and yaw inertia", accentPrimary);
+            applyCheckboxEdit("Enabled##vehicleProfileCollisionEnabled", collision.enabled);
+            applyDragFloatEdit("Restitution", "##vehicleProfileCollisionRestitution", collision.restitution, 0.01f, 0.0f, 1.0f);
+            applyDragFloatEdit("Friction", "##vehicleProfileCollisionFriction", collision.friction, 0.01f, 0.0f, 2.0f);
+            applyDragFloatEdit("Yaw Response", "##vehicleProfileCollisionYawResponse", collision.yawResponse, 0.01f, 0.0f, 5.0f);
+            applyDragFloatEdit("Max Impact Yaw Rate (deg/s)", "##vehicleProfileCollisionMaxYaw", collision.maxImpactYawRate, 1.0f, 0.0f, 1000.0f);
+            applyDragFloatEdit("Min Impact Speed (m/s)", "##vehicleProfileCollisionMinSpeed", collision.minImpactSpeed, 0.01f, 0.0f, 10.0f);
+            applyDragFloatEdit("Obstacle Mass (kg, 0 = world)", "##vehicleProfileCollisionObstacleMass", collision.obstacleMass, 10.0f, 0.0f, 100000.0f);
+            applyDragFloatEdit("Energy Loss", "##vehicleProfileCollisionEnergyLoss", collision.energyLoss, 0.01f, 0.0f, 1.0f);
+            applyDragFloatEdit("Impulse Retention", "##vehicleProfileCollisionImpulseRetention", collision.impulseRetention, 0.01f, 0.0f, 2.0f);
+            ImGui::TextDisabled("Impulse: j = -(1+e)(v.n) / (1/m + (r x n)y^2 / Iyaw)");
+            ImGui::TextDisabled("Mass %.0f kg, yaw inertia %.0f kg*m^2 come from Chassis.",
+                                inspectedVehicleConfig_.chassis.mass,
+                                inspectedVehicleConfig_.chassis.yawInertia);
+            endCard();
+        };
         auto renderYawDynamicsSection = [&]() {
             raceman::physics::VehicleYawDynamicsConfig& yawDynamics = inspectedVehicleConfig_.yawDynamics;
             beginCard("vehicleProfileYawDynamics", "Yaw Dynamics", "Oversteer and spin response from tire slip", accentSecondary);
@@ -548,6 +566,7 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                 renderTireDynamicsSection();
                 renderLoadTransferSection();
                 renderYawDynamicsSection();
+                renderCollisionSection();
 
                 beginCard("vehicleProfileDriverAidsCard", "Driver Aids / Differential", "ABS, traction control and axle lock", accentPrimary);
                 raceman::physics::VehicleBrakeAssistConfig& brakes = inspectedVehicleConfig_.brakes;

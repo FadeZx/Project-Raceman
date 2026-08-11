@@ -1262,6 +1262,121 @@ void SceneEditor::SubmitColliderWireframe(Renderer& renderer, int objectIndex, c
         const glm::vec3 controllerCenter = object.characterController.center + glm::vec3{0.0f, height * 0.5f, 0.0f};
         SubmitWireCapsuleY(renderer, controllerMatrix, controllerCenter, radius, height, controllerColor, colliderWidth, helperDepthMode);
     }
+
+    SubmitVehicleChassisCollisionWireframe(renderer, objectIndex, colorOverride, useColorOverride);
+}
+
+void SceneEditor::SubmitVehicleChassisCollisionWireframe(Renderer& renderer,
+                                                         int objectIndex,
+                                                         const glm::vec4& colorOverride,
+                                                         bool useColorOverride) {
+    if (objectIndex < 0 || objectIndex >= static_cast<int>(objects_.size())) {
+        return;
+    }
+    const SceneObject& object = objects_[objectIndex];
+    if (!object.hasVehicle) {
+        return;
+    }
+    const VehicleChassisCollisionConfig& config = object.vehicle.chassisCollision;
+    if (!config.debugDraw || !config.enabled || config.mode == VehicleChassisCollisionMode::None) {
+        return;
+    }
+
+    constexpr float chassisWidth = 2.0f;
+    constexpr DebugLineDepthMode chassisDepthMode = DebugLineDepthMode::DepthTestedOverlay;
+    const glm::vec4 chassisColor = useColorOverride ? colorOverride : glm::vec4{1.0f, 0.35f, 0.75f, 1.0f};
+    const glm::mat4 objectMatrix = GetObjectDisplayWorldMatrix(objectIndex);
+
+    switch (config.mode) {
+    case VehicleChassisCollisionMode::AutoBox: {
+        glm::vec3 boundsMin{0.0f};
+        glm::vec3 boundsMax{0.0f};
+        if (GetObjectLocalBounds(object, boundsMin, boundsMax)) {
+            SubmitWireBox(renderer, objectMatrix, (boundsMin + boundsMax) * 0.5f, boundsMax - boundsMin,
+                          chassisColor, chassisWidth, chassisDepthMode);
+        } else {
+            SubmitWireBox(renderer, objectMatrix, glm::vec3{0.0f, -0.2f, 0.0f}, glm::vec3{1.8f, 0.6f, 4.0f},
+                          chassisColor, chassisWidth, chassisDepthMode);
+        }
+        break;
+    }
+    case VehicleChassisCollisionMode::Box:
+        SubmitWireBox(renderer, objectMatrix, config.boxCenter, config.boxSize, chassisColor, chassisWidth, chassisDepthMode);
+        break;
+    case VehicleChassisCollisionMode::Shapes: {
+        for (const VehicleChassisShape& shape : config.shapes) {
+            if (!shape.enabled) {
+                continue;
+            }
+            const glm::mat4 shapeMatrix = objectMatrix *
+                                          glm::translate(glm::mat4(1.0f), shape.center) *
+                                          BuildRotationOnlyMatrix(shape.rotationEuler);
+            switch (shape.type) {
+            case VehicleChassisShapeType::Box:
+                SubmitWireBox(renderer, shapeMatrix, glm::vec3(0.0f), shape.size, chassisColor, chassisWidth, chassisDepthMode);
+                break;
+            case VehicleChassisShapeType::Sphere:
+                SubmitWireSphere(renderer, TransformPoint(objectMatrix, shape.center), shape.radius,
+                                 chassisColor, chassisWidth, chassisDepthMode);
+                break;
+            case VehicleChassisShapeType::Capsule:
+                SubmitWireCapsuleY(renderer, shapeMatrix, glm::vec3(0.0f), shape.radius,
+                                   (std::max)(shape.height, shape.radius * 2.0f),
+                                   chassisColor, chassisWidth, chassisDepthMode);
+                break;
+            case VehicleChassisShapeType::ConvexMesh: {
+                // The cooked hull is not available here, so outline the source bounds.
+                glm::vec3 boundsMin{0.0f};
+                glm::vec3 boundsMax{0.0f};
+                if (GetObjectLocalBounds(object, boundsMin, boundsMax)) {
+                    SubmitWireBox(renderer, shapeMatrix, (boundsMin + boundsMax) * 0.5f, boundsMax - boundsMin,
+                                  chassisColor, chassisWidth, chassisDepthMode);
+                }
+                break;
+            }
+            }
+        }
+        break;
+    }
+    case VehicleChassisCollisionMode::ConvexMesh: {
+        glm::mat4 meshMatrix = objectMatrix;
+        const glm::vec3& pivotOffset = object.meshFilter.pivotOffset;
+        if (pivotOffset.x != 0.0f || pivotOffset.y != 0.0f || pivotOffset.z != 0.0f) {
+            meshMatrix = meshMatrix * glm::translate(glm::mat4(1.0f), -pivotOffset);
+        }
+        ImportedCollisionMesh mesh;
+        if (config.meshAssetPath.empty() && TryGetCollisionMeshForObject(object, mesh)) {
+            SubmitWireMesh(renderer, meshMatrix, mesh.vertices, mesh.indices, chassisColor, chassisWidth, chassisDepthMode);
+        } else {
+            glm::vec3 boundsMin{0.0f};
+            glm::vec3 boundsMax{0.0f};
+            if (GetObjectLocalBounds(object, boundsMin, boundsMax)) {
+                SubmitWireBox(renderer, meshMatrix, (boundsMin + boundsMax) * 0.5f, boundsMax - boundsMin,
+                              chassisColor, chassisWidth, chassisDepthMode);
+            }
+        }
+        break;
+    }
+    case VehicleChassisCollisionMode::ChildColliders:
+        // Each bound part already draws its own collider wireframe.
+        break;
+    case VehicleChassisCollisionMode::None:
+        break;
+    }
+
+    // While playing, show where the chassis last made contact and which way it was pushed.
+    if (scriptsRunning_) {
+        const auto runtimeIt = std::find_if(runtimeVehicles_.begin(), runtimeVehicles_.end(),
+            [&](const RuntimeVehicleInstance& runtimeVehicle) { return runtimeVehicle.objectId == object.id; });
+        if (runtimeIt != runtimeVehicles_.end() && runtimeIt->chassisCollided) {
+            const glm::vec3 start = runtimeIt->chassisContactPosition;
+            renderer.SubmitLine({start,
+                                 start + runtimeIt->chassisImpactNormal,
+                                 glm::vec4{1.0f, 0.25f, 0.15f, 1.0f},
+                                 3.0f,
+                                 DebugLineDepthMode::AlwaysOnTop});
+        }
+    }
 }
 
 void SceneEditor::SubmitAllColliders(Renderer& renderer) {

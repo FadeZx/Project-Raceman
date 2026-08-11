@@ -38,8 +38,10 @@
 #include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/CollisionGroup.h>
+#include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/ShapeCast.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
@@ -779,6 +781,69 @@ JPH::ShapeRefC CreateShape(const PhysicsBodyDesc& body, bool sensorOnly) {
 }
 
 } // namespace
+
+// Wrapper so the header can hand out an opaque handle without pulling in Jolt.
+class PhysicsQueryShape {
+public:
+    explicit PhysicsQueryShape(JPH::ShapeRefC shape) : shape_(std::move(shape)) {}
+    const JPH::ShapeRefC& Get() const { return shape_; }
+
+private:
+    JPH::ShapeRefC shape_;
+};
+
+PhysicsQueryShapeHandle PhysicsWorld::CreateQueryShape(const std::vector<PhysicsColliderDesc>& colliders,
+                                                       const glm::vec3& scale) {
+    EnsureJoltInitialized();
+
+    std::vector<JPH::ShapeRefC> shapes;
+    for (const PhysicsColliderDesc& collider : colliders) {
+        if (collider.isTrigger || collider.type == PhysicsColliderType::Plane) {
+            continue;
+        }
+
+        // A swept shape has to be convex, so mesh colliders are always cooked as
+        // hulls here regardless of how the source collider was authored.
+        PhysicsColliderDesc convexCollider = collider;
+        if (convexCollider.type == PhysicsColliderType::Mesh) {
+            convexCollider.meshMode = MeshColliderMode::ConvexHull;
+        }
+
+        JPH::ShapeRefC shape = CreateBaseShape(convexCollider, scale * convexCollider.scale);
+        if (!shape) {
+            continue;
+        }
+
+        const glm::vec3 scaledCenter = convexCollider.center * scale;
+        const JPH::Quat localRotation = ToJoltQuat(convexCollider.rotationEuler);
+        if (glm::length2(scaledCenter) > 0.000001f || !localRotation.IsClose(JPH::Quat::sIdentity())) {
+            JPH::RotatedTranslatedShapeSettings offsetSettings(ToJoltVec3(scaledCenter), localRotation, shape);
+            JPH::ShapeSettings::ShapeResult result = offsetSettings.Create();
+            if (!result.IsValid()) {
+                continue;
+            }
+            shape = result.Get();
+        }
+        shapes.push_back(std::move(shape));
+    }
+
+    if (shapes.empty()) {
+        return {};
+    }
+    if (shapes.size() == 1) {
+        return std::make_shared<const PhysicsQueryShape>(shapes[0]);
+    }
+
+    JPH::StaticCompoundShapeSettings compoundSettings;
+    for (const JPH::ShapeRefC& shape : shapes) {
+        compoundSettings.AddShape(JPH::Vec3::sZero(), JPH::Quat::sIdentity(), shape);
+    }
+    JPH::ShapeSettings::ShapeResult result = compoundSettings.Create();
+    if (!result.IsValid()) {
+        return {};
+    }
+    return std::make_shared<const PhysicsQueryShape>(result.Get());
+}
 
 std::string PhysicsWorld::GetCollisionShapeCacheDirectory() {
     return GetShapeCacheDir().string();
@@ -1553,6 +1618,147 @@ public:
         return false;
     }
 
+    bool ShapeCast(const PhysicsQueryShapeHandle& shape,
+                   const glm::vec3& position,
+                   const glm::vec3& rotationEuler,
+                   const glm::vec3& displacement,
+                   PhysicsShapeCastHit& outHit,
+                   const std::unordered_set<std::string>& ignoreObjectIds,
+                   float maxSurfaceNormalY) const {
+        outHit = {};
+        if (!physicsSystem_ || !shape || !shape->Get()) {
+            return false;
+        }
+
+        const float travel = glm::length(displacement);
+        if (travel <= 0.000001f) {
+            return false;
+        }
+
+        const JPH::RMat44 worldTransform =
+            JPH::RMat44::sRotationTranslation(ToJoltQuat(rotationEuler), ToJoltRVec3(position));
+        const JPH::RShapeCast shapeCast = JPH::RShapeCast::sFromWorldTransform(
+            shape->Get(), JPH::Vec3::sReplicate(1.0f), worldTransform, ToJoltVec3(displacement));
+
+        JPH::ShapeCastSettings settings;
+        settings.mBackFaceModeTriangles = JPH::EBackFaceMode::IgnoreBackFaces;
+        settings.mBackFaceModeConvex = JPH::EBackFaceMode::IgnoreBackFaces;
+        settings.mReturnDeepestPoint = false;
+
+        JPH::AllHitCollisionCollector<JPH::CastShapeCollector> collector;
+        const JPH::DefaultBroadPhaseLayerFilter broadPhaseFilter(objectVsBroadPhaseLayerFilter_, Layers::Moving);
+        const JPH::DefaultObjectLayerFilter objectLayerFilter(objectLayerPairFilter_, Layers::Moving);
+        const JPH::BodyFilter bodyFilter;
+        const JPH::ShapeFilter shapeFilter;
+        physicsSystem_->GetNarrowPhaseQuery().CastShape(
+            shapeCast, settings, JPH::RVec3::sZero(), collector, broadPhaseFilter, objectLayerFilter, bodyFilter, shapeFilter);
+
+        if (!collector.HadHit()) {
+            return false;
+        }
+
+        collector.Sort();
+        for (const JPH::ShapeCastResult& hit : collector.mHits) {
+            auto idIt = bodyIdToObjectId_.find(hit.mBodyID2);
+            if (idIt != bodyIdToObjectId_.end() && ignoreObjectIds.find(idIt->second) != ignoreObjectIds.end()) {
+                continue;
+            }
+            {
+                JPH::BodyLockRead lock(physicsSystem_->GetBodyLockInterface(), hit.mBodyID2);
+                if (!lock.Succeeded() || lock.GetBody().IsSensor()) {
+                    continue;
+                }
+            }
+
+            // Jolt reports the penetration axis pointing into body 2; flip it so the
+            // normal points back at the query shape like a surface normal would.
+            glm::vec3 normal = -FromJoltVec3(hit.mPenetrationAxis.Normalized());
+            if (normal.y >= maxSurfaceNormalY) {
+                continue;
+            }
+
+            outHit.hit = true;
+            outHit.fraction = hit.mFraction;
+            outHit.distance = travel * hit.mFraction;
+            outHit.normal = normal;
+            outHit.position = FromJoltRVec3(hit.mContactPointOn2);
+            if (idIt != bodyIdToObjectId_.end()) {
+                outHit.objectId = idIt->second;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    bool CollideShape(const PhysicsQueryShapeHandle& shape,
+                      const glm::vec3& position,
+                      const glm::vec3& rotationEuler,
+                      std::vector<PhysicsShapeOverlap>& outOverlaps,
+                      const std::unordered_set<std::string>& ignoreObjectIds,
+                      float maxSurfaceNormalY) const {
+        outOverlaps.clear();
+        if (!physicsSystem_ || !shape || !shape->Get()) {
+            return false;
+        }
+
+        const JPH::Mat44 centerOfMassTransform =
+            JPH::Mat44::sRotationTranslation(ToJoltQuat(rotationEuler), ToJoltVec3(position)) *
+            JPH::Mat44::sTranslation(shape->Get()->GetCenterOfMass());
+
+        JPH::CollideShapeSettings settings;
+        settings.mBackFaceMode = JPH::EBackFaceMode::IgnoreBackFaces;
+
+        JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
+        const JPH::DefaultBroadPhaseLayerFilter broadPhaseFilter(objectVsBroadPhaseLayerFilter_, Layers::Moving);
+        const JPH::DefaultObjectLayerFilter objectLayerFilter(objectLayerPairFilter_, Layers::Moving);
+        const JPH::BodyFilter bodyFilter;
+        const JPH::ShapeFilter shapeFilter;
+        physicsSystem_->GetNarrowPhaseQuery().CollideShape(
+            shape->Get(), JPH::Vec3::sReplicate(1.0f), centerOfMassTransform, settings, JPH::RVec3::sZero(),
+            collector, broadPhaseFilter, objectLayerFilter, bodyFilter, shapeFilter);
+
+        if (!collector.HadHit()) {
+            return false;
+        }
+
+        for (const JPH::CollideShapeResult& hit : collector.mHits) {
+            auto idIt = bodyIdToObjectId_.find(hit.mBodyID2);
+            if (idIt != bodyIdToObjectId_.end() && ignoreObjectIds.find(idIt->second) != ignoreObjectIds.end()) {
+                continue;
+            }
+            {
+                JPH::BodyLockRead lock(physicsSystem_->GetBodyLockInterface(), hit.mBodyID2);
+                if (!lock.Succeeded() || lock.GetBody().IsSensor()) {
+                    continue;
+                }
+            }
+
+            const float depth = hit.mPenetrationDepth;
+            if (depth <= 0.0f) {
+                continue;
+            }
+            glm::vec3 normal = -FromJoltVec3(hit.mPenetrationAxis.Normalized());
+            if (normal.y >= maxSurfaceNormalY) {
+                continue;
+            }
+
+            PhysicsShapeOverlap overlap;
+            overlap.normal = normal;
+            overlap.penetrationDepth = depth;
+            overlap.position = FromJoltVec3(hit.mContactPointOn2);
+            if (idIt != bodyIdToObjectId_.end()) {
+                overlap.objectId = idIt->second;
+            }
+            outOverlaps.push_back(std::move(overlap));
+        }
+
+        std::sort(outOverlaps.begin(), outOverlaps.end(), [](const PhysicsShapeOverlap& a, const PhysicsShapeOverlap& b) {
+            return a.penetrationDepth > b.penetrationDepth;
+        });
+        return !outOverlaps.empty();
+    }
+
     PhysicsCullingDebugInfo GetCullingDebugInfo() const {
         PhysicsCullingDebugInfo info;
         info.hasActivators = !activatorPositions_.empty();
@@ -1765,6 +1971,25 @@ bool PhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& direction, 
 
 bool PhysicsWorld::RaycastIgnoring(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, PhysicsRaycastHit& outHit, const std::unordered_set<std::string>& ignoreObjectIds) const {
     return impl_->RaycastIgnoring(origin, direction, maxDistance, outHit, ignoreObjectIds);
+}
+
+bool PhysicsWorld::ShapeCast(const PhysicsQueryShapeHandle& shape,
+                             const glm::vec3& position,
+                             const glm::vec3& rotationEuler,
+                             const glm::vec3& displacement,
+                             PhysicsShapeCastHit& outHit,
+                             const std::unordered_set<std::string>& ignoreObjectIds,
+                             float maxSurfaceNormalY) const {
+    return impl_->ShapeCast(shape, position, rotationEuler, displacement, outHit, ignoreObjectIds, maxSurfaceNormalY);
+}
+
+bool PhysicsWorld::CollideShape(const PhysicsQueryShapeHandle& shape,
+                                const glm::vec3& position,
+                                const glm::vec3& rotationEuler,
+                                std::vector<PhysicsShapeOverlap>& outOverlaps,
+                                const std::unordered_set<std::string>& ignoreObjectIds,
+                                float maxSurfaceNormalY) const {
+    return impl_->CollideShape(shape, position, rotationEuler, outOverlaps, ignoreObjectIds, maxSurfaceNormalY);
 }
 
 const PhysicsWorldStats& PhysicsWorld::GetStats() const {

@@ -6290,7 +6290,23 @@
               "objectId": "gameobject_7",
               "visualRotationEuler": [0, 0, 0]
             }
-          ]
+          ],
+          "chassisCollision": {
+            "enabled": true,
+            "mode": "ChildColliders",
+            "boxCenter": [0, -0.2, 0],
+            "boxSize": [1.8, 0.6, 4],
+            "meshAssetPath": "",
+            "meshName": "",
+            "meshIndex": 0,
+            "skinWidth": 0.03,
+            "maxSlideIterations": 3,
+            "enableDepenetration": true,
+            "maxDepenetrationPerStep": 0.35,
+            "debugDraw": false,
+            "shapes": [
+            ]
+          }
         }
       ]
     },
@@ -6435,7 +6451,23 @@
               "objectId": "gameobject_139",
               "visualRotationEuler": [0, 0, 0]
             }
-          ]
+          ],
+          "chassisCollision": {
+            "enabled": true,
+            "mode": "ChildColliders",
+            "boxCenter": [0, -0.2, 0],
+            "boxSize": [1.8, 0.6, 4],
+            "meshAssetPath": "",
+            "meshName": "",
+            "meshIndex": 0,
+            "skinWidth": 0.03,
+            "maxSlideIterations": 3,
+            "enableDepenetration": true,
+            "maxDepenetrationPerStep": 0.35,
+            "debugDraw": false,
+            "shapes": [
+            ]
+          }
         }
       ]
     },
@@ -6463,7 +6495,7 @@
           "assetId": "assets/car/formula 1/F1_chasis.fbx#0",
           "meshIndex": 0,
           "importedMaterialName": "Mat",
-          "diffuseTexturePath": "",
+          "diffuseTexturePath": "Substance SpecGloss/Right ones/formula1_DefaultMaterial_Diffuse.png",
           "pivotOffset": [-0.683868, 53.4748, -0.00106049],
           "lodEnabled": false,
           "lodBias": 1,
@@ -22723,7 +22755,7 @@
           "type": "Transform",
           "position": [0.0561381, 0.736787, -0.00252305],
           "rotationEuler": [0, 0, 0],
-          "scale": [1.93511, 1, 4.78442]
+          "scale": [1.93511, 1, 4.284]
         },
         {
           "type": "MeshFilter",
@@ -22919,6 +22951,6 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_18", "gameobject_16", "gameobject_1635", "gameobject_7", "gameobject_8", "gameobject_11", "gameobject_15"],
-  "inspectorComponentsClosed": ["mesh_393|Collider", "light_8|MeshRenderer", "gameobject_64|Vehicle", "gameobject_11|Vehicle", "camera_1|Cinemachine", "gameobject_64|MeshRenderer", "mesh_146|MeshFilter"]
+  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_18", "gameobject_1635", "gameobject_7", "gameobject_8", "gameobject_11", "gameobject_15"],
+  "inspectorComponentsClosed": ["mesh_393|Collider", "light_8|MeshRenderer", "gameobject_64|Vehicle", "gameobject_11|Vehicle", "camera_1|Cinemachine", "gameobject_64|MeshRenderer", "mesh_21|MeshFilter", "mesh_146|MeshFilter"]
 }
