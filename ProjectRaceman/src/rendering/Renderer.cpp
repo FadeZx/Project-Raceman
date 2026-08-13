@@ -607,6 +607,7 @@ GraphicsProfile Renderer::ResolveProfileForTarget(ViewportRenderTarget target) c
     resolved.taaDebugView = false;
     resolved.fogDebugView = false;
     resolved.autoExposureDebugView = false;
+    resolved.wetnessDebugView = false;
     resolved.iblDebugMode = 0;
     if (target != ViewportRenderTarget::Scene) {
         return resolved;
@@ -690,6 +691,12 @@ GraphicsProfile Renderer::ResolveProfileForTarget(ViewportRenderTarget target) c
     case SceneViewShadingMode::IblFinalSpecular:
         resolved.reflections = true;
         resolved.iblDebugMode = 3;
+        break;
+    case SceneViewShadingMode::Wetness:
+        // Forced on so the view has something to show even in a dry project;
+        // otherwise the mode looks broken rather than empty.
+        resolved.wetness = (std::max)(resolved.wetness, 0.75f);
+        resolved.wetnessDebugView = true;
         break;
     case SceneViewShadingMode::AutoExposure:
         // Forcing it on makes the view self-explanatory: the readout always has
@@ -1889,6 +1896,9 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         weatherShader_->setFloat("uIntensity", (std::clamp)(Profile().weatherIntensity, 0.0f, 1.0f));
         weatherShader_->setFloat("uWind", (std::clamp)(Profile().weatherWind, -2.0f, 2.0f));
         weatherShader_->setFloat("uParticleDensity", particleDensity);
+        // Needed to anchor streaks to a world direction rather than to the screen.
+        weatherShader_->setMat4("uInverseViewProjection", glm::inverse(proj_ * view_));
+        weatherShader_->setVec3("uCameraPosition", glm::vec3(glm::inverse(view_)[3]));
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, postProcessSceneTexture);
         glActiveTexture(GL_TEXTURE1);
@@ -2773,6 +2783,33 @@ void Renderer::Flush() {
         shader.setInt("uMaterialRoughnessTexture", 3);
         shader.setInt("uMaterialAoTexture", 4);
         const bool previewEnvironmentActive = previewEnvironmentApplied_;
+        // Wetness, like fog, describes the level's weather and must not leak into
+        // material thumbnails: a preview should describe the material, not the
+        // conditions the track happens to be in.
+        {
+            const float wetness = previewEnvironmentActive
+                ? 0.0f : (std::clamp)(GetEffectiveWetness(), 0.0f, 1.0f);
+            shader.setFloat("uWetness", wetness);
+            shader.setFloat("uWetnessPuddleAmount", (std::clamp)(Profile().wetnessPuddleAmount, 0.0f, 1.0f));
+            shader.setFloat("uWetnessPuddleScale", (std::max)(Profile().wetnessPuddleScale, 0.01f));
+            shader.setFloat("uWetnessRippleStrength", (std::clamp)(Profile().wetnessRippleStrength, 0.0f, 4.0f));
+            shader.setFloat("uWetnessRippleSpeed", (std::clamp)(Profile().wetnessRippleSpeed, 0.0f, 8.0f));
+            shader.setFloat("uWetnessDropletScale", (std::max)(Profile().wetnessDropletScale, 0.005f));
+            shader.setFloat("uWetnessDropletStrength", (std::clamp)(Profile().wetnessDropletStrength, 0.0f, 4.0f));
+            shader.setFloat("uWetnessRunoffSpeed", (std::clamp)(Profile().wetnessRunoffSpeed, 0.0f, 4.0f));
+            shader.setFloat("uWetnessTime", static_cast<float>(std::fmod(SteadySeconds(), 4096.0)));
+            shader.setBool("uWetnessDebugView", !previewEnvironmentActive && Profile().wetnessDebugView);
+            const int shelterCount = previewEnvironmentActive
+                ? 0 : (std::min)(8, static_cast<int>(weatherShelterDrawList_.size()));
+            shader.setInt("uShelterCount", shelterCount);
+            for (int shelter = 0; shelter < shelterCount; ++shelter) {
+                const WeatherShelterDrawCommand& volume = weatherShelterDrawList_[static_cast<std::size_t>(shelter)];
+                const std::string index = "[" + std::to_string(shelter) + "]";
+                shader.setMat4("uShelterInverseMatrices" + index, glm::inverse(volume.transform));
+                shader.setFloat("uShelterAmounts" + index, (std::clamp)(volume.amount, 0.0f, 1.0f));
+                shader.setFloat("uShelterFalloffs" + index, (std::max)(volume.falloff, 0.001f));
+            }
+        }
         shader.setVec3("uAmbientColor", Profile().ambientColor);
         shader.setVec3("uCameraPosition", cameraPosition);
         // Material previews render a single asset against a neutral studio; fog
@@ -2986,6 +3023,8 @@ void Renderer::Flush() {
         activeShader->setFloat("uMetallic", (std::max)(0.0f, (std::min)(1.0f, cmd.metallic)));
         activeShader->setFloat("uRoughness", (std::max)(0.02f, (std::min)(1.0f, cmd.roughness)));
         activeShader->setFloat("uClearCoat", (std::clamp)(cmd.clearCoat, 0.0f, 1.0f));
+        activeShader->setFloat("uMaterialWetnessResponse", (std::clamp)(cmd.wetnessResponse, 0.0f, 1.0f));
+        activeShader->setFloat("uMaterialPuddleAffinity", (std::clamp)(cmd.puddleAffinity, 0.0f, 1.0f));
         activeShader->setFloat("uClearCoatRoughness", (std::clamp)(cmd.clearCoatRoughness, 0.02f, 1.0f));
         activeShader->setFloat("uAnisotropy", (std::clamp)(cmd.anisotropy, -1.0f, 1.0f));
         activeShader->setFloat("uTransmission", (std::clamp)(cmd.transmission, 0.0f, 1.0f));
@@ -3114,11 +3153,20 @@ void Renderer::Flush() {
         glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         glColorMaski(3, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     }
+    // Decals go last, after every lit surface exists in the colour buffer and
+    // while the depth and normal attachments they project against are still the
+    // ones belonging to this frame.
+    if (viewportTargetActive_) {
+        RenderDecals(GetViewportTarget(activeViewportTarget_));
+    }
+
     glBindVertexArray(0);
     drawList_.clear();
     shadowCasterList_.clear();
     lightDrawList_.clear();
     reflectionProbeDrawList_.clear();
+    decalDrawList_.clear();
+    weatherShelterDrawList_.clear();
 
     glLineWidth(lineWidth);
     glDisable(GL_SCISSOR_TEST);
@@ -3156,6 +3204,109 @@ void Renderer::SetCamera(const glm::mat4& view, const glm::mat4& proj) {
 
 void Renderer::SubmitReflectionProbe(const ReflectionProbeDrawCommand& cmd) {
     if (reflectionProbeDrawList_.size() < 64) reflectionProbeDrawList_.push_back(cmd);
+}
+
+void Renderer::SubmitDecal(const DecalDrawCommand& cmd) {
+    if (decalDrawList_.size() < 1024) decalDrawList_.push_back(cmd);
+}
+
+void Renderer::SubmitWeatherShelter(const WeatherShelterDrawCommand& cmd) {
+    // Capped at the shader's array size; extra volumes are dropped rather than
+    // silently overwriting the ones already submitted.
+    if (weatherShelterDrawList_.size() < 8) weatherShelterDrawList_.push_back(cmd);
+}
+
+void Renderer::RenderDecals(const ViewportTarget& target) {
+    if (decalDrawList_.empty()) return;
+    if (!decalShader_ || !decalShader_->IsValid()) return;
+    if (target.depthTexture == 0 || target.normalTexture == 0) return;
+    if (captureCubeVao_ == 0) return;
+    // The unlit view modes exist to show flat albedo and geometry; painting
+    // grime over them defeats the purpose.
+    if (Profile().forceUnlitShading || Profile().wireframeView) return;
+
+    std::vector<const DecalDrawCommand*> ordered;
+    ordered.reserve(decalDrawList_.size());
+    for (const DecalDrawCommand& cmd : decalDrawList_) ordered.push_back(&cmd);
+    std::stable_sort(ordered.begin(), ordered.end(),
+        [](const DecalDrawCommand* a, const DecalDrawCommand* b) { return a->sortOrder < b->sortOrder; });
+
+    // Reading the depth and normal attachments of the framebuffer being drawn
+    // into is only legal because every fragment samples its own texel and this
+    // barrier separates the geometry writes from the decal reads. See decal.fs.
+    glTextureBarrier();
+
+    const glm::mat4 viewProjection = proj_ * view_;
+    const glm::mat4 inverseViewProjection = glm::inverse(viewProjection);
+
+    // Normals and material data belong to the surfaces underneath; a decal must
+    // not overwrite what SSR and SSAO read for them.
+    glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glColorMaski(3, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glEnable(GL_BLEND);
+    glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+    // Back faces, so a camera sitting inside a decal volume still gets exactly
+    // one fragment per covered pixel instead of none.
+    //
+    // Winding must be set explicitly: the mesh loop above flips glFrontFace per
+    // draw for mirrored transforms, so whatever it left behind is not something
+    // this pass can rely on.
+    glEnable(GL_CULL_FACE);
+    glFrontFace(GL_CCW);
+    glCullFace(GL_FRONT);
+
+    decalShader_->use();
+    decalShader_->setInt("uDepthTexture", 0);
+    decalShader_->setInt("uNormalTexture", 1);
+    decalShader_->setInt("uDecalTexture", 2);
+    decalShader_->setMat4("uInverseViewProjection", inverseViewProjection);
+    decalShader_->setVec2("uInverseResolution",
+        1.0f / static_cast<float>((std::max)(1, target.width)),
+        1.0f / static_cast<float>((std::max)(1, target.height)));
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, target.depthTexture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, target.normalTexture);
+
+    glBindVertexArray(captureCubeVao_);
+    DecalBlendMode boundBlendMode = DecalBlendMode::AlphaBlend;
+    bool blendModeBound = false;
+    for (const DecalDrawCommand* cmd : ordered) {
+        if (cmd->opacity <= 0.001f) continue;
+        if (!blendModeBound || cmd->blendMode != boundBlendMode) {
+            if (cmd->blendMode == DecalBlendMode::Multiply) {
+                glBlendFunc(GL_DST_COLOR, GL_ZERO);
+            } else {
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            }
+            boundBlendMode = cmd->blendMode;
+            blendModeBound = true;
+        }
+        decalShader_->setMat4("uMVP", viewProjection * cmd->transform);
+        decalShader_->setMat4("uInverseDecalMatrix", glm::inverse(cmd->transform));
+        decalShader_->setVec4("uDecalColor", cmd->color);
+        decalShader_->setFloat("uOpacity", (std::clamp)(cmd->opacity, 0.0f, 1.0f));
+        decalShader_->setVec2("uUvTiling", cmd->uvTiling);
+        decalShader_->setVec2("uUvOffset", cmd->uvOffset);
+        decalShader_->setInt("uBlendMode", cmd->blendMode == DecalBlendMode::Multiply ? 0 : 1);
+        const glm::vec3 decalUp = glm::normalize(glm::mat3(cmd->transform) * glm::vec3(0.0f, 1.0f, 0.0f));
+        decalShader_->setVec3("uDecalUpWorld", decalUp);
+        decalShader_->setFloat("uAngleFadeCos",
+            std::cos(glm::radians((std::clamp)(cmd->angleFadeDegrees, 1.0f, 179.0f))));
+        decalShader_->setBool("uUseDecalTexture", cmd->textureId != 0);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, cmd->textureId);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        ++frameStats_.drawCallCount;
+    }
+
+    glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glColorMaski(3, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glCullFace(GL_BACK);
 }
 
 void Renderer::InitializeSsaoResources() {
@@ -3219,6 +3370,7 @@ void Renderer::InitializePipelines() {
     smaaWeightsShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/smaa_weights.fs");
     smaaBlendShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/smaa_blend.fs");
     debugLineShader_ = std::make_unique<Shader>("src/shaders/default/default.vs", "src/shaders/post/debug_line.fs");
+    decalShader_ = std::make_unique<Shader>("src/shaders/post/decal.vs", "src/shaders/post/decal.fs");
     if (smaaAreaTexture_ == 0) {
         glGenTextures(1, &smaaAreaTexture_);
         glBindTexture(GL_TEXTURE_2D, smaaAreaTexture_);

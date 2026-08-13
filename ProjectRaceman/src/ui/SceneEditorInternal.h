@@ -280,6 +280,8 @@ inline std::vector<SceneInspectorComponentType> DefaultInspectorComponentOrder()
         SceneInspectorComponentType::Cinemachine,
         SceneInspectorComponentType::Light,
         SceneInspectorComponentType::ReflectionProbe,
+        SceneInspectorComponentType::Decal,
+        SceneInspectorComponentType::WeatherShelter,
         SceneInspectorComponentType::AudioListener,
         SceneInspectorComponentType::AudioSource,
         SceneInspectorComponentType::VehicleSound,
@@ -313,6 +315,10 @@ inline bool HasInspectorComponent(const SceneObject& object, SceneInspectorCompo
         return object.hasLight;
     case SceneInspectorComponentType::ReflectionProbe:
         return object.hasReflectionProbe;
+    case SceneInspectorComponentType::Decal:
+        return object.hasDecal;
+    case SceneInspectorComponentType::WeatherShelter:
+        return object.hasWeatherShelter;
     case SceneInspectorComponentType::AudioListener:
         return object.hasAudioListener;
     case SceneInspectorComponentType::AudioSource:
@@ -1462,6 +1468,8 @@ inline const char* InspectorComponentTypeToString(SceneInspectorComponentType ty
     case SceneInspectorComponentType::Cinemachine: return "Cinemachine";
     case SceneInspectorComponentType::Light: return "Light";
     case SceneInspectorComponentType::ReflectionProbe: return "ReflectionProbe";
+    case SceneInspectorComponentType::Decal: return "Decal";
+    case SceneInspectorComponentType::WeatherShelter: return "WeatherShelter";
     case SceneInspectorComponentType::AudioListener: return "AudioListener";
     case SceneInspectorComponentType::AudioSource: return "AudioSource";
     case SceneInspectorComponentType::VehicleSound: return "VehicleSound";
@@ -1483,6 +1491,8 @@ inline bool InspectorComponentTypeFromString(const std::string& value, SceneInsp
     if (value == "Cinemachine") { outType = SceneInspectorComponentType::Cinemachine; return true; }
     if (value == "Light") { outType = SceneInspectorComponentType::Light; return true; }
     if (value == "ReflectionProbe") { outType = SceneInspectorComponentType::ReflectionProbe; return true; }
+    if (value == "Decal") { outType = SceneInspectorComponentType::Decal; return true; }
+    if (value == "WeatherShelter") { outType = SceneInspectorComponentType::WeatherShelter; return true; }
     if (value == "AudioListener") { outType = SceneInspectorComponentType::AudioListener; return true; }
     if (value == "AudioSource") { outType = SceneInspectorComponentType::AudioSource; return true; }
     if (value == "VehicleSound") { outType = SceneInspectorComponentType::VehicleSound; return true; }
@@ -1512,6 +1522,8 @@ inline const char* SceneComponentTypeToString(SceneComponentType type) {
     case SceneComponentType::Cinemachine: return "Cinemachine";
     case SceneComponentType::Light: return "Light";
     case SceneComponentType::ReflectionProbe: return "ReflectionProbe";
+    case SceneComponentType::Decal: return "Decal";
+    case SceneComponentType::WeatherShelter: return "WeatherShelter";
     case SceneComponentType::AudioListener: return "AudioListener";
     case SceneComponentType::AudioSource: return "AudioSource";
     case SceneComponentType::VehicleSound: return "VehicleSound";
@@ -1537,6 +1549,8 @@ inline bool SceneComponentTypeFromString(const std::string& value, SceneComponen
     if (value == "Cinemachine") { outType = SceneComponentType::Cinemachine; return true; }
     if (value == "Light") { outType = SceneComponentType::Light; return true; }
     if (value == "ReflectionProbe") { outType = SceneComponentType::ReflectionProbe; return true; }
+    if (value == "Decal") { outType = SceneComponentType::Decal; return true; }
+    if (value == "WeatherShelter") { outType = SceneComponentType::WeatherShelter; return true; }
     if (value == "AudioListener") { outType = SceneComponentType::AudioListener; return true; }
     if (value == "AudioSource") { outType = SceneComponentType::AudioSource; return true; }
     if (value == "VehicleSound") { outType = SceneComponentType::VehicleSound; return true; }

@@ -107,6 +107,30 @@ AntiAliasingMode AntiAliasingFromStorage(const std::string& value) {
     return AntiAliasingMode::FXAA;
 }
 
+const char* WeatherPresetToStorage(WeatherPreset preset) {
+    switch (preset) {
+    case WeatherPreset::Clear: return "Clear";
+    case WeatherPreset::Overcast: return "Overcast";
+    case WeatherPreset::Damp: return "Damp";
+    case WeatherPreset::LightRain: return "LightRain";
+    case WeatherPreset::HeavyRain: return "HeavyRain";
+    case WeatherPreset::Storm: return "Storm";
+    case WeatherPreset::Custom:
+    default: return "Custom";
+    }
+}
+
+WeatherPreset WeatherPresetFromStorage(const std::string& value) {
+    const std::string lower = ToLowerCopy(value);
+    if (lower == "clear") return WeatherPreset::Clear;
+    if (lower == "overcast") return WeatherPreset::Overcast;
+    if (lower == "damp") return WeatherPreset::Damp;
+    if (lower == "lightrain") return WeatherPreset::LightRain;
+    if (lower == "heavyrain") return WeatherPreset::HeavyRain;
+    if (lower == "storm") return WeatherPreset::Storm;
+    return WeatherPreset::Custom;
+}
+
 const char* FogModeToStorage(FogMode mode) {
     switch (mode) {
     case FogMode::Linear: return "Linear";
@@ -608,6 +632,8 @@ bool SerializedComponentPresent(const SceneObject& o, SceneComponentType type) {
     case SceneComponentType::Cinemachine: return o.hasCinemachine;
     case SceneComponentType::Light: return o.hasLight;
     case SceneComponentType::ReflectionProbe: return o.hasReflectionProbe;
+    case SceneComponentType::Decal: return o.hasDecal;
+    case SceneComponentType::WeatherShelter: return o.hasWeatherShelter;
     case SceneComponentType::AudioListener: return o.hasAudioListener;
     case SceneComponentType::AudioSource: return o.hasAudioSource;
     case SceneComponentType::VehicleSound: return o.hasVehicleSound;
@@ -977,6 +1003,39 @@ void WriteSceneObjectComponentBody(std::ostream& out, const SceneObject& o, Scen
         out << "        }";
         break;
     }
+    case SceneComponentType::Decal: {
+        out << "        {\n";
+        out << "          \"type\": \"Decal\",\n";
+        out << "          \"enabled\": " << (o.decal.enabled ? "true" : "false") << ",\n";
+        out << "          \"texturePath\": \"" << JsonEscape(NormalizeSlashes(o.decal.texturePath)) << "\",\n";
+        out << "          \"color\": [" << o.decal.color[0] << ", " << o.decal.color[1] << ", "
+            << o.decal.color[2] << ", " << o.decal.color[3] << "],\n";
+        out << "          \"opacity\": ";
+        WriteJsonFloat(out, o.decal.opacity);
+        out << ",\n";
+        out << "          \"angleFadeDegrees\": ";
+        WriteJsonFloat(out, o.decal.angleFadeDegrees);
+        out << ",\n";
+        out << "          \"uvTiling\": [" << o.decal.uvTiling[0] << ", " << o.decal.uvTiling[1] << "],\n";
+        out << "          \"uvOffset\": [" << o.decal.uvOffset[0] << ", " << o.decal.uvOffset[1] << "],\n";
+        out << "          \"blendMode\": \"" << (o.decal.blendMode == DecalBlendModeSetting::AlphaBlend ? "AlphaBlend" : "Multiply") << "\",\n";
+        out << "          \"sortOrder\": " << o.decal.sortOrder << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::WeatherShelter: {
+        out << "        {\n";
+        out << "          \"type\": \"WeatherShelter\",\n";
+        out << "          \"enabled\": " << (o.weatherShelter.enabled ? "true" : "false") << ",\n";
+        out << "          \"amount\": ";
+        WriteJsonFloat(out, o.weatherShelter.amount);
+        out << ",\n";
+        out << "          \"falloff\": ";
+        WriteJsonFloat(out, o.weatherShelter.falloff);
+        out << "\n";
+        out << "        }";
+        break;
+    }
     case SceneComponentType::AudioListener: {
         out << "        {\n";
         out << "          \"type\": \"AudioListener\",\n";
@@ -1047,6 +1106,8 @@ constexpr SceneComponentType kSerializedComponentOrder[] = {
     SceneComponentType::Cinemachine,
     SceneComponentType::Light,
     SceneComponentType::ReflectionProbe,
+    SceneComponentType::Decal,
+    SceneComponentType::WeatherShelter,
     SceneComponentType::AudioListener,
     SceneComponentType::AudioSource,
     SceneComponentType::VehicleSound,
@@ -1918,6 +1979,42 @@ void SceneEditor::Load(const std::string& path) {
                         if (auto facesPerFrame = component.find("realtimeFacesPerFrame"); facesPerFrame != component.end() && facesPerFrame->second.is_number()) so.reflectionProbe.realtimeFacesPerFrame = (std::clamp)(static_cast<int>(facesPerFrame->second.as_number()), 1, 6);
                         ReadString(component, "bakedCubemapPath", so.reflectionProbe.bakedCubemapPath);
                         so.reflectionProbe.bakedCubemapPath = NormalizeSlashes(so.reflectionProbe.bakedCubemapPath);
+                    } else if (componentType == "Decal") {
+                        so.hasDecal = true;
+                        ReadBool(component, "enabled", so.decal.enabled);
+                        ReadString(component, "texturePath", so.decal.texturePath);
+                        so.decal.texturePath = NormalizeSlashes(so.decal.texturePath);
+                        if (auto color = component.find("color"); color != component.end() && color->second.is_array()) {
+                            const auto& values = color->second.as_array();
+                            for (std::size_t ci = 0; ci < 4 && ci < values.size(); ++ci) {
+                                if (values[ci].is_number()) so.decal.color[ci] = (std::clamp)(static_cast<float>(values[ci].as_number()), 0.0f, 1.0f);
+                            }
+                        }
+                        if (auto opacity = component.find("opacity"); opacity != component.end() && opacity->second.is_number()) so.decal.opacity = (std::clamp)(static_cast<float>(opacity->second.as_number()), 0.0f, 1.0f);
+                        if (auto angleFade = component.find("angleFadeDegrees"); angleFade != component.end() && angleFade->second.is_number()) so.decal.angleFadeDegrees = (std::clamp)(static_cast<float>(angleFade->second.as_number()), 1.0f, 179.0f);
+                        if (auto tiling = component.find("uvTiling"); tiling != component.end() && tiling->second.is_array()) {
+                            const auto& values = tiling->second.as_array();
+                            for (std::size_t ci = 0; ci < 2 && ci < values.size(); ++ci) {
+                                if (values[ci].is_number()) so.decal.uvTiling[ci] = static_cast<float>(values[ci].as_number());
+                            }
+                        }
+                        if (auto offset = component.find("uvOffset"); offset != component.end() && offset->second.is_array()) {
+                            const auto& values = offset->second.as_array();
+                            for (std::size_t ci = 0; ci < 2 && ci < values.size(); ++ci) {
+                                if (values[ci].is_number()) so.decal.uvOffset[ci] = static_cast<float>(values[ci].as_number());
+                            }
+                        }
+                        if (auto blend = component.find("blendMode"); blend != component.end() && blend->second.is_string()) {
+                            so.decal.blendMode = blend->second.as_string() == "AlphaBlend"
+                                ? DecalBlendModeSetting::AlphaBlend
+                                : DecalBlendModeSetting::Multiply;
+                        }
+                        if (auto sortOrder = component.find("sortOrder"); sortOrder != component.end() && sortOrder->second.is_number()) so.decal.sortOrder = (std::clamp)(static_cast<int>(sortOrder->second.as_number()), -1000, 1000);
+                    } else if (componentType == "WeatherShelter") {
+                        so.hasWeatherShelter = true;
+                        ReadBool(component, "enabled", so.weatherShelter.enabled);
+                        if (auto amount = component.find("amount"); amount != component.end() && amount->second.is_number()) so.weatherShelter.amount = (std::clamp)(static_cast<float>(amount->second.as_number()), 0.0f, 1.0f);
+                        if (auto falloff = component.find("falloff"); falloff != component.end() && falloff->second.is_number()) so.weatherShelter.falloff = (std::clamp)(static_cast<float>(falloff->second.as_number()), 0.001f, 50.0f);
                     } else if (componentType == "AudioListener") {
                         so.hasAudioListener = true;
                         ReadBool(component, "enabled", so.audioListener.enabled);
@@ -2506,6 +2603,42 @@ bool SceneEditor::ParsePrefabFileObjects(const std::string& path, std::vector<Sc
                         if (auto i = component.find("intensity"); i != component.end() && i->second.is_number()) so.light.intensity = (std::max)(0.0f, static_cast<float>(i->second.as_number()));
                         if (auto r = component.find("range"); r != component.end() && r->second.is_number()) so.light.range = (std::max)(0.001f, static_cast<float>(r->second.as_number()));
                         if (auto sa = component.find("spotAngleDegrees"); sa != component.end() && sa->second.is_number()) so.light.spotAngleDegrees = (std::max)(1.0f, (std::min)(179.0f, static_cast<float>(sa->second.as_number())));
+                    } else if (componentType == "Decal") {
+                        so.hasDecal = true;
+                        ReadBool(component, "enabled", so.decal.enabled);
+                        ReadString(component, "texturePath", so.decal.texturePath);
+                        so.decal.texturePath = NormalizeSlashes(so.decal.texturePath);
+                        if (auto color = component.find("color"); color != component.end() && color->second.is_array()) {
+                            const auto& values = color->second.as_array();
+                            for (std::size_t ci = 0; ci < 4 && ci < values.size(); ++ci) {
+                                if (values[ci].is_number()) so.decal.color[ci] = (std::clamp)(static_cast<float>(values[ci].as_number()), 0.0f, 1.0f);
+                            }
+                        }
+                        if (auto opacity = component.find("opacity"); opacity != component.end() && opacity->second.is_number()) so.decal.opacity = (std::clamp)(static_cast<float>(opacity->second.as_number()), 0.0f, 1.0f);
+                        if (auto angleFade = component.find("angleFadeDegrees"); angleFade != component.end() && angleFade->second.is_number()) so.decal.angleFadeDegrees = (std::clamp)(static_cast<float>(angleFade->second.as_number()), 1.0f, 179.0f);
+                        if (auto tiling = component.find("uvTiling"); tiling != component.end() && tiling->second.is_array()) {
+                            const auto& values = tiling->second.as_array();
+                            for (std::size_t ci = 0; ci < 2 && ci < values.size(); ++ci) {
+                                if (values[ci].is_number()) so.decal.uvTiling[ci] = static_cast<float>(values[ci].as_number());
+                            }
+                        }
+                        if (auto offset = component.find("uvOffset"); offset != component.end() && offset->second.is_array()) {
+                            const auto& values = offset->second.as_array();
+                            for (std::size_t ci = 0; ci < 2 && ci < values.size(); ++ci) {
+                                if (values[ci].is_number()) so.decal.uvOffset[ci] = static_cast<float>(values[ci].as_number());
+                            }
+                        }
+                        if (auto blend = component.find("blendMode"); blend != component.end() && blend->second.is_string()) {
+                            so.decal.blendMode = blend->second.as_string() == "AlphaBlend"
+                                ? DecalBlendModeSetting::AlphaBlend
+                                : DecalBlendModeSetting::Multiply;
+                        }
+                        if (auto sortOrder = component.find("sortOrder"); sortOrder != component.end() && sortOrder->second.is_number()) so.decal.sortOrder = (std::clamp)(static_cast<int>(sortOrder->second.as_number()), -1000, 1000);
+                    } else if (componentType == "WeatherShelter") {
+                        so.hasWeatherShelter = true;
+                        ReadBool(component, "enabled", so.weatherShelter.enabled);
+                        if (auto amount = component.find("amount"); amount != component.end() && amount->second.is_number()) so.weatherShelter.amount = (std::clamp)(static_cast<float>(amount->second.as_number()), 0.0f, 1.0f);
+                        if (auto falloff = component.find("falloff"); falloff != component.end() && falloff->second.is_number()) so.weatherShelter.falloff = (std::clamp)(static_cast<float>(falloff->second.as_number()), 0.001f, 50.0f);
                     } else if (componentType == "AudioListener") {
                         so.hasAudioListener = true;
                         ReadBool(component, "enabled", so.audioListener.enabled);
@@ -2837,6 +2970,14 @@ void CopyComponentData(SceneObject& destination, const SceneObject& source, Scen
     case SceneComponentType::ReflectionProbe:
         destination.hasReflectionProbe = source.hasReflectionProbe;
         destination.reflectionProbe = source.reflectionProbe;
+        break;
+    case SceneComponentType::Decal:
+        destination.hasDecal = source.hasDecal;
+        destination.decal = source.decal;
+        break;
+    case SceneComponentType::WeatherShelter:
+        destination.hasWeatherShelter = source.hasWeatherShelter;
+        destination.weatherShelter = source.weatherShelter;
         break;
     case SceneComponentType::AudioListener:
         destination.hasAudioListener = source.hasAudioListener;
@@ -3333,6 +3474,26 @@ void SceneEditor::LoadProject() {
                     ReadVec3(graphics, "fogSunColor", graphicsProfile_.fogSunColor);
                     if (auto it = graphics.find("fogSunIntensity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogSunIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
                     if (auto it = graphics.find("fogSunExponent"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogSunExponent = (std::clamp)(static_cast<float>(it->second.as_number()), 1.0f, 64.0f);
+                    if (auto it = graphics.find("wetness"); it != graphics.end() && it->second.is_number()) graphicsProfile_.wetness = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
+                    if (auto it = graphics.find("wetnessPuddleAmount"); it != graphics.end() && it->second.is_number()) graphicsProfile_.wetnessPuddleAmount = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
+                    if (auto it = graphics.find("wetnessPuddleScale"); it != graphics.end() && it->second.is_number()) graphicsProfile_.wetnessPuddleScale = (std::clamp)(static_cast<float>(it->second.as_number()), 0.01f, 200.0f);
+                    if (auto it = graphics.find("wetnessRippleStrength"); it != graphics.end() && it->second.is_number()) graphicsProfile_.wetnessRippleStrength = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 4.0f);
+                    if (auto it = graphics.find("wetnessRippleSpeed"); it != graphics.end() && it->second.is_number()) graphicsProfile_.wetnessRippleSpeed = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 8.0f);
+                    if (auto it = graphics.find("wetnessDropletScale"); it != graphics.end() && it->second.is_number()) graphicsProfile_.wetnessDropletScale = (std::clamp)(static_cast<float>(it->second.as_number()), 0.005f, 4.0f);
+                    if (auto it = graphics.find("wetnessDropletStrength"); it != graphics.end() && it->second.is_number()) graphicsProfile_.wetnessDropletStrength = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 4.0f);
+                    if (auto it = graphics.find("wetnessRunoffSpeed"); it != graphics.end() && it->second.is_number()) graphicsProfile_.wetnessRunoffSpeed = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 4.0f);
+                    if (ReadString(graphics, "weatherPreset", value)) graphicsProfile_.weatherPreset = WeatherPresetFromStorage(value);
+                    if (auto it = graphics.find("weatherAutoWetness"); it != graphics.end() && it->second.is_bool()) graphicsProfile_.weatherAutoWetness = it->second.as_bool();
+                    if (auto it = graphics.find("weatherWetRate"); it != graphics.end() && it->second.is_number()) graphicsProfile_.weatherWetRate = (std::clamp)(static_cast<float>(it->second.as_number()), 0.001f, 4.0f);
+                    if (auto it = graphics.find("weatherDryRate"); it != graphics.end() && it->second.is_number()) graphicsProfile_.weatherDryRate = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0005f, 4.0f);
+                    if (auto it = graphics.find("skidMarks"); it != graphics.end() && it->second.is_bool()) graphicsProfile_.skidMarks = it->second.as_bool();
+                    if (auto it = graphics.find("skidMarkSlipThreshold"); it != graphics.end() && it->second.is_number()) graphicsProfile_.skidMarkSlipThreshold = (std::clamp)(static_cast<float>(it->second.as_number()), 0.02f, 4.0f);
+                    if (auto it = graphics.find("skidMarkSpacing"); it != graphics.end() && it->second.is_number()) graphicsProfile_.skidMarkSpacing = (std::clamp)(static_cast<float>(it->second.as_number()), 0.02f, 8.0f);
+                    if (auto it = graphics.find("skidMarkWidth"); it != graphics.end() && it->second.is_number()) graphicsProfile_.skidMarkWidth = (std::clamp)(static_cast<float>(it->second.as_number()), 0.01f, 4.0f);
+                    if (auto it = graphics.find("skidMarkOpacity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.skidMarkOpacity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
+                    if (auto it = graphics.find("skidMarkFadeSeconds"); it != graphics.end() && it->second.is_number()) graphicsProfile_.skidMarkFadeSeconds = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 3600.0f);
+                    if (auto it = graphics.find("maxSkidMarks"); it != graphics.end() && it->second.is_number()) graphicsProfile_.maxSkidMarks = (std::clamp)(static_cast<int>(it->second.as_number()), 1, 20000);
+                    ReadVec3(graphics, "skidMarkColor", graphicsProfile_.skidMarkColor);
                 } else {
                     shouldSaveProject = true;
                 }
@@ -3741,7 +3902,28 @@ void SceneEditor::SaveProject() {
         out << "    \"fogSunColor\": [" << graphicsProfile_.fogSunColor.r << ", "
             << graphicsProfile_.fogSunColor.g << ", " << graphicsProfile_.fogSunColor.b << "],\n";
         out << "    \"fogSunIntensity\": " << graphicsProfile_.fogSunIntensity << ",\n";
-        out << "    \"fogSunExponent\": " << graphicsProfile_.fogSunExponent << "\n";
+        out << "    \"fogSunExponent\": " << graphicsProfile_.fogSunExponent << ",\n";
+        out << "    \"wetness\": " << graphicsProfile_.wetness << ",\n";
+        out << "    \"wetnessPuddleAmount\": " << graphicsProfile_.wetnessPuddleAmount << ",\n";
+        out << "    \"wetnessPuddleScale\": " << graphicsProfile_.wetnessPuddleScale << ",\n";
+        out << "    \"wetnessRippleStrength\": " << graphicsProfile_.wetnessRippleStrength << ",\n";
+        out << "    \"wetnessRippleSpeed\": " << graphicsProfile_.wetnessRippleSpeed << ",\n";
+        out << "    \"wetnessDropletScale\": " << graphicsProfile_.wetnessDropletScale << ",\n";
+        out << "    \"wetnessDropletStrength\": " << graphicsProfile_.wetnessDropletStrength << ",\n";
+        out << "    \"wetnessRunoffSpeed\": " << graphicsProfile_.wetnessRunoffSpeed << ",\n";
+        out << "    \"weatherPreset\": \"" << WeatherPresetToStorage(graphicsProfile_.weatherPreset) << "\",\n";
+        out << "    \"weatherAutoWetness\": " << (graphicsProfile_.weatherAutoWetness ? "true" : "false") << ",\n";
+        out << "    \"weatherWetRate\": " << graphicsProfile_.weatherWetRate << ",\n";
+        out << "    \"weatherDryRate\": " << graphicsProfile_.weatherDryRate << ",\n";
+        out << "    \"skidMarks\": " << (graphicsProfile_.skidMarks ? "true" : "false") << ",\n";
+        out << "    \"skidMarkSlipThreshold\": " << graphicsProfile_.skidMarkSlipThreshold << ",\n";
+        out << "    \"skidMarkSpacing\": " << graphicsProfile_.skidMarkSpacing << ",\n";
+        out << "    \"skidMarkWidth\": " << graphicsProfile_.skidMarkWidth << ",\n";
+        out << "    \"skidMarkOpacity\": " << graphicsProfile_.skidMarkOpacity << ",\n";
+        out << "    \"skidMarkFadeSeconds\": " << graphicsProfile_.skidMarkFadeSeconds << ",\n";
+        out << "    \"maxSkidMarks\": " << graphicsProfile_.maxSkidMarks << ",\n";
+        out << "    \"skidMarkColor\": [" << graphicsProfile_.skidMarkColor.r << ", "
+            << graphicsProfile_.skidMarkColor.g << ", " << graphicsProfile_.skidMarkColor.b << "]\n";
         out << "  },\n";
         out << "  \"skybox\": [\n";
         for (std::size_t fi = 0; fi < skyboxFaces_.size(); ++fi) {

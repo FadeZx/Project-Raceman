@@ -191,6 +191,11 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
 
     WheelForceFeedbackState strongestSample{};
 
+    // Ages existing marks once per frame. Emission below is distance driven, so
+    // this is the only place time enters the system.
+    const SkidMarkSettings skidSettings = SkidMarkSettingsFromProfile(graphicsProfile_);
+    skidMarks_.BeginFrame(deltaTime);
+
     for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
         if (runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
             continue;
@@ -308,6 +313,14 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             ArcadeVehicleWheelTelemetry& wheelState = telemetry.wheels[wheelIndex];
             if (wheelIndex < runtimeVehicle.arcadeWheelContacts.size()) {
                 const RuntimeVehicleWheelContact& contact = runtimeVehicle.arcadeWheelContacts[wheelIndex];
+                // Lay rubber. Slip combines the lateral slip angle with how far
+                // the tyre has run out of grip, so both a drift and a straight
+                // line lock-up leave marks.
+                const float lateralSlip = std::fabs(contact.slipAngle);
+                const float gripLoss = (std::max)(0.0f, 1.0f - contact.tractionScale);
+                skidMarks_.TrackWheel(runtimeVehicle.objectId, static_cast<int>(wheelIndex),
+                                      contact.grounded, contact.contactPosition, contact.normal,
+                                      (std::max)(lateralSlip, gripLoss), skidSettings);
                 wheelState.normalForce = contact.normalForce;
                 wheelState.slipAngle = contact.slipAngle;
                 wheelState.tractionScale = contact.tractionScale;

@@ -1332,6 +1332,24 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                 }
+                if (!obj.hasDecal) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Decal")) {
+                        PushUndoState();
+                        obj.hasDecal = true;
+                        obj.decal = DecalComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
+                if (!obj.hasWeatherShelter) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Weather Shelter")) {
+                        PushUndoState();
+                        obj.hasWeatherShelter = true;
+                        obj.weatherShelter = WeatherShelterComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
                 if (!obj.hasAudioListener) {
                     anyAvailable = true;
                     if (ImGui::MenuItem("Audio Listener")) {
@@ -1391,6 +1409,8 @@ void SceneEditor::RenderInspectorPanel() {
                 case SceneInspectorComponentType::Cinemachine: typeName = "Cinemachine"; break;
                 case SceneInspectorComponentType::Light: typeName = "Light"; break;
                 case SceneInspectorComponentType::ReflectionProbe: typeName = "ReflectionProbe"; break;
+                case SceneInspectorComponentType::Decal: typeName = "Decal"; break;
+                case SceneInspectorComponentType::WeatherShelter: typeName = "WeatherShelter"; break;
                 case SceneInspectorComponentType::AudioListener: typeName = "AudioListener"; break;
                 case SceneInspectorComponentType::AudioSource: typeName = "AudioSource"; break;
                 case SceneInspectorComponentType::VehicleSound: typeName = "VehicleSound"; break;
@@ -3104,6 +3124,159 @@ void SceneEditor::RenderInspectorPanel() {
                 } else {
                     ImGui::TextDisabled("Not baked; using the project skybox fallback.");
                 }
+            }
+            }
+            // ---- Decal ----
+            if (currentComponentToRender == SceneInspectorComponentType::Decal) {
+            bool removeDecal = false;
+            bool decalOpen = false;
+            bool decalEnabledChanged = false;
+            bool decalHeaderActive = false;
+            bool decalHeaderToggledOpen = false;
+            bool decalApplyRequested = false;
+            bool decalRevertRequested = false;
+            const bool decalEnabledBefore = obj.decal.enabled;
+            if (obj.hasDecal) {
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::Decal;
+                const std::string decalComponentKey = prepareComponentOpenState(SceneInspectorComponentType::Decal);
+                decalOpen = RenderRemovableComponentHeader("Decal", "DecalHeader",
+                    GetComponentIconTexture("component-light.png"), &obj.decal.enabled,
+                    decalEnabledChanged, removeDecal, &componentType, &reorderDraggedType, &reorderTargetType,
+                    &decalHeaderActive, &decalHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::Decal),
+                    &decalApplyRequested, &decalRevertRequested);
+                finishComponentHeaderState(decalComponentKey, SceneInspectorComponentType::Decal,
+                    decalHeaderActive, decalHeaderToggledOpen, decalOpen);
+                handlePrefabComponentMenu(decalApplyRequested, decalRevertRequested, SceneComponentType::Decal);
+            }
+            if (removeDecal) {
+                PushUndoState();
+                obj.hasDecal = false;
+                obj.decal = DecalComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasDecal && decalEnabledChanged) {
+                const bool enabledAfter = obj.decal.enabled;
+                obj.decal.enabled = decalEnabledBefore;
+                PushUndoState();
+                obj.decal.enabled = enabledAfter;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasDecal && decalOpen) {
+                ImGui::TextDisabled("Projects down the object's local -Y. Scale is the volume size.");
+                char decalTextureBuffer[512];
+                std::snprintf(decalTextureBuffer, sizeof(decalTextureBuffer), "%s", obj.decal.texturePath.c_str());
+                if (ImGui::InputText("Texture##Decal", decalTextureBuffer, sizeof(decalTextureBuffer))) {
+                    PushUndoState();
+                    obj.decal.texturePath = decalTextureBuffer;
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::Button("Browse##DecalTexture")) {
+                    const std::string selected = OpenTextureFileDialogWin32(std::string());
+                    if (!selected.empty()) {
+                        PushUndoState();
+                        obj.decal.texturePath = NormalizeSlashes(selected);
+                        if (onDirty_) onDirty_();
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", obj.decal.texturePath.empty()
+                    ? "(none - solid colour)" : obj.decal.texturePath.c_str());
+                if (ImGui::ColorEdit4("Color##Decal", obj.decal.color)) {
+                    PushUndoState();
+                    if (onDirty_) onDirty_();
+                }
+                const char* blendItems[] = {"Multiply", "Alpha Blend"};
+                int blendIndex = obj.decal.blendMode == DecalBlendModeSetting::AlphaBlend ? 1 : 0;
+                if (ImGui::Combo("Blend##Decal", &blendIndex, blendItems, 2)) {
+                    PushUndoState();
+                    obj.decal.blendMode = blendIndex == 1
+                        ? DecalBlendModeSetting::AlphaBlend
+                        : DecalBlendModeSetting::Multiply;
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Multiply darkens what is underneath: skid marks, rubber, dirt, oil.\nAlpha Blend replaces it: painted markings, logos.");
+                }
+                if (ImGui::SliderFloat("Opacity##Decal", &obj.decal.opacity, 0.0f, 1.0f, "%.2f")) {
+                    PushUndoState();
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::SliderFloat("Angle Fade##Decal", &obj.decal.angleFadeDegrees, 1.0f, 179.0f, "%.0f deg")) {
+                    PushUndoState();
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Surfaces angled further than this from the projection axis get no decal.\nStops road decals smearing down the face of a kerb.");
+                }
+                if (ImGui::DragFloat2("UV Tiling##Decal", obj.decal.uvTiling, 0.01f, 0.01f, 32.0f, "%.2f")) {
+                    PushUndoState();
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::DragFloat2("UV Offset##Decal", obj.decal.uvOffset, 0.01f, -32.0f, 32.0f, "%.2f")) {
+                    PushUndoState();
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::DragInt("Sort Order##Decal", &obj.decal.sortOrder, 1.0f, -1000, 1000)) {
+                    PushUndoState();
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Lower values draw first, so higher values sit on top.");
+                }
+            }
+            }
+            // ---- Weather Shelter ----
+            if (currentComponentToRender == SceneInspectorComponentType::WeatherShelter) {
+            bool removeShelter = false;
+            bool shelterOpen = false;
+            bool shelterEnabledChanged = false;
+            bool shelterHeaderActive = false;
+            bool shelterHeaderToggledOpen = false;
+            bool shelterApplyRequested = false;
+            bool shelterRevertRequested = false;
+            const bool shelterEnabledBefore = obj.weatherShelter.enabled;
+            if (obj.hasWeatherShelter) {
+                SceneInspectorComponentType componentType = SceneInspectorComponentType::WeatherShelter;
+                const std::string shelterComponentKey = prepareComponentOpenState(SceneInspectorComponentType::WeatherShelter);
+                shelterOpen = RenderRemovableComponentHeader("Weather Shelter", "WeatherShelterHeader",
+                    GetComponentIconTexture("component-light.png"), &obj.weatherShelter.enabled,
+                    shelterEnabledChanged, removeShelter, &componentType, &reorderDraggedType, &reorderTargetType,
+                    &shelterHeaderActive, &shelterHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::WeatherShelter),
+                    &shelterApplyRequested, &shelterRevertRequested);
+                finishComponentHeaderState(shelterComponentKey, SceneInspectorComponentType::WeatherShelter,
+                    shelterHeaderActive, shelterHeaderToggledOpen, shelterOpen);
+                handlePrefabComponentMenu(shelterApplyRequested, shelterRevertRequested, SceneComponentType::WeatherShelter);
+            }
+            if (removeShelter) {
+                PushUndoState();
+                obj.hasWeatherShelter = false;
+                obj.weatherShelter = WeatherShelterComponent{};
+                if (onDirty_) onDirty_();
+            } else if (obj.hasWeatherShelter && shelterEnabledChanged) {
+                const bool enabledAfter = obj.weatherShelter.enabled;
+                obj.weatherShelter.enabled = shelterEnabledBefore;
+                PushUndoState();
+                obj.weatherShelter.enabled = enabledAfter;
+                if (onDirty_) onDirty_();
+            }
+            if (obj.hasWeatherShelter && shelterOpen) {
+                ImGui::TextDisabled("Keeps rain off everything inside. Scale is the volume size.");
+                if (ImGui::SliderFloat("Dryness##Shelter", &obj.weatherShelter.amount, 0.0f, 1.0f, "%.2f")) {
+                    PushUndoState();
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("1 keeps the inside completely dry. Lower it for a partial roof or an open pit box.");
+                }
+                if (ImGui::SliderFloat("Edge Falloff##Shelter", &obj.weatherShelter.falloff, 0.01f, 20.0f, "%.2f m", ImGuiSliderFlags_Logarithmic)) {
+                    PushUndoState();
+                    if (onDirty_) onDirty_();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Gradient inward from the volume wall, so a doorway blends instead of showing a seam.");
+                }
+                ImGui::TextDisabled("Up to 8 shelter volumes are used per frame.");
             }
             }
             // ---- Audio Listener ----
@@ -5122,6 +5295,24 @@ void SceneEditor::RenderMaterialEditor(Material* material, bool isEmbeddedInstan
             const bool editable = beginFieldOverrideScope("clearCoat");
             materialChanged |= ImGui::SliderFloat("Clear Coat", &material->clearCoat, 0.0f, 1.0f);
             endFieldOverrideScope("clearCoat", editable);
+        }
+        showInheritedIfNotOverridden("wetnessResponse", [&] { material->wetnessResponse = inheritedMaterialSnapshot.wetnessResponse; });
+        {
+            const bool editable = beginFieldOverrideScope("wetnessResponse");
+            materialChanged |= ImGui::SliderFloat("Wetness Response", &material->wetnessResponse, 0.0f, 1.0f);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("How strongly scene wetness affects this surface.\nAsphalt and dirt around 1.0, car paint around 0.4, sheltered surfaces 0.");
+            }
+            endFieldOverrideScope("wetnessResponse", editable);
+        }
+        showInheritedIfNotOverridden("puddleAffinity", [&] { material->puddleAffinity = inheritedMaterialSnapshot.puddleAffinity; });
+        {
+            const bool editable = beginFieldOverrideScope("puddleAffinity");
+            materialChanged |= ImGui::SliderFloat("Puddle Affinity", &material->puddleAffinity, 0.0f, 1.0f);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Whether standing water can form here. Asphalt and dirt 1.0;\nset 0 for paint, glass and foliage so they bead into droplets instead.");
+            }
+            endFieldOverrideScope("puddleAffinity", editable);
         }
         showInheritedIfNotOverridden("clearCoatRoughness", [&] { material->clearCoatRoughness = inheritedMaterialSnapshot.clearCoatRoughness; });
         {

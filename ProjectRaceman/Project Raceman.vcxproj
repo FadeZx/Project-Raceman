@@ -187,6 +187,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\rendering\Material.cpp" />
     <ClCompile Include="src\rendering\Renderer.cpp" />
     <ClCompile Include="src\rendering\ShaderRegistry.cpp" />
+    <ClCompile Include="src\rendering\SkidMarks.cpp" />
     <ClCompile Include="src\rendering\Skybox.cpp" />
     <ClCompile Include="src\rendering\SkyboxController.cpp" />
     <ClCompile Include="src\scripting\ObjectScript.cpp" />

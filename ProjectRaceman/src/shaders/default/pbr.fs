@@ -2,6 +2,7 @@
 
 #include <common/brdf.glsl>
 #include <common/fog.glsl>
+#include <common/wetness.glsl>
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out vec4 NormalBuffer;
@@ -270,8 +271,21 @@ void main() {
     float metallic = clamp(uUseMaterialMetallicTexture ? texture(uMaterialMetallicTexture, vUV).r : uMetallic, 0.0, 1.0);
     float roughness = clamp(uUseMaterialRoughnessTexture ? texture(uMaterialRoughnessTexture, vUV).r : uRoughness, 0.045, 1.0);
     float ao = clamp(uUseMaterialAoTexture ? texture(uMaterialAoTexture, vUV).r : 1.0, 0.0, 1.0);
+
+    // Wetness rewrites the surface before anything is lit, so direct lighting,
+    // IBL and the MaterialBuffer that SSR reads all see the same wet surface.
+    WetSurface wet = ApplyWetness(albedo, roughness, normal, vWorldPosition);
+    albedo = wet.albedo;
+    roughness = wet.roughness;
+    normal = wet.normal;
+
     vec3 viewDir = normalize(uCameraPosition - vWorldPosition);
-    vec3 f0 = mix(vec3(0.04), albedo, metallic);
+    // Standing water has its own Fresnel response (IOR 1.33 -> F0 0.02) and is a
+    // dielectric regardless of what it is sitting on, so a wet metal grate reads
+    // as water over metal rather than as wet metal.
+    float wetMetallic = metallic * (1.0 - wet.puddle);
+    vec3 f0 = mix(mix(vec3(0.04), vec3(0.02), wet.puddle), albedo, wetMetallic);
+    metallic = wetMetallic;
     vec3 directLighting = vec3(0.0);
 
     for (int i = 0; i < uLightCount; ++i) {
@@ -408,6 +422,12 @@ void main() {
     shadedColor = shadedColor * fogTransmittance +
         FogInscatter(viewDir) * (1.0 - fogTransmittance);
     FragColor = vec4(shadedColor, albedoSample.a);
+    if (uWetnessDebugView) {
+        // Blue = wet film, green = standing water, red = droplets. A material
+        // held dry by its wetnessResponse reads black.
+        FragColor = vec4(wet.droplet, wet.puddle, wet.wetAmount, albedoSample.a);
+        return;
+    }
     if (uFogDebugView) {
         // White = clear, black = fully fogged.
         FragColor = vec4(vec3(fogTransmittance), albedoSample.a);

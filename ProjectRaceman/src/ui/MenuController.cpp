@@ -29,12 +29,116 @@ std::string SceneDisplayName(const std::string& scenePath) {
     return filename;
 }
 
+// Writes the whole weather block as one coherent setup. Rain, wetness, droplets
+// and visibility are physically linked - it does not rain hard onto a dry track,
+// and a storm is not clear - so they are set together rather than left as
+// independent sliders that have to be reconciled by hand.
+//
+// Fog is included: reduced visibility is most of what makes bad weather read as
+// bad weather. Anything not weather-related (exposure, bloom, shadows) is left
+// alone, so a preset never disturbs the project's look settings.
+void ApplyWeatherPreset(GraphicsProfile& profile, WeatherPreset preset) {
+    profile.weatherPreset = preset;
+    if (preset == WeatherPreset::Custom) return;
+
+    // Shared baseline; each case below only states what it changes.
+    profile.weather = true;
+    profile.particles = true;
+    profile.weatherWind = 0.25f;
+    profile.wetnessPuddleScale = 4.0f;
+    profile.wetnessDropletScale = 0.06f;
+    profile.wetnessDropletStrength = 0.6f;
+    profile.wetnessRunoffSpeed = 0.15f;
+    profile.weatherAutoWetness = true;
+
+    switch (preset) {
+    case WeatherPreset::Clear:
+        profile.weather = false;
+        profile.weatherIntensity = 0.0f;
+        profile.wetness = 0.0f;
+        profile.wetnessPuddleAmount = 0.0f;
+        profile.wetnessRippleStrength = 0.0f;
+        profile.fogMode = FogMode::ExponentialHeight;
+        profile.fogDensity = 0.006f;
+        profile.fogHeightFalloff = 0.02f;
+        break;
+    case WeatherPreset::Overcast:
+        // Dry, but the flat light and shorter visibility of a grey day.
+        profile.weather = false;
+        profile.weatherIntensity = 0.0f;
+        profile.wetness = 0.0f;
+        profile.wetnessPuddleAmount = 0.0f;
+        profile.wetnessRippleStrength = 0.0f;
+        profile.fogMode = FogMode::ExponentialHeight;
+        profile.fogDensity = 0.014f;
+        profile.fogHeightFalloff = 0.02f;
+        break;
+    case WeatherPreset::Damp:
+        // The interesting one: rain has stopped, the track is drying, and a dry
+        // line is forming. Puddles linger, nothing is falling.
+        profile.weather = false;
+        profile.weatherIntensity = 0.0f;
+        profile.wetness = 0.45f;
+        profile.wetnessPuddleAmount = 0.35f;
+        profile.wetnessPuddleScale = 2.5f;
+        profile.wetnessRippleStrength = 0.0f;
+        profile.wetnessRunoffSpeed = 0.05f;
+        profile.fogMode = FogMode::ExponentialHeight;
+        profile.fogDensity = 0.012f;
+        profile.fogHeightFalloff = 0.02f;
+        break;
+    case WeatherPreset::LightRain:
+        profile.weatherIntensity = 0.35f;
+        profile.wetness = 0.65f;
+        profile.wetnessPuddleAmount = 0.45f;
+        profile.wetnessPuddleScale = 3.0f;
+        profile.wetnessRippleStrength = 0.6f;
+        profile.wetnessRippleSpeed = 1.0f;
+        profile.fogMode = FogMode::ExponentialHeight;
+        profile.fogDensity = 0.018f;
+        profile.fogHeightFalloff = 0.02f;
+        break;
+    case WeatherPreset::HeavyRain:
+        profile.weatherIntensity = 0.75f;
+        profile.weatherWind = 0.5f;
+        profile.wetness = 0.95f;
+        profile.wetnessPuddleAmount = 0.75f;
+        profile.wetnessPuddleScale = 5.0f;
+        profile.wetnessRippleStrength = 1.6f;
+        profile.wetnessRippleSpeed = 2.2f;
+        profile.wetnessDropletStrength = 1.0f;
+        profile.wetnessRunoffSpeed = 0.35f;
+        profile.fogMode = FogMode::ExponentialHeight;
+        profile.fogDensity = 0.032f;
+        profile.fogHeightFalloff = 0.015f;
+        break;
+    case WeatherPreset::Storm:
+        profile.weatherIntensity = 1.0f;
+        profile.weatherWind = 1.1f;
+        profile.wetness = 1.0f;
+        profile.wetnessPuddleAmount = 0.95f;
+        profile.wetnessPuddleScale = 7.0f;
+        profile.wetnessRippleStrength = 2.6f;
+        profile.wetnessRippleSpeed = 3.2f;
+        profile.wetnessDropletStrength = 1.4f;
+        profile.wetnessRunoffSpeed = 0.6f;
+        profile.fogMode = FogMode::ExponentialHeight;
+        profile.fogDensity = 0.055f;
+        profile.fogHeightFalloff = 0.012f;
+        break;
+    case WeatherPreset::Custom:
+        break;
+    }
+}
+
 void ApplyGraphicsPreset(GraphicsProfile& profile, GraphicsQualityTier tier) {
     // Debug view flags are not touched here: they are Scene View state resolved
     // per viewport by Renderer::ResolveProfileForTarget, not quality settings.
     profile.quality = tier;
     profile.lod = true;
-    profile.particles = true;
+    // Weather state is authored, not a quality setting: changing the tier must
+    // not switch the rain back on. Only its per-tier density, resolved at draw
+    // time from profile.quality, varies with the preset.
     profile.colorGrading = true;
     profile.colorSaturation = 1.0f;
     profile.colorContrast = 1.0f;
@@ -348,6 +452,122 @@ void MenuController::Render(Renderer& renderer,
                         ImGui::EndDisabled();
                     }
 
+                    if (ImGui::CollapsingHeader("Weather")) {
+                        const char* weatherPresetNames[] = {
+                            "Clear", "Overcast", "Damp (drying track)", "Light Rain", "Heavy Rain", "Storm", "Custom"};
+                        int weatherPresetIndex = static_cast<int>(settings.profile.weatherPreset);
+                        if (ImGui::Combo("Preset##Weather", &weatherPresetIndex, weatherPresetNames, 7)) {
+                            ApplyWeatherPreset(settings.profile, static_cast<WeatherPreset>(weatherPresetIndex));
+                            graphicsChanged = true;
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Sets rain, surface wetness, droplets and visibility together.\nAlso adjusts fog, since reduced visibility is most of what sells bad weather.");
+                        }
+
+                        // Any manual edit below means the setup no longer matches
+                        // the preset it came from; say so rather than lie.
+                        const WeatherPreset presetBeforeEdits = settings.profile.weatherPreset;
+                        bool weatherEdited = false;
+
+                        ImGui::SeparatorText("Precipitation");
+                        weatherEdited |= ImGui::Checkbox("Rain##Weather", &settings.profile.weather);
+                        ImGui::BeginDisabled(!settings.profile.weather);
+                        weatherEdited |= ImGui::SliderFloat("Rain Intensity", &settings.profile.weatherIntensity, 0.0f, 1.0f, "%.2f");
+                        weatherEdited |= ImGui::SliderFloat("Wind", &settings.profile.weatherWind, -2.0f, 2.0f, "%.2f");
+                        ImGui::EndDisabled();
+                        weatherEdited |= ImGui::Checkbox("Rain Particles", &settings.profile.particles);
+
+                        ImGui::SeparatorText("Track Soaking");
+                        weatherEdited |= ImGui::Checkbox("Rain Wets The Track", &settings.profile.weatherAutoWetness);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("While playing, the track soaks as it rains and dries out after,\nwhich is what produces a drying line. The slider below is the authored\nstarting value and is what gets saved; the simulation never overwrites it.");
+                        }
+                        ImGui::BeginDisabled(!settings.profile.weatherAutoWetness);
+                        weatherEdited |= ImGui::SliderFloat("Soak Rate", &settings.profile.weatherWetRate, 0.005f, 1.0f, "%.3f /s", ImGuiSliderFlags_Logarithmic);
+                        weatherEdited |= ImGui::SliderFloat("Dry Rate", &settings.profile.weatherDryRate, 0.001f, 1.0f, "%.3f /s", ImGuiSliderFlags_Logarithmic);
+                        ImGui::EndDisabled();
+
+                        ImGui::SeparatorText("Surface Water");
+                        weatherEdited |= ImGui::SliderFloat("Surface Wetness", &settings.profile.wetness, 0.0f, 1.0f, "%.2f");
+                        graphicsChanged |= weatherEdited;
+                        if (weatherEdited && presetBeforeEdits != WeatherPreset::Custom) {
+                            settings.profile.weatherPreset = WeatherPreset::Custom;
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Darkens and smooths surfaces, and pools water on upward-facing ones.\nIndependent of the rain overlay, so a track can stay wet after the rain stops.");
+                        }
+                        ImGui::BeginDisabled(settings.profile.wetness <= 0.0f);
+                        graphicsChanged |= ImGui::SliderFloat("Puddle Amount", &settings.profile.wetnessPuddleAmount, 0.0f, 1.0f, "%.2f");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("How much of the wet area pools into standing water.\nPuddles appear progressively as wetness rises.");
+                        }
+                        graphicsChanged |= ImGui::SliderFloat("Puddle Scale", &settings.profile.wetnessPuddleScale, 0.05f, 50.0f, "%.2f m", ImGuiSliderFlags_Logarithmic);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Size of an individual puddle in world units. Drop to a few centimetres\nfor scattered wet patches rather than large standing pools.");
+                        }
+                        graphicsChanged |= ImGui::SliderFloat("Ripple Strength", &settings.profile.wetnessRippleStrength, 0.0f, 4.0f, "%.2f");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Surface disturbance on standing water. Set to 0 for still puddles once the rain stops.");
+                        }
+                        ImGui::BeginDisabled(settings.profile.wetnessRippleStrength <= 0.0f);
+                        graphicsChanged |= ImGui::SliderFloat("Ripple Speed", &settings.profile.wetnessRippleSpeed, 0.0f, 8.0f, "%.2f");
+                        ImGui::EndDisabled();
+
+                        ImGui::SeparatorText("Droplets");
+                        ImGui::TextDisabled("Used automatically where a surface is too steep to pool.");
+                        graphicsChanged |= ImGui::SliderFloat("Droplet Scale", &settings.profile.wetnessDropletScale, 0.005f, 1.0f, "%.3f m", ImGuiSliderFlags_Logarithmic);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Bead size. Bodywork wants a few centimetres.");
+                        }
+                        graphicsChanged |= ImGui::SliderFloat("Droplet Strength", &settings.profile.wetnessDropletStrength, 0.0f, 4.0f, "%.2f");
+                        graphicsChanged |= ImGui::SliderFloat("Runoff Speed", &settings.profile.wetnessRunoffSpeed, 0.0f, 4.0f, "%.2f");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("How fast beads slide downhill. Scales with slope, so level surfaces stay still.");
+                        }
+                        if (settings.profile.wetness > 0.0f && !settings.profile.screenSpaceReflections) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f),
+                                "Screen-Space Reflections are off; wet surfaces will not reflect.");
+                        }
+                        ImGui::TextDisabled("Applies to upward-facing surfaces; vertical faces stay dry.");
+                        ImGui::EndDisabled();
+                    }
+
+                    if (ImGui::CollapsingHeader("Skid Marks")) {
+                        // Label must differ from the enclosing CollapsingHeader:
+                        // ImGui hashes the visible label into the widget ID, so a
+                        // "Skid Marks" checkbox inside a "Skid Marks" header is an
+                        // ID collision, not just a cosmetic repeat.
+                        graphicsChanged |= ImGui::Checkbox("Enabled##SkidMarks", &settings.profile.skidMarks);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Rubber laid by sliding tyres while the game is running.\nEmitted as decals, so marks conform to the track and show in wet reflections.");
+                        }
+                        ImGui::BeginDisabled(!settings.profile.skidMarks);
+                        graphicsChanged |= ImGui::SliderFloat("Slip Threshold", &settings.profile.skidMarkSlipThreshold, 0.02f, 1.0f, "%.2f");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("How much a tyre must slide before it marks. Lower = marks more easily.");
+                        }
+                        graphicsChanged |= ImGui::SliderFloat("Segment Spacing", &settings.profile.skidMarkSpacing, 0.05f, 2.0f, "%.2f m");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Distance between segments. Smaller is smoother but burns the mark budget faster.");
+                        }
+                        graphicsChanged |= ImGui::SliderFloat("Mark Width", &settings.profile.skidMarkWidth, 0.05f, 1.0f, "%.2f m");
+                        graphicsChanged |= ImGui::SliderFloat("Mark Opacity", &settings.profile.skidMarkOpacity, 0.0f, 1.0f, "%.2f");
+                        graphicsChanged |= ImGui::ColorEdit3("Mark Color", &settings.profile.skidMarkColor.x);
+                        graphicsChanged |= ImGui::SliderFloat("Fade Time", &settings.profile.skidMarkFadeSeconds, 0.0f, 300.0f, "%.0f s");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("0 keeps marks for the whole session, so rubber builds up over a stint.");
+                        }
+                        graphicsChanged |= ImGui::SliderInt("Maximum Marks", &settings.profile.maxSkidMarks, 32, 2000);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Oldest marks are recycled past this. Every visible mark is its own draw call,\nso this is a real performance setting, not just a memory one.");
+                        }
+                        if (settings.profile.maxSkidMarks > 800) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f),
+                                "High mark counts cost one draw call each until the renderer has instancing.");
+                        }
+                        ImGui::EndDisabled();
+                    }
+
                     ImGui::Separator();
                     ImGui::TextUnformatted("Graphics Profile");
                     const char* styleNames[] = {"Realistic", "Stylized"};
@@ -581,19 +801,8 @@ void MenuController::Render(Renderer& renderer,
                     } else {
                         ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f), "IBL status: using skybox mip fallback");
                     }
-                    graphicsChanged |= ImGui::Checkbox("Weather", &settings.profile.weather);
-                    ImGui::BeginDisabled(!settings.profile.weather);
-                    graphicsChanged |= ImGui::SliderFloat("Weather Intensity", &settings.profile.weatherIntensity, 0.0f, 1.0f, "%.2f");
-                    graphicsChanged |= ImGui::SliderFloat("Weather Wind", &settings.profile.weatherWind, -2.0f, 2.0f, "%.2f");
-                    ImGui::EndDisabled();
-                    graphicsChanged |= ImGui::Checkbox("Particles", &settings.profile.particles);
-                    if (settings.profile.weather && settings.profile.weatherIntensity > 0.0f) {
-                        const char* density = settings.profile.quality == GraphicsQualityTier::Low ? "Low"
-                            : (settings.profile.quality == GraphicsQualityTier::Medium ? "Medium"
-                            : (settings.profile.quality == GraphicsQualityTier::Ultra ? "Ultra" : "High"));
-                        ImGui::TextDisabled("Weather particles: %s%s", settings.profile.particles ? density : "Off",
-                            settings.profile.particles ? " density" : "");
-                    }
+                    // Rain and particles now live in Environment > Weather, next to
+                    // the surface wetness they are physically tied to.
                     graphicsChanged |= ImGui::Checkbox("LOD", &settings.profile.lod);
                     graphicsChanged |= ImGui::Checkbox("Dynamic Resolution", &settings.profile.dynamicResolution);
                     ImGui::BeginDisabled(!settings.profile.dynamicResolution);

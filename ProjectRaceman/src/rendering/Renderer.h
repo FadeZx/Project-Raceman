@@ -48,6 +48,20 @@ enum class AntiAliasingMode {
     SMAA
 };
 
+// One-click coherent weather setups. Applying a preset writes the whole weather
+// block - rain, surface wetness, droplets and visibility - because those only
+// look right when they agree with each other. Editing any of them afterwards
+// leaves the preset reading Custom.
+enum class WeatherPreset {
+    Clear,
+    Overcast,
+    Damp,
+    LightRain,
+    HeavyRain,
+    Storm,
+    Custom
+};
+
 enum class FogMode {
     Off,
     // Classic start/end depth ramp. Cheap, ignores altitude, and mostly useful
@@ -106,6 +120,7 @@ enum class SceneViewShadingMode {
     IblFinalSpecular,
     Fog,
     AutoExposure,
+    Wetness,
     Count
 };
 
@@ -230,6 +245,43 @@ struct GraphicsProfile {
     float fogSunIntensity{0.0f};     // 0 disables the lobe entirely
     float fogSunExponent{8.0f};      // tightness of the glow around the sun
     bool fogDebugView{false};        // Scene View only; cleared by ResolveProfileForTarget
+
+    // --- Environment: surface wetness ---------------------------------------
+    // Deliberately independent of the `weather` rain overlay above: a track that
+    // has stopped being rained on is still wet, and drying out is the interesting
+    // part. Also authored look, so ApplyGraphicsPreset leaves it alone.
+    float wetness{0.0f};                // 0 = dry, 1 = saturated
+    float wetnessPuddleAmount{0.6f};    // how much of the wet area pools into water
+    float wetnessPuddleScale{6.0f};     // puddle size in world units
+    float wetnessRippleStrength{0.0f};  // surface disturbance; 0 = still water
+    float wetnessRippleSpeed{1.0f};
+    // Droplets: what water does on surfaces too steep to pool on. Scale is in
+    // world units, so bodywork beads want centimetres, not metres.
+    float wetnessDropletScale{0.06f};
+    float wetnessDropletStrength{0.6f};
+    float wetnessRunoffSpeed{0.15f};
+    bool wetnessDebugView{false};
+    // Couples rain to wetness over time: the track soaks while it rains and dries
+    // out after, which is the whole reason a drying line exists in a race. Runs
+    // only in play mode, and drives a runtime override rather than the authored
+    // `wetness` above, so a saved project never captures a mid-shower value.
+    WeatherPreset weatherPreset{WeatherPreset::Clear};
+    bool weatherAutoWetness{true};
+    float weatherWetRate{0.10f};   // wetness gained per second at full rain
+    float weatherDryRate{0.03f};   // wetness lost per second with no rain
+
+    // --- Skid marks ---------------------------------------------------------
+    // Runtime rubber laid by sliding tyres, emitted as decals. maxSkidMarks is a
+    // genuine performance knob - every mark is its own draw call until the
+    // renderer gains instancing - so it is the one field the quality presets set.
+    bool skidMarks{true};
+    float skidMarkSlipThreshold{0.25f};
+    float skidMarkSpacing{0.35f};
+    float skidMarkWidth{0.28f};
+    float skidMarkOpacity{0.75f};
+    float skidMarkFadeSeconds{0.0f};   // 0 = persist for the whole session
+    int maxSkidMarks{300};
+    glm::vec3 skidMarkColor{0.06f, 0.055f, 0.05f};
 };
 
 struct RendererSettings {
@@ -276,6 +328,8 @@ struct MeshDrawCommand {
     float clearCoatRoughness{0.1f};
     float anisotropy{0.0f};
     float transmission{0.0f};
+    float wetnessResponse{1.0f};
+    float puddleAffinity{1.0f};
     float alphaCutoff{0.0f};
     bool doubleSided{false};
     bool transparent{false};
@@ -328,6 +382,42 @@ struct ReflectionProbeDrawCommand {
     float blendDistance{1.0f};
     float intensity{1.0f};
     unsigned int cubemapTexture{0};
+};
+
+// A region rain cannot reach: garage, tunnel, pit box, under a bridge. Spatial
+// rather than material, because the surfaces inside are usually the same
+// materials as the ones outside.
+struct WeatherShelterDrawCommand {
+    // Full box volume in world space; the transform's scale is the box size.
+    glm::mat4 transform{1.0f};
+    float amount{1.0f};    // 1 = completely dry inside
+    float falloff{1.0f};   // metres of gradient inward from the volume wall
+};
+
+enum class DecalBlendMode {
+    // Darkens what is underneath. The right default: skid marks, rubber, dirt,
+    // oil and grime are all darkening operations.
+    Multiply,
+    // Replaces what is underneath. Use for decals with their own colour, such as
+    // painted track markings or sponsor logos.
+    AlphaBlend
+};
+
+struct DecalDrawCommand {
+    // Full box volume in world space; the transform's scale is the box size.
+    // Projection runs along the volume's local -Y.
+    glm::mat4 transform{1.0f};
+    unsigned int textureId{0};
+    glm::vec4 color{1.0f};
+    float opacity{1.0f};
+    // Surfaces angled further than this from the projection axis get no decal,
+    // which is what stops a road decal smearing down the face of a kerb.
+    float angleFadeDegrees{70.0f};
+    glm::vec2 uvTiling{1.0f, 1.0f};
+    glm::vec2 uvOffset{0.0f, 0.0f};
+    DecalBlendMode blendMode{DecalBlendMode::Multiply};
+    // Draw order among decals; lower draws first. Ties break on submission order.
+    int sortOrder{0};
 };
 
 enum class DebugLineDepthMode {
@@ -405,6 +495,8 @@ public:
     void ReportFrustumCulled() { ++frameStats_.frustumCulledMeshCount; }
     void SubmitLight(const LightDrawCommand& cmd);
     void SubmitReflectionProbe(const ReflectionProbeDrawCommand& cmd);
+    void SubmitDecal(const DecalDrawCommand& cmd);
+    void SubmitWeatherShelter(const WeatherShelterDrawCommand& cmd);
     void SubmitLine(const DebugLineCommand& cmd);
     void Flush();
     void ResetFrameStats();
@@ -449,6 +541,11 @@ public:
     // Call between Submit and Flush; the sun falls back to straight down when the
     // scene has no directional light.
     FogUniforms GetFogUniforms() const;
+    // Simulated wetness for play mode. Kept out of GraphicsProfile deliberately:
+    // the authored value is what gets saved, this is what gets rendered.
+    void SetRuntimeWetness(float wetness) { runtimeWetness_ = wetness; runtimeWetnessActive_ = true; }
+    void ClearRuntimeWetness() { runtimeWetnessActive_ = false; }
+    float GetEffectiveWetness() const { return runtimeWetnessActive_ ? runtimeWetness_ : settings_.profile.wetness; }
     glm::vec3 GetCameraPosition() const { return glm::vec3(glm::inverse(view_)[3]); }
     const RendererConfig& GetConfig() const;
     const RendererViewport& GetViewport() const { return viewport_; }
@@ -542,6 +639,10 @@ private:
                                      const std::function<void(int, int)>& progress);
     void ResolveViewportTarget(ViewportTarget& target);
     void RenderOverlayLines(ViewportTarget& target);
+    // Projected decals, drawn after all geometry while the MRT target is still
+    // bound. Reads the depth and normal attachments of that same target, which is
+    // why it issues a texture barrier first.
+    void RenderDecals(const ViewportTarget& target);
     void DestroyViewportTarget(ViewportTarget& target);
     ViewportTarget& GetViewportTarget(ViewportRenderTarget target);
     const ViewportTarget& GetViewportTarget(ViewportRenderTarget target) const;
@@ -578,6 +679,8 @@ private:
     std::vector<MeshDrawCommand> shadowCasterList_;
     std::vector<LightDrawCommand> lightDrawList_;
     std::vector<ReflectionProbeDrawCommand> reflectionProbeDrawList_;
+    std::vector<DecalDrawCommand> decalDrawList_;
+    std::vector<WeatherShelterDrawCommand> weatherShelterDrawList_;
     std::unordered_map<std::string, unsigned int> reflectionProbeCubemapCache_;
     struct RealtimeReflectionProbeState {
         unsigned int cubemap{0};
@@ -652,6 +755,7 @@ private:
     std::unique_ptr<Shader> smaaWeightsShader_;
     std::unique_ptr<Shader> smaaBlendShader_;
     std::unique_ptr<Shader> debugLineShader_;
+    std::unique_ptr<Shader> decalShader_;
     unsigned int smaaAreaTexture_{0};
     unsigned int smaaSearchTexture_{0};
     std::unique_ptr<Shader> shadowDepthShader_;
@@ -673,6 +777,8 @@ private:
     // the geometry in front of it kept it.
     mutable glm::vec3 lastSunDirection_{0.0f, -1.0f, 0.0f};
     mutable bool lastSunValid_{false};
+    float runtimeWetness_{0.0f};
+    bool runtimeWetnessActive_{false};
 };
 
 } // namespace raceman

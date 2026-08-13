@@ -38,6 +38,11 @@ struct Material {
     float clearCoatRoughness{0.1f};
     float anisotropy{0.0f};
     float transmission{0.0f};
+    // How this surface answers scene wetness. Asphalt and dirt take water
+    // readily and pool it; car paint is sealed and curved, so it beads instead;
+    // anything sheltered can be held dry entirely.
+    float wetnessResponse{1.0f};
+    float puddleAffinity{1.0f};
     std::string alphaMode{"Opaque"};
     float alphaCutoff{0.5f};
     bool doubleSided{false};

@@ -1512,6 +1512,7 @@ void SceneEditor::RenderViewportPanel() {
             {"IBL: Final Specular",     SceneViewShadingMode::IblFinalSpecular,     false},
             {"Fog",                     SceneViewShadingMode::Fog,                  false},
             {"Auto Exposure",           SceneViewShadingMode::AutoExposure,         false},
+            {"Wetness",                 SceneViewShadingMode::Wetness,              false},
         };
         static const char* kShadingOptionLabels[] = {
             kShadingOptions[0].label,  kShadingOptions[1].label,  kShadingOptions[2].label,
@@ -1519,7 +1520,7 @@ void SceneEditor::RenderViewportPanel() {
             kShadingOptions[6].label,  kShadingOptions[7].label,  kShadingOptions[8].label,
             kShadingOptions[9].label,  kShadingOptions[10].label, kShadingOptions[11].label,
             kShadingOptions[12].label, kShadingOptions[13].label, kShadingOptions[14].label,
-            kShadingOptions[15].label,
+            kShadingOptions[15].label, kShadingOptions[16].label,
         };
         static_assert(IM_ARRAYSIZE(kShadingOptions) == IM_ARRAYSIZE(kShadingOptionLabels),
                       "Scene View shading labels must stay in sync with the option table");
@@ -2137,6 +2138,14 @@ bool SceneEditor::PasteInspectorComponentFromClipboard(const std::vector<int>& t
         case SceneInspectorComponentType::ReflectionProbe:
             target.hasReflectionProbe = true;
             target.reflectionProbe = componentClipboard_.sourceObject.reflectionProbe;
+            break;
+        case SceneInspectorComponentType::Decal:
+            target.hasDecal = true;
+            target.decal = componentClipboard_.sourceObject.decal;
+            break;
+        case SceneInspectorComponentType::WeatherShelter:
+            target.hasWeatherShelter = true;
+            target.weatherShelter = componentClipboard_.sourceObject.weatherShelter;
             break;
         case SceneInspectorComponentType::AudioListener:
             target.hasAudioListener = true;
@@ -5619,9 +5628,125 @@ SceneProfilerStats SceneEditor::CollectProfilerStats() const {
     return stats;
 }
 
+SkidMarkSettings SceneEditor::SkidMarkSettingsFromProfile(const GraphicsProfile& profile) const {
+    SkidMarkSettings settings;
+    settings.enabled = profile.skidMarks;
+    settings.slipThreshold = profile.skidMarkSlipThreshold;
+    settings.spacing = profile.skidMarkSpacing;
+    settings.width = profile.skidMarkWidth;
+    settings.opacity = profile.skidMarkOpacity;
+    settings.fadeSeconds = profile.skidMarkFadeSeconds;
+    settings.maxMarks = profile.maxSkidMarks;
+    settings.color = profile.skidMarkColor;
+    return settings;
+}
+
 void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
     if (editorInteraction) {
         UpdateGizmo(renderer);
+    }
+
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& object = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !object.hasWeatherShelter || !object.weatherShelter.enabled) continue;
+        WeatherShelterDrawCommand shelter;
+        shelter.transform = GetObjectWorldMatrix(i);
+        shelter.amount = object.weatherShelter.amount;
+        shelter.falloff = object.weatherShelter.falloff;
+        renderer.SubmitWeatherShelter(shelter);
+        if (editorInteraction && selectedIndex_ == i) {
+            const glm::vec4 shelterColor{0.4f, 0.85f, 0.55f, 0.35f};
+            const glm::vec3 corners[8] = {
+                {-0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, 0.5f}, {-0.5f, -0.5f, 0.5f},
+                {-0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, 0.5f}, {-0.5f,  0.5f, 0.5f}};
+            glm::vec3 world[8];
+            for (int c = 0; c < 8; ++c) world[c] = glm::vec3(shelter.transform * glm::vec4(corners[c], 1.0f));
+            const int edges[12][2] = {{0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}};
+            for (const auto& edge : edges) {
+                DebugLineCommand line;
+                line.start = world[edge[0]];
+                line.end = world[edge[1]];
+                line.color = shelterColor;
+                line.width = 1.5f;
+                line.depthMode = DebugLineDepthMode::DepthTestedOverlay;
+                renderer.SubmitLine(line);
+            }
+        }
+    }
+
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& object = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !object.hasDecal || !object.decal.enabled) continue;
+        DecalDrawCommand decal;
+        // The object's world matrix IS the projection volume: rotation orients
+        // the projection axis and scale sets the box size.
+        decal.transform = GetObjectWorldMatrix(i);
+        decal.color = glm::vec4(object.decal.color[0], object.decal.color[1],
+                                object.decal.color[2], object.decal.color[3]);
+        decal.opacity = object.decal.opacity;
+        decal.angleFadeDegrees = object.decal.angleFadeDegrees;
+        decal.uvTiling = glm::vec2(object.decal.uvTiling[0], object.decal.uvTiling[1]);
+        decal.uvOffset = glm::vec2(object.decal.uvOffset[0], object.decal.uvOffset[1]);
+        decal.blendMode = object.decal.blendMode == DecalBlendModeSetting::AlphaBlend
+            ? DecalBlendMode::AlphaBlend
+            : DecalBlendMode::Multiply;
+        decal.sortOrder = object.decal.sortOrder;
+        if (!object.decal.texturePath.empty()) {
+            // sRGB: a decal texture is authored colour, same as an albedo map.
+            decal.textureId = LoadMaterialTextureCached(object.decal.texturePath,
+                materialTextureCache_, console_, true);
+        }
+        renderer.SubmitDecal(decal);
+        if (editorInteraction && selectedIndex_ == i) {
+            // Wireframe the projection volume so an unselected-invisible decal is
+            // still placeable; without this the volume has no visual at all.
+            //
+            // DepthTestedOverlay rather than AlwaysOnTop: the renderer draws that
+            // mode twice, opaque where the line is actually visible and blended
+            // where it is occluded, so the box reads as being in the world rather
+            // than painted flat over it. The alpha here is the occluded strength.
+            const glm::vec4 volumeColor{1.0f, 0.55f, 0.15f, 0.35f};
+            auto submitVolumeLine = [&](const glm::vec3& start, const glm::vec3& end,
+                                        const glm::vec4& color, float width) {
+                DebugLineCommand line;
+                line.start = start;
+                line.end = end;
+                line.color = color;
+                line.width = width;
+                line.depthMode = DebugLineDepthMode::DepthTestedOverlay;
+                renderer.SubmitLine(line);
+            };
+            auto toWorld = [&](const glm::vec3& local) {
+                return glm::vec3(decal.transform * glm::vec4(local, 1.0f));
+            };
+
+            const glm::vec3 corners[8] = {
+                {-0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, 0.5f}, {-0.5f, -0.5f, 0.5f},
+                {-0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, 0.5f}, {-0.5f,  0.5f, 0.5f}};
+            glm::vec3 world[8];
+            for (int c = 0; c < 8; ++c) world[c] = toWorld(corners[c]);
+            const int edges[12][2] = {{0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}};
+            for (const auto& edge : edges) {
+                submitVolumeLine(world[edge[0]], world[edge[1]], volumeColor, 1.5f);
+            }
+
+            // Projection direction. The transform gizmo's arrows are world-aligned
+            // and so say nothing about which way a rotated decal points; this does.
+            // Cyan shaft from the top face down through the bottom, plus a barb
+            // arrowhead, plus a cross marking the face the texture lands on.
+            const glm::vec4 axisColor{0.25f, 0.9f, 1.0f, 0.4f};
+            const glm::vec3 topCenter = toWorld({0.0f, 0.5f, 0.0f});
+            const glm::vec3 bottomCenter = toWorld({0.0f, -0.5f, 0.0f});
+            submitVolumeLine(topCenter, bottomCenter, axisColor, 2.5f);
+            for (const glm::vec3& barb : {glm::vec3{0.18f, -0.28f, 0.0f}, glm::vec3{-0.18f, -0.28f, 0.0f},
+                                          glm::vec3{0.0f, -0.28f, 0.18f}, glm::vec3{0.0f, -0.28f, -0.18f}}) {
+                submitVolumeLine(bottomCenter, toWorld(barb), axisColor, 2.0f);
+            }
+            // Diagonals across the bottom face: this is the plane the texture is
+            // projected onto, with local +X to the right and +Z up the image.
+            submitVolumeLine(world[0], world[2], axisColor, 1.0f);
+            submitVolumeLine(world[1], world[3], axisColor, 1.0f);
+        }
     }
 
     for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
@@ -5734,6 +5859,19 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
         frustumPlanes[3] = { vp[0][3] - vp[0][1], vp[1][3] - vp[1][1], vp[2][3] - vp[2][1], vp[3][3] - vp[3][1] }; // Top
         frustumPlanes[4] = { vp[0][3] + vp[0][2], vp[1][3] + vp[1][2], vp[2][3] + vp[2][2], vp[3][3] + vp[3][2] }; // Near
         frustumPlanes[5] = { vp[0][3] - vp[0][2], vp[1][3] - vp[1][2], vp[2][3] - vp[2][2], vp[3][3] - vp[3][2] }; // Far
+    }
+
+    // Skid marks. Culled against the same planes as everything else: a lap's
+    // worth of rubber is mostly behind the camera, and each surviving mark costs
+    // a draw call.
+    {
+        const SkidMarkSettings skidSettings = SkidMarkSettingsFromProfile(renderer.GetSettings().profile);
+        unsigned int skidTexture = 0;
+        if (!skidSettings.texturePath.empty()) {
+            skidTexture = LoadMaterialTextureCached(skidSettings.texturePath, materialTextureCache_, console_, true);
+        }
+        skidMarks_.Submit(renderer, skidSettings, skidTexture,
+                          enableFrustumCulling_ ? frustumPlanes : nullptr);
     }
 
     for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
@@ -5885,6 +6023,8 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
             cmd.clearCoat = material->clearCoat;
             cmd.clearCoatRoughness = material->clearCoatRoughness;
             cmd.anisotropy = material->anisotropy;
+            cmd.wetnessResponse = material->wetnessResponse;
+            cmd.puddleAffinity = material->puddleAffinity;
             cmd.transmission = material->transmission;
             const std::string alphaMode = ToLowerCopy(material->alphaMode);
             cmd.alphaCutoff = alphaMode == "mask" ? material->alphaCutoff : 0.0f;

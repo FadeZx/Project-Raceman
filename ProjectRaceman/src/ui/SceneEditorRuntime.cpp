@@ -83,7 +83,40 @@ void SceneEditor::StartRuntime() {
 void SceneEditor::UpdateRuntime(float deltaTime) {
     TickPlayModeLoading();
 
+    UpdateWeather(deltaTime);
     UpdateRuntimeSystems(deltaTime);
+}
+
+void SceneEditor::UpdateWeather(float deltaTime) {
+    if (renderer_ == nullptr) return;
+    const GraphicsProfile& profile = renderer_->GetSettings().profile;
+
+    // Outside play mode the authored value is the truth, so the override is
+    // dropped entirely rather than frozen at whatever the sim last produced.
+    if (!scriptsRunning_ || scriptsPaused_ || !profile.weatherAutoWetness) {
+        renderer_->ClearRuntimeWetness();
+        weatherWetnessInitialized_ = false;
+        return;
+    }
+
+    if (!weatherWetnessInitialized_) {
+        // Start from the authored wetness so a session that begins on a damp
+        // track does not have to soak up from dry first.
+        runtimeWetness_ = (std::clamp)(profile.wetness, 0.0f, 1.0f);
+        weatherWetnessInitialized_ = true;
+    }
+
+    const float rain = profile.weather ? (std::clamp)(profile.weatherIntensity, 0.0f, 1.0f) : 0.0f;
+    if (deltaTime > 0.0f) {
+        // Soaking chases the rain intensity; drying always pulls toward dry.
+        // Separate rates because a track wets far faster than it dries.
+        if (runtimeWetness_ < rain) {
+            runtimeWetness_ = (std::min)(rain, runtimeWetness_ + profile.weatherWetRate * deltaTime);
+        } else {
+            runtimeWetness_ = (std::max)(rain, runtimeWetness_ - profile.weatherDryRate * deltaTime);
+        }
+    }
+    renderer_->SetRuntimeWetness((std::clamp)(runtimeWetness_, 0.0f, 1.0f));
 }
 
 void SceneEditor::UpdateRuntimeSystems(float deltaTime) {

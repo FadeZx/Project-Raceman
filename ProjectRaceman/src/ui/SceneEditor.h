@@ -23,6 +23,7 @@
 #include "../physics/PhysicsLayers.h"
 #include "../physics/VehicleConfig.h"
 #include "../rendering/Renderer.h"
+#include "../rendering/SkidMarks.h"
 #include "../rendering/Material.h"
 #include "../rendering/PrimitiveMeshes.h"
 #include "../scripting/ObjectScript.h"
@@ -442,6 +443,13 @@ private:
     std::string projectPath_{"project.raceman.json"};
     SkyboxFaces skyboxFaces_{};
     GraphicsProfile graphicsProfile_{};
+    SkidMarkSystem skidMarks_;
+    void UpdateWeather(float deltaTime);
+    float runtimeWetness_{0.0f};
+    bool weatherWetnessInitialized_{false};
+    // Built from the live graphics profile each frame so the editor's sliders
+    // take effect without restarting the run.
+    SkidMarkSettings SkidMarkSettingsFromProfile(const GraphicsProfile& profile) const;
     std::string projectName_{"Project Raceman"};
     std::string assetsRootSetting_{"assets"};
     std::string defaultScenePath_{"assets/scenes/EditorScene.scene.json"};

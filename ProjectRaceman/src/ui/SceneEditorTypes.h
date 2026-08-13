@@ -64,6 +64,8 @@ enum class SceneComponentType {
     Cinemachine,
     Light,
     ReflectionProbe,
+    Decal,
+    WeatherShelter,
     AudioListener,
     AudioSource,
     VehicleSound,
@@ -83,6 +85,8 @@ enum class SceneInspectorComponentType {
     Cinemachine,
     Light,
     ReflectionProbe,
+    Decal,
+    WeatherShelter,
     AudioListener,
     AudioSource,
     VehicleSound,
@@ -458,6 +462,39 @@ enum class ReflectionProbeUpdateMode {
     Realtime
 };
 
+enum class DecalBlendModeSetting {
+    Multiply,
+    AlphaBlend
+};
+
+// Projected decal: skid marks, rubber, dirt, oil, painted markings. The object's
+// Transform is the projection volume - scale is the box size in world units, and
+// projection runs down the volume's local -Y, so the default orientation projects
+// onto the ground.
+struct DecalComponent {
+    bool enabled{true};
+    std::string texturePath;
+    float color[4]{1.0f, 1.0f, 1.0f, 1.0f};
+    float opacity{1.0f};
+    float angleFadeDegrees{70.0f};
+    float uvTiling[2]{1.0f, 1.0f};
+    float uvOffset[2]{0.0f, 0.0f};
+    DecalBlendModeSetting blendMode{DecalBlendModeSetting::Multiply};
+    int sortOrder{0};
+};
+
+// A region rain cannot reach. The object's Transform is the volume: scale is the
+// box size in world units.
+//
+// Spatial rather than material on purpose. A garage floor is usually the same
+// asphalt material as the track outside it, so keeping it dry is a question of
+// where it is, not what it is made of.
+struct WeatherShelterComponent {
+    bool enabled{true};
+    float amount{1.0f};    // 1 = completely dry inside
+    float falloff{1.0f};   // metres of gradient inward from the wall, so doorways blend
+};
+
 struct ReflectionProbeComponent {
     bool enabled{true};
     ReflectionProbeShape shape{ReflectionProbeShape::Box};
@@ -535,6 +572,8 @@ struct SceneObject {
     bool hasCinemachine{false};
     bool hasLight{false};
     bool hasReflectionProbe{false};
+    bool hasDecal{false};
+    bool hasWeatherShelter{false};
     bool hasAudioListener{false};
     bool hasAudioSource{false};
     bool hasVehicleSound{false};
@@ -555,6 +594,8 @@ struct SceneObject {
     CinemachineCameraComponent cinemachine;
     LightComponent light;
     ReflectionProbeComponent reflectionProbe;
+    DecalComponent decal;
+    WeatherShelterComponent weatherShelter;
     AudioListenerComponent audioListener;
     AudioSourceComponent audioSource;
     VehicleSoundComponent vehicleSound;
