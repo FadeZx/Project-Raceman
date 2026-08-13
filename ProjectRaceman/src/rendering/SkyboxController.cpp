@@ -109,9 +109,10 @@ void SkyboxController::Reload() {
     skybox_ = std::make_unique<Skybox>(faceVec, shader_->getID());
 }
 
-void SkyboxController::Draw(const glm::mat4& view, const glm::mat4& projection) {
+void SkyboxController::Draw(const glm::mat4& view, const glm::mat4& projection,
+                            const FogUniforms& fog, const glm::vec3& cameraPosition) {
     if (skybox_) {
-        skybox_->draw(view, projection);
+        skybox_->draw(view, projection, fog, cameraPosition);
     }
 }
 

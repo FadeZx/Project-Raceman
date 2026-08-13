@@ -1,0 +1,55 @@
+#version 450 core
+
+// Pass 1 of auto-exposure: build a 256-bin histogram of log2 luminance over the
+// HDR scene.
+//
+// A histogram rather than a simple average because a racing scene is exactly the
+// case an average handles worst: a bright sky or a pair of oncoming headlights
+// occupying a few percent of the frame drags a mean far off what the eye is
+// actually adapted to. Pass 2 trims percentiles off both ends, which a mean
+// cannot do.
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0, std430) buffer HistogramBuffer {
+    uint histogram[256];
+};
+
+uniform sampler2D uHdrScene;
+uniform vec2 uInverseResolution;
+uniform float uMinLogLuminance;
+uniform float uInverseLogLuminanceRange;
+
+shared uint sharedHistogram[256];
+
+float Luminance(vec3 color) {
+    return dot(color, vec3(0.2126, 0.7152, 0.0722));
+}
+
+uint BinIndex(vec3 color) {
+    float luminance = Luminance(color);
+    // Bin 0 is reserved for near-black pixels. Letting them fall into the normal
+    // range would drag the average down in night scenes, where most of the frame
+    // legitimately is black and carries no adaptation information.
+    if (luminance < 0.0005) return 0u;
+    float normalized = clamp((log2(luminance) - uMinLogLuminance) * uInverseLogLuminanceRange,
+                             0.0, 1.0);
+    return uint(normalized * 254.0 + 1.0);
+}
+
+void main() {
+    sharedHistogram[gl_LocalInvocationIndex] = 0u;
+    barrier();
+
+    ivec2 dimensions = textureSize(uHdrScene, 0);
+    ivec2 coordinate = ivec2(gl_GlobalInvocationID.xy);
+    if (coordinate.x < dimensions.x && coordinate.y < dimensions.y) {
+        vec2 uv = (vec2(coordinate) + 0.5) * uInverseResolution;
+        vec3 color = texture(uHdrScene, uv).rgb;
+        atomicAdd(sharedHistogram[BinIndex(color)], 1u);
+    }
+    barrier();
+
+    // One global atomic per bin per workgroup instead of one per pixel.
+    atomicAdd(histogram[gl_LocalInvocationIndex], sharedHistogram[gl_LocalInvocationIndex]);
+}

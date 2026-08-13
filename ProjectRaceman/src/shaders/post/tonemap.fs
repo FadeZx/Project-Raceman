@@ -7,6 +7,10 @@ uniform sampler2D uHdrScene;
 uniform sampler2D uBloomTexture;
 uniform sampler2D uSsaoTexture;
 uniform float uExposure;
+uniform bool uAutoExposure;
+uniform sampler2D uAdaptedLuminance;   // 1x1 r32f written by luminance_average.comp
+uniform float uExposureCompensation;   // EV offset on top of the metered value
+uniform bool uDebugAutoExposure;
 // 0 = SDR sRGB, 1 = HDR linear scRGB, 2 = SDR preview of HDR output.
 uniform int uOutputMode;
 uniform float uHdrPaperWhiteNits;
@@ -93,6 +97,17 @@ vec3 ApplyFinishing(vec3 color) {
     return max(color, vec3(0.0));
 }
 
+// Resolved exposure multiplier. Auto mode meters the frame and converts to the
+// standard saturation-based exposure; manual mode is the authored value.
+float ResolveExposure() {
+    if (!uAutoExposure) return uExposure;
+    float averageLuminance = max(texelFetch(uAdaptedLuminance, ivec2(0), 0).r, 1e-5);
+    // EV100 from average scene luminance, with the usual 12.5 reflected-light
+    // meter calibration constant.
+    float ev100 = log2(averageLuminance * 100.0 / 12.5) - uExposureCompensation;
+    return 1.0 / max(1.2 * exp2(ev100), 1e-6);
+}
+
 vec3 ToSdr(vec3 sceneLinear, vec2 pixelPosition) {
     vec3 mapped = AcesFilm(sceneLinear);
     float dither = (fract(sin(dot(pixelPosition, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;
@@ -107,8 +122,26 @@ void main() {
         FragColor = vec4(uOutputMode == 1 ? ToScRgb(debugColor) : EncodeSrgb(debugColor), 1.0);
         return;
     }
+    if (uDebugAutoExposure) {
+        // Metering readout: a horizontal EV100 scale with a marker at the value
+        // the adaptation has settled on, over a desaturated frame.
+        float averageLuminance = max(texelFetch(uAdaptedLuminance, ivec2(0), 0).r, 1e-5);
+        float ev100 = log2(averageLuminance * 100.0 / 12.5);
+        vec3 scene = SampleScene(vUV) * ResolveExposure();
+        float grey = dot(AcesFilm(scene), vec3(0.2126, 0.7152, 0.0722));
+        vec3 debugColor = vec3(grey * 0.6);
+        if (vUV.y > 0.92 && vUV.y < 0.97) {
+            // Scale spans EV -6 .. +18, the usual range from night to bright sun.
+            float scalePosition = clamp((ev100 + 6.0) / 24.0, 0.0, 1.0);
+            debugColor = vec3(0.12);
+            if (abs(vUV.x - scalePosition) < 0.002) debugColor = vec3(1.0, 0.45, 0.1);
+            else if (fract(vUV.x * 24.0) < 0.04) debugColor = vec3(0.35);
+        }
+        FragColor = vec4(EncodeSrgb(debugColor), 1.0);
+        return;
+    }
     vec3 hdr = uEnableFxaa ? SampleFxaa(vUV) : SampleScene(vUV);
     if (uEnableBloom) hdr += texture(uBloomTexture, vUV).rgb * uBloomIntensity;
-    vec3 exposed = ApplyFinishing(hdr * uExposure);
+    vec3 exposed = ApplyFinishing(hdr * ResolveExposure());
     FragColor = vec4(uOutputMode == 1 ? ToScRgb(exposed) : ToSdr(exposed, gl_FragCoord.xy), 1.0);
 }

@@ -6,6 +6,8 @@
 
 #include <glm/glm.hpp>
 
+#include "Renderer.h"
+
 class Skybox;
 class Shader;
 
@@ -32,8 +34,11 @@ public:
     // (Re)create underlying Skybox from current faces/shader
     void Reload();
 
-    // Optional: draw if view/projection available
-    void Draw(const glm::mat4& view, const glm::mat4& projection);
+    // Optional: draw if view/projection available. Fog travels with the call so
+    // the horizon haze matches the fog applied to geometry; pass a default-built
+    // FogUniforms to draw the sky unfogged.
+    void Draw(const glm::mat4& view, const glm::mat4& projection,
+              const FogUniforms& fog, const glm::vec3& cameraPosition);
 
 private:
     static SkyboxFaces DefaultFaces();

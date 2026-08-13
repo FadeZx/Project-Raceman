@@ -158,6 +158,30 @@ void Renderer::EnsureViewportRenderTarget(ViewportRenderTarget target, int width
     const int desiredSsaoWidth = (std::max)(1, width / ssaoResolutionDivisor);
     const int desiredSsaoHeight = (std::max)(1, height / ssaoResolutionDivisor);
 
+    // Auto-exposure state is resolution independent, so it is allocated once and
+    // deliberately survives resizes: rebuilding it would reset the adaptation and
+    // flash the image every time the window changes size.
+    if (renderTarget.luminanceHistogramBuffer == 0) {
+        glGenBuffers(1, &renderTarget.luminanceHistogramBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderTarget.luminanceHistogramBuffer);
+        const std::array<std::uint32_t, 256> zeroed{};
+        glBufferData(GL_SHADER_STORAGE_BUFFER, static_cast<GLsizeiptr>(zeroed.size() * sizeof(std::uint32_t)),
+                     zeroed.data(), GL_DYNAMIC_COPY);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    }
+    if (renderTarget.adaptedLuminanceTexture == 0) {
+        glGenTextures(1, &renderTarget.adaptedLuminanceTexture);
+        glBindTexture(GL_TEXTURE_2D, renderTarget.adaptedLuminanceTexture);
+        // Zero means "no history yet"; the averaging shader adopts the first
+        // measurement outright rather than fading up from black.
+        const float initial = 0.0f;
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, 1, 1, 0, GL_RED, GL_FLOAT, &initial);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
     if (renderTarget.framebuffer == 0) {
         glGenFramebuffers(1, &renderTarget.framebuffer);
     }
@@ -538,6 +562,9 @@ void Renderer::BeginFrameToViewportTarget(ViewportRenderTarget target, const glm
             }
         }
     }
+    renderTarget.lastFrameDeltaSeconds = renderTarget.lastFrameBeginSeconds > 0.0
+        ? (std::clamp)(static_cast<float>(nowSeconds - renderTarget.lastFrameBeginSeconds), 0.0f, 0.25f)
+        : 0.0f;
     renderTarget.lastFrameBeginSeconds = nowSeconds;
 
     if (Profile().antiAliasing == AntiAliasingMode::TAA) {
@@ -578,6 +605,8 @@ GraphicsProfile Renderer::ResolveProfileForTarget(ViewportRenderTarget target) c
     resolved.shadowCascadeDebugView = false;
     resolved.ssrDebugView = false;
     resolved.taaDebugView = false;
+    resolved.fogDebugView = false;
+    resolved.autoExposureDebugView = false;
     resolved.iblDebugMode = 0;
     if (target != ViewportRenderTarget::Scene) {
         return resolved;
@@ -593,6 +622,9 @@ GraphicsProfile Renderer::ResolveProfileForTarget(ViewportRenderTarget target) c
         resolved.screenSpaceReflections = false;
         resolved.ssao = false;
         resolved.localShadowLightLimit = 0;
+        // Fog is atmosphere rather than lighting, but the unlit modes exist to
+        // show flat albedo and geometry; hazing distant surfaces defeats that.
+        resolved.fogMode = FogMode::Off;
     };
     auto disablePost = [&resolved]() {
         resolved.plainView = true;
@@ -659,10 +691,78 @@ GraphicsProfile Renderer::ResolveProfileForTarget(ViewportRenderTarget target) c
         resolved.reflections = true;
         resolved.iblDebugMode = 3;
         break;
+    case SceneViewShadingMode::AutoExposure:
+        // Forcing it on makes the view self-explanatory: the readout always has
+        // a metered value to show, even in a project that ships manual exposure.
+        resolved.autoExposure = true;
+        resolved.autoExposureDebugView = true;
+        break;
+    case SceneViewShadingMode::Fog:
+        // Force a visible mode: the view is useless against FogMode::Off, which
+        // is transmittance 1.0 everywhere and therefore a white screen.
+        if (resolved.fogMode == FogMode::Off) {
+            resolved.fogMode = FogMode::ExponentialHeight;
+        }
+        resolved.fogDebugView = true;
+        break;
     case SceneViewShadingMode::Count:
         break;
     }
     return resolved;
+}
+
+FogUniforms Renderer::GetFogUniforms() const {
+    const GraphicsProfile& profile = Profile();
+    FogUniforms fog;
+    fog.mode = static_cast<int>(profile.fogMode);
+    fog.color = profile.fogColor;
+    fog.density = (std::max)(profile.fogDensity, 0.0f);
+    fog.heightFalloff = (std::max)(profile.fogHeightFalloff, 0.0f);
+    fog.baseHeight = profile.fogBaseHeight;
+    fog.startDistance = (std::max)(profile.fogStartDistance, 0.0f);
+    fog.maxOpacity = (std::clamp)(profile.fogMaxOpacity, 0.0f, 1.0f);
+    fog.linearStart = profile.fogLinearStart;
+    fog.linearEnd = (std::max)(profile.fogLinearEnd, profile.fogLinearStart + 0.001f);
+    fog.affectsSky = profile.fogAffectsSky;
+    // Sky-matched inscatter always reads the prefiltered cubemap, never the raw
+    // source. That keeps it on the same texture unit the IBL path already binds
+    // prefiltered to (11), so the two can never disagree about what is bound
+    // there. With no baked environment there is nothing to sample, so the
+    // authored fogColor stands in.
+    fog.useSkyColor = profile.fogUseSkyColor && environmentReady_ && environmentMaps_.prefiltered != 0;
+    fog.skyMap = fog.useSkyColor ? environmentMaps_.prefiltered : 0;
+    // The prefilter chain is built with 5 mips (roughness * 4 in the PBR path).
+    // Mip 3 is broad enough to read as ambient sky rather than a mirrored cloud.
+    fog.skyMipLevel = 3.0f;
+    fog.sunColor = profile.fogSunColor;
+    fog.sunIntensity = (std::clamp)(profile.fogSunIntensity, 0.0f, 1.0f);
+    fog.sunExponent = (std::max)(profile.fogSunExponent, 1.0f);
+    fog.debugView = profile.fogDebugView;
+
+    // Inscattering tracks the first shadow-casting directional light, falling
+    // back to any directional light. The light list is empty at the point the sky
+    // is drawn, so the last known direction is reused there rather than dropping
+    // the sun lobe out of the horizon only.
+    bool foundSun = false;
+    for (const LightDrawCommand& light : lightDrawList_) {
+        if (light.type != RenderLightType::Directional) continue;
+        if (glm::length(light.direction) <= 0.0001f) continue;
+        if (foundSun && !light.castShadows) continue;
+        fog.sunDirection = glm::normalize(light.direction);
+        foundSun = true;
+        if (light.castShadows) break;
+    }
+    if (foundSun) {
+        lastSunDirection_ = fog.sunDirection;
+        lastSunValid_ = true;
+    } else if (lastSunValid_) {
+        fog.sunDirection = lastSunDirection_;
+    } else {
+        // No directional light has ever been seen: switch the lobe off rather
+        // than pointing it somewhere arbitrary.
+        fog.sunIntensity = 0.0f;
+    }
+    return fog;
 }
 
 void Renderer::EndFrameToViewportTarget() {
@@ -1361,6 +1461,10 @@ void Renderer::CreateLocalShadowMaps(int spotResolution, int spotCount, int poin
 }
 
 void Renderer::DestroyViewportTarget(ViewportTarget& target) {
+    if (target.luminanceHistogramBuffer != 0) glDeleteBuffers(1, &target.luminanceHistogramBuffer);
+    if (target.adaptedLuminanceTexture != 0) glDeleteTextures(1, &target.adaptedLuminanceTexture);
+    target.luminanceHistogramBuffer = target.adaptedLuminanceTexture = 0;
+    target.adaptedLuminanceInitialized = false;
     if (target.ssrFramebuffer != 0) glDeleteFramebuffers(1, &target.ssrFramebuffer);
     if (target.ssrTexture != 0) glDeleteTextures(1, &target.ssrTexture);
     target.ssrFramebuffer = target.ssrTexture = 0;
@@ -1830,6 +1934,56 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         }
     }
 
+    // Auto-exposure. Runs on the post-processed scene colour, which is the same
+    // image the tonemapper is about to read, so what the histogram measures is
+    // exactly what gets exposed. Suppressed for the cheap Scene View modes, whose
+    // whole point is that they do not pay for the full frame.
+    const bool autoExposureReady = !plainViewActive && Profile().autoExposure &&
+        luminanceHistogramShader_ && luminanceAverageShader_ &&
+        luminanceHistogramShader_->IsValid() && luminanceAverageShader_->IsValid() &&
+        target.luminanceHistogramBuffer != 0 && target.adaptedLuminanceTexture != 0;
+    if (autoExposureReady) {
+        // Histogram spans this EV window; anything outside is clamped into the
+        // end bins rather than discarded.
+        const float minLogLuminance = -10.0f;
+        const float maxLogLuminance = 12.0f;
+        const float logLuminanceRange = maxLogLuminance - minLogLuminance;
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, target.luminanceHistogramBuffer);
+
+        luminanceHistogramShader_->use();
+        luminanceHistogramShader_->setInt("uHdrScene", 0);
+        luminanceHistogramShader_->setFloat("uMinLogLuminance", minLogLuminance);
+        luminanceHistogramShader_->setFloat("uInverseLogLuminanceRange", 1.0f / logLuminanceRange);
+        luminanceHistogramShader_->setVec2("uInverseResolution",
+            1.0f / static_cast<float>((std::max)(1, target.width)),
+            1.0f / static_cast<float>((std::max)(1, target.height)));
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, postProcessSceneTexture);
+        glDispatchCompute(static_cast<GLuint>((target.width + 15) / 16),
+                          static_cast<GLuint>((target.height + 15) / 16), 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        luminanceAverageShader_->use();
+        luminanceAverageShader_->setFloat("uMinLogLuminance", minLogLuminance);
+        luminanceAverageShader_->setFloat("uLogLuminanceRange", logLuminanceRange);
+        // A zero delta on the very first frame makes the blend zero, which is
+        // what the shader's "adopt immediately" path is for.
+        luminanceAverageShader_->setFloat("uDeltaSeconds", target.lastFrameDeltaSeconds);
+        luminanceAverageShader_->setFloat("uSpeedUp", (std::clamp)(Profile().autoExposureSpeedUp, 0.01f, 20.0f));
+        luminanceAverageShader_->setFloat("uSpeedDown", (std::clamp)(Profile().autoExposureSpeedDown, 0.01f, 20.0f));
+        luminanceAverageShader_->setFloat("uLowPercent", (std::clamp)(Profile().autoExposureLowPercent, 0.0f, 0.9f));
+        luminanceAverageShader_->setFloat("uHighPercent", (std::clamp)(Profile().autoExposureHighPercent, 0.1f, 1.0f));
+        const float minLuminance = (std::max)(Profile().autoExposureMinLuminance, 0.0001f);
+        luminanceAverageShader_->setFloat("uMinLuminance", minLuminance);
+        luminanceAverageShader_->setFloat("uMaxLuminance", (std::max)(Profile().autoExposureMaxLuminance, minLuminance * 2.0f));
+        glBindImageTexture(1, target.adaptedLuminanceTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
+        glDispatchCompute(1, 1, 1);
+        // The tonemap pass samples the adapted value as a texture, so the barrier
+        // has to cover texture fetches as well as the image write itself.
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+    }
+
     toneMapShader_->use();
     toneMapShader_->setInt("uHdrScene", 0);
     toneMapShader_->setInt("uBloomTexture", 1);
@@ -1839,6 +1993,10 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     toneMapShader_->setBool("uEnableBloom", bloomReady);
     toneMapShader_->setFloat("uBloomIntensity", (std::max)(0.0f, Profile().bloomIntensity));
     toneMapShader_->setFloat("uExposure", (std::max)(0.01f, Profile().exposure));
+    toneMapShader_->setBool("uAutoExposure", autoExposureReady);
+    toneMapShader_->setFloat("uExposureCompensation", (std::clamp)(Profile().autoExposureCompensation, -8.0f, 8.0f));
+    toneMapShader_->setBool("uDebugAutoExposure", autoExposureReady && Profile().autoExposureDebugView);
+    toneMapShader_->setInt("uAdaptedLuminance", 3);
     toneMapShader_->setBool("uEnableColorGrading", Profile().colorGrading && !postDebugActive);
     toneMapShader_->setFloat("uSaturation", (std::clamp)(Profile().colorSaturation, 0.0f, 2.0f));
     toneMapShader_->setFloat("uContrast", (std::clamp)(Profile().colorContrast, 0.5f, 2.0f));
@@ -1865,6 +2023,8 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
     glBindTexture(GL_TEXTURE_2D, bloomReady ? target.bloomTextures[0] : 0);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, ssaoReady ? target.ssaoBlurTexture : 0);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, autoExposureReady ? target.adaptedLuminanceTexture : 0);
 
     const bool smaaReady = !postDebugActive && Profile().antiAliasing == AntiAliasingMode::SMAA &&
         smaaEdgeShader_ && smaaWeightsShader_ && smaaBlendShader_ &&
@@ -2615,6 +2775,36 @@ void Renderer::Flush() {
         const bool previewEnvironmentActive = previewEnvironmentApplied_;
         shader.setVec3("uAmbientColor", Profile().ambientColor);
         shader.setVec3("uCameraPosition", cameraPosition);
+        // Material previews render a single asset against a neutral studio; fog
+        // would make a thumbnail describe the level's weather rather than the
+        // material, so it is suppressed the same way debug views are.
+        {
+            const FogUniforms fog = previewEnvironmentActive ? FogUniforms{} : GetFogUniforms();
+            shader.setInt("uFogMode", fog.mode);
+            shader.setVec3("uFogColor", fog.color);
+            shader.setFloat("uFogDensity", fog.density);
+            shader.setFloat("uFogHeightFalloff", fog.heightFalloff);
+            shader.setFloat("uFogBaseHeight", fog.baseHeight);
+            shader.setFloat("uFogStartDistance", fog.startDistance);
+            shader.setFloat("uFogMaxOpacity", fog.maxOpacity);
+            shader.setFloat("uFogLinearStart", fog.linearStart);
+            shader.setFloat("uFogLinearEnd", fog.linearEnd);
+            shader.setVec3("uFogSunDirection", fog.sunDirection);
+            shader.setVec3("uFogSunColor", fog.sunColor);
+            shader.setFloat("uFogSunIntensity", fog.sunIntensity);
+            shader.setFloat("uFogSunExponent", fog.sunExponent);
+            shader.setBool("uFogDebugView", fog.debugView);
+            shader.setBool("uFogUseSkyColor", fog.useSkyColor);
+            shader.setFloat("uFogSkyMipLevel", fog.skyMipLevel);
+            // Shares unit 11 with uPrefilterMap. Both are samplerCube and both
+            // want the same texture, so aliasing the unit is legal and avoids
+            // reaching for a 17th unit that GL does not guarantee exists.
+            shader.setInt("uFogSkyMap", 11);
+            if (fog.useSkyColor) {
+                glActiveTexture(GL_TEXTURE11);
+                glBindTexture(GL_TEXTURE_CUBE_MAP, fog.skyMap);
+            }
+        }
         shader.setBool("uStylized", Profile().style == RenderStyle::Stylized);
         shader.setFloat("uStylizedBands", (std::max)(2.0f, Profile().stylizedBands));
         shader.setFloat("uStylizedRimStrength", (std::max)(0.0f, Profile().stylizedRimStrength));
@@ -3023,6 +3213,8 @@ void Renderer::InitializePipelines() {
     weatherShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/weather.fs");
     depthOfFieldShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/depth_of_field.fs");
     taaShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/taa.fs");
+    luminanceHistogramShader_ = std::make_unique<Shader>("src/shaders/post/luminance_histogram.comp");
+    luminanceAverageShader_ = std::make_unique<Shader>("src/shaders/post/luminance_average.comp");
     smaaEdgeShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/smaa_edge.fs");
     smaaWeightsShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/smaa_weights.fs");
     smaaBlendShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/smaa_blend.fs");

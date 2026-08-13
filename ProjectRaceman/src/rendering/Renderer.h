@@ -48,6 +48,42 @@ enum class AntiAliasingMode {
     SMAA
 };
 
+enum class FogMode {
+    Off,
+    // Classic start/end depth ramp. Cheap, ignores altitude, and mostly useful
+    // for stylised looks or matching a fixed art direction.
+    Linear,
+    // Density falls off exponentially with world height and is integrated
+    // analytically along the view ray, so valleys fill and hilltops clear.
+    ExponentialHeight
+};
+
+// Fog uniforms resolved for whatever is currently rendering. The skybox is drawn
+// outside Renderer (Application drives SkyboxController), so the resolved block
+// has to be reachable from there rather than living inside the draw loop.
+struct FogUniforms {
+    int mode{0};
+    glm::vec3 color{0.62f, 0.68f, 0.76f};
+    float density{0.0f};
+    float heightFalloff{0.0f};
+    float baseHeight{0.0f};
+    float startDistance{0.0f};
+    float maxOpacity{1.0f};
+    float linearStart{20.0f};
+    float linearEnd{300.0f};
+    bool affectsSky{true};
+    bool useSkyColor{false};
+    // Cubemap sampled for sky-matched inscatter, plus the mip that gives a broad
+    // enough average to read as "the sky over there" rather than a sharp cloud.
+    unsigned int skyMap{0};
+    float skyMipLevel{3.0f};
+    glm::vec3 sunDirection{0.0f, -1.0f, 0.0f};
+    glm::vec3 sunColor{1.0f, 0.85f, 0.6f};
+    float sunIntensity{0.0f};
+    float sunExponent{8.0f};
+    bool debugView{false};
+};
+
 // Scene View draw modes, mirroring Unity's shading dropdown and Unreal's view
 // modes. These are editor preview state only: the Game View always renders with
 // the project's graphics profile, so what ships is never changed by whatever the
@@ -68,6 +104,8 @@ enum class SceneViewShadingMode {
     IblDiffuseIrradiance,
     IblRawEnvironment,
     IblFinalSpecular,
+    Fog,
+    AutoExposure,
     Count
 };
 
@@ -140,6 +178,19 @@ struct GraphicsProfile {
     float minimumResolutionScale{0.75f};
     int dynamicResolutionTargetFps{60};
     float exposure{1.0f};
+    // Auto-exposure (eye adaptation). When on, `exposure` above is ignored and
+    // the exposure comes from a histogram of the frame; autoExposureCompensation
+    // is the artistic offset on top, in EV. Left off by default so existing
+    // projects keep the exposure they were authored with.
+    bool autoExposure{false};
+    float autoExposureCompensation{0.0f};   // EV, positive = brighter
+    float autoExposureSpeedUp{3.0f};        // rate when adapting to a brighter scene
+    float autoExposureSpeedDown{1.0f};      // ... and to a darker one
+    float autoExposureMinLuminance{0.002f}; // clamps on the adapted value itself
+    float autoExposureMaxLuminance{40.0f};
+    float autoExposureLowPercent{0.30f};    // histogram trim, darkest fraction
+    float autoExposureHighPercent{0.95f};   // ... and brightest
+    bool autoExposureDebugView{false};
     // Resolved view-mode state, written by ResolveProfileForTarget from
     // RendererSettings::sceneViewShading. Do not set these directly and do not
     // persist them: they are always cleared for the Game View, and so are the
@@ -151,6 +202,34 @@ struct GraphicsProfile {
     float stylizedBands{4.0f};
     float stylizedRimStrength{0.35f};
     glm::vec3 ambientColor{0.08f, 0.08f, 0.08f};
+
+    // --- Environment: fog ---------------------------------------------------
+    // Authored look, not performance. Deliberately NOT written by
+    // ApplyGraphicsPreset, the same way ambientColor above is left alone:
+    // dropping from Ultra to Low must not change what the weather looks like.
+    // Only the volumetric quality knobs below belong to the quality tiers.
+    FogMode fogMode{FogMode::Off};
+    glm::vec3 fogColor{0.62f, 0.68f, 0.76f};
+    float fogDensity{0.015f};        // extinction at fogBaseHeight, per metre
+    float fogHeightFalloff{0.05f};   // 0 = uniform fog, higher = thins with altitude
+    float fogBaseHeight{0.0f};       // world Y at which fogDensity applies
+    float fogStartDistance{5.0f};    // metres of clear air before fog begins
+    float fogMaxOpacity{1.0f};       // caps opacity; below 1 keeps far shapes readable
+    bool fogAffectsSky{true};        // horizon haze band, the main sense-of-scale cue
+    // Take the inscatter colour from the environment map along the view ray
+    // instead of fogColor, so distant surfaces fade toward whatever the sky
+    // actually is behind them. Falls back to fogColor when no environment is
+    // baked. This is real aerial perspective, and it removes most of the
+    // per-time-of-day fog colour authoring.
+    bool fogUseSkyColor{false};
+    float fogLinearStart{20.0f};     // Linear mode only
+    float fogLinearEnd{300.0f};      // Linear mode only
+    // Directional (sun) inscattering: a second lobe tinted toward the sun, which
+    // is what produces haze glow on a low sun.
+    glm::vec3 fogSunColor{1.0f, 0.85f, 0.6f};
+    float fogSunIntensity{0.0f};     // 0 disables the lobe entirely
+    float fogSunExponent{8.0f};      // tightness of the glow around the sun
+    bool fogDebugView{false};        // Scene View only; cleared by ResolveProfileForTarget
 };
 
 struct RendererSettings {
@@ -365,6 +444,12 @@ public:
     // the Game View, and the project profile with the Scene View shading mode
     // folded in for the Scene View.
     GraphicsProfile ResolveProfileForTarget(ViewportRenderTarget target) const;
+    // Fog block for whatever is rendering right now, with the sun direction taken
+    // from the shadow-casting directional light in the current frame's light list.
+    // Call between Submit and Flush; the sun falls back to straight down when the
+    // scene has no directional light.
+    FogUniforms GetFogUniforms() const;
+    glm::vec3 GetCameraPosition() const { return glm::vec3(glm::inverse(view_)[3]); }
     const RendererConfig& GetConfig() const;
     const RendererViewport& GetViewport() const { return viewport_; }
     const RendererFrameStats& GetFrameStats() const { return frameStats_; }
@@ -423,6 +508,11 @@ private:
         unsigned int ssaoBlurTexture{0};
         int ssaoWidth{0};
         int ssaoHeight{0};
+        // Auto-exposure state. Per viewport target, because the Scene View and
+        // Game View look at different things and must adapt independently.
+        unsigned int luminanceHistogramBuffer{0};
+        unsigned int adaptedLuminanceTexture{0};
+        bool adaptedLuminanceInitialized{false};
         int width{0};
         int height{0};
         int requestedWidth{0};
@@ -430,6 +520,9 @@ private:
         float resolutionScale{1.0f};
         float smoothedFrameTimeMs{0.0f};
         double lastFrameBeginSeconds{0.0};
+        // Delta for this target measured at BeginFrame, consumed by the exposure
+        // adaptation pass later in the same frame.
+        float lastFrameDeltaSeconds{0.0f};
         int resolutionAdjustmentCooldown{0};
         glm::mat4 previousViewProjection{1.0f};
         bool hasPreviousViewProjection{false};
@@ -553,6 +646,8 @@ private:
     std::unique_ptr<Shader> weatherShader_;
     std::unique_ptr<Shader> depthOfFieldShader_;
     std::unique_ptr<Shader> taaShader_;
+    std::unique_ptr<Shader> luminanceHistogramShader_;
+    std::unique_ptr<Shader> luminanceAverageShader_;
     std::unique_ptr<Shader> smaaEdgeShader_;
     std::unique_ptr<Shader> smaaWeightsShader_;
     std::unique_ptr<Shader> smaaBlendShader_;
@@ -572,6 +667,12 @@ private:
     glm::mat4 view_{1.0f};
     glm::mat4 proj_{1.0f};
     glm::mat4 unjitteredProj_{1.0f};
+    // Sun direction for fog inscattering, carried across the point in the frame
+    // where it is unavailable: the sky is drawn before SubmitDraws has populated
+    // the light list, so without this the horizon would lose its sun glow while
+    // the geometry in front of it kept it.
+    mutable glm::vec3 lastSunDirection_{0.0f, -1.0f, 0.0f};
+    mutable bool lastSunValid_{false};
 };
 
 } // namespace raceman

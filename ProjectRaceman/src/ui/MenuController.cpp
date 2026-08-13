@@ -260,9 +260,92 @@ void MenuController::Render(Renderer& renderer,
                     auto& settings = renderer.GetSettings();
                     const RendererSettings graphicsBeforeFrame = settings;
                     bool graphicsChanged = false;
+                    // Environment is authored look, not performance: it sits above
+                    // the Graphics Profile separator and the quality presets never
+                    // touch it. Dropping Ultra to Low must not change the weather.
+                    ImGui::SeparatorText("Environment");
                     graphicsChanged |= ImGui::ColorEdit3("Ambient Light", &settings.profile.ambientColor.x);
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Project-wide ambient light. Game background color is configured on each Camera.");
+                    }
+
+                    if (ImGui::CollapsingHeader("Fog")) {
+                        const char* fogModeNames[] = {"Off", "Linear", "Exponential Height"};
+                        int fogModeIndex = static_cast<int>(settings.profile.fogMode);
+                        if (ImGui::Combo("Fog Mode", &fogModeIndex, fogModeNames, 3)) {
+                            settings.profile.fogMode = static_cast<FogMode>(fogModeIndex);
+                            graphicsChanged = true;
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Exponential Height: density falls off with altitude and is integrated along the view ray.\nLinear: a plain start/end depth ramp.");
+                        }
+                        const bool fogEnabled = settings.profile.fogMode != FogMode::Off;
+                        const bool heightFog = settings.profile.fogMode == FogMode::ExponentialHeight;
+                        ImGui::BeginDisabled(!fogEnabled);
+                        graphicsChanged |= ImGui::Checkbox("Match Sky Color", &settings.profile.fogUseSkyColor);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Aerial perspective: distant surfaces fade toward the sky behind them\ninstead of a fixed colour, so fog tracks the time of day on its own.\nNeeds a baked environment; falls back to Fog Color without one.");
+                        }
+                        graphicsChanged |= ImGui::ColorEdit3("Fog Color", &settings.profile.fogColor.x);
+                        if (settings.profile.fogUseSkyColor && ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Used only as the fallback while no environment is baked.");
+                        }
+
+                        if (heightFog) {
+                            graphicsChanged |= ImGui::SliderFloat("Density", &settings.profile.fogDensity,
+                                0.0f, 0.2f, "%.4f /m", ImGuiSliderFlags_Logarithmic);
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("Extinction per metre at Base Height. Useful range is roughly 0.002 to 0.05.");
+                            }
+                            graphicsChanged |= ImGui::SliderFloat("Height Falloff", &settings.profile.fogHeightFalloff,
+                                0.0f, 0.5f, "%.3f");
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("How quickly fog thins with altitude. 0 gives uniform fog at all heights.");
+                            }
+                            graphicsChanged |= ImGui::DragFloat("Base Height", &settings.profile.fogBaseHeight,
+                                0.1f, -1000.0f, 1000.0f, "%.1f m");
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("World Y at which Density applies. Set this near track level.");
+                            }
+                        } else {
+                            graphicsChanged |= ImGui::SliderFloat("Linear Start", &settings.profile.fogLinearStart,
+                                0.0f, 500.0f, "%.0f m");
+                            graphicsChanged |= ImGui::SliderFloat("Linear End", &settings.profile.fogLinearEnd,
+                                1.0f, 2000.0f, "%.0f m", ImGuiSliderFlags_Logarithmic);
+                        }
+
+                        graphicsChanged |= ImGui::SliderFloat("Start Distance", &settings.profile.fogStartDistance,
+                            0.0f, 100.0f, "%.1f m");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Clear air in front of the camera. Keeps the car and cockpit out of the fog.");
+                        }
+                        graphicsChanged |= ImGui::SliderFloat("Maximum Opacity", &settings.profile.fogMaxOpacity,
+                            0.0f, 1.0f, "%.2f");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Caps how opaque fog can become. Below 1.0 keeps distant silhouettes readable.");
+                        }
+                        ImGui::BeginDisabled(!heightFog);
+                        graphicsChanged |= ImGui::Checkbox("Affect Sky", &settings.profile.fogAffectsSky);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Hazes the skybox toward the horizon so distant geometry blends into it.\nExponential Height only: the sky sits past any Linear end distance.");
+                        }
+                        ImGui::EndDisabled();
+
+                        if (ImGui::TreeNode("Sun Inscattering")) {
+                            graphicsChanged |= ImGui::SliderFloat("Sun Intensity", &settings.profile.fogSunIntensity,
+                                0.0f, 1.0f, "%.2f");
+                            ImGui::BeginDisabled(settings.profile.fogSunIntensity <= 0.0f);
+                            graphicsChanged |= ImGui::ColorEdit3("Sun Color", &settings.profile.fogSunColor.x);
+                            graphicsChanged |= ImGui::SliderFloat("Directional Exponent", &settings.profile.fogSunExponent,
+                                1.0f, 64.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("Tightness of the glow around the sun. Higher is a smaller, sharper halo.");
+                            }
+                            ImGui::EndDisabled();
+                            ImGui::TextDisabled("Uses the shadow-casting directional light.");
+                            ImGui::TreePop();
+                        }
+                        ImGui::EndDisabled();
                     }
 
                     ImGui::Separator();
@@ -305,7 +388,42 @@ void MenuController::Render(Renderer& renderer,
                             ImGui::SetTooltip("Subpixel sampling amount. 1.0 gives the most edge anti-aliasing; smoothing hides the jitter.");
                         }
                     }
+                    graphicsChanged |= ImGui::Checkbox("Auto Exposure", &settings.profile.autoExposure);
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Meters the frame with a luminance histogram and adapts over time.\nEssential once a track runs through tunnels or into night.");
+                    }
+                    if (settings.profile.autoExposure) {
+                        graphicsChanged |= ImGui::SliderFloat("Exposure Compensation", &settings.profile.autoExposureCompensation,
+                            -4.0f, 4.0f, "%.2f EV");
+                        graphicsChanged |= ImGui::SliderFloat("Adapt Speed (brighten)", &settings.profile.autoExposureSpeedUp,
+                            0.05f, 10.0f, "%.2f /s", ImGuiSliderFlags_Logarithmic);
+                        graphicsChanged |= ImGui::SliderFloat("Adapt Speed (darken)", &settings.profile.autoExposureSpeedDown,
+                            0.05f, 10.0f, "%.2f /s", ImGuiSliderFlags_Logarithmic);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Separate rates: exiting a tunnel should recover fast, entering one should stay gradual.");
+                        }
+                        if (ImGui::TreeNode("Metering")) {
+                            graphicsChanged |= ImGui::SliderFloat("Ignore Darkest", &settings.profile.autoExposureLowPercent,
+                                0.0f, 0.9f, "%.2f");
+                            graphicsChanged |= ImGui::SliderFloat("Ignore Above", &settings.profile.autoExposureHighPercent,
+                                0.1f, 1.0f, "%.2f");
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("Histogram percentile trim. Keeps a bright sky or oncoming headlights\nfrom dragging the metered value off what the eye is actually adapted to.");
+                            }
+                            graphicsChanged |= ImGui::SliderFloat("Minimum Luminance", &settings.profile.autoExposureMinLuminance,
+                                0.0001f, 1.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+                            graphicsChanged |= ImGui::SliderFloat("Maximum Luminance", &settings.profile.autoExposureMaxLuminance,
+                                1.0f, 200.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+                            ImGui::TreePop();
+                        }
+                        ImGui::TextDisabled("Scene View > Auto Exposure shows the metered EV.");
+                    }
+                    ImGui::BeginDisabled(settings.profile.autoExposure);
                     graphicsChanged |= ImGui::DragFloat("Exposure", &settings.profile.exposure, 0.02f, 0.05f, 8.0f, "%.2f");
+                    if (settings.profile.autoExposure && ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Ignored while Auto Exposure is on. Use Exposure Compensation instead.");
+                    }
+                    ImGui::EndDisabled();
                     const char* outputModeNames[] = {"SDR (sRGB)", "HDR (scRGB linear)"};
                     int outputMode = settings.profile.hdr ? 1 : 0;
                     if (ImGui::Combo("Output Mode", &outputMode, outputModeNames, 2)) {

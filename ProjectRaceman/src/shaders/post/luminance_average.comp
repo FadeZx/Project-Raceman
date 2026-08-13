@@ -1,0 +1,95 @@
+#version 450 core
+
+// Pass 2 of auto-exposure: reduce the histogram to one adapted luminance value,
+// smoothed over time, and clear the histogram for the next frame.
+//
+// Runs as a single workgroup. The reduction itself is done serially by one
+// invocation: 256 iterations once per frame is free next to the histogram build,
+// and it makes percentile trimming a plain loop instead of a parallel prefix sum.
+
+layout(local_size_x = 256) in;
+
+layout(binding = 0, std430) buffer HistogramBuffer {
+    uint histogram[256];
+};
+
+// r32f, persists across frames: this is the adaptation state.
+layout(binding = 1, r32f) uniform image2D uAdaptedLuminance;
+
+uniform float uMinLogLuminance;
+uniform float uLogLuminanceRange;
+uniform float uDeltaSeconds;
+uniform float uSpeedUp;      // adaptation rate when the scene gets brighter
+uniform float uSpeedDown;    // ... and when it gets darker
+uniform float uLowPercent;   // discard this fraction of the darkest pixels
+uniform float uHighPercent;  // ... and everything above this fraction
+uniform float uMinLuminance;
+uniform float uMaxLuminance;
+
+shared uint sharedHistogram[256];
+
+void main() {
+    sharedHistogram[gl_LocalInvocationIndex] = histogram[gl_LocalInvocationIndex];
+    barrier();
+
+    if (gl_LocalInvocationIndex == 0u) {
+        // Bin 0 (near-black) is deliberately excluded from the population: it
+        // carries no adaptation information and would otherwise dominate at night.
+        uint total = 0u;
+        for (uint i = 1u; i < 256u; ++i) total += sharedHistogram[i];
+
+        float target;
+        if (total == 0u) {
+            // Nothing but black. Hold the previous value rather than diving to
+            // the floor, which would blow the image out the moment anything lit
+            // re-enters the frame.
+            target = max(imageLoad(uAdaptedLuminance, ivec2(0)).r, uMinLuminance);
+        } else {
+            float lowEdge = float(total) * clamp(uLowPercent, 0.0, 0.9);
+            float highEdge = float(total) * clamp(uHighPercent, 0.1, 1.0);
+
+            float weightedSum = 0.0;
+            float countedPixels = 0.0;
+            float scanned = 0.0;
+            for (uint i = 1u; i < 256u; ++i) {
+                float binCount = float(sharedHistogram[i]);
+                if (binCount <= 0.0) continue;
+                // Clip this bin against the percentile window, keeping only the
+                // portion of it that falls inside.
+                float binStart = scanned;
+                float binEnd = scanned + binCount;
+                scanned = binEnd;
+                float kept = min(binEnd, highEdge) - max(binStart, lowEdge);
+                if (kept <= 0.0) continue;
+                weightedSum += float(i) * kept;
+                countedPixels += kept;
+            }
+
+            if (countedPixels <= 0.0) {
+                target = max(imageLoad(uAdaptedLuminance, ivec2(0)).r, uMinLuminance);
+            } else {
+                float averageBin = weightedSum / countedPixels;
+                // Undo the bin mapping from pass 1.
+                float logLuminance = (averageBin - 1.0) / 254.0 * uLogLuminanceRange + uMinLogLuminance;
+                target = exp2(logLuminance);
+            }
+        }
+        target = clamp(target, uMinLuminance, uMaxLuminance);
+
+        float previous = imageLoad(uAdaptedLuminance, ivec2(0)).r;
+        if (previous <= 0.0) {
+            previous = target;   // first frame: adopt immediately, do not fade in
+        }
+        // Exponential approach, framerate independent. Separate rates because the
+        // eye darkens faster than it brightens, and because a car exiting a tunnel
+        // should recover quickly while entering one stays gradual.
+        float speed = target > previous ? uSpeedUp : uSpeedDown;
+        float blend = 1.0 - exp(-max(uDeltaSeconds, 0.0) * max(speed, 0.001));
+        float adapted = previous + (target - previous) * clamp(blend, 0.0, 1.0);
+        imageStore(uAdaptedLuminance, ivec2(0), vec4(adapted, 0.0, 0.0, 0.0));
+    }
+    barrier();
+
+    // Clear for the next frame's build pass.
+    histogram[gl_LocalInvocationIndex] = 0u;
+}

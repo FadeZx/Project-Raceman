@@ -1510,13 +1510,16 @@ void SceneEditor::RenderViewportPanel() {
             {"IBL: Diffuse Irradiance", SceneViewShadingMode::IblDiffuseIrradiance, false},
             {"IBL: Raw Environment",    SceneViewShadingMode::IblRawEnvironment,    false},
             {"IBL: Final Specular",     SceneViewShadingMode::IblFinalSpecular,     false},
+            {"Fog",                     SceneViewShadingMode::Fog,                  false},
+            {"Auto Exposure",           SceneViewShadingMode::AutoExposure,         false},
         };
         static const char* kShadingOptionLabels[] = {
             kShadingOptions[0].label,  kShadingOptions[1].label,  kShadingOptions[2].label,
             kShadingOptions[3].label,  kShadingOptions[4].label,  kShadingOptions[5].label,
             kShadingOptions[6].label,  kShadingOptions[7].label,  kShadingOptions[8].label,
             kShadingOptions[9].label,  kShadingOptions[10].label, kShadingOptions[11].label,
-            kShadingOptions[12].label, kShadingOptions[13].label,
+            kShadingOptions[12].label, kShadingOptions[13].label, kShadingOptions[14].label,
+            kShadingOptions[15].label,
         };
         static_assert(IM_ARRAYSIZE(kShadingOptions) == IM_ARRAYSIZE(kShadingOptionLabels),
                       "Scene View shading labels must stay in sync with the option table");

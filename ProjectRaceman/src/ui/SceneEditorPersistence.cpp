@@ -107,6 +107,24 @@ AntiAliasingMode AntiAliasingFromStorage(const std::string& value) {
     return AntiAliasingMode::FXAA;
 }
 
+const char* FogModeToStorage(FogMode mode) {
+    switch (mode) {
+    case FogMode::Linear: return "Linear";
+    case FogMode::ExponentialHeight: return "ExponentialHeight";
+    case FogMode::Off:
+    default: return "Off";
+    }
+}
+
+FogMode FogModeFromStorage(const std::string& value) {
+    const std::string lower = ToLowerCopy(value);
+    if (lower == "linear") return FogMode::Linear;
+    if (lower == "exponentialheight" || lower == "height" || lower == "exponential") {
+        return FogMode::ExponentialHeight;
+    }
+    return FogMode::Off;
+}
+
 const char* InputDeviceTypeToStorage(InputDeviceType type) {
     switch (type) {
     case InputDeviceType::Keyboard: return "Keyboard";
@@ -3287,9 +3305,34 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("minimumResolutionScale"); it != graphics.end() && it->second.is_number()) graphicsProfile_.minimumResolutionScale = (std::clamp)(static_cast<float>(it->second.as_number()), 0.5f, 1.0f);
                     if (auto it = graphics.find("dynamicResolutionTargetFps"); it != graphics.end() && it->second.is_number()) graphicsProfile_.dynamicResolutionTargetFps = (std::clamp)(static_cast<int>(it->second.as_number()), 30, 240);
                     if (auto it = graphics.find("exposure"); it != graphics.end() && it->second.is_number()) graphicsProfile_.exposure = (std::max)(0.01f, static_cast<float>(it->second.as_number()));
+                    if (auto it = graphics.find("autoExposure"); it != graphics.end() && it->second.is_bool()) graphicsProfile_.autoExposure = it->second.as_bool();
+                    if (auto it = graphics.find("autoExposureCompensation"); it != graphics.end() && it->second.is_number()) graphicsProfile_.autoExposureCompensation = (std::clamp)(static_cast<float>(it->second.as_number()), -8.0f, 8.0f);
+                    if (auto it = graphics.find("autoExposureSpeedUp"); it != graphics.end() && it->second.is_number()) graphicsProfile_.autoExposureSpeedUp = (std::clamp)(static_cast<float>(it->second.as_number()), 0.01f, 20.0f);
+                    if (auto it = graphics.find("autoExposureSpeedDown"); it != graphics.end() && it->second.is_number()) graphicsProfile_.autoExposureSpeedDown = (std::clamp)(static_cast<float>(it->second.as_number()), 0.01f, 20.0f);
+                    if (auto it = graphics.find("autoExposureMinLuminance"); it != graphics.end() && it->second.is_number()) graphicsProfile_.autoExposureMinLuminance = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0001f, 10.0f);
+                    if (auto it = graphics.find("autoExposureMaxLuminance"); it != graphics.end() && it->second.is_number()) graphicsProfile_.autoExposureMaxLuminance = (std::clamp)(static_cast<float>(it->second.as_number()), 0.001f, 1000.0f);
+                    if (auto it = graphics.find("autoExposureLowPercent"); it != graphics.end() && it->second.is_number()) graphicsProfile_.autoExposureLowPercent = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 0.9f);
+                    if (auto it = graphics.find("autoExposureHighPercent"); it != graphics.end() && it->second.is_number()) graphicsProfile_.autoExposureHighPercent = (std::clamp)(static_cast<float>(it->second.as_number()), 0.1f, 1.0f);
                     if (auto it = graphics.find("stylizedBands"); it != graphics.end() && it->second.is_number()) graphicsProfile_.stylizedBands = (std::max)(2.0f, static_cast<float>(it->second.as_number()));
                     if (auto it = graphics.find("stylizedRimStrength"); it != graphics.end() && it->second.is_number()) graphicsProfile_.stylizedRimStrength = (std::max)(0.0f, static_cast<float>(it->second.as_number()));
                     ReadVec3(graphics, "ambientColor", graphicsProfile_.ambientColor);
+                    // Fog. A project saved before fog existed has none of these
+                    // keys and must keep FogMode::Off, so every read is guarded
+                    // and no default here is allowed to switch fog on.
+                    if (ReadString(graphics, "fogMode", value)) graphicsProfile_.fogMode = FogModeFromStorage(value);
+                    ReadVec3(graphics, "fogColor", graphicsProfile_.fogColor);
+                    if (auto it = graphics.find("fogDensity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogDensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 0.2f);
+                    if (auto it = graphics.find("fogHeightFalloff"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogHeightFalloff = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 0.5f);
+                    if (auto it = graphics.find("fogBaseHeight"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogBaseHeight = static_cast<float>(it->second.as_number());
+                    if (auto it = graphics.find("fogStartDistance"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogStartDistance = (std::max)(0.0f, static_cast<float>(it->second.as_number()));
+                    if (auto it = graphics.find("fogMaxOpacity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogMaxOpacity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
+                    if (auto it = graphics.find("fogAffectsSky"); it != graphics.end() && it->second.is_bool()) graphicsProfile_.fogAffectsSky = it->second.as_bool();
+                    if (auto it = graphics.find("fogUseSkyColor"); it != graphics.end() && it->second.is_bool()) graphicsProfile_.fogUseSkyColor = it->second.as_bool();
+                    if (auto it = graphics.find("fogLinearStart"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogLinearStart = (std::max)(0.0f, static_cast<float>(it->second.as_number()));
+                    if (auto it = graphics.find("fogLinearEnd"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogLinearEnd = (std::max)(1.0f, static_cast<float>(it->second.as_number()));
+                    ReadVec3(graphics, "fogSunColor", graphicsProfile_.fogSunColor);
+                    if (auto it = graphics.find("fogSunIntensity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogSunIntensity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
+                    if (auto it = graphics.find("fogSunExponent"); it != graphics.end() && it->second.is_number()) graphicsProfile_.fogSunExponent = (std::clamp)(static_cast<float>(it->second.as_number()), 1.0f, 64.0f);
                 } else {
                     shouldSaveProject = true;
                 }
@@ -3671,10 +3714,34 @@ void SceneEditor::SaveProject() {
         out << "    \"minimumResolutionScale\": " << graphicsProfile_.minimumResolutionScale << ",\n";
         out << "    \"dynamicResolutionTargetFps\": " << graphicsProfile_.dynamicResolutionTargetFps << ",\n";
         out << "    \"exposure\": " << graphicsProfile_.exposure << ",\n";
+        out << "    \"autoExposure\": " << (graphicsProfile_.autoExposure ? "true" : "false") << ",\n";
+        out << "    \"autoExposureCompensation\": " << graphicsProfile_.autoExposureCompensation << ",\n";
+        out << "    \"autoExposureSpeedUp\": " << graphicsProfile_.autoExposureSpeedUp << ",\n";
+        out << "    \"autoExposureSpeedDown\": " << graphicsProfile_.autoExposureSpeedDown << ",\n";
+        out << "    \"autoExposureMinLuminance\": " << graphicsProfile_.autoExposureMinLuminance << ",\n";
+        out << "    \"autoExposureMaxLuminance\": " << graphicsProfile_.autoExposureMaxLuminance << ",\n";
+        out << "    \"autoExposureLowPercent\": " << graphicsProfile_.autoExposureLowPercent << ",\n";
+        out << "    \"autoExposureHighPercent\": " << graphicsProfile_.autoExposureHighPercent << ",\n";
         out << "    \"stylizedBands\": " << graphicsProfile_.stylizedBands << ",\n";
         out << "    \"stylizedRimStrength\": " << graphicsProfile_.stylizedRimStrength << ",\n";
         out << "    \"ambientColor\": [" << graphicsProfile_.ambientColor.r << ", "
-            << graphicsProfile_.ambientColor.g << ", " << graphicsProfile_.ambientColor.b << "]\n";
+            << graphicsProfile_.ambientColor.g << ", " << graphicsProfile_.ambientColor.b << "],\n";
+        out << "    \"fogMode\": \"" << FogModeToStorage(graphicsProfile_.fogMode) << "\",\n";
+        out << "    \"fogColor\": [" << graphicsProfile_.fogColor.r << ", "
+            << graphicsProfile_.fogColor.g << ", " << graphicsProfile_.fogColor.b << "],\n";
+        out << "    \"fogDensity\": " << graphicsProfile_.fogDensity << ",\n";
+        out << "    \"fogHeightFalloff\": " << graphicsProfile_.fogHeightFalloff << ",\n";
+        out << "    \"fogBaseHeight\": " << graphicsProfile_.fogBaseHeight << ",\n";
+        out << "    \"fogStartDistance\": " << graphicsProfile_.fogStartDistance << ",\n";
+        out << "    \"fogMaxOpacity\": " << graphicsProfile_.fogMaxOpacity << ",\n";
+        out << "    \"fogAffectsSky\": " << (graphicsProfile_.fogAffectsSky ? "true" : "false") << ",\n";
+        out << "    \"fogUseSkyColor\": " << (graphicsProfile_.fogUseSkyColor ? "true" : "false") << ",\n";
+        out << "    \"fogLinearStart\": " << graphicsProfile_.fogLinearStart << ",\n";
+        out << "    \"fogLinearEnd\": " << graphicsProfile_.fogLinearEnd << ",\n";
+        out << "    \"fogSunColor\": [" << graphicsProfile_.fogSunColor.r << ", "
+            << graphicsProfile_.fogSunColor.g << ", " << graphicsProfile_.fogSunColor.b << "],\n";
+        out << "    \"fogSunIntensity\": " << graphicsProfile_.fogSunIntensity << ",\n";
+        out << "    \"fogSunExponent\": " << graphicsProfile_.fogSunExponent << "\n";
         out << "  },\n";
         out << "  \"skybox\": [\n";
         for (std::size_t fi = 0; fi < skyboxFaces_.size(); ++fi) {

@@ -1,5 +1,8 @@
 #version 450 core
 
+#include <common/brdf.glsl>
+#include <common/fog.glsl>
+
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out vec4 NormalBuffer;
 layout(location = 2) out vec4 AmbientBuffer;
@@ -85,8 +88,6 @@ struct Light {
 uniform int uLightCount;
 uniform Light uLights[8];
 
-const float PI = 3.14159265359;
-
 vec3 BoxProjectedReflectionDirection(vec3 worldPosition, vec3 reflectionDirection,
                                      vec3 probePosition, vec3 boxExtents) {
     vec3 safeDirection = vec3(
@@ -148,34 +149,6 @@ vec4 SampleLocalReflectionProbes(vec3 worldPosition, vec3 reflectionDirection, f
         accumulatedCoverage += weight * clamp(probeIntensity, 0.0, 1.0);
     }
     return vec4(accumulated / max(accumulatedWeight, 0.0001), clamp(accumulatedCoverage, 0.0, 1.0));
-}
-
-float DistributionGGX(vec3 normal, vec3 halfway, float roughness) {
-    float a = roughness * roughness;
-    float a2 = a * a;
-    float nDotH = max(dot(normal, halfway), 0.0);
-    float denominator = nDotH * nDotH * (a2 - 1.0) + 1.0;
-    return a2 / max(PI * denominator * denominator, 0.000001);
-}
-
-float GeometrySchlickGGX(float nDotV, float roughness) {
-    float r = roughness + 1.0;
-    float k = (r * r) / 8.0;
-    return nDotV / max(nDotV * (1.0 - k) + k, 0.000001);
-}
-
-float GeometrySmith(vec3 normal, vec3 viewDir, vec3 lightDir, float roughness) {
-    return GeometrySchlickGGX(max(dot(normal, viewDir), 0.0), roughness) *
-           GeometrySchlickGGX(max(dot(normal, lightDir), 0.0), roughness);
-}
-
-vec3 FresnelSchlick(float cosTheta, vec3 f0) {
-    return f0 + (1.0 - f0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
-
-vec3 FresnelSchlickRoughness(float cosTheta, vec3 f0, float roughness) {
-    return f0 + (max(vec3(1.0 - roughness), f0) - f0) *
-        pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 mat3 BuildTbn(vec3 normal) {
@@ -424,10 +397,22 @@ void main() {
         ambient = iblReflection + iblClearCoatReflection;
         directLighting = vec3(0.0);
     }
+    float fogTransmittance = FogTransmittance(uCameraPosition, vWorldPosition);
     NormalBuffer = vec4(normalize(normal), 1.0);
-    AmbientBuffer = vec4(ambient, albedoSample.a);
+    // Attenuate the ambient target by the same factor as the visible colour.
+    // ssao_composite SUBTRACTS this buffer from the scene, so an unfogged ambient
+    // term against a fogged colour crushes every occluded fogged pixel to black.
+    AmbientBuffer = vec4(ambient * fogTransmittance, albedoSample.a);
     MaterialBuffer = vec4(metallic, roughness, clamp(uClearCoat, 0.0, 1.0), 1.0);
-    FragColor = vec4(ambient + directLighting + uEmissiveColor, albedoSample.a);
+    vec3 shadedColor = ambient + directLighting + uEmissiveColor;
+    shadedColor = shadedColor * fogTransmittance +
+        FogInscatter(viewDir) * (1.0 - fogTransmittance);
+    FragColor = vec4(shadedColor, albedoSample.a);
+    if (uFogDebugView) {
+        // White = clear, black = fully fogged.
+        FragColor = vec4(vec3(fogTransmittance), albedoSample.a);
+        return;
+    }
     if (uEnableDirectionalShadow && uShadowCascadeDebugView) {
         const vec3 cascadeColors[4] = vec3[](
             vec3(1.0, 0.25, 0.25), vec3(0.25, 1.0, 0.35),
