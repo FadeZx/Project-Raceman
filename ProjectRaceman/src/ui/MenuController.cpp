@@ -43,7 +43,6 @@ void ApplyWeatherPreset(GraphicsProfile& profile, WeatherPreset preset) {
 
     // Shared baseline; each case below only states what it changes.
     profile.weather = true;
-    profile.particles = true;
     profile.weatherWind = 0.25f;
     profile.wetnessPuddleScale = 4.0f;
     profile.wetnessDropletScale = 0.06f;
@@ -474,8 +473,14 @@ void MenuController::Render(Renderer& renderer,
                         ImGui::BeginDisabled(!settings.profile.weather);
                         weatherEdited |= ImGui::SliderFloat("Rain Intensity", &settings.profile.weatherIntensity, 0.0f, 1.0f, "%.2f");
                         weatherEdited |= ImGui::SliderFloat("Wind", &settings.profile.weatherWind, -2.0f, 2.0f, "%.2f");
+                        weatherEdited |= ImGui::SliderFloat("Fall Speed", &settings.profile.weatherFallSpeedScale, 0.2f, 3.0f, "%.2fx");
+                        weatherEdited |= ImGui::SliderFloat("Draw Distance", &settings.profile.weatherDrawDistance, 15.0f, 120.0f, "%.0f m");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("How far out individual drops are simulated before it's just the\ndistant haze. Larger reads as heavier weather but costs more drops\nto stay equally dense.");
+                        }
+                        weatherEdited |= ImGui::SliderFloat("Streak Length", &settings.profile.weatherStreakLength, 0.1f, 2.0f, "%.2f m");
+                        weatherEdited |= ImGui::SliderFloat("Streak Width", &settings.profile.weatherStreakWidth, 0.002f, 0.08f, "%.3f m", ImGuiSliderFlags_Logarithmic);
                         ImGui::EndDisabled();
-                        weatherEdited |= ImGui::Checkbox("Rain Particles", &settings.profile.particles);
 
                         ImGui::SeparatorText("Track Soaking");
                         weatherEdited |= ImGui::Checkbox("Rain Wets The Track", &settings.profile.weatherAutoWetness);
@@ -529,6 +534,13 @@ void MenuController::Render(Renderer& renderer,
                                 "Screen-Space Reflections are off; wet surfaces will not reflect.");
                         }
                         ImGui::TextDisabled("Applies to upward-facing surfaces; vertical faces stay dry.");
+                        // Session-only, like the other *DebugView flags: never part of
+                        // graphicsChanged, so toggling it does not dirty or save the project.
+                        ImGui::Checkbox("Debug View (Red = Droplet, Green = Puddle, Blue = Film)",
+                            &settings.profile.wetnessDebugView);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Shows which regime each surface fell into, so a material that looks\nall-puddle-no-droplet can be diagnosed at a glance instead of guessed at.");
+                        }
                         ImGui::EndDisabled();
                     }
 

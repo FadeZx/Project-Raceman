@@ -6025,6 +6025,8 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
             cmd.anisotropy = material->anisotropy;
             cmd.wetnessResponse = material->wetnessResponse;
             cmd.puddleAffinity = material->puddleAffinity;
+            cmd.puddleScale = material->puddleScale;
+            cmd.dropletScale = material->dropletScale;
             cmd.transmission = material->transmission;
             const std::string alphaMode = ToLowerCopy(material->alphaMode);
             cmd.alphaCutoff = alphaMode == "mask" ? material->alphaCutoff : 0.0f;

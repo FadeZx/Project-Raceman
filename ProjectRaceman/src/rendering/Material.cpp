@@ -120,6 +120,8 @@ void ApplyOverriddenField(Material& dest, const Material& level, const std::stri
     if (fieldId == "transmission") { dest.transmission = level.transmission; return; }
     if (fieldId == "wetnessResponse") { dest.wetnessResponse = level.wetnessResponse; return; }
     if (fieldId == "puddleAffinity") { dest.puddleAffinity = level.puddleAffinity; return; }
+    if (fieldId == "puddleScale") { dest.puddleScale = level.puddleScale; return; }
+    if (fieldId == "dropletScale") { dest.dropletScale = level.dropletScale; return; }
     if (fieldId == "alphaMode") { dest.alphaMode = level.alphaMode; return; }
     if (fieldId == "alphaCutoff") { dest.alphaCutoff = level.alphaCutoff; return; }
     if (fieldId == "doubleSided") { dest.doubleSided = level.doubleSided; return; }
@@ -238,6 +240,8 @@ bool ReadMaterialFromJson(const physics::json::Value& value, Material& out) {
         getf(obj, "transmission", out.transmission);
         getf(obj, "wetnessResponse", out.wetnessResponse);
         getf(obj, "puddleAffinity", out.puddleAffinity);
+        getf(obj, "puddleScale", out.puddleScale);
+        getf(obj, "dropletScale", out.dropletScale);
         getf(obj, "alphaCutoff", out.alphaCutoff);
         gets(obj, "alphaMode", out.alphaMode);
         if (auto it = obj.find("doubleSided"); it != obj.end() && it->second.is_bool()) out.doubleSided = it->second.as_bool();
@@ -375,6 +379,8 @@ void WriteMaterialJsonBody(std::ostream& out, const Material& m, const std::stri
     out << i1 << "\"transmission\": " << m.transmission << ",\n";
     out << i1 << "\"wetnessResponse\": " << m.wetnessResponse << ",\n";
     out << i1 << "\"puddleAffinity\": " << m.puddleAffinity << ",\n";
+    out << i1 << "\"puddleScale\": " << m.puddleScale << ",\n";
+    out << i1 << "\"dropletScale\": " << m.dropletScale << ",\n";
     out << i1 << "\"alphaMode\": \"" << JsonEscape(m.alphaMode) << "\",\n";
     out << i1 << "\"alphaCutoff\": " << m.alphaCutoff << ",\n";
     out << i1 << "\"doubleSided\": " << (m.doubleSided ? "true" : "false") << ",\n";

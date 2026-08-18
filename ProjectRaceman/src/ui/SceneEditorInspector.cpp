@@ -5314,6 +5314,24 @@ void SceneEditor::RenderMaterialEditor(Material* material, bool isEmbeddedInstan
             }
             endFieldOverrideScope("puddleAffinity", editable);
         }
+        showInheritedIfNotOverridden("puddleScale", [&] { material->puddleScale = inheritedMaterialSnapshot.puddleScale; });
+        {
+            const bool editable = beginFieldOverrideScope("puddleScale");
+            materialChanged |= ImGui::SliderFloat("Puddle Scale", &material->puddleScale, 0.02f, 5.0f, "%.2fx", ImGuiSliderFlags_Logarithmic);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Multiplies the scene's Puddle Scale for this material only.\nThe scene slider is usually tuned for track-sized surfaces; a small,\ncurved object like a car body wants well under 1.");
+            }
+            endFieldOverrideScope("puddleScale", editable);
+        }
+        showInheritedIfNotOverridden("dropletScale", [&] { material->dropletScale = inheritedMaterialSnapshot.dropletScale; });
+        {
+            const bool editable = beginFieldOverrideScope("dropletScale");
+            materialChanged |= ImGui::SliderFloat("Droplet Scale", &material->dropletScale, 0.02f, 5.0f, "%.2fx", ImGuiSliderFlags_Logarithmic);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Multiplies the scene's Droplet Scale for this material only.");
+            }
+            endFieldOverrideScope("dropletScale", editable);
+        }
         showInheritedIfNotOverridden("clearCoatRoughness", [&] { material->clearCoatRoughness = inheritedMaterialSnapshot.clearCoatRoughness; });
         {
             const bool editable = beginFieldOverrideScope("clearCoatRoughness");

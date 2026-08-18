@@ -34,6 +34,12 @@ uniform bool uWetnessDebugView;
 // Per-material response, uploaded per draw.
 uniform float uMaterialWetnessResponse; // 0 = stays dry (sealed, sheltered)
 uniform float uMaterialPuddleAffinity;  // 0 = never pools (paint, glass, foliage)
+// Multiply the global puddle/droplet scale uniforms above. Those sliders are
+// sized for whatever surface they were last tuned against - a puddle cell
+// that reads as normal spacing on a track becomes one giant pool covering an
+// entire car hood. 1 = use the scene scale as authored.
+uniform float uMaterialPuddleScale;
+uniform float uMaterialDropletScale;
 
 // Shelter volumes: regions the rain cannot reach. A garage floor is the same
 // asphalt material as the track outside it, so no per-material setting can keep
@@ -78,7 +84,7 @@ float WetnessNoise(vec2 p) {
 
 float PuddleMask(vec3 worldPosition, float wetness) {
     if (uWetnessPuddleAmount <= 0.0) return 0.0;
-    float scale = max(uWetnessPuddleScale, 0.02);
+    float scale = max(uWetnessPuddleScale * uMaterialPuddleScale, 0.02);
     vec2 p = worldPosition.xz / scale;
     float n = WetnessNoise(p) * 0.65 + WetnessNoise(p * 2.17 + 13.7) * 0.35;
     float threshold = mix(0.85, 0.25, clamp(wetness * uWetnessPuddleAmount, 0.0, 1.0));
@@ -109,7 +115,7 @@ vec3 DropletNormal(vec3 worldPosition, vec3 normal, float slope, out float mask)
         : vec3(1.0, 0.0, 0.0);
     vec3 bitangent = cross(normal, tangent);
 
-    float scale = max(uWetnessDropletScale, 0.005);
+    float scale = max(uWetnessDropletScale * uMaterialDropletScale, 0.005);
     vec2 uv = vec2(dot(worldPosition, tangent), dot(worldPosition, bitangent)) / scale;
 
     // Runoff: beads slide down the surface, faster the steeper it is. Without
@@ -142,6 +148,14 @@ struct WetSurface {
     float puddle;
     float droplet;
     float wetAmount;
+    // Additional clear-coat amount/roughness the film contributes. This reuses
+    // the material's own clear-coat BRDF lobe (see pbr.fs) instead of faking
+    // a wet look purely by tightening the base layer's roughness: a real coat
+    // lobe has its own Fresnel term, so it gets the bright grazing-angle sheen
+    // that is the single most recognisable "wet" cue, on top of any coat the
+    // material already has authored (car clear lacquer, for instance).
+    float coatBoost;
+    float coatRoughness;
 };
 
 WetSurface ApplyWetness(vec3 albedo, float roughness, vec3 normal, vec3 worldPosition) {
@@ -152,6 +166,8 @@ WetSurface ApplyWetness(vec3 albedo, float roughness, vec3 normal, vec3 worldPos
     result.puddle = 0.0;
     result.droplet = 0.0;
     result.wetAmount = 0.0;
+    result.coatBoost = 0.0;
+    result.coatRoughness = 0.2;
 
     float response = clamp(uMaterialWetnessResponse, 0.0, 1.0);
     float wetness = clamp(uWetness, 0.0, 1.0) * response * ShelterFactor(worldPosition);
@@ -160,9 +176,13 @@ WetSurface ApplyWetness(vec3 albedo, float roughness, vec3 normal, vec3 worldPos
     float upFacing = clamp(normal.y, 0.0, 1.0);
     // Everything gets a film, but a vertical face sheds most of it.
     float film = wetness * mix(0.5, 1.0, upFacing);
-    // Pooling needs a genuinely level surface. Past roughly 25 degrees water runs
-    // off instead, which is the automatic puddle-to-droplet handover.
-    float flatness = smoothstep(0.80, 0.96, upFacing);
+    // Pooling needs a genuinely level surface - within about 20 degrees of flat,
+    // fully committed only inside 6. That is deliberately tight: bodywork (a car
+    // roof, a hood) is full of broad, gently domed curves that stay under the old
+    // 37-degree cutoff for a large fraction of their area, which read as standing
+    // puddles on paint that should only ever bead. Actual ground is normally
+    // flat enough that this tightening does not cost it any real puddle coverage.
+    float flatness = smoothstep(0.94, 0.995, upFacing);
     float slope = 1.0 - flatness;
 
     float puddle = PuddleMask(worldPosition, film) * film * flatness *
@@ -186,6 +206,12 @@ WetSurface ApplyWetness(vec3 albedo, float roughness, vec3 normal, vec3 worldPos
     //    sit on the surface and only perturb it.
     vec3 shaped = mix(normal, dropletNormal, droplet);
     result.normal = normalize(mix(shaped, RippleNormal(worldPosition), puddle));
+
+    // 4. Clear coat. A thin film adds a modest sheen; standing water adds a
+    //    strong, near-mirror coat - the same bright rim on a puddle's edge
+    //    that is unmistakably "wet" in a way roughness alone cannot sell.
+    result.coatBoost = clamp(film * 0.55 + puddle * 0.9, 0.0, 1.0);
+    result.coatRoughness = mix(0.22, 0.02, clamp(puddle * 1.4, 0.0, 1.0));
 
     result.puddle = puddle;
     result.droplet = droplet;

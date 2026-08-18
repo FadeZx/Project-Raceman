@@ -80,6 +80,8 @@ Renderer::~Renderer() {
     }
     if (captureCubeVbo_ != 0) glDeleteBuffers(1, &captureCubeVbo_);
     if (captureCubeVao_ != 0) glDeleteVertexArrays(1, &captureCubeVao_);
+    if (rainQuadVbo_ != 0) glDeleteBuffers(1, &rainQuadVbo_);
+    if (rainQuadVao_ != 0) glDeleteVertexArrays(1, &rainQuadVao_);
 
     if (environmentMaps_.irradiance != 0) {
         glDeleteTextures(1, &environmentMaps_.irradiance);
@@ -634,7 +636,6 @@ GraphicsProfile Renderer::ResolveProfileForTarget(ViewportRenderTarget target) c
         resolved.depthOfField = false;
         resolved.motionBlur = false;
         resolved.weather = false;
-        resolved.particles = false;
     };
 
     switch (settings_.sceneViewShading) {
@@ -1877,28 +1878,20 @@ void Renderer::ResolveViewportTarget(ViewportTarget& target) {
         Profile().weather && Profile().weatherIntensity > 0.001f && weatherShader_ &&
         target.weatherFramebuffer != 0 && target.weatherTexture != 0;
     if (weatherReady) {
-        float particleDensity = 0.0f;
-        if (Profile().particles) {
-            switch (Profile().quality) {
-            case GraphicsQualityTier::Low: particleDensity = 0.35f; break;
-            case GraphicsQualityTier::Medium: particleDensity = 0.60f; break;
-            case GraphicsQualityTier::Ultra: particleDensity = 1.25f; break;
-            case GraphicsQualityTier::High: particleDensity = 1.0f; break;
-            }
-        }
+        // This pass now only paints the atmospheric haze/tint. The rain drops
+        // themselves are real, depth-tested world geometry drawn earlier in
+        // RenderDecals's call site (see RenderRainParticles) - a screen-space
+        // pass has no way to occlude correctly behind track geometry or to
+        // react to the camera translating instead of just turning.
         glBindFramebuffer(GL_FRAMEBUFFER, target.weatherFramebuffer);
         glViewport(0, 0, target.width, target.height);
         weatherShader_->use();
         weatherShader_->setInt("uSceneTexture", 0);
         weatherShader_->setInt("uDepthTexture", 1);
         weatherShader_->setVec2("uResolution", static_cast<float>(target.width), static_cast<float>(target.height));
-        weatherShader_->setFloat("uTime", static_cast<float>(std::fmod(SteadySeconds(), 4096.0)));
         weatherShader_->setFloat("uIntensity", (std::clamp)(Profile().weatherIntensity, 0.0f, 1.0f));
-        weatherShader_->setFloat("uWind", (std::clamp)(Profile().weatherWind, -2.0f, 2.0f));
-        weatherShader_->setFloat("uParticleDensity", particleDensity);
-        // Needed to anchor streaks to a world direction rather than to the screen.
-        weatherShader_->setMat4("uInverseViewProjection", glm::inverse(proj_ * view_));
         weatherShader_->setVec3("uCameraPosition", glm::vec3(glm::inverse(view_)[3]));
+        weatherShader_->setMat4("uInverseViewProjection", glm::inverse(proj_ * view_));
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, postProcessSceneTexture);
         glActiveTexture(GL_TEXTURE1);
@@ -3025,6 +3018,8 @@ void Renderer::Flush() {
         activeShader->setFloat("uClearCoat", (std::clamp)(cmd.clearCoat, 0.0f, 1.0f));
         activeShader->setFloat("uMaterialWetnessResponse", (std::clamp)(cmd.wetnessResponse, 0.0f, 1.0f));
         activeShader->setFloat("uMaterialPuddleAffinity", (std::clamp)(cmd.puddleAffinity, 0.0f, 1.0f));
+        activeShader->setFloat("uMaterialPuddleScale", (std::max)(0.02f, cmd.puddleScale));
+        activeShader->setFloat("uMaterialDropletScale", (std::max)(0.02f, cmd.dropletScale));
         activeShader->setFloat("uClearCoatRoughness", (std::clamp)(cmd.clearCoatRoughness, 0.02f, 1.0f));
         activeShader->setFloat("uAnisotropy", (std::clamp)(cmd.anisotropy, -1.0f, 1.0f));
         activeShader->setFloat("uTransmission", (std::clamp)(cmd.transmission, 0.0f, 1.0f));
@@ -3158,6 +3153,7 @@ void Renderer::Flush() {
     // ones belonging to this frame.
     if (viewportTargetActive_) {
         RenderDecals(GetViewportTarget(activeViewportTarget_));
+        RenderRainParticles(GetViewportTarget(activeViewportTarget_));
     }
 
     glBindVertexArray(0);
@@ -3309,6 +3305,81 @@ void Renderer::RenderDecals(const ViewportTarget& target) {
     glCullFace(GL_BACK);
 }
 
+void Renderer::RenderRainParticles(const ViewportTarget& target) {
+    if (!Profile().weather) return;
+    if (Profile().weatherIntensity <= 0.001f) return;
+    if (!rainParticleShader_ || !rainParticleShader_->IsValid()) return;
+    if (rainQuadVao_ == 0) return;
+    if (Profile().forceUnlitShading || Profile().wireframeView || Profile().plainView) return;
+
+    int particleCount = 0;
+    switch (Profile().quality) {
+    case GraphicsQualityTier::Low: particleCount = 900; break;
+    case GraphicsQualityTier::Medium: particleCount = 2200; break;
+    case GraphicsQualityTier::High: particleCount = 4000; break;
+    case GraphicsQualityTier::Ultra: particleCount = 7000; break;
+    }
+    // Light rain should look like fewer drops, not the same swarm faded out -
+    // a faint dense swarm reads as fog, not rain.
+    particleCount = static_cast<int>(static_cast<float>(particleCount) *
+        (std::clamp)(0.25f + 0.75f * Profile().weatherIntensity, 0.0f, 1.0f));
+    const float drawDistance = (std::max)(8.0f, Profile().weatherDrawDistance);
+    // Drops wrap inside a box, so density falls off as the box grows unless
+    // the count grows with its volume too. Capped so a large draw distance
+    // cannot balloon the instance count unboundedly.
+    const float volumeScale = (std::clamp)((drawDistance / 46.0f) * (drawDistance / 46.0f), 0.3f, 3.0f);
+    particleCount = static_cast<int>(static_cast<float>(particleCount) * volumeScale);
+    if (particleCount <= 0) return;
+
+    // Only the lit colour target should receive rain; normal/ambient/material
+    // belong to opaque surfaces and must stay intact for SSR/SSAO afterward.
+    glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glColorMaski(2, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glColorMaski(3, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    const float wind = (std::clamp)(Profile().weatherWind, -2.0f, 2.0f);
+    rainParticleShader_->use();
+    rainParticleShader_->setMat4("uViewProjection", proj_ * view_);
+    rainParticleShader_->setVec3("uCameraPosition", glm::vec3(glm::inverse(view_)[3]));
+    rainParticleShader_->setFloat("uTime", static_cast<float>(std::fmod(SteadySeconds(), 4096.0)));
+    // Box the drops wrap inside. Smaller than the far full-screen haze on
+    // purpose: this only has to cover what is close enough to resolve as
+    // individual drops rather than atmosphere. Height keeps the same ratio
+    // to area the effect was tuned at (~0.65) rather than being its own knob.
+    rainParticleShader_->setFloat("uAreaSize", drawDistance);
+    rainParticleShader_->setFloat("uHeight", drawDistance * 0.652f);
+    // Real rain falls at roughly 6-9 m/s regardless of intensity - it is drop
+    // size, not rainfall rate, that sets terminal velocity - so intensity is
+    // kept to amount (drop count + opacity) only; Fall Speed is the one and
+    // only speed control. Stylised a little faster than real life so it
+    // reads clearly rather than looking like drizzle at typical camera FOVs.
+    const float fallSpeed = 16.0f * (std::max)(0.1f, Profile().weatherFallSpeedScale);
+    rainParticleShader_->setFloat("uFallSpeed", fallSpeed);
+    rainParticleShader_->setVec2("uWind", wind * 5.0f, wind * 3.5f);
+    rainParticleShader_->setFloat("uStreakLength", (std::max)(0.02f, Profile().weatherStreakLength));
+    rainParticleShader_->setFloat("uStreakWidth", (std::max)(0.001f, Profile().weatherStreakWidth));
+    rainParticleShader_->setFloat("uOpacity", (std::clamp)(Profile().weatherIntensity, 0.0f, 1.0f));
+    rainParticleShader_->setVec3("uTintColor", glm::vec3(0.62f, 0.74f, 0.92f));
+
+    glBindVertexArray(rainQuadVao_);
+    glDrawArraysInstanced(GL_TRIANGLES, 0, 6, particleCount);
+    ++frameStats_.drawCallCount;
+    glBindVertexArray(0);
+
+    glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glColorMaski(3, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_CULL_FACE);
+}
+
 void Renderer::InitializeSsaoResources() {
     std::mt19937 randomEngine(0x52414345u);
     std::uniform_real_distribution<float> unitDistribution(0.0f, 1.0f);
@@ -3371,6 +3442,7 @@ void Renderer::InitializePipelines() {
     smaaBlendShader_ = std::make_unique<Shader>("src/shaders/post/fullscreen.vs", "src/shaders/post/smaa_blend.fs");
     debugLineShader_ = std::make_unique<Shader>("src/shaders/default/default.vs", "src/shaders/post/debug_line.fs");
     decalShader_ = std::make_unique<Shader>("src/shaders/post/decal.vs", "src/shaders/post/decal.fs");
+    rainParticleShader_ = std::make_unique<Shader>("src/shaders/post/rain_particles.vs", "src/shaders/post/rain_particles.fs");
     if (smaaAreaTexture_ == 0) {
         glGenTextures(1, &smaaAreaTexture_);
         glBindTexture(GL_TEXTURE_2D, smaaAreaTexture_);
@@ -3417,6 +3489,22 @@ void Renderer::InitializeQuad() {
         glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+        glBindVertexArray(0);
+    }
+    if (rainQuadVao_ == 0) {
+        // A single streak quad in [-0.5, 0.5], instanced per drop; the vertex
+        // shader stretches and orients it per-instance in world space.
+        constexpr float quadVertices[] = {
+            -0.5f, -0.5f,   0.5f, -0.5f,   0.5f, 0.5f,
+            -0.5f, -0.5f,   0.5f,  0.5f,  -0.5f, 0.5f,
+        };
+        glGenVertexArrays(1, &rainQuadVao_);
+        glGenBuffers(1, &rainQuadVbo_);
+        glBindVertexArray(rainQuadVao_);
+        glBindBuffer(GL_ARRAY_BUFFER, rainQuadVbo_);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
         glBindVertexArray(0);
     }
 }

@@ -184,10 +184,20 @@ struct GraphicsProfile {
     float ssrThickness{0.25f};
     int ssrSteps{40};
     bool ssrDebugView{false};
-    bool particles{true};
     bool weather{true};
     float weatherIntensity{0.0f};
     float weatherWind{0.25f};
+    // Real, world-positioned rain drops (see Renderer::RenderRainParticles).
+    // Draw distance in world metres - the box drops wrap inside, so this is
+    // how far out an individual drop is still simulated before it is just
+    // atmospheric haze. Bigger reads as heavier weather but needs more drops
+    // to stay equally dense.
+    float weatherDrawDistance{46.0f};
+    float weatherStreakLength{0.55f};
+    float weatherStreakWidth{0.018f};
+    // Multiplies the intensity-driven base fall speed; 1 is the authored
+    // default rather than a real-world m/s value.
+    float weatherFallSpeedScale{1.0f};
     bool lod{true};
     bool dynamicResolution{false};
     float minimumResolutionScale{0.75f};
@@ -330,6 +340,8 @@ struct MeshDrawCommand {
     float transmission{0.0f};
     float wetnessResponse{1.0f};
     float puddleAffinity{1.0f};
+    float puddleScale{1.0f};
+    float dropletScale{1.0f};
     float alphaCutoff{0.0f};
     bool doubleSided{false};
     bool transparent{false};
@@ -643,6 +655,12 @@ private:
     // bound. Reads the depth and normal attachments of that same target, which is
     // why it issues a texture barrier first.
     void RenderDecals(const ViewportTarget& target);
+    // Real, world-positioned rain drops, drawn as instanced streak billboards
+    // while the MRT target's own depth attachment is still bound, so drops are
+    // hardware depth-tested against every opaque surface exactly like any
+    // other translucent geometry. This is what gives correct occlusion and
+    // real parallax with camera translation, not just rotation.
+    void RenderRainParticles(const ViewportTarget& target);
     void DestroyViewportTarget(ViewportTarget& target);
     ViewportTarget& GetViewportTarget(ViewportRenderTarget target);
     const ViewportTarget& GetViewportTarget(ViewportRenderTarget target) const;
@@ -747,6 +765,9 @@ private:
     std::unique_ptr<Shader> cameraVelocityShader_;
     std::unique_ptr<Shader> motionBlurShader_;
     std::unique_ptr<Shader> weatherShader_;
+    std::unique_ptr<Shader> rainParticleShader_;
+    unsigned int rainQuadVao_{0};
+    unsigned int rainQuadVbo_{0};
     std::unique_ptr<Shader> depthOfFieldShader_;
     std::unique_ptr<Shader> taaShader_;
     std::unique_ptr<Shader> luminanceHistogramShader_;

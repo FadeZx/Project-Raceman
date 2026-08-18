@@ -43,6 +43,12 @@ struct Material {
     // anything sheltered can be held dry entirely.
     float wetnessResponse{1.0f};
     float puddleAffinity{1.0f};
+    // Multiplies the scene's global puddle/droplet scale. Those sliders are
+    // sized for the surface they were last tuned against - a 4-6m puddle cell
+    // that reads as normal spacing on a track is one giant pool covering an
+    // entire car hood. Small, curved objects want well under 1.
+    float puddleScale{1.0f};
+    float dropletScale{1.0f};
     std::string alphaMode{"Opaque"};
     float alphaCutoff{0.5f};
     bool doubleSided{false};

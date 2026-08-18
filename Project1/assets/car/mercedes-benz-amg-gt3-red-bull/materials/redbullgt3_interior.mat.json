@@ -1,6 +1,8 @@
 {
   "version": 2,
   "name": "Interior",
+  "baseMaterial": "",
+  "overriddenFields": [],
   "shader": "pbr",
   "albedoColor": [1, 1, 1, 1],
   "metallic": 0.534,
@@ -9,6 +11,8 @@
   "clearCoatRoughness": 0.02,
   "anisotropy": 0,
   "transmission": 0,
+  "wetnessResponse": 0,
+  "puddleAffinity": 0,
   "alphaMode": "Opaque",
   "alphaCutoff": 0.5,
   "doubleSided": false,

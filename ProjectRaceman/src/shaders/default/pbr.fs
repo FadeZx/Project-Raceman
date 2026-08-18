@@ -278,6 +278,12 @@ void main() {
     albedo = wet.albedo;
     roughness = wet.roughness;
     normal = wet.normal;
+    // Wet film/puddle rides on top of whatever clear coat the material already
+    // has (car lacquer, for instance) rather than replacing it, saturating at
+    // a full coat instead of stacking past it.
+    float effectiveClearCoat = clamp(uClearCoat + wet.coatBoost * (1.0 - uClearCoat), 0.0, 1.0);
+    float effectiveClearCoatRoughness = mix(uClearCoatRoughness, wet.coatRoughness,
+        clamp(wet.coatBoost, 0.0, 1.0));
 
     vec3 viewDir = normalize(uCameraPosition - vWorldPosition);
     // Standing water has its own Fresnel response (IOR 1.33 -> F0 0.02) and is a
@@ -317,12 +323,12 @@ void main() {
         vec3 fresnel = FresnelSchlick(max(dot(halfway, viewDir), 0.0), f0);
         vec3 specular = distribution * geometry * fresnel /
             max(4.0 * nDotV * nDotL, 0.0001);
-        if (uClearCoat > 0.0) {
-            float coatDistribution = DistributionGGX(normal, halfway, clamp(uClearCoatRoughness, 0.02, 1.0));
-            float coatGeometry = GeometrySmith(normal, viewDir, lightDir, clamp(uClearCoatRoughness, 0.02, 1.0));
+        if (effectiveClearCoat > 0.0) {
+            float coatDistribution = DistributionGGX(normal, halfway, clamp(effectiveClearCoatRoughness, 0.02, 1.0));
+            float coatGeometry = GeometrySmith(normal, viewDir, lightDir, clamp(effectiveClearCoatRoughness, 0.02, 1.0));
             vec3 coatFresnel = FresnelSchlick(max(dot(halfway, viewDir), 0.0), vec3(0.04));
             specular += coatDistribution * coatGeometry * coatFresnel /
-                max(4.0 * nDotV * nDotL, 0.0001) * clamp(uClearCoat, 0.0, 1.0);
+                max(4.0 * nDotV * nDotL, 0.0001) * effectiveClearCoat;
         }
         vec3 diffuseWeight = (vec3(1.0) - fresnel) * (1.0 - metallic);
         diffuseWeight *= 1.0 - clamp(uTransmission, 0.0, 1.0);
@@ -379,14 +385,14 @@ void main() {
         vec2 environmentBrdf = texture(uBrdfLut, vec2(nDotV, roughness)).rg;
         iblReflection = rawPrefilteredReflection * (ambientFresnel * environmentBrdf.x + environmentBrdf.y);
 
-        float coatRoughness = clamp(uClearCoatRoughness, 0.02, 1.0);
+        float coatRoughness = clamp(effectiveClearCoatRoughness, 0.02, 1.0);
         vec3 coatFresnel = FresnelSchlickRoughness(nDotV, vec3(0.04), coatRoughness);
         vec3 coatPrefiltered = uUseBakedIbl
             ? textureLod(uPrefilterMap, reflectionDirection, coatRoughness * 4.0).rgb
             : textureLod(uEnvironmentMap, reflectionDirection, coatRoughness * 7.0).rgb;
         vec2 coatBrdf = texture(uBrdfLut, vec2(nDotV, coatRoughness)).rg;
         iblClearCoatReflection = coatPrefiltered * (coatFresnel * coatBrdf.x + coatBrdf.y) *
-            clamp(uClearCoat, 0.0, 1.0);
+            effectiveClearCoat;
 
         ambientDiffuse = ambientDiffuseWeight * albedo *
             (iblIrradiance * max(uEnvironmentIntensity, 0.0) + uAmbientColor);
@@ -417,7 +423,7 @@ void main() {
     // ssao_composite SUBTRACTS this buffer from the scene, so an unfogged ambient
     // term against a fogged colour crushes every occluded fogged pixel to black.
     AmbientBuffer = vec4(ambient * fogTransmittance, albedoSample.a);
-    MaterialBuffer = vec4(metallic, roughness, clamp(uClearCoat, 0.0, 1.0), 1.0);
+    MaterialBuffer = vec4(metallic, roughness, effectiveClearCoat, 1.0);
     vec3 shadedColor = ambient + directLighting + uEmissiveColor;
     shadedColor = shadedColor * fogTransmittance +
         FogInscatter(viewDir) * (1.0 - fogTransmittance);
