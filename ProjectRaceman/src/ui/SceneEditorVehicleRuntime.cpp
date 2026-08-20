@@ -171,6 +171,36 @@ void UpdateArcadeAutomaticGear(RuntimeVehicleInstance& runtimeVehicle,
         redlineRPM);
 }
 
+// Feeds the inertial engine model from the arcade sim. Runs inside the fixed
+// step so gear changes are caught even when several steps land in one frame.
+void UpdateVehicleEngineState(RuntimeVehicleInstance& runtimeVehicle,
+                              float absSpeed,
+                              float previousSpeed,
+                              float deltaTime) {
+    const raceman::physics::VehicleArcadeHandlingConfig& handling = runtimeVehicle.config.arcadeHandling;
+
+    raceman::physics::VehicleEngineTuning tuning;
+    // Idle and redline come from arcadeHandling because that is what the sim
+    // actually uses; engine.idleRPM/redlineRPM are authored but dead.
+    tuning.idleRpm    = (std::max)(0.0f, handling.idleRPM);
+    tuning.redlineRpm = (std::max)(tuning.idleRpm + 1.0f, handling.redlineRPM);
+    tuning.inertia    = (std::max)(0.02f, runtimeVehicle.config.engine.inertia);
+
+    raceman::physics::VehicleEngineInput input;
+    input.targetRpmFromGearing  = runtimeVehicle.arcadeEngineRPM;
+    input.throttle              = runtimeVehicle.arcadeThrottle;
+    input.brake                 = runtimeVehicle.arcadeBrake;
+    input.gear                  = runtimeVehicle.arcadeGear;
+    input.shifting              = runtimeVehicle.autoShiftCooldown > 0.0f;
+    input.speed                 = absSpeed;
+    input.previousSpeed         = std::fabs(previousSpeed);
+    input.commandedAcceleration = handling.acceleration;
+    input.wheelspin             = runtimeVehicle.arcadeTractionControlCut;
+    input.deltaTime             = deltaTime;
+
+    runtimeVehicle.engineState.Update(tuning, input);
+}
+
 } // namespace
 
 void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
@@ -282,6 +312,8 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             redlineRPM,
             maxForwardSpeed,
             deltaTime);
+
+        UpdateVehicleEngineState(runtimeVehicle, finalAbsSpeed, previousSpeed, deltaTime);
 
         if (physicsWorld_ != nullptr && !runtimeVehicle.chassisBodyObjectId.empty() && physicsWorld_->HasBody(runtimeVehicle.chassisBodyObjectId)) {
             physicsWorld_->MoveBodyKinematic(

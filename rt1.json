@@ -1,0 +1,129 @@
+{
+  "name": "BMW_M8_V8",
+  "strokes": 4,
+  "idleInstability": 0.025,
+  "combustionVariance": 0.12,
+  "spatialBlend": 1,
+  "minDistance": 6,
+  "maxDistance": 140,
+  "cylinders": [
+    {"fireAngleDeg": 0, "bankId": 0, "gain": 1, "timingJitter": 0.6},
+    {"fireAngleDeg": 180, "bankId": 0, "gain": 1, "timingJitter": 0.6},
+    {"fireAngleDeg": 360, "bankId": 0, "gain": 1, "timingJitter": 0.6},
+    {"fireAngleDeg": 540, "bankId": 0, "gain": 1, "timingJitter": 0.6},
+    {"fireAngleDeg": 90, "bankId": 1, "gain": 1, "timingJitter": 0.6},
+    {"fireAngleDeg": 270, "bankId": 1, "gain": 1, "timingJitter": 0.6},
+    {"fireAngleDeg": 450, "bankId": 1, "gain": 1, "timingJitter": 0.6},
+    {"fireAngleDeg": 630, "bankId": 1, "gain": 1, "timingJitter": 0.6}
+  ],
+  "exhaust": {
+    "runnerLengthM": 0.85,
+    "collectorLengthM": 3.2,
+    "gasSpeedMs": 470,
+    "runnerReflection": 0.3,
+    "runnerDamping": 0.62,
+    "mufflerStages": 3,
+    "mufflerLengthM": 1.3,
+    "mufflerReflection": 0.3,
+    "tailpipeBrightness": 0.18
+  },
+  "intake": {
+    "lengthM": 0.55,
+    "airSpeedMs": 343,
+    "reflection": 0.45,
+    "damping": 0.72,
+    "noise": 0.3,
+    "pulseGain": 0.32
+  },
+  "orders": [
+    {
+      "order": 0.5,
+      "gainOnLoad": [{"rpm": 900, "value": 0.45}, {"rpm": 3850, "value": 0.3825}, {"rpm": 7000, "value": 0.45}],
+      "gainOffLoad": [{"rpm": 900, "value": 0.2475}, {"rpm": 3850, "value": 0.135}, {"rpm": 7000, "value": 0.099}]
+    },
+    {
+      "order": 1,
+      "gainOnLoad": [{"rpm": 900, "value": 0.45}, {"rpm": 3850, "value": 0.3825}, {"rpm": 7000, "value": 0.45}],
+      "gainOffLoad": [{"rpm": 900, "value": 0.2475}, {"rpm": 3850, "value": 0.135}, {"rpm": 7000, "value": 0.099}]
+    },
+    {
+      "order": 1.5,
+      "gainOnLoad": [{"rpm": 900, "value": 0.45}, {"rpm": 3850, "value": 0.3825}, {"rpm": 7000, "value": 0.45}],
+      "gainOffLoad": [{"rpm": 900, "value": 0.2475}, {"rpm": 3850, "value": 0.135}, {"rpm": 7000, "value": 0.099}]
+    },
+    {
+      "order": 2,
+      "gainOnLoad": [{"rpm": 900, "value": 0.45}, {"rpm": 3850, "value": 0.3825}, {"rpm": 7000, "value": 0.45}],
+      "gainOffLoad": [{"rpm": 900, "value": 0.2475}, {"rpm": 3850, "value": 0.135}, {"rpm": 7000, "value": 0.099}]
+    },
+    {
+      "order": 3,
+      "gainOnLoad": [{"rpm": 900, "value": 0.45}, {"rpm": 3850, "value": 0.3825}, {"rpm": 7000, "value": 0.45}],
+      "gainOffLoad": [{"rpm": 900, "value": 0.2475}, {"rpm": 3850, "value": 0.135}, {"rpm": 7000, "value": 0.099}]
+    },
+    {
+      "order": 2,
+      "gainOnLoad": [{"rpm": 900, "value": 0.45}, {"rpm": 3850, "value": 0.3825}, {"rpm": 7000, "value": 0.45}],
+      "gainOffLoad": [{"rpm": 900, "value": 0.2475}, {"rpm": 3850, "value": 0.135}, {"rpm": 7000, "value": 0.099}]
+    },
+    {
+      "order": 4,
+      "gainOnLoad": [{"rpm": 900, "value": 0.25}, {"rpm": 3850, "value": 0.85}, {"rpm": 7000, "value": 1}],
+      "gainOffLoad": [{"rpm": 900, "value": 0.1375}, {"rpm": 3850, "value": 0.3}, {"rpm": 7000, "value": 0.22}]
+    },
+    {
+      "order": 6,
+      "gainOnLoad": [{"rpm": 900, "value": 0.0625}, {"rpm": 3850, "value": 0.2125}, {"rpm": 7000, "value": 0.25}],
+      "gainOffLoad": [{"rpm": 900, "value": 0.034375}, {"rpm": 3850, "value": 0.075}, {"rpm": 7000, "value": 0.055}]
+    },
+    {
+      "order": 8,
+      "gainOnLoad": [{"rpm": 900, "value": 0.0625}, {"rpm": 3850, "value": 0.2125}, {"rpm": 7000, "value": 0.25}],
+      "gainOffLoad": [{"rpm": 900, "value": 0.034375}, {"rpm": 3850, "value": 0.075}, {"rpm": 7000, "value": 0.055}]
+    },
+    {
+      "order": 12,
+      "gainOnLoad": [{"rpm": 900, "value": 0.0625}, {"rpm": 3850, "value": 0.2125}, {"rpm": 7000, "value": 0.25}],
+      "gainOffLoad": [{"rpm": 900, "value": 0.034375}, {"rpm": 3850, "value": 0.075}, {"rpm": 7000, "value": 0.055}]
+    }
+  ],
+  "turbo": {
+    "enabled": true,
+    "supercharger": false,
+    "whistleRatio": 11,
+    "whistleGain": 0.14,
+    "whistleResonance": 7,
+    "blowOffGain": 0.45,
+    "blowOffDecaySeconds": 0.16
+  },
+  "drivetrain": {
+    "whineGain": 0,
+    "whineRatio": 14,
+    "whineResonance": 4,
+    "shiftCutDepth": 0.85
+  },
+  "overrun": {
+    "enabled": true,
+    "minRpm": 3200,
+    "density": 0.4,
+    "gain": 0.75,
+    "limiterPopGain": 0.6
+  },
+  "noise": {
+    "valvetrainGain": 0.03,
+    "valvetrainFreq": 3200,
+    "valvetrainQ": 1.2
+  },
+  "mix": {
+    "exhaustGain": 1.25,
+    "intakeGain": 0.28,
+    "blockGain": 0.18,
+    "drive": 0.18,
+    "masterVolume": 1.15
+  },
+  "triggerSounds": [
+    {"clipPath": "assets/audio/ShiftUpSound.wav", "trigger": "gearUp", "volume": 0.34, "minRpmForBackfire": 4000, "minLateralSpeedForSqueal": 4},
+    {"clipPath": "assets/audio/ShiftDownSound.wav", "trigger": "gearDown", "volume": 0.36, "minRpmForBackfire": 4000, "minLateralSpeedForSqueal": 4},
+    {"clipPath": "assets/audio/TireSound.wav", "trigger": "tireSqueal", "volume": 0.5, "minRpmForBackfire": 4000, "minLateralSpeedForSqueal": 4}
+  ]
+}

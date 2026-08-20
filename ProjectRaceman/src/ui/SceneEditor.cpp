@@ -1232,6 +1232,7 @@ void SceneEditor::RenderUI(float deltaTime) {
     RenderShaderGraphEditorWindow();
     RenderVehicleConfigEditorWindow();
     RenderVehicleSoundEditorWindow();
+    RenderEngineSoundEditorWindow();
     RenderTrackGeneratorWindow();
     frameTimings_.auxiliaryWindowsMs = elapsedMs(timingStart);
 
@@ -6076,6 +6077,7 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
 
     if (editorInteraction) {
         SubmitGizmo(renderer);
+        SubmitAudioGizmos(renderer);
         if (showAllColliders_) {
             SubmitAllColliders(renderer);
         }

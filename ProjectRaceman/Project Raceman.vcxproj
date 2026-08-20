@@ -77,13 +77,11 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Jolt.lib;dinput8.lib;dxguid.lib;d3d11.lib;d3dcompiler.lib;dxgi.lib;Debug\STB_IMAGE.lib;Debug\GLAD.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;Jolt.lib;dinput8.lib;dxguid.lib;d3d11.lib;d3dcompiler.lib;dxgi.lib;Debug\STB_IMAGE.lib;Debug\GLAD.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)../lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>if exist "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" copy /Y "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" "$(OutDir)"
-if exist "$(ProjectDir)..\dlls\ikpMP3.dll" copy /Y "$(ProjectDir)..\dlls\ikpMP3.dll" "$(OutDir)"
-if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKlang.dll" "$(OutDir)"</Command>
+      <Command>if exist "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" copy /Y "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -105,13 +103,11 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;irrKlang.lib;Jolt.lib;dinput8.lib;dxguid.lib;d3d11.lib;d3dcompiler.lib;dxgi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;Debug/STB_IMAGE.lib;Debug/GLAD.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp.lib;freetype.lib;Jolt.lib;dinput8.lib;dxguid.lib;d3d11.lib;d3dcompiler.lib;dxgi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;Debug/STB_IMAGE.lib;Debug/GLAD.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)../lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>if exist "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" copy /Y "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" "$(OutDir)"
-if exist "$(ProjectDir)..\dlls\ikpMP3.dll" copy /Y "$(ProjectDir)..\dlls\ikpMP3.dll" "$(OutDir)"
-if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKlang.dll" "$(OutDir)"</Command>
+      <Command>if exist "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" copy /Y "$(ProjectDir)..\dlls\assimp-vc143-mt.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -130,8 +126,12 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClInclude Include="src\physics\PhysicsWorld.h" />
     <ClInclude Include="src\physics\SimpleJson.h" />
     <ClInclude Include="src\audio\AudioManager.h" />
+    <ClInclude Include="src\audio\EngineSoundProfile.h" />
+    <ClInclude Include="src\audio\EngineSynthGenerator.h" />
+    <ClInclude Include="src\audio\EngineSynth.h" />
     <ClInclude Include="src\audio\VehicleSoundProfile.h" />
     <ClInclude Include="src\physics\VehicleConfig.h" />
+    <ClInclude Include="src\physics\VehicleEngineState.h" />
     <ClInclude Include="src\physics\VehiclePhysics.h" />
     <ClInclude Include="src\rendering\Material.h" />
     <ClInclude Include="src\rendering\mesh.h" />
@@ -181,8 +181,13 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\physics\PhysicsLayer.cpp" />
     <ClCompile Include="src\physics\PhysicsWorld.cpp" />
     <ClCompile Include="src\audio\AudioManager.cpp" />
+    <ClCompile Include="src\audio\EngineSynthGenerator.cpp" />
+    <ClCompile Include="src\audio\EngineSoundProfile.cpp" />
+    <ClCompile Include="src\audio\EngineSynth.cpp" />
+    <ClCompile Include="src\audio\miniaudio_impl.cpp" />
     <ClCompile Include="src\audio\VehicleSoundProfile.cpp" />
     <ClCompile Include="src\physics\VehicleConfig.cpp" />
+    <ClCompile Include="src\physics\VehicleEngineState.cpp" />
     <ClCompile Include="src\physics\VehiclePhysics.cpp" />
     <ClCompile Include="src\rendering\Material.cpp" />
     <ClCompile Include="src\rendering\Renderer.cpp" />
@@ -224,6 +229,7 @@ if exist "$(ProjectDir)..\dlls\irrKlang.dll" copy /Y "$(ProjectDir)..\dlls\irrKl
     <ClCompile Include="src\ui\SceneEditorVehicleRuntime.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleRuntimeBuild.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleSoundEditor.cpp" />
+    <ClCompile Include="src\ui\SceneEditorEngineSoundEditor.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleSoundRuntime.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleTelemetry.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleValidation.cpp" />

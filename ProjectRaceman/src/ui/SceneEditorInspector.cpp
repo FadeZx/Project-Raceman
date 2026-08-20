@@ -3445,15 +3445,55 @@ void SceneEditor::RenderInspectorPanel() {
                 if (onDirty_) onDirty_();
             }
             if (obj.hasVehicleSound && vehicleSoundOpen) {
-                const float editBtnWidth = 50.0f;
-                char profileBuf[512]{};
-                std::snprintf(profileBuf, sizeof(profileBuf), "%s", obj.vehicleSound.profilePath.c_str());
-                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - editBtnWidth - ImGui::GetStyle().ItemSpacing.x);
-                ImGui::InputText("##VehicleSoundProfile", profileBuf, sizeof(profileBuf), ImGuiInputTextFlags_ReadOnly);
+                // Every sound profile in the project, so one can be picked from a
+                // list instead of only by dragging it in.
+                std::vector<std::string> soundProfiles;
+                for (const std::string& projectFile : projectFiles_) {
+                    // Both asset kinds are valid here: .enginesound.json drives the
+                    // procedural synth, .vehiclesound.json the legacy sample layers.
+                    if (IsEngineSoundAssetPath(projectFile) || IsVehicleSoundAssetPath(projectFile)) {
+                        soundProfiles.push_back(projectFile);
+                    }
+                }
+
+                const std::string& currentProfile = obj.vehicleSound.profilePath;
+
+                // The buttons get their own row. Sharing a row with the combo
+                // clipped them off the right edge whenever the Inspector was
+                // narrow, which is most of the time.
+                ImGui::TextDisabled("Profile");
+                ImGui::SetNextItemWidth(-1.0f);
+
+                const std::string profilePreview = currentProfile.empty()
+                    ? std::string("(none)")
+                    : fs::path(currentProfile).filename().string();
+
+                if (ImGui::BeginCombo("##VehicleSoundProfile", profilePreview.c_str())) {
+                    if (ImGui::Selectable("(none)", currentProfile.empty())) {
+                        PushUndoState();
+                        obj.vehicleSound.profilePath.clear();
+                        if (onDirty_) onDirty_();
+                    }
+                    for (const std::string& profilePath : soundProfiles) {
+                        const std::string label = fs::path(profilePath).filename().string() + "##" + profilePath;
+                        if (ImGui::Selectable(label.c_str(), profilePath == currentProfile)) {
+                            PushUndoState();
+                            obj.vehicleSound.profilePath = profilePath;
+                            if (onDirty_) onDirty_();
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("%s", profilePath.c_str());
+                        }
+                    }
+                    if (soundProfiles.empty()) {
+                        ImGui::TextDisabled("No sound profiles in this project - use New");
+                    }
+                    ImGui::EndCombo();
+                }
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
                         const char* dragPath = static_cast<const char*>(payload->Data);
-                        if (dragPath && IsVehicleSoundAssetPath(dragPath)) {
+                        if (dragPath && (IsEngineSoundAssetPath(dragPath) || IsVehicleSoundAssetPath(dragPath))) {
                             PushUndoState();
                             obj.vehicleSound.profilePath = dragPath;
                             if (onDirty_) onDirty_();
@@ -3461,13 +3501,48 @@ void SceneEditor::RenderInspectorPanel() {
                     }
                     ImGui::EndDragDropTarget();
                 }
+
+                // Row 2: actions, sized to the panel so they always fit.
+                const float vsSpacing = ImGui::GetStyle().ItemSpacing.x;
+                const float vsButtonWidth =
+                    (std::max)(52.0f, (ImGui::GetContentRegionAvail().x - vsSpacing) * 0.5f);
+                if (ImGui::Button("New##VS", ImVec2(vsButtonWidth, 0.0f))) {
+                    // Drop it beside the vehicle's own config so a car's assets
+                    // stay together, rather than wherever the browser points.
+                    std::string directory;
+                    if (obj.hasVehicle && !obj.vehicle.configPath.empty()) {
+                        directory = ParentProjectDirectory(obj.vehicle.configPath);
+                    }
+                    std::string createdPath;
+                    // New profiles are procedural: the sample path is legacy.
+                    if (CreateEngineSoundAsset(obj.name, &createdPath, directory)) {
+                        PushUndoState();
+                        obj.vehicleSound.profilePath = createdPath;
+                        if (onDirty_) onDirty_();
+                        OpenEngineSoundEditor(createdPath);
+                    }
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Create a new sound profile next to this vehicle's config and assign it");
+                }
+
                 ImGui::SameLine();
-                ImGui::BeginDisabled(obj.vehicleSound.profilePath.empty());
-                if (ImGui::Button("Edit##VS", ImVec2(editBtnWidth, 0.0f))) {
-                    OpenVehicleSoundEditor(obj.vehicleSound.profilePath);
+                ImGui::BeginDisabled(currentProfile.empty());
+                if (ImGui::Button("Edit##VS", ImVec2(vsButtonWidth, 0.0f))) {
+                    if (IsEngineSoundAssetPath(currentProfile)) {
+                        OpenEngineSoundEditor(currentProfile);
+                    } else {
+                        OpenVehicleSoundEditor(currentProfile);
+                    }
                 }
                 ImGui::EndDisabled();
-                ImGui::TextDisabled("Profile");
+
+                if (currentProfile.empty()) {
+                    // A VehicleSound component with no profile is skipped entirely
+                    // by the runtime, which previously looked identical to broken audio.
+                    ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.28f, 1.0f),
+                                       "No profile assigned - this vehicle will be silent.");
+                }
             }
             }
 

@@ -4,6 +4,7 @@
 #include "SceneEditorVehicleTelemetry.h"
 #include "../physics/PhysicsWorld.h"
 #include "../physics/VehicleConfig.h"
+#include "../physics/VehicleEngineState.h"
 
 #include <glm/glm.hpp>
 
@@ -87,6 +88,9 @@ struct RuntimeVehicleInstance {
     float arcadeOversteerAmount{0.0f};
     float arcadeSpinAmount{0.0f};
     int arcadeGear{1};
+    // Inertial engine model layered on top of the kinematic arcade RPM. Drives
+    // the procedural engine sound; handling does not read it.
+    physics::VehicleEngineState engineState{};
     float smoothedWheelSteering{0.0f};
     bool smoothedWheelSteeringInitialized{false};
     WheelForceFeedbackRuntimeState forceFeedbackState{};

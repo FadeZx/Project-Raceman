@@ -136,16 +136,6 @@ $dllCandidates = @{
         (Join-Path $engineRoot "assimp-vc143-mt.dll"),
         (Join-Path $buildRoot "dlls\assimp-vc143-mt.dll")
     )
-    "irrKlang.dll" = @(
-        (Join-Path $binDir "irrKlang.dll"),
-        (Join-Path $engineRoot "irrKlang.dll"),
-        (Join-Path $buildRoot "dlls\irrKlang.dll")
-    )
-    "ikpMP3.dll" = @(
-        (Join-Path $binDir "ikpMP3.dll"),
-        (Join-Path $engineRoot "ikpMP3.dll"),
-        (Join-Path $buildRoot "dlls\ikpMP3.dll")
-    )
 }
 
 foreach ($name in $dllCandidates.Keys) {

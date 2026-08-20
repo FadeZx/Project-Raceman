@@ -52,8 +52,8 @@ struct VehicleSoundProfile {
     std::vector<VehicleSoundTriggerEntry> triggerSounds;
     float masterVolume{1.0f};
     float spatialBlend{1.0f};   // 0 = 2D, 1 = fully 3D
-    float minDistance{3.0f};    // irrKlang min distance (full volume)
-    float maxDistance{80.0f};   // irrKlang max distance (silence)
+    float minDistance{3.0f};    // distance of full volume
+    float maxDistance{80.0f};   // distance at which the voice is silent
 };
 
 // -------------------------------------------------------------------------

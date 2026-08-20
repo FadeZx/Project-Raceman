@@ -159,7 +159,8 @@ bool SceneEditor::CreateVehicleConfigAsset(const std::string& requestedName, std
     return true;
 }
 
-bool SceneEditor::CreateVehicleSoundAsset(const std::string& requestedName, std::string* outProfilePath) {
+bool SceneEditor::CreateVehicleSoundAsset(const std::string& requestedName, std::string* outProfilePath,
+                                          const std::string& directoryOverride) {
     std::string baseName = TrimCopyLocal(requestedName);
     if (baseName.empty()) {
         if (console_) {
@@ -191,7 +192,9 @@ bool SceneEditor::CreateVehicleSoundAsset(const std::string& requestedName, std:
     }
 
     const fs::path assetsRoot = FindAssetsRoot();
-    fs::path targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + sanitized + suffix);
+    const std::string targetDirectory = directoryOverride.empty() ? selectedProjectDirectory_
+                                                                  : NormalizeSlashes(directoryOverride);
+    fs::path targetPath = ProjectAssetPathToAbsolute(targetDirectory + "/" + sanitized + suffix);
     if (!IsUnderPath(targetPath, assetsRoot)) {
         if (console_) {
             console_->AddError("Vehicle sound profile creation blocked outside assets: " + sanitized);
@@ -201,7 +204,7 @@ bool SceneEditor::CreateVehicleSoundAsset(const std::string& requestedName, std:
 
     int duplicateIndex = 1;
     while (fs::exists(targetPath)) {
-        targetPath = ProjectAssetPathToAbsolute(selectedProjectDirectory_ + "/" + sanitized + "_" + std::to_string(duplicateIndex) + suffix);
+        targetPath = ProjectAssetPathToAbsolute(targetDirectory + "/" + sanitized + "_" + std::to_string(duplicateIndex) + suffix);
         ++duplicateIndex;
     }
 
@@ -248,6 +251,136 @@ void SceneEditor::OpenVehicleConfigEditor(const std::string& configPath) {
     showVehicleConfigEditor_ = true;
     vehicleConfigEditorFocusRequested_ = true;
     vehicleConfigEditorHighlightUntil_ = ImGui::GetTime() + 1.15;
+}
+
+void SceneEditor::PushEngineSoundUndoState() {
+    if (!showEngineSoundEditor_ || inspectedEngineSoundPath_.empty() || !inspectedEngineSoundLoaded_) {
+        return;
+    }
+    engineSoundUndoStack_.push_back({inspectedEngineSound_});
+    engineSoundRedoStack_.clear();
+    constexpr std::size_t maxHistory = 128;
+    if (engineSoundUndoStack_.size() > maxHistory) {
+        engineSoundUndoStack_.erase(engineSoundUndoStack_.begin());
+    }
+    engineSoundProfileDirty_ = true;
+}
+
+void SceneEditor::UndoEngineSound() {
+    if (engineSoundUndoStack_.empty() || !showEngineSoundEditor_) {
+        return;
+    }
+    engineSoundRedoStack_.push_back({inspectedEngineSound_});
+    inspectedEngineSound_ = engineSoundUndoStack_.back().profile;
+    engineSoundUndoStack_.pop_back();
+    engineSoundEditActive_ = false;
+    engineSoundProfileDirty_ = true;
+}
+
+void SceneEditor::RedoEngineSound() {
+    if (engineSoundRedoStack_.empty() || !showEngineSoundEditor_) {
+        return;
+    }
+    engineSoundUndoStack_.push_back({inspectedEngineSound_});
+    inspectedEngineSound_ = engineSoundRedoStack_.back().profile;
+    engineSoundRedoStack_.pop_back();
+    engineSoundEditActive_ = false;
+    engineSoundProfileDirty_ = true;
+}
+
+bool SceneEditor::CreateEngineSoundAsset(const std::string& requestedName, std::string* outProfilePath,
+                                         const std::string& directoryOverride) {
+    std::string baseName = TrimCopyLocal(requestedName);
+    if (baseName.empty()) {
+        if (console_) console_->AddError("Engine sound profile name cannot be empty.");
+        return false;
+    }
+
+    const std::string suffix = ".enginesound.json";
+    const std::string lowerBaseName = ToLowerCopy(baseName);
+    if (EndsWith(lowerBaseName, suffix)) {
+        baseName.resize(baseName.size() - suffix.size());
+    }
+
+    std::string sanitized;
+    sanitized.reserve(baseName.size());
+    for (char& ch : baseName) {
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (std::isalnum(uch) || ch == '_' || ch == '-' || ch == ' ') {
+            sanitized.push_back(ch == ' ' ? '_' : ch);
+        }
+    }
+    sanitized = TrimCopyLocal(sanitized);
+    if (sanitized.empty()) {
+        if (console_) console_->AddError("Engine sound profile name must contain letters or numbers.");
+        return false;
+    }
+
+    const fs::path assetsRoot = FindAssetsRoot();
+    const std::string targetDirectory = directoryOverride.empty() ? selectedProjectDirectory_
+                                                                  : NormalizeSlashes(directoryOverride);
+    fs::path targetPath = ProjectAssetPathToAbsolute(targetDirectory + "/" + sanitized + suffix);
+    if (!IsUnderPath(targetPath, assetsRoot)) {
+        if (console_) console_->AddError("Engine sound profile creation blocked outside assets: " + sanitized);
+        return false;
+    }
+
+    int duplicateIndex = 1;
+    while (fs::exists(targetPath)) {
+        targetPath = ProjectAssetPathToAbsolute(targetDirectory + "/" + sanitized + "_" + std::to_string(duplicateIndex) + suffix);
+        ++duplicateIndex;
+    }
+
+    raceman::EngineSoundProfile profile = raceman::EngineSoundProfileLoader::makeDefault();
+    profile.name = sanitized;
+
+    std::string error;
+    fs::create_directories(targetPath.parent_path());
+    if (!raceman::EngineSoundProfileLoader::saveToFile(targetPath.string(), profile, &error)) {
+        if (console_) {
+            console_->AddError(error.empty() ? ("Failed to create engine sound profile: " + sanitized) : error);
+        }
+        return false;
+    }
+
+    const std::string createdProjectPath = ToProjectAssetPath(targetPath, assetsRoot);
+    if (outProfilePath) {
+        *outProfilePath = createdProjectPath;
+    }
+    RefreshProjectFiles();
+    if (console_) console_->AddLog("Created engine sound profile: " + createdProjectPath);
+    return true;
+}
+
+void SceneEditor::OpenEngineSoundEditor(const std::string& profilePath) {
+    if (profilePath.empty()) {
+        return;
+    }
+    const std::string normalizedPath = NormalizeSlashes(profilePath);
+    const bool pathChanged = inspectedEngineSoundPath_ != normalizedPath;
+    inspectedEngineSoundPath_ = normalizedPath;
+    selectedProjectFile_ = inspectedEngineSoundPath_;
+    selectedProjectDirectory_ = ParentProjectDirectory(inspectedEngineSoundPath_);
+    if (pathChanged) {
+        inspectedEngineSoundLoaded_ = false;
+        inspectedEngineSoundError_.clear();
+        engineSoundUndoStack_.clear();
+        engineSoundRedoStack_.clear();
+        engineSoundEditActive_ = false;
+        engineSoundProfileDirty_ = true;
+    }
+    showEngineSoundEditor_ = true;
+    engineSoundEditorFocusRequested_ = true;
+    engineSoundEditorHighlightUntil_ = ImGui::GetTime() + 1.15;
+}
+
+void SceneEditor::StopEngineSoundAudition() {
+    if (audioManager_ != nullptr && engineSoundAuditionVoice_ != nullptr) {
+        audioManager_->StopVoice(engineSoundAuditionVoice_);
+    }
+    engineSoundAuditionVoice_ = nullptr;
+    engineSoundAuditionSynth_.reset();
+    engineSoundAuditionSweep_ = false;
 }
 
 void SceneEditor::OpenVehicleSoundEditor(const std::string& profilePath) {

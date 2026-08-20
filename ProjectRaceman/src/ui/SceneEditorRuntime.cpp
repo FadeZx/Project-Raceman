@@ -4,7 +4,6 @@
 #include "../physics/PhysicsWorld.h"
 #include "../scripting/ScriptRegistry.h"
 
-#include <irrKlang/irrKlang.h>
 #include <imgui/imgui.h>
 #include <GLFW/glfw3.h>
 #include <algorithm>
@@ -683,12 +682,10 @@ void SceneEditor::RebuildScriptRuntime() {
 
 
 void SceneEditor::ClearAudioRuntime() {
-    // Stop and drop all audio source sounds.
-    for (auto& inst : runtimeAudioSources_) {
-        if (inst.sound) {
-            inst.sound->stop();
-            inst.sound->drop();
-            inst.sound = nullptr;
+    // Stop and release all audio source voices.
+    if (audioManager_) {
+        for (auto& inst : runtimeAudioSources_) {
+            audioManager_->StopVoice(inst.voice);
         }
     }
     runtimeAudioSources_.clear();
@@ -708,19 +705,19 @@ void SceneEditor::RebuildAudioRuntime() {
 
         const std::string absPath = ProjectAssetPathToAbsolute(obj.audioSource.clipPath).string();
         const glm::vec3 pos = GetObjectWorldPosition(i);
-        const bool is3D = obj.audioSource.spatialBlend > 0.5f;
-        irrklang::ISound* snd = is3D
-            ? audioManager_->Play3D(absPath, pos, obj.audioSource.loop, /*paused=*/false)
-            : audioManager_->Play2D(absPath, obj.audioSource.loop, /*paused=*/false);
-        if (snd) {
-            snd->setVolume(obj.audioSource.volume);
-            snd->setPlaybackSpeed(obj.audioSource.pitch);
-            if (is3D) {
-                snd->setMinDistance(obj.audioSource.minDistance);
-            }
+        const bool is3D = obj.audioSource.spatialBlend > 0.0f;
+        AudioVoice* voice = is3D
+            ? audioManager_->Play3D(absPath, pos, obj.audioSource.loop)
+            : audioManager_->Play2D(absPath, obj.audioSource.loop);
+        if (voice) {
+            audioManager_->SetVoiceVolume(voice, obj.audioSource.volume);
+            audioManager_->SetVoicePitch(voice, obj.audioSource.pitch);
+            audioManager_->SetVoiceAttenuation(voice, obj.audioSource.minDistance,
+                                               obj.audioSource.maxDistance,
+                                               obj.audioSource.spatialBlend);
             RuntimeAudioSourceInstance inst;
             inst.objectId = obj.id;
-            inst.sound    = snd;
+            inst.voice    = voice;
             runtimeAudioSources_.push_back(std::move(inst));
         }
     }
@@ -728,34 +725,94 @@ void SceneEditor::RebuildAudioRuntime() {
     RebuildVehicleSoundRuntime();
 }
 
-void SceneEditor::UpdateAudio(float deltaTime) {
-    if (!audioManager_ || !audioManager_->IsInitialized()) return;
-    if (!scriptsRunning_ || scriptsPaused_) return;
-
-    // -- Update AudioListener position (first enabled one wins) --
+bool SceneEditor::HasActiveAudioListener() const {
     for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
         const SceneObject& obj = objects_[i];
         if (!IsObjectEffectivelyEnabled(i) || !obj.hasAudioListener || !obj.audioListener.enabled) continue;
-        const glm::mat4 worldMat = GetObjectWorldMatrix(i);
-        const glm::vec3 pos     = glm::vec3(worldMat[3]);
-        const glm::vec3 forward = glm::normalize(glm::vec3(-worldMat[2]));
-        const glm::vec3 up      = glm::normalize(glm::vec3(worldMat[1]));
-        audioManager_->SetListenerTransform(pos, forward, up);
-        break;
+        return true;
+    }
+    return false;
+}
+
+glm::vec3 SceneEditor::GetActiveAudioListenerPosition() const {
+    glm::vec3 position(0.0f), forward(0.0f, 0.0f, -1.0f), up(0.0f, 1.0f, 0.0f);
+    GetActiveAudioListenerPose(position, forward, up);
+    return position;
+}
+
+bool SceneEditor::GetActiveAudioListenerPose(glm::vec3& outPosition, glm::vec3& outForward,
+                                             glm::vec3& outUp) const {
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& obj = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !obj.hasAudioListener || !obj.audioListener.enabled) continue;
+
+        glm::mat4 worldMatrix = GetObjectWorldMatrix(i);
+
+        // A listener riding a Cinemachine-driven camera must use the brain pose,
+        // exactly as the renderer does in TryGetGameCamera. Otherwise it stays at
+        // the authored transform and every sound fades as the car drives off.
+        if (scriptsRunning_ && obj.hasCamera && runtimeCameraBrainState_.initialized) {
+            worldMatrix = glm::translate(glm::mat4(1.0f), runtimeCameraBrainState_.position) *
+                          glm::toMat4(runtimeCameraBrainState_.rotation);
+        }
+
+        outPosition = glm::vec3(worldMatrix[3]);
+        outForward  = glm::normalize(glm::vec3(worldMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+        outUp       = glm::normalize(glm::vec3(worldMatrix * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
+        return true;
+    }
+
+    // No AudioListener component anywhere. Without a fallback the listener would
+    // silently stay at the world origin, so 3D sounds are audible but never pan
+    // or attenuate with the camera - which looks exactly like broken audio.
+    // Hearing from the active camera is the sane default.
+    if (scriptsRunning_ && runtimeCameraBrainState_.initialized) {
+        const glm::mat4 brainMatrix =
+            glm::translate(glm::mat4(1.0f), runtimeCameraBrainState_.position) *
+            glm::toMat4(runtimeCameraBrainState_.rotation);
+        outPosition = glm::vec3(brainMatrix[3]);
+        outForward  = glm::normalize(glm::vec3(brainMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+        outUp       = glm::normalize(glm::vec3(brainMatrix * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
+        return true;
+    }
+
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& obj = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !obj.hasCamera || !obj.camera.enabled) continue;
+        const glm::mat4 worldMatrix = GetObjectWorldMatrix(i);
+        outPosition = glm::vec3(worldMatrix[3]);
+        outForward  = glm::normalize(glm::vec3(worldMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+        outUp       = glm::normalize(glm::vec3(worldMatrix * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
+        return true;
+    }
+    return false;
+}
+
+void SceneEditor::UpdateAudio(float deltaTime) {
+    if (!audioManager_ || !audioManager_->IsInitialized()) return;
+    audioManager_->Update(); // reap finished one-shots
+    if (!scriptsRunning_ || scriptsPaused_) return;
+
+    // -- Update AudioListener (first enabled one wins) --
+    {
+        glm::vec3 listenerPos(0.0f), listenerForward(0.0f, 0.0f, -1.0f), listenerUp(0.0f, 1.0f, 0.0f);
+        if (GetActiveAudioListenerPose(listenerPos, listenerForward, listenerUp)) {
+            audioManager_->SetListenerTransform(listenerPos, listenerForward, listenerUp);
+        }
     }
 
     // -- Update 3D audio source positions --
     for (auto& inst : runtimeAudioSources_) {
-        if (!inst.sound || inst.sound->isFinished()) continue;
+        if (!inst.voice || audioManager_->IsVoiceFinished(inst.voice)) continue;
         const int idx = FindObjectIndexById(inst.objectId);
         if (idx < 0) continue;
         const AudioSourceComponent& source = objects_[idx].audioSource;
-        inst.sound->setVolume(source.volume);
-        inst.sound->setPlaybackSpeed(source.pitch);
-        if (source.spatialBlend > 0.5f) {
-            const glm::vec3 pos = GetObjectWorldPosition(idx);
-            inst.sound->setPosition(irrklang::vec3df(pos.x, pos.y, pos.z));
-            inst.sound->setMinDistance(source.minDistance);
+        audioManager_->SetVoiceVolume(inst.voice, source.volume);
+        audioManager_->SetVoicePitch(inst.voice, source.pitch);
+        if (source.spatialBlend > 0.0f) {
+            audioManager_->SetVoicePosition(inst.voice, GetObjectWorldPosition(idx));
+            audioManager_->SetVoiceAttenuation(inst.voice, source.minDistance,
+                                               source.maxDistance, source.spatialBlend);
         }
     }
 
@@ -813,6 +870,147 @@ void SceneEditor::HandleConsoleCommand(const std::string& command) {
         }
         for (const ScriptDescriptor& script : scripts) {
             console_->AddLog(script.name + " (" + script.path + ")");
+        }
+        return;
+    }
+
+    // Dumps live vehicle audio state. Answers "is it not playing, or is it
+    // playing and inaudible?" without guessing.
+    if (trimmed == "audio.debug") {
+        if (!console_) return;
+        if (!audioManager_ || !audioManager_->IsInitialized()) {
+            console_->AddError("Audio engine is not initialized.");
+            return;
+        }
+        char line[320];
+        std::snprintf(line, sizeof(line), "Output latency %.1f ms | listener %s | vehicle sound instances: %d",
+                      audioManager_->GetOutputLatencyMs(),
+                      HasActiveAudioListener() ? "AudioListener component"
+                                               : "no component - falling back to active camera",
+                      static_cast<int>(runtimeVehicleSounds_.size()));
+        console_->AddLog(line);
+
+        if (!scriptsRunning_) {
+            console_->AddWarning("Not in play mode - vehicle sounds only run during play. Press Play, then run this again.");
+        }
+
+        // Zero instances means the rebuild filter rejected every object. Report
+        // which condition failed rather than leaving it to guesswork.
+        if (runtimeVehicleSounds_.empty()) {
+            int candidates = 0;
+            for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+                const SceneObject& obj = objects_[i];
+                if (!obj.hasVehicleSound && !obj.hasVehicle) continue;
+                ++candidates;
+
+                std::string why;
+                if (!obj.hasVehicleSound) {
+                    why = "no VehicleSound component";
+                } else if (!obj.vehicleSound.enabled) {
+                    why = "VehicleSound component is disabled";
+                } else if (obj.vehicleSound.profilePath.empty()) {
+                    why = "VehicleSound has no profile assigned";
+                } else if (!obj.hasVehicle) {
+                    why = "no Vehicle component on THIS object (both must be on the same object)";
+                } else if (!obj.vehicle.enabled) {
+                    why = "Vehicle component is disabled";
+                } else if (!IsObjectEffectivelyEnabled(i)) {
+                    why = "object or a parent is disabled";
+                } else {
+                    why = "passes all checks - rebuild may not have run; leave and re-enter play mode";
+                }
+
+                std::snprintf(line, sizeof(line), "  '%s': %s%s%s",
+                              obj.name.c_str(), why.c_str(),
+                              obj.hasVehicleSound && !obj.vehicleSound.profilePath.empty() ? "  profile=" : "",
+                              obj.hasVehicleSound ? obj.vehicleSound.profilePath.c_str() : "");
+                console_->AddWarning(line);
+            }
+            if (candidates == 0) {
+                console_->AddWarning("  No object in the scene has a Vehicle or VehicleSound component.");
+            }
+        }
+
+        const glm::vec3 listenerPos = GetActiveAudioListenerPosition();
+        for (const auto& inst : runtimeVehicleSounds_) {
+            const int idx = FindObjectIndexById(inst.vehicleObjectId);
+            const glm::vec3 vehiclePos = (idx >= 0) ? GetObjectWorldPosition(idx) : glm::vec3(0.0f);
+            const float distance = glm::length(vehiclePos - listenerPos);
+
+            const RuntimeVehicleInstance* rv = nullptr;
+            for (const auto& v : runtimeVehicles_) {
+                if (v.objectId == inst.vehicleObjectId) { rv = &v; break; }
+            }
+
+            std::snprintf(line, sizeof(line),
+                          "  '%s' [%s]: rpm=%.0f load=%.2f throttle=%.2f gear=%d boost=%.2f%s%s | distance %.1f m",
+                          inst.profile.name.c_str(),
+                          inst.usesSynth ? "synth" : "samples",
+                          rv ? rv->engineState.rpm : 0.0f,
+                          rv ? rv->engineState.load : 0.0f,
+                          rv ? rv->engineState.throttle : 0.0f,
+                          rv ? rv->arcadeGear : 0,
+                          rv ? rv->engineState.boost : 0.0f,
+                          (rv && rv->engineState.limiterCut) ? " LIMITER" : "",
+                          (rv && rv->engineState.shiftCut) ? " SHIFTCUT" : "",
+                          distance);
+            console_->AddLog(line);
+
+            if (inst.usesSynth) {
+                std::snprintf(line, sizeof(line),
+                              "    synth voice=%s cylinders=%d peak=%.3f frames=%lld",
+                              inst.synthVoice ? "ok" : "NULL",
+                              static_cast<int>(inst.engineProfile.cylinders.size()),
+                              inst.synth ? inst.synth->GetLastPeak() : 0.0f,
+                              inst.synth ? inst.synth->GetFramesRendered() : 0LL);
+                console_->AddLog(line);
+                continue;
+            }
+
+            for (std::size_t li = 0; li < inst.layers.size(); ++li) {
+                const auto& ls = inst.layers[li];
+                const std::string& clip = (li < inst.profile.engineLayers.size())
+                    ? inst.profile.engineLayers[li].clipPath : std::string();
+                std::snprintf(line, sizeof(line),
+                              "    layer %d %-38s voice=%s vol=%.3f pitch=%.2f",
+                              static_cast<int>(li), clip.c_str(),
+                              ls.voice ? "ok " : "NULL", ls.smoothVolume, ls.smoothPitch);
+                console_->AddLog(line);
+            }
+        }
+        return;
+    }
+
+    // Plays a procedural voice through the synth data source, so the audio path
+    // can be checked without entering play mode.
+    if (trimmed == "audio.synthtest" || trimmed == "audio.synthstop") {
+        if (!audioManager_ || !audioManager_->IsInitialized()) {
+            if (console_) console_->AddError("Audio engine is not initialized.");
+            return;
+        }
+        if (synthTestVoice_ != nullptr) {
+            audioManager_->StopVoice(synthTestVoice_);
+            synthTestGenerator_.reset();
+            if (console_) console_->AddLog("Synth test tone stopped.");
+            return;
+        }
+        if (trimmed == "audio.synthstop") {
+            if (console_) console_->AddLog("No synth test tone is playing.");
+            return;
+        }
+        synthTestGenerator_ = std::make_shared<EngineSynthTestToneGenerator>(220.0f, 0.25f);
+        synthTestVoice_ = audioManager_->CreateSynthVoice2D(synthTestGenerator_);
+        if (console_) {
+            if (synthTestVoice_ != nullptr) {
+                char message[160];
+                std::snprintf(message, sizeof(message),
+                              "Synth test tone playing (220 Hz, output latency %.1f ms). Run again to stop.",
+                              audioManager_->GetOutputLatencyMs());
+                console_->AddLog(message);
+            } else {
+                synthTestGenerator_.reset();
+                console_->AddError("Synth voice creation failed - see stdout.");
+            }
         }
         return;
     }

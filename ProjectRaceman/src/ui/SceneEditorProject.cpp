@@ -3511,6 +3511,7 @@ void SceneEditor::RenderProjectPanel() {
                     const bool isTrack = IsTrackAssetPath(file);
                     const bool isVehicleConfig = IsVehicleConfigAssetPath(file);
                     const bool isVehicleSound = IsVehicleSoundAssetPath(file);
+                    const bool isEngineSound = IsEngineSoundAssetPath(file);
                     std::string filename = ProjectAssetDisplayFilename(file);
                     unsigned int packagePreviewTexture = 0;
                     if (isMesh && renamingProjectFile_ != file) {
@@ -3555,6 +3556,8 @@ void SceneEditor::RenderProjectPanel() {
                                     OpenTrackGenerator(file);
                                 } else if (isVehicleConfig) {
                                     OpenVehicleConfigEditor(file);
+                                } else if (isEngineSound) {
+                                    OpenEngineSoundEditor(file);
                                 } else if (isVehicleSound) {
                                     OpenVehicleSoundEditor(file);
                                 } else if (isPrefab) {
@@ -3664,6 +3667,10 @@ void SceneEditor::RenderProjectPanel() {
                                     } else if (console_) {
                                         console_->AddError("Failed to open project file: " + file);
                                     }
+                                }
+                            } else if (isEngineSound) {
+                                if (ImGui::MenuItem("Edit")) {
+                                    OpenEngineSoundEditor(file);
                                 }
                             } else if (isVehicleSound) {
                                 if (ImGui::MenuItem("Edit")) {

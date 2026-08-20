@@ -1,23 +1,26 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <string>
+#include "EngineSynthGenerator.h"
 
-// Forward-declare irrKlang types so callers don't need to pull in irrKlang.h
-namespace irrklang {
-class ISoundEngine;
-class ISound;
-}
+#include <glm/glm.hpp>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace raceman {
 
-// Thin wrapper around irrKlang's ISoundEngine.
+// Opaque handle to a playing voice. Allocated and owned by AudioManager; the
+// pointer stays stable for the life of the voice. Release with StopVoice().
+struct AudioVoice;
+
+// Thin wrapper around miniaudio's ma_engine.
 // Owned by Application, passed as a raw pointer to SceneEditor (same pattern as Console*).
-// All sound handles (ISound*) returned by Play* are owned by irrKlang; callers must call
-// drop() on them when done, or just let the engine clean up on Shutdown().
+//
+// miniaudio replaced irrKlang because irrKlang's streaming path buffers ~1s of
+// audio ahead of the mixer, which makes live procedural synthesis impossible.
 class AudioManager {
 public:
-    AudioManager() = default;
+    AudioManager();
     ~AudioManager();
 
     AudioManager(const AudioManager&) = delete;
@@ -25,31 +28,52 @@ public:
 
     bool Initialize();
     void Shutdown();
-    bool IsInitialized() const { return engine_ != nullptr; }
+    bool IsInitialized() const;
+
+    // Reaps finished one-shots. Call once per frame.
+    void Update();
 
     // 3D listener — call once per frame from the active AudioListener object
     void SetListenerTransform(const glm::vec3& position, const glm::vec3& forward, const glm::vec3& up);
 
-    // Play a 3D spatialised sound at a world position.
-    // Returns nullptr on failure. Caller must call ->drop() when done.
-    irrklang::ISound* Play3D(const std::string& path, const glm::vec3& position,
-                             bool loop = false, bool startPaused = false);
+    // --- tracked voices (caller keeps the handle and must StopVoice it) ---
+    AudioVoice* Play3D(const std::string& path, const glm::vec3& position, bool loop = false);
+    AudioVoice* Play2D(const std::string& path, bool loop = false);
 
-    // Play a 2D (non-spatialised) sound.
-    // Returns nullptr on failure. Caller must call ->drop() when done.
-    irrklang::ISound* Play2D(const std::string& path,
-                             bool loop = false, bool startPaused = false);
+    // --- procedural voices ---
+    AudioVoice* CreateSynthVoice3D(const std::shared_ptr<EngineSynthGenerator>& generator,
+                                   const glm::vec3& position);
+    AudioVoice* CreateSynthVoice2D(const std::shared_ptr<EngineSynthGenerator>& generator);
+
+    // --- fire and forget (engine owns the lifetime, reaped in Update) ---
+    void PlayOneShot2D(const std::string& path, float volume = 1.0f);
+    void PlayOneShot3D(const std::string& path, const glm::vec3& position, float volume = 1.0f);
+
+    // --- voice control (all null-safe) ---
+    void StopVoice(AudioVoice*& voice);
+    void SetVoiceVolume(AudioVoice* voice, float volume);
+    void SetVoicePitch(AudioVoice* voice, float pitch);
+    void SetVoicePosition(AudioVoice* voice, const glm::vec3& position);
+    // spatialBlend 0 = fully 2D, 1 = fully 3D. minDistance/maxDistance in metres.
+    void SetVoiceAttenuation(AudioVoice* voice, float minDistance, float maxDistance, float spatialBlend);
+    bool IsVoiceFinished(const AudioVoice* voice) const;
 
     void SetMasterVolume(float volume);
     float GetMasterVolume() const { return masterVolume_; }
 
-    // Pre-load a sound file into irrKlang's cache. Optional — play will auto-load.
+    // Optional: warm the resource-manager cache. Play* will auto-load otherwise.
     void Preload(const std::string& path);
 
-    irrklang::ISoundEngine* GetEngine() const { return engine_; }
+    // Measured output buffer depth in milliseconds, or -1 before it is known.
+    // This is the parameter-to-ear latency the synth has to live with.
+    float GetOutputLatencyMs() const;
 
 private:
-    irrklang::ISoundEngine* engine_{nullptr};
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+
+    AudioVoice* TrackVoice(std::unique_ptr<AudioVoice> voice);
+
     float masterVolume_{1.0f};
 };
 

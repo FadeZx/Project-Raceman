@@ -28,11 +28,12 @@
 #include "../rendering/PrimitiveMeshes.h"
 #include "../scripting/ObjectScript.h"
 #include "../audio/VehicleSoundProfile.h"
+#include "../audio/AudioManager.h"
+#include "../audio/EngineSoundProfile.h"
+#include "../audio/EngineSynth.h"
 #include "../rendering/SkyboxController.h"
 #include "TrackGenerator.h"
 #include "ObjImport.h"
-
-namespace irrklang { class ISound; }
 
 namespace raceman {
 
@@ -220,6 +221,7 @@ private:
     void RenderShaderCodeAssetInspector();
     void RenderVehicleConfigEditorWindow();
     void RenderVehicleSoundEditorWindow();
+    void RenderEngineSoundEditorWindow();
     void RenderVehicleComponentInspector(SceneObject& object,
                                          SceneInspectorComponentType& reorderDraggedType,
                                          SceneInspectorComponentType& reorderTargetType);
@@ -267,6 +269,15 @@ private:
     void UpdateVehicleSoundRuntime(float deltaTime);
     void PlayVehicleSoundStopTriggers();
     void UpdateAudio(float deltaTime);
+    // Active AudioListener lookup, shared by the audio update and audio.debug.
+    bool HasActiveAudioListener() const;
+    glm::vec3 GetActiveAudioListenerPosition() const;
+    // Resolves where the player actually hears from. Cinemachine drives the live
+    // camera through runtimeCameraBrainState_ and never writes back to the
+    // camera object's transform, so reading the transform leaves the listener
+    // parked at the authored pose while the car drives away.
+    bool GetActiveAudioListenerPose(glm::vec3& outPosition, glm::vec3& outForward,
+                                    glm::vec3& outUp) const;
     void RestoreFromPlayModeSnapshot();
     void TickPlayModeLoading();
     void RenderPlayModeLoadingPopup();
@@ -294,6 +305,7 @@ private:
     // component has Debug Draw enabled.
     void SubmitVehicleChassisCollisionWireframe(Renderer& renderer, int objectIndex, const glm::vec4& colorOverride, bool useColorOverride);
     void SubmitAllColliders(Renderer& renderer);
+    void SubmitAudioGizmos(Renderer& renderer);
     void SubmitCullingDebug(Renderer& renderer);
     void TrySelectObjectAtMouse(Renderer& renderer);
     void PushUndoState();
@@ -346,7 +358,10 @@ private:
     // changed on disk, so saving in an external IDE updates the viewport live.
     void TickShaderCodeWatcher(float deltaTime);
     bool CreateVehicleConfigAsset(const std::string& requestedName, std::string* outConfigPath = nullptr);
-    bool CreateVehicleSoundAsset(const std::string& requestedName, std::string* outProfilePath = nullptr);
+    // directoryOverride places the asset next to a related asset (e.g. the
+    // vehicle config) instead of wherever the project browser is pointing.
+    bool CreateVehicleSoundAsset(const std::string& requestedName, std::string* outProfilePath = nullptr,
+                                 const std::string& directoryOverride = std::string());
     bool CreateSceneAsset(const std::string& requestedName, std::string* outScenePath = nullptr);
     bool CreateProjectFolder(const std::string& requestedName);
     bool SaveObjectAsPrefab(int objectIndex, const std::string& path);
@@ -387,6 +402,16 @@ private:
     void OpenShaderGraphEditor(const std::string& graphPath);
     void OpenVehicleConfigEditor(const std::string& configPath);
     void OpenVehicleSoundEditor(const std::string& profilePath);
+    void OpenEngineSoundEditor(const std::string& profilePath);
+    void PushEngineSoundUndoState();
+    void UndoEngineSound();
+    void RedoEngineSound();
+    bool CreateEngineSoundAsset(const std::string& requestedName, std::string* outProfilePath = nullptr,
+                                const std::string& directoryOverride = std::string());
+    void StopEngineSoundAudition();
+    // Re-bakes the edited profile into any vehicle already playing it, so tuning
+    // is heard on the car in play mode rather than only in the audition voice.
+    void ApplyEngineSoundEditsToRuntime();
     void OpenTrackGenerator(const std::string& trackPath);
     void RenderTrackGeneratorWindow();
     void HandleTrackDrawingInput();
@@ -568,6 +593,30 @@ private:
     bool vehicleSoundEditActive_{false};
     bool vehicleSoundEditorFocusRequested_{false};
     double vehicleSoundEditorHighlightUntil_{0.0};
+
+    // --- Engine Sound (procedural synth) editor ---
+    bool showEngineSoundEditor_{false};
+    std::string inspectedEngineSoundPath_;
+    EngineSoundProfile inspectedEngineSound_{};
+    bool inspectedEngineSoundLoaded_{false};
+    std::string inspectedEngineSoundError_;
+    bool engineSoundEditorHovered_{false};
+    bool engineSoundEditorFocused_{false};
+    bool engineSoundEditActive_{false};
+    bool engineSoundEditorFocusRequested_{false};
+    double engineSoundEditorHighlightUntil_{0.0};
+    bool engineSoundProfileDirty_{true};   // profile changed, needs re-bake
+    // Live audition. Engine sound is tuned by ear, so the panel drives its own
+    // 2D synth voice instead of requiring a trip through play mode.
+    std::shared_ptr<EngineSynth> engineSoundAuditionSynth_;
+    AudioVoice* engineSoundAuditionVoice_{nullptr};
+    float engineSoundAuditionRpm_{900.0f};
+    float engineSoundAuditionThrottle_{0.0f};
+    float engineSoundAuditionRedline_{7000.0f};
+    float engineSoundAuditionIdle_{900.0f};
+    bool engineSoundAuditionSweep_{false};
+    float engineSoundAuditionSweepT_{0.0f};
+    int engineSoundSelectedOrder_{0};
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
     int pendingLodLevelIndex_{-1};
     bool scriptsRunning_{false};
@@ -636,13 +685,13 @@ private:
     // Audio source runtime (one per AudioSource component)
     struct RuntimeAudioSourceInstance {
         std::string objectId;
-        irrklang::ISound* sound{nullptr};
+        AudioVoice* voice{nullptr};
     };
     std::vector<RuntimeAudioSourceInstance> runtimeAudioSources_;
 
     // Vehicle sound runtime (one per VehicleSound component)
     struct RuntimeVehicleSoundLayerState {
-        irrklang::ISound* sound{nullptr};
+        AudioVoice* voice{nullptr};
         float smoothVolume{0.0f};
         float smoothPitch{1.0f};
     };
@@ -651,12 +700,26 @@ private:
         std::string vehicleObjectId;    // same object that has VehicleComponent
         VehicleSoundProfile profile;
         std::vector<RuntimeVehicleSoundLayerState> layers;
+
+        // Procedural path. When the assigned asset is a .enginesound.json the
+        // pitched sample layers above are unused and a single synth voice
+        // replaces them entirely.
+        bool usesSynth{false};
+        EngineSoundProfile engineProfile;
+        std::shared_ptr<EngineSynth> synth;
+        AudioVoice* synthVoice{nullptr};
+        bool lastLimiterCut{false};
+        float overrunPopCooldown{0.0f};
         // Trigger detection state
         int  lastGear{0};
         bool lastThrottleHigh{false};   // throttle was >0.8 last frame
         float lastLateralSpeed{0.0f};
     };
     std::vector<RuntimeVehicleSoundInstance> runtimeVehicleSounds_;
+
+    // Phase 0 spike state for the "audio.synthtest" console command.
+    std::shared_ptr<EngineSynthGenerator> synthTestGenerator_;
+    AudioVoice* synthTestVoice_{nullptr};
 
     int renamingObjectIndex_{-1};
     bool focusObjectRename_{false};
@@ -774,6 +837,11 @@ private:
     };
     std::vector<VehicleSoundHistoryState> vehicleSoundUndoStack_;
     std::vector<VehicleSoundHistoryState> vehicleSoundRedoStack_;
+    struct EngineSoundHistoryState {
+        EngineSoundProfile profile;
+    };
+    std::vector<EngineSoundHistoryState> engineSoundUndoStack_;
+    std::vector<EngineSoundHistoryState> engineSoundRedoStack_;
     bool showTrackGenerator_{false};
     TrackGeneratorMode trackGeneratorMode_{TrackGeneratorMode::Preset};
     TrackSource trackSource_{};

@@ -1389,6 +1389,70 @@ void SceneEditor::SubmitAllColliders(Renderer& renderer) {
     }
 }
 
+// Unity-style audio marker: a small speaker cone plus radiating arcs, drawn for
+// every object that emits sound so they are findable in the viewport.
+void SubmitAudioIcon(Renderer& renderer, const glm::mat4& worldMatrix, const glm::vec4& color,
+                     DebugLineDepthMode depthMode) {
+    const glm::vec3 origin = TransformPoint(worldMatrix, {0.0f, 0.0f, 0.0f});
+    const glm::vec3 right  = TransformDirection(worldMatrix, {1.0f, 0.0f, 0.0f});
+    const glm::vec3 up     = TransformDirection(worldMatrix, {0.0f, 1.0f, 0.0f});
+    constexpr float width = 2.0f;
+    constexpr float s = 0.22f;
+
+    auto point = [&](float x, float y) {
+        return origin + right * (x * s) + up * (y * s);
+    };
+    auto line = [&](float x0, float y0, float x1, float y1) {
+        renderer.SubmitLine({point(x0, y0), point(x1, y1), color, width, depthMode});
+    };
+
+    // Speaker body and cone.
+    line(-0.9f, -0.35f, -0.45f, -0.35f);
+    line(-0.45f, -0.35f, -0.45f,  0.35f);
+    line(-0.45f,  0.35f, -0.9f,   0.35f);
+    line(-0.9f,   0.35f, -0.9f,  -0.35f);
+    line(-0.45f, -0.35f,  0.05f, -0.85f);
+    line(-0.45f,  0.35f,  0.05f,  0.85f);
+    line( 0.05f, -0.85f,  0.05f,  0.85f);
+
+    // Radiating arcs, approximated with short chords.
+    for (int arc = 1; arc <= 2; ++arc) {
+        const float radius = 0.35f + 0.35f * static_cast<float>(arc);
+        constexpr int kSegments = 6;
+        for (int i = 0; i < kSegments; ++i) {
+            const float a0 = -0.7f + 1.4f * (static_cast<float>(i) / kSegments);
+            const float a1 = -0.7f + 1.4f * (static_cast<float>(i + 1) / kSegments);
+            line(0.25f + radius * std::cos(a0), radius * std::sin(a0),
+                 0.25f + radius * std::cos(a1), radius * std::sin(a1));
+        }
+    }
+}
+
+void SceneEditor::SubmitAudioGizmos(Renderer& renderer) {
+    constexpr DebugLineDepthMode depthMode = DebugLineDepthMode::DepthTestedOverlay;
+    const glm::vec4 sourceColor {0.35f, 0.85f, 1.00f, 1.0f};
+    const glm::vec4 engineColor {1.00f, 0.62f, 0.25f, 1.0f};
+    const glm::vec4 listenerColor{0.55f, 1.00f, 0.55f, 1.0f};
+
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& object = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i)) {
+            continue;
+        }
+        const bool hasSource   = object.hasAudioSource && object.audioSource.enabled;
+        const bool hasEngine   = object.hasVehicleSound && object.vehicleSound.enabled;
+        const bool hasListener = object.hasAudioListener && object.audioListener.enabled;
+        if (!hasSource && !hasEngine && !hasListener) {
+            continue;
+        }
+        const glm::mat4 matrix = GetObjectDisplayWorldMatrix(i);
+        // Engine sound wins the colour when an object has several, since that is
+        // the one worth spotting on a vehicle.
+        const glm::vec4 color = hasEngine ? engineColor : (hasSource ? sourceColor : listenerColor);
+        SubmitAudioIcon(renderer, matrix, color, depthMode);
+    }
+}
+
 void SceneEditor::SubmitGizmo(Renderer& renderer) {
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(objects_.size())) {
         return;

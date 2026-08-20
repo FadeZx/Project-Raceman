@@ -801,7 +801,7 @@ Application::~Application() {
     if (config_.enableImGui) {
         ShutdownImGui();
     }
-    audioManager_.reset(); // shuts down irrKlang
+    audioManager_.reset(); // shuts down miniaudio
     hdrPresenter_.reset(); // release DXGI/WGL resources while the GL context is alive
     renderer_.reset();
     debugUi_.reset();

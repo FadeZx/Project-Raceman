@@ -477,6 +477,10 @@ inline bool IsPrefabAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".prefab.json");
 }
 
+inline bool IsEngineSoundAssetPath(const std::string& path) {
+    return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".enginesound.json");
+}
+
 inline bool IsVehicleSoundAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".vehiclesound.json");
 }

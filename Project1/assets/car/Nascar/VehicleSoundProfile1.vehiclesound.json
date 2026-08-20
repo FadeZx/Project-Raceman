@@ -1,51 +1,51 @@
 {
   "name": "VehicleSoundProfile1",
-  "masterVolume": 1,
+  "masterVolume": 1.8,
   "spatialBlend": 1,
-  "minDistance": 1.1,
-  "maxDistance": 179,
+  "minDistance": 6.0,
+  "maxDistance": 120.0,
   "engineLayers": [
     {
-      "clipPath": "assets/audio/engine sound.wav",
-      "rpmMin": 0,
-      "rpmMax": 8000,
-      "pitchAtRpmMin": 0.8,
-      "pitchAtRpmMax": 1.6,
-      "volumeAtRpmMin": 0,
-      "volumeAtRpmMax": 1,
-      "volumeThrottleScale": 0
+      "clipPath": "assets/audio/EngineSoundLow.wav",
+      "rpmMin": 900.0,
+      "rpmMax": 4000.0,
+      "pitchAtRpmMin": 0.85,
+      "pitchAtRpmMax": 1.45,
+      "volumeAtRpmMin": 0.95,
+      "volumeAtRpmMax": 0.35,
+      "volumeThrottleScale": 0.05
     },
     {
       "clipPath": "assets/audio/EngineSoundBG.wav",
-      "rpmMin": 0,
-      "rpmMax": 8000,
-      "pitchAtRpmMin": 0.8,
-      "pitchAtRpmMax": 1.6,
-      "volumeAtRpmMin": 0,
-      "volumeAtRpmMax": 1,
-      "volumeThrottleScale": 0
+      "rpmMin": 900.0,
+      "rpmMax": 7000.0,
+      "pitchAtRpmMin": 0.9,
+      "pitchAtRpmMax": 1.5,
+      "volumeAtRpmMin": 0.5,
+      "volumeAtRpmMax": 0.75,
+      "volumeThrottleScale": 0.1
     },
     {
-      "clipPath": "assets/audio/EngineSound.wav",
-      "rpmMin": 0,
-      "rpmMax": 8000,
-      "pitchAtRpmMin": 0.8,
-      "pitchAtRpmMax": 1.6,
-      "volumeAtRpmMin": 0,
-      "volumeAtRpmMax": 1,
-      "volumeThrottleScale": 0
+      "clipPath": "assets/audio/EngineSoundHigh.wav",
+      "rpmMin": 2800.0,
+      "rpmMax": 7000.0,
+      "pitchAtRpmMin": 0.85,
+      "pitchAtRpmMax": 1.45,
+      "volumeAtRpmMin": 0.0,
+      "volumeAtRpmMax": 1.0,
+      "volumeThrottleScale": 0.15
     }
   ],
   "triggerSounds": [
     {
-      "clipPath": "assets/audio/ShiftDownSound.wav",
+      "clipPath": "assets/audio/ShiftUpSound.wav",
       "trigger": "gearUp",
       "volume": 0.34,
       "minRpmForBackfire": 4000,
       "minLateralSpeedForSqueal": 4
     },
     {
-      "clipPath": "assets/audio/ShiftUpSound.wav",
+      "clipPath": "assets/audio/ShiftDownSound.wav",
       "trigger": "gearDown",
       "volume": 0.36,
       "minRpmForBackfire": 4000,

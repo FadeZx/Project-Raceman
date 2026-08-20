@@ -90,7 +90,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Camera", "Cinemachine", "Script", "MeshRenderer"],
+      "componentOrder": ["Transform", "Camera", "Cinemachine", "AudioListener", "Script", "MeshRenderer"],
       "components": [
         {
           "type": "Transform",
@@ -175,6 +175,10 @@
           "rotationDamping": 12,
           "priority": 10,
           "blendDuration": 0.6
+        },
+        {
+          "type": "AudioListener",
+          "enabled": true
         }
       ]
     },
@@ -6307,7 +6311,7 @@
         {
           "type": "VehicleSound",
           "enabled": true,
-          "profilePath": "assets/car/2018-bmw-m8-gte/source/BMW.enginesound.json"
+          "profilePath": "assets/car/Nascar/VehicleSoundProfile1.vehiclesound.json"
         }
       ]
     },
@@ -22952,6 +22956,6 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_18", "gameobject_1635", "gameobject_7", "gameobject_8", "gameobject_11", "gameobject_15", "gameobject_64", "gameobject_145"],
-  "inspectorComponentsClosed": ["mesh_393|Collider", "light_8|MeshRenderer", "gameobject_64|Vehicle", "gameobject_11|Vehicle", "camera_1|Cinemachine", "gameobject_64|MeshRenderer", "mesh_21|MeshFilter", "mesh_146|MeshFilter"]
+  "hierarchyClosed": ["gameobject_18", "gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_11", "gameobject_8", "gameobject_15"],
+  "inspectorComponentsClosed": ["light_8|MeshRenderer", "mesh_393|Collider", "gameobject_11|Vehicle", "gameobject_64|Vehicle", "camera_1|Cinemachine", "mesh_21|MeshFilter", "gameobject_64|MeshRenderer", "mesh_146|MeshFilter"]
 }
