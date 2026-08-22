@@ -74,6 +74,61 @@ std::string PickFolderDialog(const wchar_t* title) {
 #endif
 }
 
+namespace {
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+// Shared body for the open-a-file dialogs: they differ only in their filter.
+std::string PickFileDialog(const wchar_t* title, const COMDLG_FILTERSPEC* filters, UINT filterCount) {
+    const HRESULT coInit = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    const bool shouldUninitialize = SUCCEEDED(coInit);
+
+    IFileDialog* dialog = nullptr;
+    HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog));
+    if (FAILED(hr) || dialog == nullptr) {
+        if (shouldUninitialize) CoUninitialize();
+        return {};
+    }
+
+    DWORD options = 0;
+    if (SUCCEEDED(dialog->GetOptions(&options))) {
+        dialog->SetOptions(options | FOS_FORCEFILESYSTEM | FOS_FILEMUSTEXIST | FOS_PATHMUSTEXIST);
+    }
+    if (filters != nullptr && filterCount > 0) {
+        dialog->SetFileTypes(filterCount, filters);
+        dialog->SetFileTypeIndex(1);
+    }
+    dialog->SetTitle(title);
+
+    std::string result;
+    if (SUCCEEDED(dialog->Show(nullptr))) {
+        IShellItem* item = nullptr;
+        if (SUCCEEDED(dialog->GetResult(&item)) && item != nullptr) {
+            result = ShellItemPath(item);
+            item->Release();
+        }
+    }
+
+    dialog->Release();
+    if (shouldUninitialize) CoUninitialize();
+    return result;
+}
+#endif
+} // namespace
+
+std::string PickPrefabFileDialog(const wchar_t* title) {
+#if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
+    const COMDLG_FILTERSPEC filters[] = {
+        // The Project panel shows these trimmed to "Name.prefab"; on disk they
+        // are .prefab.json and that is what the editor's own path checks match.
+        {L"Prefabs", L"*.prefab.json"},
+        {L"All files", L"*.*"},
+    };
+    return PickFileDialog(title, filters, static_cast<UINT>(sizeof(filters) / sizeof(filters[0])));
+#else
+    (void)title;
+    return {};
+#endif
+}
+
 std::string PickImageFileDialog(const wchar_t* title) {
 #if defined(_WIN32) || defined(WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
     const HRESULT coInit = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);

@@ -48,7 +48,6 @@ void SceneEditor::RebuildVehicleRuntime() {
                     object.vehicle.configPath.empty() ? std::string("runtime default vehicle config") : ("runtime '" + object.vehicle.configPath + "'"),
                     config);
             }
-            config.transmission.mode = raceman::physics::TransmissionConfig::Mode::Automatic;
             RuntimeVehicleInstance runtimeVehicle;
             runtimeVehicle.objectId = object.id;
             runtimeVehicle.objectIndex = objectIndex;
@@ -139,7 +138,6 @@ int SceneEditor::HotReloadRuntimeVehiclesForConfig(const std::string& configPath
         }
 
         physics::VehicleConfig runtimeConfig = validatedConfig;
-        runtimeConfig.transmission.mode = physics::TransmissionConfig::Mode::Automatic;
 
         const glm::mat4 vehicleWorldMatrix = GetObjectWorldMatrix(runtimeVehicle.objectIndex);
         RebindRuntimeVehicleWheels(

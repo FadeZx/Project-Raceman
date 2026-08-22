@@ -4,16 +4,46 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 
 namespace raceman {
+namespace {
+
+// Terminal trace for the modal progress popups. The popup gates blocking work
+// (see HasBeenRendered), so knowing when it actually reached the screen is the
+// only way to tell a slow save from a popup that never became visible.
+int ElapsedMs(std::chrono::steady_clock::time_point from) {
+    return static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - from).count());
+}
+
+void ProgressLog(std::uint64_t id, const char* event, int elapsedMs,
+                 const std::string& title, const std::string& extra) {
+    std::printf("[progress] #%llu %-10s +%5dms %s%s%s\n",
+                static_cast<unsigned long long>(id), event, elapsedMs,
+                title.c_str(), extra.empty() ? "" : " | ", extra.c_str());
+    std::fflush(stdout);
+}
+
+} // namespace
 
 bool EditorProgressTask::IsCancellationRequested() const {
     return state_ && state_->cancelRequested.load();
 }
 
 bool EditorProgressTask::HasBeenRendered() const {
-    return state_ && state_->rendered.load();
+    // ImGui hides an auto-resizing window on its appearing frame while it measures
+    // the layout, so "the popup was submitted" is not the same as "the popup was
+    // drawn". Gate on a frame that actually produced pixels and was presented,
+    // otherwise the blocking caller freezes the app before anything is on screen.
+    return state_ && state_->visibleFrames.load() >= 1;
+}
+
+void EditorProgressTask::SetTitle(const std::string& title) const {
+    if (!state_) return;
+    std::lock_guard<std::mutex> lock(state_->textMutex);
+    state_->title = title.empty() ? "Processing" : title;
 }
 
 void EditorProgressTask::SetMessage(const std::string& message) const {
@@ -47,13 +77,23 @@ void EditorProgressTask::SetIndeterminate(bool indeterminate) const {
     if (state_) state_->indeterminate.store(indeterminate);
 }
 
+void EditorProgressTask::SetCancellable(bool cancellable) const {
+    if (state_) state_->cancellable.store(cancellable);
+}
+
 void EditorProgressTask::Finish(State::Result result, const std::string& detail) const {
     if (!state_) return;
     if (!detail.empty()) SetDetail(detail);
     State::Result expected = State::Result::Running;
     if (state_->result.compare_exchange_strong(expected, result)) {
-        std::lock_guard<std::mutex> lock(state_->finishMutex);
-        state_->finishedAt = std::chrono::steady_clock::now();
+        {
+            std::lock_guard<std::mutex> lock(state_->finishMutex);
+            state_->finishedAt = std::chrono::steady_clock::now();
+        }
+        const char* label = result == State::Result::Succeeded ? "succeeded" :
+            (result == State::Result::Cancelled ? "cancelled" : "failed");
+        std::lock_guard<std::mutex> textLock(state_->textMutex);
+        ProgressLog(state_->id, label, ElapsedMs(state_->startedAt), state_->title, state_->detail);
     }
 }
 
@@ -81,6 +121,7 @@ EditorProgressTask EditorProgressService::Begin(const std::string& title,
         std::lock_guard<std::mutex> lock(mutex_);
         tasks_.push_back(state);
     }
+    ProgressLog(state->id, "begin", 0, state->title, message);
     return EditorProgressTask(std::move(state));
 }
 
@@ -125,6 +166,14 @@ void EditorProgressService::Render() {
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) return;
 
+    // The appearing frame is laid out but not rasterized; only later frames count
+    // as "the user saw the popup".
+    if (!ImGui::IsWindowAppearing() && task->visibleFrames.fetch_add(1) == 0) {
+        std::lock_guard<std::mutex> lock(task->finishMutex);
+        task->firstVisibleAt = std::chrono::steady_clock::now();
+        ProgressLog(task->id, "visible", ElapsedMs(task->startedAt), title, detail);
+    }
+
     if (!message.empty()) ImGui::TextWrapped("%s", message.c_str());
     ImGui::Spacing();
     const auto result = task->result.load();
@@ -156,9 +205,12 @@ void EditorProgressService::Render() {
         ImGui::Spacing();
         if (ImGui::Button("Close", ImVec2(100.0f, 0.0f))) {
             task->result.store(EditorProgressTask::State::Result::Cancelled);
-            std::lock_guard<std::mutex> lock(task->finishMutex);
-            task->finishedAt = std::chrono::steady_clock::now() - std::chrono::seconds(1);
+            {
+                std::lock_guard<std::mutex> lock(task->finishMutex);
+                task->finishedAt = std::chrono::steady_clock::now() - std::chrono::seconds(1);
+            }
             task->dismissed.store(true);
+            ProgressLog(task->id, "closed", ElapsedMs(task->startedAt), title, detail);
             ImGui::CloseCurrentPopup();
         }
     } else {
@@ -169,6 +221,11 @@ void EditorProgressService::Render() {
         }
         if (now - task->completionFirstRenderedAt > std::chrono::milliseconds(450)) {
             task->dismissed.store(true);
+            const auto visibleFrom = task->firstVisibleAt.time_since_epoch().count() == 0
+                ? task->startedAt : task->firstVisibleAt;
+            ProgressLog(task->id, "dismissed", ElapsedMs(task->startedAt), title,
+                        "visible for " + std::to_string(ElapsedMs(visibleFrom)) + "ms over " +
+                        std::to_string(task->visibleFrames.load()) + " frames");
             ImGui::CloseCurrentPopup();
         }
     }

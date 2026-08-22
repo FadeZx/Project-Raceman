@@ -89,6 +89,10 @@ std::vector<EngineCylinder> EvenFiring(int cylinderCount, int bankCount) {
         cylinder.bankId = (bankCount > 1) ? (i % bankCount) : 0;
         cylinder.gain = 1.0f;
         cylinder.timingJitter = 0.6f;
+        // A small spread of primary lengths. Identical runners make every
+        // cylinder sound the same, which is the "sitting inside the engine"
+        // quality; real headers always vary at least a little.
+        cylinder.runnerLengthScale = 0.92f + 0.16f * (static_cast<float>(i % 4) / 3.0f);
         cylinders.push_back(cylinder);
     }
     return cylinders;
@@ -157,8 +161,8 @@ std::vector<EngineCylinder> MakeEngineLayout(EngineLayoutPreset preset) {
             std::vector<EngineCylinder> cylinders;
             const float leftBank[4]  = {0.0f, 180.0f, 360.0f, 540.0f};
             const float rightBank[4] = {90.0f, 270.0f, 450.0f, 630.0f};
-            for (float angle : leftBank)  cylinders.push_back({angle, 0, 1.0f, 0.6f});
-            for (float angle : rightBank) cylinders.push_back({angle, 1, 1.0f, 0.6f});
+            for (float angle : leftBank)  cylinders.push_back({angle, 0, 1.0f, 0.6f, 1.0f});
+            for (float angle : rightBank) cylinders.push_back({angle, 1, 1.0f, 0.6f, 1.0f});
             return cylinders;
         }
 
@@ -172,15 +176,17 @@ std::vector<EngineCylinder> MakeEngineLayout(EngineLayoutPreset preset) {
             std::vector<EngineCylinder> cylinders;
             const float leftBank[4]  = {0.0f, 180.0f, 270.0f, 450.0f};
             const float rightBank[4] = {90.0f, 360.0f, 540.0f, 630.0f};
-            for (float angle : leftBank)  cylinders.push_back({angle, 0, 1.0f, 0.6f});
-            for (float angle : rightBank) cylinders.push_back({angle, 1, 1.0f, 0.6f});
+            // Primary lengths vary down the bank, as they do on a real manifold.
+            const float primary[4] = {0.88f, 0.97f, 1.06f, 1.14f};
+            for (int i = 0; i < 4; ++i) cylinders.push_back({leftBank[i],  0, 1.0f, 0.6f, primary[i]});
+            for (int i = 0; i < 4; ++i) cylinders.push_back({rightBank[i], 1, 1.0f, 0.6f, primary[3 - i]});
             return cylinders;
         }
 
         case EngineLayoutPreset::VTwin90: {
             std::vector<EngineCylinder> cylinders;
-            cylinders.push_back({0.0f,   0, 1.0f, 1.2f});
-            cylinders.push_back({270.0f, 1, 1.0f, 1.2f});
+            cylinders.push_back({0.0f,   0, 1.0f, 1.2f, 1.0f});
+            cylinders.push_back({270.0f, 1, 1.0f, 1.2f, 1.0f});
             return cylinders;
         }
     }
@@ -286,9 +292,13 @@ EngineSoundProfile EngineSoundProfileLoader::loadFromFile(const std::string& pat
     ReadString(obj, "name", profile.name);
     ReadNumber(obj, "strokes", profile.strokes);
     ReadNumber(obj, "idleInstability", profile.idleInstability);
+    ReadNumber(obj, "idleInstabilityHz", profile.idleInstabilityHz);
+    ReadNumber(obj, "idleLevel", profile.idleLevel);
     ReadNumber(obj, "combustionVariance", profile.combustionVariance);
     ReadNumber(obj, "combustionDurationMs", profile.combustionDurationMs);
     ReadNumber(obj, "combustionNoise", profile.combustionNoise);
+    ReadNumber(obj, "combustionAttackMs", profile.combustionAttackMs);
+    ReadNumber(obj, "combustionAttackGain", profile.combustionAttackGain);
     ReadNumber(obj, "spatialBlend", profile.spatialBlend);
     ReadNumber(obj, "minDistance", profile.minDistance);
     ReadNumber(obj, "maxDistance", profile.maxDistance);
@@ -302,6 +312,7 @@ EngineSoundProfile EngineSoundProfileLoader::loadFromFile(const std::string& pat
             ReadNumber(value.as_object(), "bankId", cylinder.bankId);
             ReadNumber(value.as_object(), "gain", cylinder.gain);
             ReadNumber(value.as_object(), "timingJitter", cylinder.timingJitter);
+            ReadNumber(value.as_object(), "runnerLengthScale", cylinder.runnerLengthScale);
             profile.cylinders.push_back(cylinder);
         }
     }
@@ -376,6 +387,41 @@ EngineSoundProfile EngineSoundProfileLoader::loadFromFile(const std::string& pat
         ReadNumber(n, "valvetrainQ", profile.noise.valvetrainQ);
     }
 
+    if (auto it = obj.find("roar"); it != obj.end() && it->second.is_object()) {
+        const json::Object& ro = it->second.as_object();
+        ReadNumber(ro, "gain", profile.roar.gain);
+        ReadNumber(ro, "lowHz", profile.roar.lowHz);
+        ReadNumber(ro, "highHz", profile.roar.highHz);
+        ReadNumber(ro, "modDepth", profile.roar.modDepth);
+        ReadNumber(ro, "growl", profile.roar.growl);
+    }
+
+    if (auto it = obj.find("reverb"); it != obj.end() && it->second.is_object()) {
+        const json::Object& rv = it->second.as_object();
+        ReadBool(rv, "enabled", profile.reverb.enabled);
+        ReadNumber(rv, "earlyGain", profile.reverb.earlyGain);
+        ReadNumber(rv, "earlySpreadMs", profile.reverb.earlySpreadMs);
+        ReadNumber(rv, "tailGain", profile.reverb.tailGain);
+        ReadNumber(rv, "tailDecaySeconds", profile.reverb.tailDecaySeconds);
+        ReadNumber(rv, "tailDamping", profile.reverb.tailDamping);
+        ReadNumber(rv, "width", profile.reverb.width);
+    }
+
+    if (auto it = obj.find("perspective"); it != obj.end() && it->second.is_object()) {
+        const json::Object& pe = it->second.as_object();
+        ReadBool(pe, "enabled", profile.perspective.enabled);
+        ReadNumber(pe, "exhaustRear", profile.perspective.exhaustRear);
+        ReadNumber(pe, "exhaustFront", profile.perspective.exhaustFront);
+        ReadNumber(pe, "intakeRear", profile.perspective.intakeRear);
+        ReadNumber(pe, "intakeFront", profile.perspective.intakeFront);
+        ReadNumber(pe, "blockFalloffMetres", profile.perspective.blockFalloffMetres);
+        ReadNumber(pe, "airAbsorptionMetres", profile.perspective.airAbsorptionMetres);
+        ReadNumber(pe, "reverbDistanceMetres", profile.perspective.reverbDistanceMetres);
+        ReadNumber(pe, "dopplerFactor", profile.perspective.dopplerFactor);
+        ReadNumber(pe, "octaveTiltMetres", profile.perspective.octaveTiltMetres);
+        ReadNumber(pe, "octaveTiltAmount", profile.perspective.octaveTiltAmount);
+    }
+
     if (auto it = obj.find("mix"); it != obj.end() && it->second.is_object()) {
         const json::Object& m = it->second.as_object();
         ReadNumber(m, "exhaustGain", profile.mix.exhaustGain);
@@ -427,9 +473,13 @@ bool EngineSoundProfileLoader::saveToFile(const std::string& path, const EngineS
     file << "  \"name\": " << EscapeJson(profile.name) << ",\n";
     file << "  \"strokes\": " << profile.strokes << ",\n";
     file << "  \"idleInstability\": " << profile.idleInstability << ",\n";
+    file << "  \"idleInstabilityHz\": " << profile.idleInstabilityHz << "," << "\n";
+    file << "  \"idleLevel\": " << profile.idleLevel << "," << "\n";
     file << "  \"combustionVariance\": " << profile.combustionVariance << ",\n";
     file << "  \"combustionDurationMs\": " << profile.combustionDurationMs << "," << "\n";
     file << "  \"combustionNoise\": " << profile.combustionNoise << "," << "\n";
+    file << "  \"combustionAttackMs\": " << profile.combustionAttackMs << "," << "\n";
+    file << "  \"combustionAttackGain\": " << profile.combustionAttackGain << "," << "\n";
     file << "  \"spatialBlend\": " << profile.spatialBlend << ",\n";
     file << "  \"minDistance\": " << profile.minDistance << ",\n";
     file << "  \"maxDistance\": " << profile.maxDistance << ",\n";
@@ -440,7 +490,8 @@ bool EngineSoundProfileLoader::saveToFile(const std::string& path, const EngineS
         file << "    {\"fireAngleDeg\": " << c.fireAngleDeg
              << ", \"bankId\": " << c.bankId
              << ", \"gain\": " << c.gain
-             << ", \"timingJitter\": " << c.timingJitter << "}"
+             << ", \"timingJitter\": " << c.timingJitter
+             << ", \"runnerLengthScale\": " << c.runnerLengthScale << "}"
              << (i + 1 < profile.cylinders.size() ? "," : "") << "\n";
     }
     file << "  ],\n";
@@ -525,6 +576,41 @@ bool EngineSoundProfileLoader::saveToFile(const std::string& path, const EngineS
     file << "    \"subGain\": " << bd.subGain << ",\n";
     file << "    \"subCutoffHz\": " << bd.subCutoffHz << ",\n";
     file << "    \"toneTilt\": " << bd.toneTilt << "\n";
+    file << "  },\n";
+
+    const EngineRoarSettings& ro = profile.roar;
+    file << "  \"roar\": {\n";
+    file << "    \"gain\": " << ro.gain << ",\n";
+    file << "    \"lowHz\": " << ro.lowHz << ",\n";
+    file << "    \"highHz\": " << ro.highHz << ",\n";
+    file << "    \"modDepth\": " << ro.modDepth << ",\n";
+    file << "    \"growl\": " << ro.growl << "\n";
+    file << "  },\n";
+
+    const EngineReverbSettings& rv = profile.reverb;
+    file << "  \"reverb\": {\n";
+    file << "    \"enabled\": " << (rv.enabled ? "true" : "false") << "," << "\n";
+    file << "    \"earlyGain\": " << rv.earlyGain << ",\n";
+    file << "    \"earlySpreadMs\": " << rv.earlySpreadMs << ",\n";
+    file << "    \"tailGain\": " << rv.tailGain << ",\n";
+    file << "    \"tailDecaySeconds\": " << rv.tailDecaySeconds << ",\n";
+    file << "    \"tailDamping\": " << rv.tailDamping << ",\n";
+    file << "    \"width\": " << rv.width << "\n";
+    file << "  },\n";
+
+    const EnginePerspectiveSettings& pe = profile.perspective;
+    file << "  \"perspective\": {\n";
+    file << "    \"enabled\": " << (pe.enabled ? "true" : "false") << "," << "\n";
+    file << "    \"exhaustRear\": " << pe.exhaustRear << ",\n";
+    file << "    \"exhaustFront\": " << pe.exhaustFront << ",\n";
+    file << "    \"intakeRear\": " << pe.intakeRear << ",\n";
+    file << "    \"intakeFront\": " << pe.intakeFront << ",\n";
+    file << "    \"blockFalloffMetres\": " << pe.blockFalloffMetres << ",\n";
+    file << "    \"airAbsorptionMetres\": " << pe.airAbsorptionMetres << ",\n";
+    file << "    \"reverbDistanceMetres\": " << pe.reverbDistanceMetres << ",\n";
+    file << "    \"dopplerFactor\": " << pe.dopplerFactor << "," << "\n";
+    file << "    \"octaveTiltMetres\": " << pe.octaveTiltMetres << "," << "\n";
+    file << "    \"octaveTiltAmount\": " << pe.octaveTiltAmount << "\n";
     file << "  },\n";
 
     const EngineMixSettings& m = profile.mix;

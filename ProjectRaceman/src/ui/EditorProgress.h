@@ -18,11 +18,13 @@ public:
     bool IsValid() const { return static_cast<bool>(state_); }
     bool IsCancellationRequested() const;
     bool HasBeenRendered() const;
+    void SetTitle(const std::string& title) const;
     void SetMessage(const std::string& message) const;
     void SetDetail(const std::string& detail) const;
     void SetProgress(int completed, int total) const;
     void SetProgress(float fraction) const;
     void SetIndeterminate(bool indeterminate = true) const;
+    void SetCancellable(bool cancellable) const;
     void Complete(const std::string& detail = {}) const;
     void Fail(const std::string& detail) const;
     void Cancelled(const std::string& detail = "Cancelled.") const;
@@ -42,11 +44,15 @@ private:
         std::atomic<bool> cancellable{false};
         std::atomic<bool> cancelRequested{false};
         std::atomic<bool> rendered{false};
+        // Frames the popup body was actually drawn (the ImGui auto-resize
+        // "appearing" frame is hidden, so it does not count).
+        std::atomic<int> visibleFrames{0};
         std::atomic<bool> dismissed{false};
         std::atomic<Result> result{Result::Running};
         std::chrono::steady_clock::time_point startedAt{std::chrono::steady_clock::now()};
         std::chrono::steady_clock::time_point finishedAt{};
         std::chrono::steady_clock::time_point completionFirstRenderedAt{};
+        std::chrono::steady_clock::time_point firstVisibleAt{};
         mutable std::mutex finishMutex;
     };
 

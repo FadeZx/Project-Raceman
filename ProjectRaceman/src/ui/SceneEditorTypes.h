@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 
 #include "../input/InputManager.h"
+#include "../audio/VehicleSoundProfile.h"
 #include "../physics/MeshColliderBuildQuality.h"
 #include "../physics/MeshColliderMode.h"
 #include "../rendering/Material.h"
@@ -69,6 +70,8 @@ enum class SceneComponentType {
     AudioListener,
     AudioSource,
     VehicleSound,
+    AudioReverbZone,
+    AudioEnvironment,
     TrackGenerator
 };
 
@@ -90,6 +93,8 @@ enum class SceneInspectorComponentType {
     AudioListener,
     AudioSource,
     VehicleSound,
+    AudioReverbZone,
+    AudioEnvironment,
     TrackGenerator
 };
 
@@ -529,7 +534,72 @@ struct AudioSourceComponent {
 
 struct VehicleSoundComponent {
     bool enabled{true};
+    // The engine voice. Accepts either a .enginesound.json (procedural synth)
+    // or a legacy .vehiclesound.json (pitched sample layers) - they are two
+    // implementations of the same slot, so one field is correct.
     std::string profilePath;
+
+    // How THIS vehicle emits, which is a property of the object rather than of
+    // what the engine sounds like. Previously duplicated inside both profile
+    // types, which meant the same setting had two homes that could disagree.
+    float spatialBlend{1.0f};
+    float minDistance{6.0f};
+    float maxDistance{140.0f};
+
+    // Tyre audio: rolling, slip squeal and per-surface texture. A separate
+    // asset because tyres are not the engine, and a car can change tyres
+    // without changing engines.
+    std::string tyreProfilePath;
+
+    // Gear-shift and start/stop one-shots. Not engine sound at all, so they
+    // belong here rather than inside an engine profile.
+    std::vector<VehicleSoundTriggerEntry> triggerSounds;
+    // Set once shared data has been lifted off the profile, so the runtime knows
+    // whether to fall back to the profile's copy for scenes authored earlier.
+    bool overridesProfileAudio{false};
+};
+
+// -------------------------------------------------------------------------
+// Audio reverb zone.
+//
+// This is the standard racing-game approach: acoustics belong to the PLACE,
+// not to the car. A scene has a default outdoor character, and volumes placed
+// over tunnels, bridges, pit garages and tree-lined sections blend their own
+// acoustics in as the listener enters them. One car then sounds correct
+// everywhere instead of carrying a private copy of the track's reverb.
+// -------------------------------------------------------------------------
+struct AudioReverbZoneComponent {
+    bool enabled{true};
+    // Zone shape is the object's transform: a box of this half-extent, scaled
+    // by the object's own scale.
+    glm::vec3 halfExtents{10.0f, 5.0f, 10.0f};
+    // Distance over which the zone blends in at its boundary, so walking into
+    // a tunnel is a transition rather than a switch.
+    float blendMetres{6.0f};
+    // Higher priority wins where zones overlap (a garage inside a pit lane).
+    int priority{0};
+
+    // Acoustics, matching EngineReverbSettings.
+    float earlyGain{0.60f};
+    float earlySpreadMs{22.0f};
+    float tailGain{0.55f};
+    float tailDecaySeconds{1.60f};
+    float tailDamping{0.25f};
+    // Enclosed spaces also darken and hold the sound in.
+    float lowPassScale{0.80f};
+    float volumeScale{1.15f};
+};
+
+// Scene-wide default acoustics, used wherever no zone applies.
+struct AudioEnvironmentComponent {
+    bool enabled{true};
+    float earlyGain{0.46f};
+    float earlySpreadMs{48.0f};
+    float tailGain{0.16f};
+    float tailDecaySeconds{0.85f};
+    float tailDamping{0.62f};
+    float lowPassScale{1.0f};
+    float volumeScale{1.0f};
 };
 
 struct TrackGeneratorComponent {
@@ -578,6 +648,8 @@ struct SceneObject {
     bool hasAudioSource{false};
     bool hasVehicleSound{false};
     bool hasTrackGenerator{false};
+    bool hasAudioReverbZone{false};
+    bool hasAudioEnvironment{false};
     MeshFilterComponent meshFilter;
     MeshRendererComponent meshRenderer;
     ScriptComponent scriptComponent;
@@ -600,6 +672,8 @@ struct SceneObject {
     AudioSourceComponent audioSource;
     VehicleSoundComponent vehicleSound;
     TrackGeneratorComponent trackGenerator;
+    AudioReverbZoneComponent audioReverbZone;
+    AudioEnvironmentComponent audioEnvironment;
 };
 
 struct SceneMeshContributorStats {

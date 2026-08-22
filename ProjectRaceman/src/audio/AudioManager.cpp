@@ -328,6 +328,17 @@ void AudioManager::SetVoicePosition(AudioVoice* voice, const glm::vec3& position
     ma_sound_set_position(&voice->sound, position.x, position.y, position.z);
 }
 
+void AudioManager::SetVoiceVelocity(AudioVoice* voice, const glm::vec3& velocity, float dopplerFactor) {
+    if (voice == nullptr || !voice->soundValid) return;
+    ma_sound_set_velocity(&voice->sound, velocity.x, velocity.y, velocity.z);
+    ma_sound_set_doppler_factor(&voice->sound, (std::max)(0.0f, dopplerFactor));
+}
+
+void AudioManager::SetListenerVelocity(const glm::vec3& velocity) {
+    if (!IsInitialized()) return;
+    ma_engine_listener_set_velocity(&impl_->engine, 0, velocity.x, velocity.y, velocity.z);
+}
+
 void AudioManager::SetVoiceAttenuation(AudioVoice* voice, float minDistance, float maxDistance, float spatialBlend) {
     if (voice == nullptr || !voice->soundValid) return;
     const bool spatial = spatialBlend > 0.0f;

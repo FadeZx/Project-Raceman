@@ -16,6 +16,14 @@ struct ArcadeVehicleWheelTelemetry {
     float tractionScale{1.0f};
     float suspensionTravel{0.0f};
     float angularVelocity{0.0f};
+    // Per-wheel tyre state, straight from the contact. Signed slip ratio so a
+    // consumer can tell a lock-up from wheelspin without guessing.
+    float slipRatio{0.0f};
+    float slipVelocity{0.0f};
+    float slipAmount{0.0f};
+    float gripUtilisation{0.0f};
+    bool locked{false};
+    bool spinning{false};
     bool grounded{true};
     bool steered{false};
     TrackSurfaceType surfaceType{TrackSurfaceType::Asphalt};

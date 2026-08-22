@@ -4,6 +4,7 @@
 #include "SceneEditorVehicleInput.h"
 #include "SceneEditorVehicleTelemetry.h"
 #include "SceneEditorVehicleVisuals.h"
+#include "SceneEditorVehicleWheelSlip.h"
 #include "../input/InputManager.h"
 #include "../physics/PhysicsWorld.h"
 
@@ -171,6 +172,88 @@ void UpdateArcadeAutomaticGear(RuntimeVehicleInstance& runtimeVehicle,
         redlineRPM);
 }
 
+// Sequential manual box. There is no clutch in this model, so it makes two
+// concessions and no more: first engages itself from a standstill, and a
+// downshift the engine could not survive is refused rather than granted.
+void UpdateManualGear(RuntimeVehicleInstance& runtimeVehicle,
+                      const VehicleGearActions& actions,
+                      float absSpeed,
+                      float throttleAmount,
+                      float idleRPM,
+                      float redlineRPM,
+                      float maxForwardSpeed,
+                      float deltaTime) {
+    const int gearCount = (std::max)(1, static_cast<int>(runtimeVehicle.config.transmission.gearRatios.size()));
+    runtimeVehicle.autoShiftCooldown = (std::max)(0.0f, runtimeVehicle.autoShiftCooldown - deltaTime);
+
+    int gear = (std::clamp)(runtimeVehicle.arcadeGear, -1, gearCount);
+    const bool stationary = absSpeed < 1.5f;
+    const bool canShift = runtimeVehicle.autoShiftCooldown <= 0.0f;
+
+    auto engage = [&](int target) {
+        if (target == gear) {
+            return;
+        }
+        runtimeVehicle.autoShiftCooldown = GearShiftCooldown(runtimeVehicle.config, (std::max)(1, gear), gearCount);
+        gear = target;
+    };
+
+    if (actions.neutral) {
+        engage(0);
+    } else if (actions.reverse && stationary) {
+        engage(-1);
+    } else if (canShift && actions.shiftUp) {
+        if (gear < 0) {
+            engage(0);
+        } else if (gear < gearCount) {
+            engage(gear + 1);
+        }
+    } else if (canShift && actions.shiftDown) {
+        if (gear > 1) {
+            // Speed past the lower gear top speed is speed past its redline.
+            // A real sequential will not let you buy a rebuild with a paddle.
+            const float lowerGearTopSpeed = GearTopSpeed(runtimeVehicle.config, gear - 1, maxForwardSpeed);
+            if (absSpeed <= lowerGearTopSpeed * 1.02f) {
+                engage(gear - 1);
+            }
+        } else if (gear == 1 && stationary) {
+            engage(0);
+        } else if (gear == 0 && stationary) {
+            engage(-1);
+        }
+    }
+
+    // No clutch to slip, so pulling away is the one thing the box still does
+    // on its own. Everything above this speed is the driver's problem.
+    if (gear == 0 && throttleAmount > 0.05f && absSpeed < 0.5f) {
+        gear = 1;
+    }
+
+    runtimeVehicle.arcadeGear = (std::clamp)(gear, -1, gearCount);
+
+    float targetRpm = idleRPM;
+    if (runtimeVehicle.arcadeGear == 0) {
+        // Nothing is connected to the wheels, so the engine just answers the
+        // pedal. Blipping in neutral is audible instead of silent.
+        targetRpm = idleRPM + (std::clamp)(throttleAmount, 0.0f, 1.0f) * (redlineRPM - idleRPM) * 0.85f;
+    } else {
+        targetRpm = GearSpeedToRpm(
+            runtimeVehicle.config,
+            absSpeed,
+            runtimeVehicle.arcadeGear < 0 ? 1 : runtimeVehicle.arcadeGear,
+            idleRPM,
+            redlineRPM,
+            maxForwardSpeed);
+    }
+
+    const float shiftBlend = runtimeVehicle.autoShiftCooldown > 0.0f ? 0.45f : 1.0f;
+    runtimeVehicle.arcadeEngineRPM = (std::clamp)(
+        runtimeVehicle.arcadeEngineRPM + (targetRpm - runtimeVehicle.arcadeEngineRPM) * shiftBlend,
+        idleRPM,
+        redlineRPM);
+}
+
+
 // Feeds the inertial engine model from the arcade sim. Runs inside the fixed
 // step so gear changes are caught even when several steps land in one frame.
 void UpdateVehicleEngineState(RuntimeVehicleInstance& runtimeVehicle,
@@ -239,7 +322,7 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             ? std::string("default_vehicle")
             : vehicleObject.vehicle.inputProfileId;
         const bool routeInput = ShouldRouteInputToGame() && inputManager_ != nullptr;
-        ConsumePendingVehicleGearActions(runtimeVehicle);
+        const VehicleGearActions gearActions = ConsumePendingVehicleGearActions(runtimeVehicle);
         ArcadeVehicleInput baseInput = SampleArcadeVehicleInput(runtimeVehicle, vehicleObject, inputManager_, profileId, routeInput, deltaTime);
 
         const float rawThrottleAmount = baseInput.throttle;
@@ -292,6 +375,10 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             baseInput.steering,
             speedFactorBeforeDrive,
             deltaTime);
+        // Grounding has resolved load, normal and surface for every wheel, so
+        // each tyre can now be asked what it is individually doing. Everything
+        // cosmetic downstream reads the result rather than chassis averages.
+        UpdateArcadeWheelSlip(runtimeVehicle, baseInput, controls, driveRatios, deltaTime);
         lateralSpeed = runtimeVehicle.arcadeLateralSpeed;
         const float finalAbsSpeed = std::fabs(speed);
         runtimeVehicle.arcadeWheelSpin += (speed / 0.3f) * deltaTime;
@@ -302,16 +389,28 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         runtimeVehicle.arcadeBrake = brakeAmount;
         runtimeVehicle.arcadeSteering = baseInput.steering;
         runtimeVehicle.arcadeHandbrake = baseInput.handbrake;
-        UpdateArcadeAutomaticGear(
-            runtimeVehicle,
-            finalAbsSpeed,
-            speed,
-            throttleAmount,
-            brakeAmount,
-            idleRPM,
-            redlineRPM,
-            maxForwardSpeed,
-            deltaTime);
+        if (runtimeVehicle.config.transmission.mode == raceman::physics::TransmissionConfig::Mode::Manual) {
+            UpdateManualGear(
+                runtimeVehicle,
+                gearActions,
+                finalAbsSpeed,
+                throttleAmount,
+                idleRPM,
+                redlineRPM,
+                maxForwardSpeed,
+                deltaTime);
+        } else {
+            UpdateArcadeAutomaticGear(
+                runtimeVehicle,
+                finalAbsSpeed,
+                speed,
+                throttleAmount,
+                brakeAmount,
+                idleRPM,
+                redlineRPM,
+                maxForwardSpeed,
+                deltaTime);
+        }
 
         UpdateVehicleEngineState(runtimeVehicle, finalAbsSpeed, previousSpeed, deltaTime);
 
@@ -345,19 +444,26 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
             ArcadeVehicleWheelTelemetry& wheelState = telemetry.wheels[wheelIndex];
             if (wheelIndex < runtimeVehicle.arcadeWheelContacts.size()) {
                 const RuntimeVehicleWheelContact& contact = runtimeVehicle.arcadeWheelContacts[wheelIndex];
-                // Lay rubber. Slip combines the lateral slip angle with how far
-                // the tyre has run out of grip, so both a drift and a straight
-                // line lock-up leave marks.
-                const float lateralSlip = std::fabs(contact.slipAngle);
-                const float gripLoss = (std::max)(0.0f, 1.0f - contact.tractionScale);
+                // Lay rubber from the one quantity that physically deposits it:
+                // how fast this tyre's contact patch is sliding over the road,
+                // normalised. It is already zero while the tyre grips, so a
+                // fast straight line marks nothing and a locked wheel at walking
+                // pace marks faintly - both of which a threshold on slip angle
+                // got backwards.
                 skidMarks_.TrackWheel(runtimeVehicle.objectId, static_cast<int>(wheelIndex),
                                       contact.grounded, contact.contactPosition, contact.normal,
-                                      (std::max)(lateralSlip, gripLoss), skidSettings);
+                                      contact.slipAmount, skidSettings);
                 wheelState.normalForce = contact.normalForce;
                 wheelState.slipAngle = contact.slipAngle;
                 wheelState.tractionScale = contact.tractionScale;
                 wheelState.suspensionTravel = contact.suspensionTravel;
                 wheelState.angularVelocity = contact.angularVelocity;
+                wheelState.slipRatio = contact.slipRatio;
+                wheelState.slipVelocity = contact.slipVelocity;
+                wheelState.slipAmount = contact.slipAmount;
+                wheelState.gripUtilisation = contact.gripUtilisation;
+                wheelState.locked = contact.locked;
+                wheelState.spinning = contact.spinning;
                 wheelState.grounded = contact.grounded;
                 wheelState.surfaceType = contact.surfaceType;
             }

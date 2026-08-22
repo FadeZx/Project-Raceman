@@ -27,6 +27,31 @@ struct RuntimeVehicleWheelContact {
     float slipAngle{0.0f};
     float tractionScale{1.0f};
     float loadMultiplier{1.0f};
+
+    // --- per-wheel tyre state (SceneEditorVehicleWheelSlip) ---------------
+    // Everything below describes THIS tyre, not the car. It is what the sim
+    // knows at one instant, and skid marks, tyre sound, force feedback and the
+    // wheel's own rotation all read it, so a locked front-left marks, squeals,
+    // stops turning and lightens the wheel from the same numbers.
+    float steerAngle{0.0f};        // radians, this wheel's actual steer
+    // -1 fully locked, 0 rolling, >0 spinning up. Signed on purpose: lock-up
+    // and wheelspin are different events and effects want to tell them apart.
+    float slipRatio{0.0f};
+    float lateralSlipAngle{0.0f};  // degrees, from this wheel's contact velocity
+    // Metres per second the contact patch is actually sliding over the ground.
+    // The physical source for how hard a tyre marks, smokes and sings.
+    float slipVelocity{0.0f};
+    // Demand over capacity on the friction circle. 1.0 is exactly the limit,
+    // below it the tyre is gripping, above it it is sliding.
+    float gripUtilisation{0.0f};
+    // slipVelocity mapped to 0..1 for effects that want a normalised amount.
+    float slipAmount{0.0f};
+    bool locked{false};            // brake torque beat the available grip
+    bool spinning{false};          // drive torque beat the available grip
+    // Accumulated wheel angle in radians, integrated from angularVelocity, so a
+    // locked wheel visibly stops and a spinning one visibly races.
+    float rotationAngle{0.0f};
+    float previousRotationAngle{0.0f};
 };
 
 struct RuntimeVehicleInstance {

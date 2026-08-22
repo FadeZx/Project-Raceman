@@ -30,9 +30,14 @@ float SampleEngineCurve(const std::vector<EngineCurvePoint>& curve, float rpm, f
 // -------------------------------------------------------------------------
 struct EngineCylinder {
     float fireAngleDeg{0.0f};   // 0..720 within the four-stroke cycle
-    int   bankId{0};            // which exhaust runner this cylinder feeds
+    int   bankId{0};            // which collector this cylinder feeds
     float gain{1.0f};           // per-cylinder combustion strength
     float timingJitter{0.0f};   // degrees of random scatter, adds life at idle
+    // Length of THIS cylinder's header primary, relative to the bank's runner
+    // length. Cylinders sharing one delay line are acoustically identical,
+    // which reads as sitting inside the engine. Equal-length headers (race)
+    // keep this near 1.0; unequal-length ones (the classic boxer rumble) do not.
+    float runnerLengthScale{1.0f};
 };
 
 // -------------------------------------------------------------------------
@@ -124,6 +129,68 @@ struct EngineBodySettings {
     float toneTilt{0.30f};          // 0 = raw and bright, 1 = dark and distant
 };
 
+// -------------------------------------------------------------------------
+// Roar.
+//
+// Waveguides alone produce discrete comb peaks, which is exactly why a pipe
+// model sounds like a tin can however low you tune it. A real engine's roar is
+// mostly BROADBAND turbulent gas noise, amplitude-modulated at the firing rate
+// and shaped by the exhaust. That modulated noise bed is what turns a hollow
+// "boing" into a "raaaaw", and it is the single biggest depth contributor
+// after the low body resonances.
+// -------------------------------------------------------------------------
+struct EngineRoarSettings {
+    float gain{0.55f};
+    float lowHz{60.0f};      // band the roar occupies
+    float highHz{420.0f};
+    float modDepth{0.80f};   // 0 = steady hiss, 1 = fully gated by each firing
+    float growl{0.45f};      // asymmetric saturation; adds even harmonics = fatter
+};
+
+// -------------------------------------------------------------------------
+// Space.
+//
+// A completely dry engine cannot sound natural: outdoors you always hear the
+// ground bounce, the bodywork, the pit wall and the surrounding air. Early
+// reflections give the sense of a real place and of the car having size; the
+// short diffuse tail keeps it from sounding like it was recorded in a vacuum.
+// -------------------------------------------------------------------------
+struct EngineReverbSettings {
+    bool  enabled{true};
+    float earlyGain{0.35f};      // ground bounce and nearby surfaces
+    float earlySpreadMs{28.0f};  // how far away those surfaces are
+    float tailGain{0.22f};       // diffuse decay
+    float tailDecaySeconds{0.55f};
+    float tailDamping{0.45f};    // high frequencies die first, as in open air
+    float width{0.6f};           // unused in mono, reserved
+};
+
+// -------------------------------------------------------------------------
+// Perspective and air.
+//
+// An engine heard from behind is mostly exhaust; from in front it is mostly
+// intake; from far away it is mostly low frequencies and reflections, because
+// air absorbs the top end and the reverberant field decays more slowly than
+// the direct sound. Modelling none of that is what makes an otherwise accurate
+// synth sound like it is glued to the camera rather than out on a track.
+// -------------------------------------------------------------------------
+struct EnginePerspectiveSettings {
+    bool  enabled{true};
+    float exhaustRear{1.40f};      // weight when the listener is behind the car
+    float exhaustFront{0.50f};
+    float intakeRear{0.40f};
+    float intakeFront{1.35f};      // intake shouts forwards
+    float blockFalloffMetres{22.0f}; // mechanical clatter is local and dies fast
+    float airAbsorptionMetres{110.0f}; // distance at which the top end is gone
+    float reverbDistanceMetres{55.0f}; // distance at which the field is fully wet
+    float dopplerFactor{1.0f};
+    // Distance at which the sound has fully shifted to the "from outside the
+    // hood" balance: low orders and body radiation rather than individual
+    // cylinders. Also lifts the sub, because bodywork radiates lows well.
+    float octaveTiltMetres{25.0f};
+    float octaveTiltAmount{0.85f};
+};
+
 struct EngineMixSettings {
     float exhaustGain{1.00f};
     float intakeGain{0.60f};
@@ -143,13 +210,25 @@ struct EngineSoundProfile {
 
     int   strokes{4};
     std::vector<EngineCylinder> cylinders;
-    float idleInstability{0.020f};   // slow random walk on RPM; a dead-steady idle reads as synthetic
+    float idleInstability{0.020f};   // depth of the RPM random walk
+    // How fast that walk moves. A real idle lopes at well under 2 Hz; anything
+    // near audio rate stops being lope and becomes a buzz on top of the note.
+    float idleInstabilityHz{1.2f};
+    // Combustion level at zero load. A real engine at idle is 20-30 dB below
+    // full load, so this floor has to be genuinely low or idle sits far too
+    // loud relative to everything else.
+    float idleLevel{0.20f};
     float combustionVariance{0.080f};
     // Length of the combustion burst. A very short burst is a click, which the
     // pipes then ring on - that is the "tin can" sound. Longer, softer pulses
     // excite the low resonances instead of the metallic top end.
     float combustionDurationMs{3.0f};
     float combustionNoise{0.45f};    // 0 = pure thump, 1 = all hiss
+    // Real combustion is a near-instant pressure rise followed by a slower
+    // blowdown. Modelling only the slow part makes the engine sound soft and
+    // synthetic; this fast spike is the crack you hear at the tailpipe.
+    float combustionAttackMs{0.9f};
+    float combustionAttackGain{0.55f};
 
     EngineExhaustSettings    exhaust;
     EngineIntakeSettings     intake;
@@ -159,6 +238,9 @@ struct EngineSoundProfile {
     EngineOverrunSettings    overrun;
     EngineNoiseSettings      noise;
     EngineBodySettings       body;
+    EngineRoarSettings       roar;
+    EngineReverbSettings     reverb;
+    EnginePerspectiveSettings perspective;
     EngineMixSettings        mix;
 
     float spatialBlend{1.0f};

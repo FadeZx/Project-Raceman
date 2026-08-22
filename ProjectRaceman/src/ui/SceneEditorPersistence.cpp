@@ -26,6 +26,98 @@ void WriteMeshLodSettings(std::ostream& out, const MeshFilterComponent& filter, 
     out << "]";
 }
 
+// Shared by the scene and prefab readers. Absent fields keep their defaults,
+// and `overridesProfileAudio` stays false for scenes authored before the 3D
+// settings and triggers moved onto the component, so the runtime knows to fall
+// back to the profile's copy for those.
+void ReadVehicleSoundComponent(const raceman::physics::json::Object& component,
+                               VehicleSoundComponent& vehicleSound) {
+    ReadBool(component, "enabled", vehicleSound.enabled);
+    ReadString(component, "profilePath", vehicleSound.profilePath);
+    ReadBool(component, "overridesProfileAudio", vehicleSound.overridesProfileAudio);
+    if (auto it = component.find("spatialBlend"); it != component.end() && it->second.is_number()) {
+        vehicleSound.spatialBlend = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = component.find("minDistance"); it != component.end() && it->second.is_number()) {
+        vehicleSound.minDistance = (std::max)(0.01f, static_cast<float>(it->second.as_number()));
+    }
+    if (auto it = component.find("maxDistance"); it != component.end() && it->second.is_number()) {
+        vehicleSound.maxDistance =
+            (std::max)(vehicleSound.minDistance + 0.01f, static_cast<float>(it->second.as_number()));
+    }
+    if (auto it = component.find("triggerSounds"); it != component.end() && it->second.is_array()) {
+        vehicleSound.triggerSounds.clear();
+        for (const raceman::physics::json::Value& value : it->second.as_array()) {
+            if (!value.is_object()) continue;
+            const raceman::physics::json::Object& t = value.as_object();
+            VehicleSoundTriggerEntry entry;
+            ReadString(t, "clipPath", entry.clipPath);
+            if (auto v = t.find("volume"); v != t.end() && v->second.is_number())
+                entry.volume = static_cast<float>(v->second.as_number());
+            if (auto v = t.find("minRpmForBackfire"); v != t.end() && v->second.is_number())
+                entry.minRpmForBackfire = static_cast<float>(v->second.as_number());
+            if (auto v = t.find("minLateralSpeedForSqueal"); v != t.end() && v->second.is_number())
+                entry.minLateralSpeedForSqueal = static_cast<float>(v->second.as_number());
+            std::string triggerName;
+            ReadString(t, "trigger", triggerName);
+            if (triggerName == "gearUp")           entry.trigger = VehicleSoundTrigger::GearUp;
+            else if (triggerName == "gearDown")    entry.trigger = VehicleSoundTrigger::GearDown;
+            else if (triggerName == "engineStart") entry.trigger = VehicleSoundTrigger::EngineStart;
+            else if (triggerName == "engineStop")  entry.trigger = VehicleSoundTrigger::EngineStop;
+            else if (triggerName == "tireSqueal")  entry.trigger = VehicleSoundTrigger::TireSqueal;
+            else if (triggerName == "backfire")    entry.trigger = VehicleSoundTrigger::Backfire;
+            else continue;
+            vehicleSound.triggerSounds.push_back(entry);
+        }
+    }
+}
+
+void ReadAudioReverbZoneComponent(const raceman::physics::json::Object& component,
+                                  AudioReverbZoneComponent& zone) {
+    ReadBool(component, "enabled", zone.enabled);
+    if (auto it = component.find("halfExtents"); it != component.end() && it->second.is_array()) {
+        const auto& a = it->second.as_array();
+        if (a.size() == 3 && a[0].is_number()) {
+            zone.halfExtents = glm::vec3(static_cast<float>(a[0].as_number()),
+                                         static_cast<float>(a[1].as_number()),
+                                         static_cast<float>(a[2].as_number()));
+        }
+    }
+    auto num = [&](const char* key, float& out) {
+        if (auto it = component.find(key); it != component.end() && it->second.is_number()) {
+            out = static_cast<float>(it->second.as_number());
+        }
+    };
+    num("blendMetres", zone.blendMetres);
+    if (auto it = component.find("priority"); it != component.end() && it->second.is_number()) {
+        zone.priority = static_cast<int>(it->second.as_number());
+    }
+    num("earlyGain", zone.earlyGain);
+    num("earlySpreadMs", zone.earlySpreadMs);
+    num("tailGain", zone.tailGain);
+    num("tailDecaySeconds", zone.tailDecaySeconds);
+    num("tailDamping", zone.tailDamping);
+    num("lowPassScale", zone.lowPassScale);
+    num("volumeScale", zone.volumeScale);
+}
+
+void ReadAudioEnvironmentComponent(const raceman::physics::json::Object& component,
+                                   AudioEnvironmentComponent& env) {
+    ReadBool(component, "enabled", env.enabled);
+    auto num = [&](const char* key, float& out) {
+        if (auto it = component.find(key); it != component.end() && it->second.is_number()) {
+            out = static_cast<float>(it->second.as_number());
+        }
+    };
+    num("earlyGain", env.earlyGain);
+    num("earlySpreadMs", env.earlySpreadMs);
+    num("tailGain", env.tailGain);
+    num("tailDecaySeconds", env.tailDecaySeconds);
+    num("tailDamping", env.tailDamping);
+    num("lowPassScale", env.lowPassScale);
+    num("volumeScale", env.volumeScale);
+}
+
 void ReadMeshLodSettings(const raceman::physics::json::Object& component, MeshFilterComponent& filter) {
     ReadBool(component, "lodEnabled", filter.lodEnabled);
     if (auto it = component.find("lodBias"); it != component.end() && it->second.is_number())
@@ -637,6 +729,8 @@ bool SerializedComponentPresent(const SceneObject& o, SceneComponentType type) {
     case SceneComponentType::AudioListener: return o.hasAudioListener;
     case SceneComponentType::AudioSource: return o.hasAudioSource;
     case SceneComponentType::VehicleSound: return o.hasVehicleSound;
+    case SceneComponentType::AudioReverbZone: return o.hasAudioReverbZone;
+    case SceneComponentType::AudioEnvironment: return o.hasAudioEnvironment;
     case SceneComponentType::TrackGenerator: return o.hasTrackGenerator;
     }
     return false;
@@ -1072,7 +1166,65 @@ void WriteSceneObjectComponentBody(std::ostream& out, const SceneObject& o, Scen
         out << "        {\n";
         out << "          \"type\": \"VehicleSound\",\n";
         out << "          \"enabled\": " << (o.vehicleSound.enabled ? "true" : "false") << ",\n";
-        out << "          \"profilePath\": \"" << JsonEscape(o.vehicleSound.profilePath) << "\"\n";
+        out << "          \"profilePath\": \"" << JsonEscape(o.vehicleSound.profilePath) << "\",\n";
+        out << "          \"tyreProfilePath\": \"" << JsonEscape(o.vehicleSound.tyreProfilePath) << "\",\n";
+        out << "          \"spatialBlend\": " << o.vehicleSound.spatialBlend << ",\n";
+        out << "          \"minDistance\": " << o.vehicleSound.minDistance << ",\n";
+        out << "          \"maxDistance\": " << o.vehicleSound.maxDistance << ",\n";
+        out << "          \"overridesProfileAudio\": " << (o.vehicleSound.overridesProfileAudio ? "true" : "false") << ",\n";
+        out << "          \"triggerSounds\": [\n";
+        for (std::size_t ti = 0; ti < o.vehicleSound.triggerSounds.size(); ++ti) {
+            const VehicleSoundTriggerEntry& trig = o.vehicleSound.triggerSounds[ti];
+            const char* triggerName = "gearUp";
+            switch (trig.trigger) {
+                case VehicleSoundTrigger::GearUp:      triggerName = "gearUp"; break;
+                case VehicleSoundTrigger::GearDown:    triggerName = "gearDown"; break;
+                case VehicleSoundTrigger::EngineStart: triggerName = "engineStart"; break;
+                case VehicleSoundTrigger::EngineStop:  triggerName = "engineStop"; break;
+                case VehicleSoundTrigger::TireSqueal:  triggerName = "tireSqueal"; break;
+                case VehicleSoundTrigger::Backfire:    triggerName = "backfire"; break;
+            }
+            out << "            {\"clipPath\": \"" << JsonEscape(trig.clipPath) << "\""
+                << ", \"trigger\": \"" << triggerName << "\""
+                << ", \"volume\": " << trig.volume
+                << ", \"minRpmForBackfire\": " << trig.minRpmForBackfire
+                << ", \"minLateralSpeedForSqueal\": " << trig.minLateralSpeedForSqueal << "}"
+                << (ti + 1 < o.vehicleSound.triggerSounds.size() ? "," : "") << "\n";
+        }
+        out << "          ]\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::AudioReverbZone: {
+        const AudioReverbZoneComponent& z = o.audioReverbZone;
+        out << "        {\n";
+        out << "          \"type\": \"AudioReverbZone\",\n";
+        out << "          \"enabled\": " << (z.enabled ? "true" : "false") << ",\n";
+        out << "          \"halfExtents\": [" << z.halfExtents.x << ", " << z.halfExtents.y << ", " << z.halfExtents.z << "],\n";
+        out << "          \"blendMetres\": " << z.blendMetres << ",\n";
+        out << "          \"priority\": " << z.priority << ",\n";
+        out << "          \"earlyGain\": " << z.earlyGain << ",\n";
+        out << "          \"earlySpreadMs\": " << z.earlySpreadMs << ",\n";
+        out << "          \"tailGain\": " << z.tailGain << ",\n";
+        out << "          \"tailDecaySeconds\": " << z.tailDecaySeconds << ",\n";
+        out << "          \"tailDamping\": " << z.tailDamping << ",\n";
+        out << "          \"lowPassScale\": " << z.lowPassScale << ",\n";
+        out << "          \"volumeScale\": " << z.volumeScale << "\n";
+        out << "        }";
+        break;
+    }
+    case SceneComponentType::AudioEnvironment: {
+        const AudioEnvironmentComponent& e = o.audioEnvironment;
+        out << "        {\n";
+        out << "          \"type\": \"AudioEnvironment\",\n";
+        out << "          \"enabled\": " << (e.enabled ? "true" : "false") << ",\n";
+        out << "          \"earlyGain\": " << e.earlyGain << ",\n";
+        out << "          \"earlySpreadMs\": " << e.earlySpreadMs << ",\n";
+        out << "          \"tailGain\": " << e.tailGain << ",\n";
+        out << "          \"tailDecaySeconds\": " << e.tailDecaySeconds << ",\n";
+        out << "          \"tailDamping\": " << e.tailDamping << ",\n";
+        out << "          \"lowPassScale\": " << e.lowPassScale << ",\n";
+        out << "          \"volumeScale\": " << e.volumeScale << "\n";
         out << "        }";
         break;
     }
@@ -1111,6 +1263,8 @@ constexpr SceneComponentType kSerializedComponentOrder[] = {
     SceneComponentType::AudioListener,
     SceneComponentType::AudioSource,
     SceneComponentType::VehicleSound,
+    SceneComponentType::AudioReverbZone,
+    SceneComponentType::AudioEnvironment,
     SceneComponentType::TrackGenerator,
 };
 
@@ -2046,8 +2200,13 @@ void SceneEditor::Load(const std::string& path) {
                         }
                     } else if (componentType == "VehicleSound") {
                         so.hasVehicleSound = true;
-                        ReadBool(component, "enabled", so.vehicleSound.enabled);
-                        ReadString(component, "profilePath", so.vehicleSound.profilePath);
+                        ReadVehicleSoundComponent(component, so.vehicleSound);
+                    } else if (componentType == "AudioReverbZone") {
+                        so.hasAudioReverbZone = true;
+                        ReadAudioReverbZoneComponent(component, so.audioReverbZone);
+                    } else if (componentType == "AudioEnvironment") {
+                        so.hasAudioEnvironment = true;
+                        ReadAudioEnvironmentComponent(component, so.audioEnvironment);
                     } else if (componentType == "TrackGenerator") {
                         so.hasTrackGenerator = true;
                         ReadBool(component, "enabled", so.trackGenerator.enabled);
@@ -2655,8 +2814,13 @@ bool SceneEditor::ParsePrefabFileObjects(const std::string& path, std::vector<Sc
                         if (auto mx = component.find("maxDistance"); mx != component.end() && mx->second.is_number()) so.audioSource.maxDistance = (std::max)(so.audioSource.minDistance + 0.01f, static_cast<float>(mx->second.as_number()));
                     } else if (componentType == "VehicleSound") {
                         so.hasVehicleSound = true;
-                        ReadBool(component, "enabled", so.vehicleSound.enabled);
-                        ReadString(component, "profilePath", so.vehicleSound.profilePath);
+                        ReadVehicleSoundComponent(component, so.vehicleSound);
+                    } else if (componentType == "AudioReverbZone") {
+                        so.hasAudioReverbZone = true;
+                        ReadAudioReverbZoneComponent(component, so.audioReverbZone);
+                    } else if (componentType == "AudioEnvironment") {
+                        so.hasAudioEnvironment = true;
+                        ReadAudioEnvironmentComponent(component, so.audioEnvironment);
                     } else if (componentType == "TrackGenerator") {
                         so.hasTrackGenerator = true;
                         ReadBool(component, "enabled", so.trackGenerator.enabled);
@@ -3497,6 +3661,7 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("skidMarkFadeSeconds"); it != graphics.end() && it->second.is_number()) graphicsProfile_.skidMarkFadeSeconds = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 3600.0f);
                     if (auto it = graphics.find("maxSkidMarks"); it != graphics.end() && it->second.is_number()) graphicsProfile_.maxSkidMarks = (std::clamp)(static_cast<int>(it->second.as_number()), 1, 20000);
                     ReadVec3(graphics, "skidMarkColor", graphicsProfile_.skidMarkColor);
+                    if (ReadString(graphics, "skidMarkDecalPrefab", value)) graphicsProfile_.skidMarkDecalPrefab = NormalizeSlashes(value);
                 } else {
                     shouldSaveProject = true;
                 }
@@ -3929,7 +4094,8 @@ void SceneEditor::SaveProject() {
         out << "    \"skidMarkFadeSeconds\": " << graphicsProfile_.skidMarkFadeSeconds << ",\n";
         out << "    \"maxSkidMarks\": " << graphicsProfile_.maxSkidMarks << ",\n";
         out << "    \"skidMarkColor\": [" << graphicsProfile_.skidMarkColor.r << ", "
-            << graphicsProfile_.skidMarkColor.g << ", " << graphicsProfile_.skidMarkColor.b << "]\n";
+            << graphicsProfile_.skidMarkColor.g << ", " << graphicsProfile_.skidMarkColor.b << "],\n";
+        out << "    \"skidMarkDecalPrefab\": \"" << JsonEscape(NormalizeSlashes(graphicsProfile_.skidMarkDecalPrefab)) << "\"\n";
         out << "  },\n";
         out << "  \"skybox\": [\n";
         for (std::size_t fi = 0; fi < skyboxFaces_.size(); ++fi) {

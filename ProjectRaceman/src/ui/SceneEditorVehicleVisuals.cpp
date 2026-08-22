@@ -98,7 +98,18 @@ void UpdateVehicleVisuals(std::vector<SceneObject>& objects,
                 wheelWorldTransform.position = glm::vec3(runtimeChassisWorldMatrix * glm::vec4(contactRelative, 1.0f));
             }
             wheelWorldTransform.rotationEuler = runtimeChassisWorldTransform.rotationEuler;
-            wheelWorldTransform.rotationEuler.x += glm::degrees(renderWheelSpin);
+            // Each wheel turns at its own rate, interpolated the same way the
+            // chassis is. A locked wheel stops dead under braking and a spinning
+            // one races ahead of the car, which is the tell that sells a
+            // lock-up or a burnout far more than the mark on the road does.
+            float renderSpin = renderWheelSpin;
+            if (wheelIndex < runtimeVehicle.arcadeWheelContacts.size()) {
+                const RuntimeVehicleWheelContact& spinContact =
+                    runtimeVehicle.arcadeWheelContacts[wheelIndex];
+                renderSpin = spinContact.previousRotationAngle +
+                    (spinContact.rotationAngle - spinContact.previousRotationAngle) * renderAlpha;
+            }
+            wheelWorldTransform.rotationEuler.x += glm::degrees(renderSpin);
             wheelWorldTransform.scale = glm::vec3(1.0f);
             if (wheelIndex < runtimeVehicle.wheelBindings.size() && wheelIndex < runtimeVehicle.wheelAuthoredLocalTransforms.size()) {
                 wheelWorldTransform = BuildWheelWorldTransformFromAuthoredLocal(

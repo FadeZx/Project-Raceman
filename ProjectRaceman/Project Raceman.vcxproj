@@ -129,6 +129,8 @@
     <ClInclude Include="src\audio\EngineSoundProfile.h" />
     <ClInclude Include="src\audio\EngineSynthGenerator.h" />
     <ClInclude Include="src\audio\EngineSynth.h" />
+    <ClInclude Include="src\audio\TyreSoundProfile.h" />
+    <ClInclude Include="src\audio\TyreSynth.h" />
     <ClInclude Include="src\audio\VehicleSoundProfile.h" />
     <ClInclude Include="src\physics\VehicleConfig.h" />
     <ClInclude Include="src\physics\VehicleEngineState.h" />
@@ -164,6 +166,7 @@
     <ClInclude Include="src\ui\SceneEditorVehicleTelemetry.h" />
     <ClInclude Include="src\ui\SceneEditorVehicleValidation.h" />
     <ClInclude Include="src\ui\SceneEditorVehicleVisuals.h" />
+    <ClInclude Include="src\ui\SceneEditorVehicleWheelSlip.h" />
     <ClInclude Include="src\ui\TrackGenerator.h" />
     <ClInclude Include="editor-assets\third_party\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="editor-assets\third_party\imnodes\imnodes.h" />
@@ -184,6 +187,8 @@
     <ClCompile Include="src\audio\EngineSynthGenerator.cpp" />
     <ClCompile Include="src\audio\EngineSoundProfile.cpp" />
     <ClCompile Include="src\audio\EngineSynth.cpp" />
+    <ClCompile Include="src\audio\TyreSoundProfile.cpp" />
+    <ClCompile Include="src\audio\TyreSynth.cpp" />
     <ClCompile Include="src\audio\miniaudio_impl.cpp" />
     <ClCompile Include="src\audio\VehicleSoundProfile.cpp" />
     <ClCompile Include="src\physics\VehicleConfig.cpp" />
@@ -232,6 +237,7 @@
     <ClCompile Include="src\ui\SceneEditorEngineSoundEditor.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleSoundRuntime.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleTelemetry.cpp" />
+    <ClCompile Include="src\ui\SceneEditorVehicleWheelSlip.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleValidation.cpp" />
     <ClCompile Include="src\ui\SceneEditorVehicleVisuals.cpp" />
     <ClCompile Include="src\ui\SceneEditorPersistence.cpp" />

@@ -90,7 +90,7 @@
       "type": "GameObject",
       "physicsLayer": 0,
       "enabled": true,
-      "componentOrder": ["Transform", "Camera", "Cinemachine", "Script", "MeshRenderer"],
+      "componentOrder": ["Transform", "Camera", "Cinemachine", "Script", "MeshRenderer", "AudioListener"],
       "components": [
         {
           "type": "Transform",
@@ -175,6 +175,10 @@
           "rotationDamping": 12,
           "priority": 10,
           "blendDuration": 0.6
+        },
+        {
+          "type": "AudioListener",
+          "enabled": true
         }
       ]
     },
@@ -6195,7 +6199,7 @@
     {
       "id": "gameobject_64",
       "parentId": "",
-      "name": "BMW",
+      "name": "Car",
       "tag": "Untagged",
       "type": "GameObject",
       "physicsLayer": 0,
@@ -6260,7 +6264,7 @@
         {
           "type": "Vehicle",
           "enabled": true,
-          "configPath": "assets/car/2018-bmw-m8-gte/source/BMW.vehicle.json",
+          "configPath": "assets/car/mercedes-benz-amg-gt3-red-bull/AMGGT3.vehicle.json",
           "inputProfileId": "default_vehicle",
           "preferredInputDevice": "Any",
           "preferredInputDeviceId": "",
@@ -6295,11 +6299,11 @@
             "meshAssetPath": "",
             "meshName": "",
             "meshIndex": 0,
-            "skinWidth": 0.03,
-            "maxSlideIterations": 3,
+            "skinWidth": 0.044,
+            "maxSlideIterations": 4,
             "enableDepenetration": true,
-            "maxDepenetrationPerStep": 0.35,
-            "debugDraw": false,
+            "maxDepenetrationPerStep": 1,
+            "debugDraw": true,
             "shapes": [
             ]
           }
@@ -6307,7 +6311,17 @@
         {
           "type": "VehicleSound",
           "enabled": true,
-          "profilePath": "assets/car/2018-bmw-m8-gte/source/BMW.enginesound.json"
+          "profilePath": "assets/car/2018-bmw-m8-gte/source/AMG_GT3.enginesound.json",
+          "tyreProfilePath": "",
+          "spatialBlend": 1,
+          "minDistance": 8,
+          "maxDistance": 380,
+          "overridesProfileAudio": true,
+          "triggerSounds": [
+            {"clipPath": "assets/audio/ShiftUpSound.wav", "trigger": "gearUp", "volume": 0.34, "minRpmForBackfire": 4000, "minLateralSpeedForSqueal": 4},
+            {"clipPath": "assets/audio/ShiftDownSound.wav", "trigger": "gearDown", "volume": 0.36, "minRpmForBackfire": 4000, "minLateralSpeedForSqueal": 4},
+            {"clipPath": "assets/audio/TireSound.wav", "trigger": "tireSqueal", "volume": 0.5, "minRpmForBackfire": 4000, "minLateralSpeedForSqueal": 4}
+          ]
         }
       ]
     },
@@ -22950,8 +22964,45 @@
           "spotAngleDegrees": 35
         }
       ]
+    },
+    {
+      "id": "gameobject_18",
+      "parentId": "",
+      "name": "Tire Decals",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "prefabLink": {
+        "sourcePrefabPath": "assets/Prefabs/Tire_Decals.prefab.json",
+        "prefabInstanceRootId": "gameobject_18",
+        "prefabLocalId": "gameobject_18",
+        "overriddenComponents": [],
+        "structureOverridden": false
+      },
+      "componentOrder": ["Transform", "Decal"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.711425, -1.34567, 2.54434],
+          "rotationEuler": [0, 0, 0],
+          "scale": [0.3, 0.3, 0.4]
+        },
+        {
+          "type": "Decal",
+          "enabled": true,
+          "texturePath": "D:/Project-Raceman/Project1/assets/track_models/suzuka-circuit-2001-layout/textures/tyres_add1_313.png",
+          "color": [0, 0, 0, 1],
+          "opacity": 1,
+          "angleFadeDegrees": 85,
+          "uvTiling": [0.58, 1],
+          "uvOffset": [0, 0],
+          "blendMode": "Multiply",
+          "sortOrder": 1
+        }
+      ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_18", "gameobject_1635", "gameobject_7", "gameobject_8", "gameobject_11", "gameobject_15", "gameobject_64", "gameobject_145"],
+  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_18", "gameobject_16", "gameobject_1635", "gameobject_7", "gameobject_8", "gameobject_11", "gameobject_15", "gameobject_145", "gameobject_64"],
   "inspectorComponentsClosed": ["mesh_393|Collider", "light_8|MeshRenderer", "gameobject_64|Vehicle", "gameobject_11|Vehicle", "camera_1|Cinemachine", "gameobject_64|MeshRenderer", "mesh_21|MeshFilter", "mesh_146|MeshFilter"]
 }

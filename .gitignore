@@ -52,6 +52,7 @@ ProjectRaceman/**/*.idb
 ProjectRaceman/imgui.ini
 ProjectRaceman/config/recent_projects.json
 ProjectRaceman/config/editor_state.json
+ProjectRaceman/config/audio_editor_state.json
 ProjectRaceman/config/imgui.ini
 ProjectRaceman/config/menu.json
 

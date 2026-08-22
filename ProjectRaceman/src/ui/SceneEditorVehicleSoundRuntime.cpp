@@ -3,6 +3,8 @@
 #include "../audio/VehicleSoundProfile.h"
 #include "../audio/EngineSoundProfile.h"
 #include "../audio/EngineSynth.h"
+#include "../audio/TyreSoundProfile.h"
+#include "../audio/TyreSynth.h"
 
 #include <cmath>
 
@@ -22,6 +24,8 @@ void SceneEditor::ClearVehicleSoundRuntime() {
             }
             audioManager_->StopVoice(inst.synthVoice);
             inst.synth.reset();
+            audioManager_->StopVoice(inst.tyreVoice);
+            inst.tyreSynth.reset();
         }
     }
     runtimeVehicleSounds_.clear();
@@ -72,13 +76,26 @@ void SceneEditor::RebuildVehicleSoundRuntime() {
         // ---- procedural path -------------------------------------------------
         if (isSynthProfile) {
             inst.engineProfile = EngineSoundProfileLoader::loadFromFile(absPath);
-            // Triggers still come from the shared list, so gear-shift and tyre
-            // one-shots keep working alongside the synth.
-            inst.profile.triggerSounds = inst.engineProfile.triggerSounds;
-            inst.profile.spatialBlend  = inst.engineProfile.spatialBlend;
-            inst.profile.minDistance   = inst.engineProfile.minDistance;
-            inst.profile.maxDistance   = inst.engineProfile.maxDistance;
-            inst.profile.name          = inst.engineProfile.name;
+            inst.profile.name = inst.engineProfile.name;
+
+            // 3D settings and triggers live on the component now. Scenes authored
+            // before that still carry them inside the profile, so fall back
+            // rather than going silent on old data.
+            if (obj.vehicleSound.overridesProfileAudio) {
+                inst.profile.triggerSounds = obj.vehicleSound.triggerSounds;
+                inst.profile.spatialBlend  = obj.vehicleSound.spatialBlend;
+                inst.profile.minDistance   = obj.vehicleSound.minDistance;
+                inst.profile.maxDistance   = obj.vehicleSound.maxDistance;
+            } else {
+                inst.profile.triggerSounds = inst.engineProfile.triggerSounds;
+                inst.profile.spatialBlend  = inst.engineProfile.spatialBlend;
+                inst.profile.minDistance   = inst.engineProfile.minDistance;
+                inst.profile.maxDistance   = inst.engineProfile.maxDistance;
+            }
+            // The synth reads its own copy of these, so keep them in step.
+            inst.engineProfile.spatialBlend = inst.profile.spatialBlend;
+            inst.engineProfile.minDistance  = inst.profile.minDistance;
+            inst.engineProfile.maxDistance  = inst.profile.maxDistance;
 
             const physics::VehicleArcadeHandlingConfig* handling = nullptr;
             for (const auto& v : runtimeVehicles_) {
@@ -112,12 +129,19 @@ void SceneEditor::RebuildVehicleSoundRuntime() {
                 inst.synth.reset();
             }
 
+            CreateVehicleTyreVoice(inst, obj, pos);
             runtimeVehicleSounds_.push_back(std::move(inst));
             continue;
         }
 
         // ---- legacy sample path ----------------------------------------------
         VehicleSoundProfile profile = VehicleSoundProfileLoader::loadFromFile(absPath);
+        if (obj.vehicleSound.overridesProfileAudio) {
+            profile.triggerSounds = obj.vehicleSound.triggerSounds;
+            profile.spatialBlend  = obj.vehicleSound.spatialBlend;
+            profile.minDistance   = obj.vehicleSound.minDistance;
+            profile.maxDistance   = obj.vehicleSound.maxDistance;
+        }
         inst.profile = profile;
 
         // Start all engine layers looping but paused/silent.
@@ -178,6 +202,107 @@ void SceneEditor::RebuildVehicleSoundRuntime() {
             }
         }
     }
+}
+
+void SceneEditor::CreateVehicleTyreVoice(RuntimeVehicleSoundInstance& inst, const SceneObject& obj,
+                                         const glm::vec3& position) {
+    if (audioManager_ == nullptr || !audioManager_->IsInitialized()) {
+        return;
+    }
+    // No profile assigned is a valid choice - the car simply has no tyre voice.
+    if (obj.vehicleSound.tyreProfilePath.empty()) {
+        return;
+    }
+    const std::string absolute = ProjectAssetPathToAbsolute(obj.vehicleSound.tyreProfilePath).string();
+    inst.tyreProfile = std::make_shared<TyreSoundProfile>(
+        TyreSoundProfileLoader::loadFromFile(absolute));
+    inst.tyreSynth = std::make_shared<TyreSynth>();
+    inst.tyreSynth->SetProfile(inst.tyreProfile);
+
+    inst.tyreVoice = (inst.tyreProfile->spatialBlend > 0.0f)
+        ? audioManager_->CreateSynthVoice3D(inst.tyreSynth, position)
+        : audioManager_->CreateSynthVoice2D(inst.tyreSynth);
+    if (inst.tyreVoice != nullptr) {
+        audioManager_->SetVoiceAttenuation(inst.tyreVoice, inst.tyreProfile->minDistance,
+                                           inst.tyreProfile->maxDistance,
+                                           inst.tyreProfile->spatialBlend);
+        if (console_ != nullptr) {
+            console_->AddLog("Tyre sound '" + inst.tyreProfile->name + "' active.");
+        }
+    } else if (console_ != nullptr) {
+        console_->AddError("Failed to create tyre voice for " + obj.name);
+        inst.tyreSynth.reset();
+    }
+}
+
+void SceneEditor::UpdateVehicleTyreSound(RuntimeVehicleSoundInstance& inst,
+                                         RuntimeVehicleInstance& vehicle,
+                                         const glm::vec3& vehiclePos, float listenerDistance,
+                                         float deltaTime) {
+    if (!inst.tyreSynth || inst.tyreVoice == nullptr || !inst.tyreProfile) {
+        return;
+    }
+    if (audioManager_ != nullptr) {
+        audioManager_->SetVoicePosition(inst.tyreVoice, vehiclePos);
+    }
+
+    TyreSynthParams params;
+    params.speedMps = std::fabs(vehicle.arcadeSpeed);
+
+    const int wheelCount = (std::min)(static_cast<int>(vehicle.arcadeWheelContacts.size()),
+                                      TyreSynthParams::kMaxWheels);
+    params.wheelCount = wheelCount;
+
+    // Normalise wheel load against the average, so "loaded" means loaded
+    // relative to this car rather than to an absolute force.
+    float totalForce = 0.0f;
+    for (int w = 0; w < wheelCount; ++w) {
+        totalForce += (std::max)(0.0f, vehicle.arcadeWheelContacts[w].normalForce);
+    }
+    const float averageForce = (wheelCount > 0) ? (std::max)(1.0f, totalForce / wheelCount) : 1.0f;
+
+    // Slip is per wheel now: each tyre reports how fast its own contact patch
+    // is sliding, so the outside front singing on turn-in and the inside rear
+    // going quiet as it unloads are separate events in the mix. Same numbers
+    // the skid decals are drawn from, so a mark and its squeal start together.
+
+    for (int w = 0; w < wheelCount; ++w) {
+        const RuntimeVehicleWheelContact& contact = vehicle.arcadeWheelContacts[static_cast<std::size_t>(w)];
+        TyreWheelParams& out = params.wheels[w];
+
+        out.grounded = contact.grounded;
+        out.load = (std::clamp)(contact.normalForce / averageForce * 0.5f, 0.0f, 1.0f);
+
+        out.slip = (std::clamp)(contact.slipAmount, 0.0f, 1.0f);
+
+        const int surface = (std::clamp)(static_cast<int>(contact.surfaceType), 0,
+                                         kTrackSurfaceTypeCount - 1);
+        out.surfaceA = surface;
+        out.surfaceB = surface;
+        out.surfaceBlend = 0.0f;
+
+        // Suspension moving fast means a kerb strike or a landing. Rate rather
+        // than absolute travel, so simply sitting compressed is silent.
+        out.impact = 0.0f;
+        if (inst.lastSuspensionValid && deltaTime > 0.0f && contact.grounded) {
+            const float rate = (contact.suspensionTravel - inst.lastSuspensionTravel[w]) / deltaTime;
+            const float threshold = (std::max)(0.01f, inst.tyreProfile->impactThreshold);
+            if (rate > threshold) {
+                out.impact = (std::clamp)((rate - threshold) / (threshold * 4.0f), 0.0f, 1.0f);
+            }
+        }
+        inst.lastSuspensionTravel[w] = contact.suspensionTravel;
+    }
+    inst.lastSuspensionValid = wheelCount > 0;
+
+    // Same air absorption curve the engine uses, so the two stay coherent.
+    const EnginePerspectiveSettings& persp = inst.engineProfile.perspective;
+    const float absorption =
+        (std::clamp)(listenerDistance / (std::max)(1.0f, persp.airAbsorptionMetres), 0.0f, 1.0f);
+    params.lowPass = 1.0f - 0.85f * absorption;
+    params.volume = 1.0f;
+
+    inst.tyreSynth->SetParams(params);
 }
 
 void SceneEditor::ApplyEngineSoundEditsToRuntime() {
@@ -248,6 +373,18 @@ void SceneEditor::UpdateVehicleSoundRuntime(float deltaTime) {
             if (inst.synthVoice) audioManager_->SetVoicePosition(inst.synthVoice, vehiclePos);
         }
 
+        // Doppler. The vehicle's own velocity vector comes from its forward axis
+        // and signed speed; a passing car is one of the most recognisable sounds
+        // there is, and it needs both ends of the equation.
+        if (inst.usesSynth && inst.synthVoice != nullptr && vIdx >= 0) {
+            const glm::mat4 vehicleMatrix = GetObjectWorldMatrix(vIdx);
+            const glm::vec3 forward =
+                glm::normalize(glm::vec3(vehicleMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+            const glm::vec3 velocity = forward * rv->arcadeSpeed;
+            audioManager_->SetVoiceVelocity(inst.synthVoice, velocity,
+                                            inst.engineProfile.perspective.dopplerFactor);
+        }
+
         // ---- procedural engine ------------------------------------------------
         if (inst.usesSynth && inst.synth) {
             const physics::VehicleArcadeHandlingConfig& handling = rv->config.arcadeHandling;
@@ -260,6 +397,70 @@ void SceneEditor::UpdateVehicleSoundRuntime(float deltaTime) {
             params.throttle    = engine.throttle;
             params.boost       = engine.boost;
             params.ignitionCut = engine.shiftCut || engine.limiterCut;
+            // A limiter genuinely kills fuel; a shift only interrupts it, and how
+            // far is the profile's authored shiftCutDepth. That parameter existed
+            // in the asset and editor but was never read, so every shift was a
+            // full silence.
+            params.ignitionScale = engine.limiterCut
+                ? 0.0f
+                : (1.0f - (std::clamp)(inst.engineProfile.drivetrain.shiftCutDepth, 0.0f, 1.0f));
+
+            // ---- perspective, air and space ----------------------------------
+            const EnginePerspectiveSettings& persp = inst.engineProfile.perspective;
+            if (persp.enabled && vIdx >= 0) {
+                glm::vec3 listenerPos(0.0f), listenerFwd(0.0f, 0.0f, -1.0f), listenerUp(0.0f, 1.0f, 0.0f);
+                GetActiveAudioListenerPose(listenerPos, listenerFwd, listenerUp);
+
+                const glm::vec3 toListener = listenerPos - vehiclePos;
+                const float distance = glm::length(toListener);
+
+                // Where the listener sits relative to the car. Behind the car you
+                // hear the tailpipe; in front you hear the intake shouting.
+                const glm::mat4 vehicleMatrix = GetObjectWorldMatrix(vIdx);
+                const glm::vec3 vehicleForward =
+                    glm::normalize(glm::vec3(vehicleMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+                const float behind = (distance > 0.01f)
+                    ? (std::clamp)(glm::dot(glm::normalize(toListener), -vehicleForward), -1.0f, 1.0f)
+                    : 0.0f;
+                const float rearMix = behind * 0.5f + 0.5f; // 0 = ahead, 1 = astern
+
+                params.exhaustWeight = persp.exhaustFront + (persp.exhaustRear - persp.exhaustFront) * rearMix;
+                params.intakeWeight  = persp.intakeFront  + (persp.intakeRear  - persp.intakeFront)  * rearMix;
+                // Mechanical clatter is quiet and local; it disappears long
+                // before the exhaust does.
+                params.blockWeight = 1.0f / (1.0f + distance / (std::max)(1.0f, persp.blockFalloffMetres));
+
+                // Air absorbs the top end with distance. Without this a car at
+                // 100 m is tonally identical to one at 5 m, only quieter, which
+                // is one of the clearest giveaways of synthetic audio.
+                const float absorption =
+                    (std::clamp)(distance / (std::max)(1.0f, persp.airAbsorptionMetres), 0.0f, 1.0f);
+                params.lowPass = 1.0f - 0.85f * absorption;
+
+                // Direct sound falls off faster than the reverberant field, so
+                // the wet/dry ratio climbs with distance.
+                params.reverbWet =
+                    0.35f + 1.15f * (std::clamp)(distance / (std::max)(1.0f, persp.reverbDistanceMetres), 0.0f, 1.0f);
+
+                // Up close you are effectively inside the engine bay and hear
+                // each cylinder; step back and the bodywork radiates the low
+                // orders instead, so the engine reads an octave bigger.
+                params.octaveTilt =
+                    (std::clamp)(distance / (std::max)(1.0f, persp.octaveTiltMetres), 0.0f, 1.0f)
+                    * (std::clamp)(persp.octaveTiltAmount, 0.0f, 1.0f);
+
+                // Acoustics come from where the LISTENER is, not from the car.
+                // Drive into a tunnel and every car you can hear picks up the
+                // tunnel, which is the whole point of doing it this way.
+                const ResolvedAudioEnvironment env = ResolveListenerEnvironment(listenerPos);
+                params.reverbEarlyGain        = env.earlyGain;
+                params.reverbEarlySpreadMs    = env.earlySpreadMs;
+                params.reverbTailGain         = env.tailGain;
+                params.reverbTailDecaySeconds = env.tailDecaySeconds;
+                params.reverbTailDamping      = env.tailDamping;
+                params.lowPass *= env.lowPassScale;
+                params.volume  *= env.volumeScale;
+            }
             params.overrun     = engine.throttle < 0.05f && rpm > inst.engineProfile.overrun.minRpm;
             params.volume      = 1.0f;
             inst.synth->SetParams(params);
@@ -278,6 +479,17 @@ void SceneEditor::UpdateVehicleSoundRuntime(float deltaTime) {
                 inst.overrunPopCooldown = 0.04f;
             }
 
+            // Fuel returning after an upshift ignites what is left in the pipe:
+            // that crack is the sound of a race gearbox, and it is what the long
+            // silent cut was hiding.
+            if (inst.lastShiftCut && !engine.shiftCut) {
+                EngineSynthEvent event;
+                event.kind = EngineSynthEventKind::Backfire;
+                event.strength = inst.engineProfile.overrun.limiterPopGain;
+                inst.synth->PushEvent(event);
+            }
+            inst.lastShiftCut = engine.shiftCut;
+
             // Limiter pops on each fuel cut edge.
             if (engine.limiterCut && !inst.lastLimiterCut) {
                 EngineSynthEvent event;
@@ -286,6 +498,14 @@ void SceneEditor::UpdateVehicleSoundRuntime(float deltaTime) {
                 inst.synth->PushEvent(event);
             }
             inst.lastLimiterCut = engine.limiterCut;
+        }
+
+        // Tyres. Continuous, and driven by per-wheel telemetry the sim was
+        // already producing and audio had never read.
+        if (inst.tyreSynth) {
+            glm::vec3 lp(0.0f), lf(0.0f, 0.0f, -1.0f), lu(0.0f, 1.0f, 0.0f);
+            GetActiveAudioListenerPose(lp, lf, lu);
+            UpdateVehicleTyreSound(inst, *rv, vehiclePos, glm::length(lp - vehiclePos), deltaTime);
         }
 
         // Update each engine layer (legacy sample path only)

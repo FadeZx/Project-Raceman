@@ -31,6 +31,8 @@
 #include "../audio/AudioManager.h"
 #include "../audio/EngineSoundProfile.h"
 #include "../audio/EngineSynth.h"
+#include "../audio/TyreSoundProfile.h"
+#include "../audio/TyreSynth.h"
 #include "../rendering/SkyboxController.h"
 #include "TrackGenerator.h"
 #include "ObjImport.h"
@@ -278,9 +280,23 @@ private:
     // parked at the authored pose while the car drives away.
     bool GetActiveAudioListenerPose(glm::vec3& outPosition, glm::vec3& outForward,
                                     glm::vec3& outUp) const;
+
+    // Acoustics of wherever the listener currently stands: the scene default,
+    // blended with whichever reverb zone it is inside.
+    struct ResolvedAudioEnvironment {
+        float earlyGain{0.46f};
+        float earlySpreadMs{48.0f};
+        float tailGain{0.16f};
+        float tailDecaySeconds{0.85f};
+        float tailDamping{0.62f};
+        float lowPassScale{1.0f};
+        float volumeScale{1.0f};
+    };
+    ResolvedAudioEnvironment ResolveListenerEnvironment(const glm::vec3& listenerPosition) const;
     void RestoreFromPlayModeSnapshot();
     void TickPlayModeLoading();
     void RenderPlayModeLoadingPopup();
+    void StartPlayModePhysicsBuild();
     void TickPendingSceneSave();
     void TickReflectionProbeBake();
     void TickRealtimeReflectionProbes();
@@ -403,6 +419,12 @@ private:
     void OpenVehicleConfigEditor(const std::string& configPath);
     void OpenVehicleSoundEditor(const std::string& profilePath);
     void OpenEngineSoundEditor(const std::string& profilePath);
+    // Cross-session panel state for the two audio editors: which profile each
+    // had open, the tab it was left on, and the audition rig's settings.
+    void LoadAudioEditorPanelState();
+    void SaveAudioEditorPanelState();
+    void TickAudioEditorPanelStatePersistence();
+    std::string SerializeAudioEditorPanelState() const;
     void PushEngineSoundUndoState();
     void UndoEngineSound();
     void RedoEngineSound();
@@ -473,8 +495,13 @@ private:
     float runtimeWetness_{0.0f};
     bool weatherWetnessInitialized_{false};
     // Built from the live graphics profile each frame so the editor's sliders
-    // take effect without restarting the run.
-    SkidMarkSettings SkidMarkSettingsFromProfile(const GraphicsProfile& profile) const;
+    // take effect without restarting the run. Not const: resolving the decal
+    // prefab warms the prefab source cache.
+    SkidMarkSettings SkidMarkSettingsFromProfile(const GraphicsProfile& profile);
+    // Reads the Decal component out of the configured skid-mark prefab. The
+    // prefab is a look template, not something instantiated: nothing is added to
+    // the scene, so runtime marks stay out of the hierarchy, undo and saves.
+    SkidMarkDecalTemplate ResolveSkidMarkDecalTemplate(const std::string& prefabPath);
     std::string projectName_{"Project Raceman"};
     std::string assetsRootSetting_{"assets"};
     std::string defaultScenePath_{"assets/scenes/EditorScene.scene.json"};
@@ -617,6 +644,10 @@ private:
     bool engineSoundAuditionSweep_{false};
     float engineSoundAuditionSweepT_{0.0f};
     int engineSoundSelectedOrder_{0};
+    std::string engineSoundEditorActiveTab_;   // tab currently shown, remembered across sessions
+    std::string engineSoundEditorPendingTab_;  // tab to re-select on the first frame after a restore
+    std::string audioEditorPanelStateLastWritten_;
+    double audioEditorPanelStateNextWriteTime_{0.0};
     ProjectAssetPickerMode assetPickerMode_{ProjectAssetPickerMode::None};
     int pendingLodLevelIndex_{-1};
     bool scriptsRunning_{false};
@@ -709,6 +740,14 @@ private:
         std::shared_ptr<EngineSynth> synth;
         AudioVoice* synthVoice{nullptr};
         bool lastLimiterCut{false};
+        bool lastShiftCut{false};
+
+        // Tyres. Continuous rolling and slip squeal, one voice per vehicle.
+        std::shared_ptr<TyreSoundProfile> tyreProfile;
+        std::shared_ptr<TyreSynth> tyreSynth;
+        AudioVoice* tyreVoice{nullptr};
+        float lastSuspensionTravel[4]{};
+        bool  lastSuspensionValid{false};
         float overrunPopCooldown{0.0f};
         // Trigger detection state
         int  lastGear{0};
@@ -717,9 +756,19 @@ private:
     };
     std::vector<RuntimeVehicleSoundInstance> runtimeVehicleSounds_;
 
+    // Declared here rather than with the other audio methods: they take
+    // RuntimeVehicleSoundInstance by reference, which is defined just above.
+    void CreateVehicleTyreVoice(RuntimeVehicleSoundInstance& inst, const SceneObject& obj,
+                                const glm::vec3& position);
+    void UpdateVehicleTyreSound(RuntimeVehicleSoundInstance& inst, RuntimeVehicleInstance& vehicle,
+                                const glm::vec3& vehiclePos, float listenerDistance, float deltaTime);
+
+
     // Phase 0 spike state for the "audio.synthtest" console command.
     std::shared_ptr<EngineSynthGenerator> synthTestGenerator_;
     AudioVoice* synthTestVoice_{nullptr};
+    glm::vec3 previousListenerPosition_{0.0f};
+    bool listenerVelocityValid_{false};
 
     int renamingObjectIndex_{-1};
     bool focusObjectRename_{false};
@@ -920,7 +969,9 @@ private:
     std::unique_ptr<PhysicsWorld> physicsWorld_;
 
     struct PlayModeLoadState {
-        enum class Phase { Idle, BuildingScripts, BuildingPhysics };
+        // Play-mode entry runs as one staged pipeline so every step is visible
+        // in the loading popup, not just the physics/collision-cache step.
+        enum class Phase { Idle, Preparing, BuildingScripts, LoadingScripts, PreparingPhysics, BuildingPhysics, Finalizing };
         struct ScriptBuildStatus {
             std::atomic<bool> isDone{false};
             std::atomic<bool> success{false};
@@ -928,6 +979,9 @@ private:
             mutable std::mutex mutex;
         };
         Phase phase{Phase::Idle};
+        // Set once the current phase's label has been on screen for a frame;
+        // main-thread stages only run after that, so each one is actually seen.
+        bool stageAnnounced{false};
         std::shared_ptr<ScriptBuildStatus> scriptBuild;
         std::unique_ptr<std::thread> scriptBuildThread;
         std::shared_ptr<PhysicsBuildProgress> progress;
@@ -971,6 +1025,7 @@ private:
     bool sceneDirty_{false};
     bool sceneSaveRequested_{false};
     bool projectSaveRequested_{false};
+    bool saveWaitingForPopup_{false};
     EditorProgressTask saveProgress_{};
     struct ReflectionProbeBakeState {
         std::string objectId;

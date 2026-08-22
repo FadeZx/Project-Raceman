@@ -292,6 +292,15 @@ struct GraphicsProfile {
     float skidMarkFadeSeconds{0.0f};   // 0 = persist for the whole session
     int maxSkidMarks{300};
     glm::vec3 skidMarkColor{0.06f, 0.055f, 0.05f};
+    // Optional .prefab whose Decal component is used as the look of runtime
+    // marks: texture, colour, blend, angle fade and UV tiling, plus its
+    // Transform scale for mark width, projection depth and metres per texture
+    // repeat. Empty falls back to the untextured mark tinted by skidMarkColor.
+    //
+    // The prefab is a template read once and cached, not something instantiated
+    // per mark: a stint lays thousands of marks and each one being a GameObject
+    // would put them in the scene graph, the undo stack and the save file.
+    std::string skidMarkDecalPrefab;
 };
 
 struct RendererSettings {
@@ -427,6 +436,10 @@ struct DecalDrawCommand {
     float angleFadeDegrees{70.0f};
     glm::vec2 uvTiling{1.0f, 1.0f};
     glm::vec2 uvOffset{0.0f, 0.0f};
+    // Edge softness in local units per axis, x across the volume and y along its
+    // local Z. Set an axis to 0 when another volume butts against that edge, so
+    // the pair reads as one surface instead of two blobs meeting.
+    glm::vec2 edgeFade{0.08f, 0.08f};
     DecalBlendMode blendMode{DecalBlendMode::Multiply};
     // Draw order among decals; lower draws first. Ties break on submission order.
     int sortOrder{0};

@@ -33,6 +33,10 @@ uniform vec3 uDecalUpWorld;   // decal +Y in world space; decals project along -
 uniform float uAngleFadeCos;  // below this alignment the decal fades out entirely
 uniform vec2 uUvTiling;
 uniform vec2 uUvOffset;
+// Edge softness in local units, per volume axis (x = across, y = along local Z).
+// A decal that stands alone wants both edges soft; one segment of a chain wants
+// the joining axis left hard so it butts against its neighbour.
+uniform vec2 uEdgeFade;
 uniform int uBlendMode;       // 0 = multiply, 1 = alpha blend
 
 void main() {
@@ -55,20 +59,28 @@ void main() {
     // Angle fade against the surface normal from the forward pass. Without this
     // a decal projected onto a kerb smears down its vertical face, which is the
     // classic giveaway of projected decals.
-    float coverage = 1.0;
+    //
+    // Alpha is the validity flag: the buffer is cleared to an all-zero "invalid
+    // normal" every frame and every surface shader writes 1.0 alongside its
+    // normal. A pixel without one has no orientation to test, so it is skipped
+    // rather than drawn unfaded - failing open here is precisely what lets a
+    // mark climb a vertical face, since the fade that would have killed it is
+    // the part being skipped.
     vec4 normalSample = texture(uNormalTexture, screenUv);
-    if (normalSample.a > 0.5) {
-        float alignment = dot(normalize(normalSample.xyz), normalize(uDecalUpWorld));
-        coverage *= smoothstep(uAngleFadeCos, min(uAngleFadeCos + 0.25, 1.0), alignment);
-    }
+    if (normalSample.a <= 0.5) discard;
+    float alignment = dot(normalize(normalSample.xyz), normalize(uDecalUpWorld));
+    float coverage = smoothstep(uAngleFadeCos, min(uAngleFadeCos + 0.25, 1.0), alignment);
 
     // Soften the volume's side walls so a decal does not end on a hard straight
     // line. The projection axis is deliberately left as a clean clip.
     //
     // Written as 1 - smoothstep(lo, hi, x), NOT smoothstep(hi, lo, x): GLSL
     // leaves smoothstep undefined when edge0 > edge1, and drivers that return 0
-    // there make every fragment discard.
-    vec2 edgeFade = vec2(1.0) - smoothstep(vec2(0.42), vec2(0.5), abs(local.xz));
+    // there make every fragment discard. The lower clamp serves the same rule:
+    // a requested softness of 0 becomes a half-millimetre ramp, which reads as
+    // a hard edge without ever handing smoothstep two equal edges.
+    vec2 softness = clamp(uEdgeFade, vec2(0.0005), vec2(0.49));
+    vec2 edgeFade = vec2(1.0) - smoothstep(vec2(0.5) - softness, vec2(0.5), abs(local.xz));
     coverage *= edgeFade.x * edgeFade.y;
 
     float alpha = clamp(decal.a * uOpacity * coverage, 0.0, 1.0);

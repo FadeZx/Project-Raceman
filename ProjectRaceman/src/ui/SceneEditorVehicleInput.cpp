@@ -162,11 +162,17 @@ void SceneEditor::CaptureVehicleRuntimeInputActions(bool routeInput) {
     }
 }
 
-void ConsumePendingVehicleGearActions(RuntimeVehicleInstance& runtimeVehicle) {
+VehicleGearActions ConsumePendingVehicleGearActions(RuntimeVehicleInstance& runtimeVehicle) {
+    VehicleGearActions actions;
+    actions.shiftUp = runtimeVehicle.pendingShiftUp;
+    actions.shiftDown = runtimeVehicle.pendingShiftDown;
+    actions.neutral = runtimeVehicle.pendingNeutral;
+    actions.reverse = runtimeVehicle.pendingReverse;
     runtimeVehicle.pendingShiftUp = false;
     runtimeVehicle.pendingShiftDown = false;
     runtimeVehicle.pendingNeutral = false;
     runtimeVehicle.pendingReverse = false;
+    return actions;
 }
 
 ArcadeVehicleInput SampleArcadeVehicleInput(RuntimeVehicleInstance& runtimeVehicle,

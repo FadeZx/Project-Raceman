@@ -1,79 +1,91 @@
 {
-  "name": "BMW_M8_V8",
+  "name": "AMG_GT3_V8",
   "strokes": 4,
-  "idleInstability": 0.025,
-  "combustionVariance": 0.12,
+  "idleInstability": 0.022,
+  "combustionVariance": 0.33,
+  "combustionDurationMs": 5.5,
+  "combustionNoise": 0.34,
+  "combustionAttackMs": 0.75,
+  "combustionAttackGain": 0.95,
   "spatialBlend": 1,
-  "minDistance": 6,
-  "maxDistance": 140,
+  "minDistance": 7,
+  "maxDistance": 159,
   "cylinders": [
     {
       "fireAngleDeg": 0,
       "bankId": 0,
-      "gain": 1,
-      "timingJitter": 0.6
+      "gain": 0.94,
+      "timingJitter": 0.6,
+      "runnerLengthScale": 0.86
     },
     {
       "fireAngleDeg": 180,
       "bankId": 0,
-      "gain": 1,
-      "timingJitter": 0.6
+      "gain": 0.98,
+      "timingJitter": 0.6,
+      "runnerLengthScale": 0.96
     },
     {
       "fireAngleDeg": 360,
       "bankId": 0,
-      "gain": 1,
-      "timingJitter": 0.6
+      "gain": 1.02,
+      "timingJitter": 0.6,
+      "runnerLengthScale": 1.07
     },
     {
       "fireAngleDeg": 540,
       "bankId": 0,
-      "gain": 1,
-      "timingJitter": 0.6
+      "gain": 0.94,
+      "timingJitter": 0.6,
+      "runnerLengthScale": 1.17
     },
     {
       "fireAngleDeg": 90,
       "bankId": 1,
-      "gain": 1,
-      "timingJitter": 0.6
+      "gain": 0.98,
+      "timingJitter": 0.6,
+      "runnerLengthScale": 1.17
     },
     {
       "fireAngleDeg": 270,
       "bankId": 1,
-      "gain": 1,
-      "timingJitter": 0.6
+      "gain": 1.02,
+      "timingJitter": 0.6,
+      "runnerLengthScale": 1.07
     },
     {
       "fireAngleDeg": 450,
       "bankId": 1,
-      "gain": 1,
-      "timingJitter": 0.6
+      "gain": 0.94,
+      "timingJitter": 0.6,
+      "runnerLengthScale": 0.96
     },
     {
       "fireAngleDeg": 630,
       "bankId": 1,
-      "gain": 1,
-      "timingJitter": 0.6
+      "gain": 0.98,
+      "timingJitter": 0.6,
+      "runnerLengthScale": 0.86
     }
   ],
   "exhaust": {
-    "runnerLengthM": 0.85,
-    "collectorLengthM": 3.2,
-    "gasSpeedMs": 470.0,
-    "runnerReflection": 0.3,
-    "runnerDamping": 0.62,
-    "mufflerStages": 3,
-    "mufflerLengthM": 1.3,
-    "mufflerReflection": 0.3,
-    "tailpipeBrightness": 0.18
+    "runnerLengthM": 0.62,
+    "collectorLengthM": 2.65,
+    "gasSpeedMs": 500,
+    "runnerReflection": 0.34,
+    "runnerDamping": 0.5,
+    "mufflerStages": 2,
+    "mufflerLengthM": 1.28,
+    "mufflerReflection": 0.22,
+    "tailpipeBrightness": 0.3
   },
   "intake": {
-    "lengthM": 0.55,
+    "lengthM": 0.36,
     "airSpeedMs": 343,
-    "reflection": 0.45,
-    "damping": 0.72,
-    "noise": 0.3,
-    "pulseGain": 0.32
+    "reflection": 0.42,
+    "damping": 0.52,
+    "noise": 0.62,
+    "pulseGain": 0.58
   },
   "orders": [
     {
@@ -388,49 +400,78 @@
     }
   ],
   "turbo": {
-    "enabled": true,
+    "enabled": false,
     "supercharger": false,
-    "whistleRatio": 11,
-    "whistleGain": 0.14,
-    "whistleResonance": 7,
-    "blowOffGain": 0.45,
-    "blowOffDecaySeconds": 0.16
+    "whistleRatio": 9,
+    "whistleGain": 0,
+    "whistleResonance": 6,
+    "blowOffGain": 0,
+    "blowOffDecaySeconds": 0.18
   },
   "drivetrain": {
     "whineGain": 0,
     "whineRatio": 14,
     "whineResonance": 4,
-    "shiftCutDepth": 0.85
+    "shiftCutDepth": 0.55
   },
   "overrun": {
     "enabled": true,
-    "minRpm": 3200,
-    "density": 0.4,
-    "gain": 0.75,
-    "limiterPopGain": 0.6
+    "minRpm": 3000,
+    "density": 0.55,
+    "gain": 0.9,
+    "limiterPopGain": 0.85
   },
   "noise": {
-    "valvetrainGain": 0.03,
-    "valvetrainFreq": 3200,
+    "valvetrainGain": 0.05,
+    "valvetrainFreq": 3600,
     "valvetrainQ": 1.2
   },
   "body": {
-    "resonance1Hz": 68.0,
-    "resonance1Q": 1.6,
-    "resonance1Gain": 1.05,
-    "resonance2Hz": 122.0,
-    "resonance2Q": 1.9,
-    "resonance2Gain": 0.6,
-    "subGain": 0.85,
-    "subCutoffHz": 75.0,
-    "toneTilt": 0.52
+    "resonance1Hz": 95,
+    "resonance1Q": 2.5,
+    "resonance1Gain": 0.7,
+    "resonance2Hz": 165,
+    "resonance2Q": 3,
+    "resonance2Gain": 0.4,
+    "subGain": 1.1,
+    "subCutoffHz": 90,
+    "toneTilt": 0.3
+  },
+  "roar": {
+    "gain": 0.68,
+    "lowHz": 60,
+    "highHz": 520,
+    "modDepth": 0.85,
+    "growl": 0.78
+  },
+  "reverb": {
+    "enabled": true,
+    "earlyGain": 0.46,
+    "earlySpreadMs": 48.0,
+    "tailGain": 0.16,
+    "tailDecaySeconds": 0.85,
+    "tailDamping": 0.62,
+    "width": 0.6
+  },
+  "perspective": {
+    "enabled": true,
+    "exhaustRear": 1.32,
+    "exhaustFront": 0.55,
+    "intakeRear": 0.35,
+    "intakeFront": 1.4,
+    "blockFalloffMetres": 20.0,
+    "airAbsorptionMetres": 210.0,
+    "reverbDistanceMetres": 90.0,
+    "dopplerFactor": 1.0,
+    "octaveTiltMetres": 14.0,
+    "octaveTiltAmount": 0.9
   },
   "mix": {
-    "exhaustGain": 1.25,
-    "intakeGain": 0.28,
-    "blockGain": 0.18,
-    "drive": 0.18,
-    "masterVolume": 1.15
+    "exhaustGain": 1.3,
+    "intakeGain": 0.48,
+    "blockGain": 0.52,
+    "drive": 0.3,
+    "masterVolume": 1.06
   },
   "triggerSounds": [
     {
@@ -455,6 +496,6 @@
       "minLateralSpeedForSqueal": 4
     }
   ],
-  "combustionDurationMs": 9.0,
-  "combustionNoise": 0.22
+  "idleInstabilityHz": 0.9,
+  "idleLevel": 0.16
 }

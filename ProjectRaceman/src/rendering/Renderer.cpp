@@ -2973,6 +2973,11 @@ void Renderer::Flush() {
         const bool transparent = cmd.transparent || ShaderRegistry::Resolve(currentShaderId).transparent || cmd.color.a < 0.999f;
         const bool writesAmbient = glGetFragDataLocation(activeShader->ID, "AmbientBuffer") >= 0;
         const bool writesMaterial = glGetFragDataLocation(activeShader->ID, "MaterialBuffer") >= 0;
+        // A shader with no NormalBuffer output leaves attachment 1 undefined if
+        // it stays writable. The decal pass reads that attachment's alpha as
+        // "is this normal usable", so undefined there means undefined angle
+        // fade; masking keeps the cleared invalid-normal value instead.
+        const bool writesNormal = glGetFragDataLocation(activeShader->ID, "NormalBuffer") >= 0;
         if (transparent) {
             glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
             glColorMaski(2, writesAmbient ? GL_TRUE : GL_FALSE,
@@ -2986,7 +2991,10 @@ void Renderer::Flush() {
             glBlendFuncSeparatei(2, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
             glDepthMask(GL_FALSE);
         } else {
-            glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            glColorMaski(1, writesNormal ? GL_TRUE : GL_FALSE,
+                         writesNormal ? GL_TRUE : GL_FALSE,
+                         writesNormal ? GL_TRUE : GL_FALSE,
+                         writesNormal ? GL_TRUE : GL_FALSE);
             glColorMaski(2, writesAmbient ? GL_TRUE : GL_FALSE,
                          writesAmbient ? GL_TRUE : GL_FALSE,
                          writesAmbient ? GL_TRUE : GL_FALSE,
@@ -3286,6 +3294,7 @@ void Renderer::RenderDecals(const ViewportTarget& target) {
         decalShader_->setFloat("uOpacity", (std::clamp)(cmd->opacity, 0.0f, 1.0f));
         decalShader_->setVec2("uUvTiling", cmd->uvTiling);
         decalShader_->setVec2("uUvOffset", cmd->uvOffset);
+        decalShader_->setVec2("uEdgeFade", cmd->edgeFade);
         decalShader_->setInt("uBlendMode", cmd->blendMode == DecalBlendMode::Multiply ? 0 : 1);
         const glm::vec3 decalUp = glm::normalize(glm::mat3(cmd->transform) * glm::vec3(0.0f, 1.0f, 0.0f));
         decalShader_->setVec3("uDecalUpWorld", decalUp);

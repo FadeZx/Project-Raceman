@@ -29,6 +29,17 @@ struct VehicleControlAmounts {
     float brake{0.0f};
 };
 
+// Tractive effort the engine is making right now, normalised so a mid-gear pull
+// at the torque peak is 1.0. Shared rather than duplicated: the tyre model has
+// to ask the same question the handling model does, or a wheel would spin up
+// from drive the car is not actually making in this gear at this speed.
+float EngineDriveTorqueScale(const raceman::physics::VehicleConfig& config,
+                             int gear,
+                             float rpm,
+                             float absSpeed,
+                             float maxForwardSpeed,
+                             float shiftCooldown);
+
 VehicleDriveRatios ComputeVehicleDriveRatios(const RuntimeVehicleInstance& runtimeVehicle, float rawThrottleAmount);
 
 VehicleControlAmounts ApplyVehicleDriverAids(RuntimeVehicleInstance& runtimeVehicle,

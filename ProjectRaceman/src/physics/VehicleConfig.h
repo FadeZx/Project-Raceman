@@ -84,6 +84,15 @@ struct VehicleTireGripConfig
     float handbrakeGripScale{0.35f};
     float downforceGripScale{0.35f};
     float minTractionScale{0.35f};
+
+    // A tyre has one friction budget, not one for stopping and another for
+    // turning. With this on, longitudinal use (braking, driving) is spent
+    // out of the same circle as cornering, so a car cannot brake at its
+    // limit and turn at its limit at the same time, and a brake pedal
+    // pushed past what the tyre has locks the fronts instead of stopping
+    // harder. Off, the two budgets are independent, which is forgiving and
+    // wrong.
+    bool combinedSlip{false};
 };
 
 struct VehicleArcadeHandlingConfig
@@ -102,6 +111,19 @@ struct VehicleArcadeHandlingConfig
     float highSpeedSteerCut{0.58f};
     float idleRPM{900.0f};
     float redlineRPM{6000.0f};
+
+    // When false the car accelerates at a flat rate in every gear and
+    // coasts down at a flat rate, so the gearbox is decoration and top
+    // speed is a clamp. When true the longitudinal axis is modelled:
+    //
+    //   - drive is scaled by the tractive effort the engine actually makes
+    //     at the current gear and RPM, so short gears pull and top gear
+    //     does not;
+    //   - lifting gives engine braking proportional to gear and RPM, so a
+    //     downshift slows the car and neutral coasts;
+    //   - aerodynamic drag rises with the square of speed, so top speed is
+    //     something the car reaches rather than a number it is clamped to.
+    bool engineDrivenAcceleration{false};
 };
 
 struct VehicleTireDynamicsConfig

@@ -2,6 +2,7 @@
 
 #include "../rendering/Renderer.h"
 #include "Console.h"
+#include "DragDropPayloads.h"
 #include "NativeDialogs.h"
 
 #include <imgui/imgui.h>
@@ -15,6 +16,31 @@
 namespace fs = std::filesystem;
 
 namespace raceman {
+
+namespace {
+
+// Paths arrive from three places - typed, dropped from the Project panel, and
+// picked from the native dialog - and only the last uses backslashes. Storing
+// one separator keeps the saved project file stable whichever route was used.
+std::string NormalizeDroppedPath(std::string path) {
+    std::replace(path.begin(), path.end(), '\\', '/');
+    return path;
+}
+
+// Matches SceneEditorInternal.h's IsPrefabAssetPath. The Project panel labels
+// these files "Name.prefab", but the suffix on disk - and what the loader
+// resolves - is .prefab.json.
+bool IsPrefabPath(const std::string& path) {
+    const std::string suffix = ".prefab.json";
+    if (path.size() < suffix.size()) return false;
+    std::string lower = path.substr(path.size() - suffix.size());
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return lower == suffix;
+}
+
+} // namespace
+
 
 namespace {
 std::string SceneDisplayName(const std::string& scenePath) {
@@ -554,17 +580,92 @@ void MenuController::Render(Renderer& renderer,
                             ImGui::SetTooltip("Rubber laid by sliding tyres while the game is running.\nEmitted as decals, so marks conform to the track and show in wet reflections.");
                         }
                         ImGui::BeginDisabled(!settings.profile.skidMarks);
+                        {
+                            const char* kPrefabTooltip =
+                                "Drop a prefab here from the Project panel, or browse for one.\n\n"
+                                "Its Decal component is the look of runtime marks: texture, colour,\n"
+                                "blend, angle fade and UV tiling. Its Transform scale is the volume -\n"
+                                "X the mark width, Y the projection depth, Z the metres of track per\n"
+                                "texture repeat.\n\n"
+                                "The prefab is a template, not a spawned object: marks stay out of the\n"
+                                "hierarchy and the save file. Leave empty for untextured marks.";
+
+                            char prefabBuffer[512];
+                            std::snprintf(prefabBuffer, sizeof(prefabBuffer), "%s",
+                                          settings.profile.skidMarkDecalPrefab.c_str());
+                            const float clearWidth = ImGui::GetFrameHeight();
+                            const float browseWidth = ImGui::CalcTextSize("Browse").x +
+                                                      ImGui::GetStyle().FramePadding.x * 2.0f;
+                            const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+                            ImGui::SetNextItemWidth(
+                                (std::max)(80.0f, ImGui::GetContentRegionAvail().x -
+                                                  browseWidth - clearWidth - spacing * 2.0f -
+                                                  ImGui::CalcTextSize("Decal Prefab").x - spacing * 2.0f));
+                            if (ImGui::InputText("##SkidDecalPrefab", prefabBuffer, sizeof(prefabBuffer))) {
+                                settings.profile.skidMarkDecalPrefab = NormalizeDroppedPath(prefabBuffer);
+                                graphicsChanged = true;
+                            }
+                            // The drop target has to be registered against the
+                            // InputText itself, not a wrapping group: ImGui matches
+                            // a drop against the last submitted item's rect.
+                            if (ImGui::BeginDragDropTarget()) {
+                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                                    const char* dropped = static_cast<const char*>(payload->Data);
+                                    if (dropped != nullptr && IsPrefabPath(dropped)) {
+                                        settings.profile.skidMarkDecalPrefab = NormalizeDroppedPath(dropped);
+                                        graphicsChanged = true;
+                                    }
+                                }
+                                ImGui::EndDragDropTarget();
+                            }
+                            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", kPrefabTooltip);
+
+                            ImGui::SameLine(0.0f, spacing);
+                            if (ImGui::Button("Browse##SkidDecalPrefab")) {
+                                const std::string picked = PickPrefabFileDialog(L"Select skid mark decal prefab");
+                                if (!picked.empty()) {
+                                    settings.profile.skidMarkDecalPrefab = NormalizeDroppedPath(picked);
+                                    graphicsChanged = true;
+                                }
+                            }
+                            ImGui::SameLine(0.0f, spacing);
+                            ImGui::BeginDisabled(settings.profile.skidMarkDecalPrefab.empty());
+                            if (ImGui::Button("x##SkidDecalPrefabClear", ImVec2(clearWidth, 0.0f))) {
+                                settings.profile.skidMarkDecalPrefab.clear();
+                                graphicsChanged = true;
+                            }
+                            ImGui::EndDisabled();
+                            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Clear the prefab.");
+                            ImGui::SameLine(0.0f, spacing);
+                            ImGui::TextUnformatted("Decal Prefab");
+
+                            if (settings.profile.skidMarkDecalPrefab.empty()) {
+                                ImGui::TextDisabled("No prefab: marks use Mark Color, untextured.");
+                            } else if (!IsPrefabPath(settings.profile.skidMarkDecalPrefab)) {
+                                ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f),
+                                    "Not a .prefab.json file - marks will fall back to Mark Color.");
+                            }
+                        }
                         graphicsChanged |= ImGui::SliderFloat("Slip Threshold", &settings.profile.skidMarkSlipThreshold, 0.02f, 1.0f, "%.2f");
                         if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("How much a tyre must slide before it marks. Lower = marks more easily.");
+                            ImGui::SetTooltip("How fast a tyre's contact patch must slide before it marks,\n"
+                                              "as a fraction of 6 m/s of scrub. 0.25 = 1.5 m/s.\n"
+                                              "A gripping tyre reads zero however fast the car is going,\n"
+                                              "so this only ever gates real sliding.");
                         }
                         graphicsChanged |= ImGui::SliderFloat("Segment Spacing", &settings.profile.skidMarkSpacing, 0.05f, 2.0f, "%.2f m");
                         if (ImGui::IsItemHovered()) {
                             ImGui::SetTooltip("Distance between segments. Smaller is smoother but burns the mark budget faster.");
                         }
                         graphicsChanged |= ImGui::SliderFloat("Mark Width", &settings.profile.skidMarkWidth, 0.05f, 1.0f, "%.2f m");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Ignored when the decal prefab authors a width through its Transform scale X.");
+                        }
                         graphicsChanged |= ImGui::SliderFloat("Mark Opacity", &settings.profile.skidMarkOpacity, 0.0f, 1.0f, "%.2f");
                         graphicsChanged |= ImGui::ColorEdit3("Mark Color", &settings.profile.skidMarkColor.x);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Used only without a decal prefab; otherwise the prefab's decal colour wins.");
+                        }
                         graphicsChanged |= ImGui::SliderFloat("Fade Time", &settings.profile.skidMarkFadeSeconds, 0.0f, 300.0f, "%.0f s");
                         if (ImGui::IsItemHovered()) {
                             ImGui::SetTooltip("0 keeps marks for the whole session, so rubber builds up over a stint.");

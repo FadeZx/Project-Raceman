@@ -10,7 +10,17 @@ namespace raceman {
 
 class InputManager;
 
-void ConsumePendingVehicleGearActions(RuntimeVehicleInstance& runtimeVehicle);
+// One frame of discrete gearbox requests. Edge triggered: each press is
+// reported once and cleared, so a shift can never be applied twice by the
+// fixed step running more than once in a rendered frame.
+struct VehicleGearActions {
+    bool shiftUp{false};
+    bool shiftDown{false};
+    bool neutral{false};
+    bool reverse{false};
+};
+
+VehicleGearActions ConsumePendingVehicleGearActions(RuntimeVehicleInstance& runtimeVehicle);
 
 ArcadeVehicleInput SampleArcadeVehicleInput(RuntimeVehicleInstance& runtimeVehicle,
                                             const SceneObject& vehicleObject,

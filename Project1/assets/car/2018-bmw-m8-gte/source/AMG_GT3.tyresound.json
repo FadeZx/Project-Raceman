@@ -1,0 +1,28 @@
+{
+  "name": "AMG_GT3_slicks",
+  "rollMasterGain": 0.62,
+  "rollSpeedRefMps": 34,
+  "rollLoadInfluence": 0.55,
+  "squealMasterGain": 0.85,
+  "squealBaseHz": 720,
+  "squealRiseHz": 460,
+  "squealResonance": 8,
+  "squealSlipThreshold": 0.14,
+  "squealSlipFull": 0.85,
+  "squealAttackSeconds": 0.06,
+  "squealReleaseSeconds": 0.22,
+  "impactGain": 0.7,
+  "impactThreshold": 0.35,
+  "masterVolume": 1,
+  "minDistance": 8,
+  "maxDistance": 260,
+  "spatialBlend": 1,
+  "surfaces": {
+    "asphalt": {"rollGain": 1, "rollLowHz": 140, "rollHighHz": 2800, "grainAmount": 0.05, "grainRateScale": 1, "squealGain": 1, "rumbleGain": 0, "rumbleHz": 55},
+    "dirt": {"rollGain": 1.25, "rollLowHz": 90, "rollHighHz": 1700, "grainAmount": 0.75, "grainRateScale": 1.35, "squealGain": 0.18, "rumbleGain": 0, "rumbleHz": 55},
+    "grass": {"rollGain": 1.05, "rollLowHz": 70, "rollHighHz": 1100, "grainAmount": 0.45, "grainRateScale": 0.8, "squealGain": 0.05, "rumbleGain": 0, "rumbleHz": 55},
+    "curb": {"rollGain": 1.15, "rollLowHz": 110, "rollHighHz": 2200, "grainAmount": 0.2, "grainRateScale": 1, "squealGain": 0.55, "rumbleGain": 1.1, "rumbleHz": 62},
+    "wall": {"rollGain": 0.85, "rollLowHz": 200, "rollHighHz": 3600, "grainAmount": 0.55, "grainRateScale": 1, "squealGain": 0.85, "rumbleGain": 0, "rumbleHz": 55},
+    "custom": {"rollGain": 1, "rollLowHz": 140, "rollHighHz": 2800, "grainAmount": 0.05, "grainRateScale": 1, "squealGain": 1, "rumbleGain": 0, "rumbleHz": 55}
+  }
+}

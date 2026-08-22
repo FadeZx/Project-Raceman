@@ -1,0 +1,35 @@
+{
+  "prefab": true,
+  "objects": [
+    {
+      "id": "gameobject_18",
+      "parentId": "",
+      "name": "Tire Decals",
+      "tag": "Untagged",
+      "type": "GameObject",
+      "physicsLayer": 0,
+      "enabled": true,
+      "componentOrder": ["Transform", "Decal"],
+      "components": [
+        {
+          "type": "Transform",
+          "position": [-0.711425, -1.34567, 2.54434],
+          "rotationEuler": [0, 0, 0],
+          "scale": [0.3, 0.3, 0.4]
+        },
+        {
+          "type": "Decal",
+          "enabled": true,
+          "texturePath": "D:/Project-Raceman/Project1/assets/track_models/suzuka-circuit-2001-layout/textures/tyres_add1_313.png",
+          "color": [0, 0, 0, 1],
+          "opacity": 1,
+          "angleFadeDegrees": 85,
+          "uvTiling": [0.58, 1],
+          "uvOffset": [0, 0],
+          "blendMode": "Multiply",
+          "sortOrder": 1
+        }
+      ]
+    }
+  ]
+}

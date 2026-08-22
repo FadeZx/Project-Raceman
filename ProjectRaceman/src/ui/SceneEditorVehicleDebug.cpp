@@ -348,8 +348,21 @@ void RenderVehicleRuntimeDebugPanel(const raceman::physics::VehicleConfig& loade
             ImGui::Text("%.3f m", suspensionTravel);
             ImGui::TextDisabled("x%.2f", loadMultiplier);
             ImGui::TableSetColumnIndex(3);
-            ImGui::Text("%.1f deg", slipAngle);
-            ImGui::TextDisabled("%.2f  %.0f rpm", tractionScale, wheelRpm);
+            const float slipRatio = contact != nullptr ? contact->slipRatio : 0.0f;
+            const float slipVelocity = contact != nullptr ? contact->slipVelocity : 0.0f;
+            const bool wheelLocked = contact != nullptr && contact->locked;
+            const bool wheelSpinning = contact != nullptr && contact->spinning;
+            if (wheelLocked) {
+                ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.25f, 1.0f), "LOCKED %.1f deg", slipAngle);
+            } else if (wheelSpinning) {
+                ImGui::TextColored(ImVec4(1.0f, 0.80f, 0.20f, 1.0f), "SPIN %.1f deg", slipAngle);
+            } else {
+                ImGui::Text("%.1f deg", slipAngle);
+            }
+            // Slip ratio and the scrub speed that actually lays rubber, so the
+            // overlay explains a mark instead of just implying one.
+            ImGui::TextDisabled("sr%+.2f  %.1f m/s  %.0f rpm", slipRatio, slipVelocity, wheelRpm);
+            (void)tractionScale;
         }
         ImGui::EndTable();
     }

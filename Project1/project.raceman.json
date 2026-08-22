@@ -107,13 +107,14 @@
     "weatherWetRate": 0.017,
     "weatherDryRate": 0.541,
     "skidMarks": true,
-    "skidMarkSlipThreshold": 0.25,
-    "skidMarkSpacing": 0.35,
-    "skidMarkWidth": 0.28,
+    "skidMarkSlipThreshold": 0.56,
+    "skidMarkSpacing": 0.06,
+    "skidMarkWidth": 0.27,
     "skidMarkOpacity": 0.75,
-    "skidMarkFadeSeconds": 0,
-    "maxSkidMarks": 300,
-    "skidMarkColor": [0.06, 0.055, 0.05]
+    "skidMarkFadeSeconds": 4,
+    "maxSkidMarks": 786,
+    "skidMarkColor": [0.126168, 0.125284, 0.1244],
+    "skidMarkDecalPrefab": "assets/Prefabs/Tire_Decals.prefab.json"
   },
   "skybox": [
     "D:/Project-Raceman/Project1/assets/skybox/noon/posx.jpg",
@@ -124,7 +125,7 @@
     "D:/Project-Raceman/Project1/assets/skybox/noon/negz.jpg"
   ],
   "editorState": {
-    "selectedProjectDirectory": "assets/car/2018-bmw-m8-gte/source",
+    "selectedProjectDirectory": "assets/car/mercedes-benz-amg-gt3-red-bull",
     "selectedInputProfileIndex": 1,
     "selectedInputDevicePage": 0,
     "selectedWheelSettingsProfileIndex": 0,
@@ -1407,6 +1408,6 @@
     ]
   },
   "editorState": {
-    "selectedProjectDirectory": "assets/car/2018-bmw-m8-gte/source"
+    "selectedProjectDirectory": "assets/car/mercedes-benz-amg-gt3-red-bull"
   }
 }

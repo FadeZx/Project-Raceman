@@ -1,0 +1,304 @@
+{
+  "name": "Mercedes-AMG GT3",
+  "setup": {
+    "enabled": true,
+    "tireCompound": "SlickSoft",
+    "drivetrainLayout": "RWD",
+    "handlingBalance": "Neutral",
+    "stabilityAssist": 0.0,
+    "simulationLevel": "Simulation"
+  },
+  "chassis": {
+    "mass": 1285.0,
+    "yawInertia": 3210.0,
+    "rollInertia": 1285.0,
+    "pitchInertia": 2030.0,
+    "centerOfMassOffset": [
+      0.0,
+      0.1,
+      -0.24
+    ]
+  },
+  "frontSuspension": {
+    "restLength": 0.27,
+    "springRate": 58000.0,
+    "bumpStopRate": 148000.0,
+    "compressionDamping": 3900.0,
+    "reboundDamping": 4900.0,
+    "antiRollStiffness": 9200.0
+  },
+  "rearSuspension": {
+    "restLength": 0.285,
+    "springRate": 62000.0,
+    "bumpStopRate": 156000.0,
+    "compressionDamping": 4100.0,
+    "reboundDamping": 5200.0,
+    "antiRollStiffness": 8200.0
+  },
+  "groundContact": {
+    "enabled": true,
+    "probeUp": 0.75,
+    "extraProbeLength": 0.75,
+    "rideHeightOffset": 0.0,
+    "heightSmoothing": 18.0,
+    "tiltSmoothing": 12.0,
+    "minGroundNormalY": 0.2,
+    "obstacleProbeHeight": 0.45,
+    "obstacleSkin": 0.75,
+    "wallNormalYMax": 0.45,
+    "airborneGravity": 18.0
+  },
+  "tireGrip": {
+    "enabled": true,
+    "lateralGrip": 7.8,
+    "longitudinalGrip": 0.72,
+    "slipAngleLimit": 15.0,
+    "slideGripLoss": 0.42,
+    "recoveryRate": 8.5,
+    "handbrakeGripScale": 0.35,
+    "downforceGripScale": 0.45,
+    "minTractionScale": 0.5,
+    "combinedSlip": true
+  },
+  "wheelTire": {
+    "enabled": true,
+    "gripFactor": 3.55,
+    "longitudinalStiffness": 18500.0,
+    "lateralStiffness": 15000.0,
+    "frontGripScale": 1.03,
+    "rearGripScale": 1.0
+  },
+  "arcadeHandling": {
+    "maxForwardSpeed": 79.0,
+    "maxReverseSpeed": 12.0,
+    "acceleration": 7.6,
+    "reverseAcceleration": 5.5,
+    "brakeDeceleration": 17.0,
+    "coastDeceleration": 3.0,
+    "handbrakeDeceleration": 26.0,
+    "fallbackSteerDegreesPerSecond": 100.0,
+    "lowSpeedSteerSpeed": 1.1,
+    "lowSpeedSteerFloor": 0.6,
+    "lowSpeedSteerInputBoost": 0.28,
+    "highSpeedSteerCut": 0.42,
+    "idleRPM": 1150.0,
+    "redlineRPM": 7600.0,
+    "engineDrivenAcceleration": true
+  },
+  "tireDynamics": {
+    "frontGripBias": 1.05,
+    "rearGripBias": 1.04,
+    "lateralRelaxationRate": 2.65,
+    "gripRecoveryRate": 1.6,
+    "slideFriction": 3.7,
+    "maxSideSlipSpeedScale": 0.18,
+    "liftOffRearGripLoss": 0.34,
+    "brakeRearGripLoss": 0.4,
+    "throttleRearGripLoss": 0.18,
+    "handbrakeRearGripLoss": 0.72,
+    "overSpeedGripLoss": 0.32,
+    "yawFromRearSlip": 66.0,
+    "yawFromFrontSlip": 30.0,
+    "yawInertiaScale": 0.74,
+    "yawDrag": 2.55,
+    "counterSteerTorque": 0.42,
+    "tireScrub": 4.1,
+    "velocityAlignmentRate": 1.25,
+    "rearSlipYawTorque": 1.05,
+    "frontSlipYawDamping": 0.55,
+    "brakeYawInstability": 0.35,
+    "loadMemory": 0.45
+  },
+  "loadTransfer": {
+    "enabled": true,
+    "brakePitchAmount": 3.2,
+    "throttleSquatAmount": 0.9,
+    "lateralRollAmount": 3.3,
+    "loadGripEffect": 0.5,
+    "aeroDownforce": 0.5,
+    "aeroBalance": 0.46,
+    "maxAeroGripBoost": 0.32,
+    "visualSmoothing": 9.0
+  },
+  "yawDynamics": {
+    "enabled": true,
+    "minSpeed": 5.5,
+    "steeringYawResponse": 168.0,
+    "slipYawResponse": 46.0,
+    "maxYawRate": 170.0,
+    "yawDamping": 5.6,
+    "counterSteerRecovery": 2.0,
+    "handbrakeRearSlipBoost": 1.25,
+    "throttleRearSlipBoost": 0.22,
+    "spinSlipAngle": 36.0,
+    "spinYawBoost": 1.35,
+    "spinRecovery": 2.8,
+    "sideSlipToYaw": 0.38
+  },
+  "brakes": {
+    "frontBias": 0.58,
+    "maxBrakeForce": 1.25,
+    "absEnabled": false,
+    "absSlipLimit": 0.48,
+    "absReleaseRate": 5.0,
+    "absRecoverRate": 4.0
+  },
+  "tractionControl": {
+    "enabled": false,
+    "slipLimit": 0.38,
+    "cutStrength": 0.25,
+    "recoveryRate": 3.0,
+    "minThrottleScale": 0.25
+  },
+  "differential": {
+    "type": "LimitedSlip",
+    "torqueSplit": 0.0,
+    "lockStrength": 0.4,
+    "coastLock": 0.25,
+    "powerLock": 0.58
+  },
+  "engine": {
+    "idleRPM": 1150.0,
+    "redlineRPM": 7600.0,
+    "stallRPM": 700.0,
+    "inertia": 0.29,
+    "torqueCurve": [
+      {
+        "rpm": 1500.0,
+        "torque": 380.0
+      },
+      {
+        "rpm": 2500.0,
+        "torque": 520.0
+      },
+      {
+        "rpm": 3500.0,
+        "torque": 590.0
+      },
+      {
+        "rpm": 4500.0,
+        "torque": 625.0
+      },
+      {
+        "rpm": 5800.0,
+        "torque": 648.0
+      },
+      {
+        "rpm": 6600.0,
+        "torque": 622.0
+      },
+      {
+        "rpm": 7200.0,
+        "torque": 560.0
+      },
+      {
+        "rpm": 7600.0,
+        "torque": 495.0
+      }
+    ]
+  },
+  "transmission": {
+    "mode": "Manual",
+    "gearRatios": [
+      2.92,
+      2.06,
+      1.61,
+      1.32,
+      1.11,
+      0.95
+    ],
+    "finalDriveRatio": 3.9,
+    "reverseRatio": -2.75,
+    "shiftTime": 0.12
+  },
+  "wheels": [
+    {
+      "name": "Front Left",
+      "mountPosition": [
+        0.758,
+        1.43,
+        0.51
+      ],
+      "radius": 0.415,
+      "width": 0.449,
+      "mass": 20.0,
+      "inertia": 1.28,
+      "maxSteerAngle": 0.58,
+      "camber": -3.4,
+      "toe": 0.04,
+      "gripFactor": 3.45,
+      "longitudinalStiffness": 17800.0,
+      "lateralStiffness": 13800.0,
+      "maxBrakingTorque": 9200.0,
+      "overrideTire": false,
+      "driven": false,
+      "hasBrake": true
+    },
+    {
+      "name": "Front Right",
+      "mountPosition": [
+        -0.758,
+        1.43,
+        0.51
+      ],
+      "radius": 0.415,
+      "width": 0.449,
+      "mass": 20.0,
+      "inertia": 1.28,
+      "maxSteerAngle": 0.58,
+      "camber": -3.4,
+      "toe": -0.04,
+      "gripFactor": 3.45,
+      "longitudinalStiffness": 17800.0,
+      "lateralStiffness": 13800.0,
+      "maxBrakingTorque": 9200.0,
+      "overrideTire": false,
+      "driven": false,
+      "hasBrake": true
+    },
+    {
+      "name": "Rear Left",
+      "mountPosition": [
+        0.788,
+        -1.41,
+        0.51
+      ],
+      "radius": 0.415,
+      "width": 0.449,
+      "mass": 21.0,
+      "inertia": 1.38,
+      "maxSteerAngle": 0.0,
+      "camber": -2.6,
+      "toe": 0.1,
+      "gripFactor": 3.15,
+      "longitudinalStiffness": 16000.0,
+      "lateralStiffness": 11800.0,
+      "maxBrakingTorque": 8200.0,
+      "overrideTire": false,
+      "driven": true,
+      "hasBrake": true
+    },
+    {
+      "name": "Rear Right",
+      "mountPosition": [
+        -0.788,
+        -1.41,
+        0.51
+      ],
+      "radius": 0.415,
+      "width": 0.449,
+      "mass": 21.0,
+      "inertia": 1.38,
+      "maxSteerAngle": 0.0,
+      "camber": -2.6,
+      "toe": -0.1,
+      "gripFactor": 3.15,
+      "longitudinalStiffness": 16000.0,
+      "lateralStiffness": 11800.0,
+      "maxBrakingTorque": 8200.0,
+      "overrideTire": false,
+      "driven": true,
+      "hasBrake": true
+    }
+  ]
+}

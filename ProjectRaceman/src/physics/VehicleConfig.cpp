@@ -340,6 +340,10 @@ VehicleTireGripConfig readTireGrip(const json::Value &value)
     {
         tireGrip.minTractionScale = static_cast<float>(it->second.as_number());
     }
+    if (auto it = obj.find("combinedSlip"); it != obj.end())
+    {
+        tireGrip.combinedSlip = it->second.as_bool();
+    }
     return tireGrip;
 }
 
@@ -433,6 +437,10 @@ VehicleArcadeHandlingConfig readArcadeHandling(const json::Value &value)
     if (auto it = obj.find("redlineRPM"); it != obj.end())
     {
         arcadeHandling.redlineRPM = static_cast<float>(it->second.as_number());
+    }
+    if (auto it = obj.find("engineDrivenAcceleration"); it != obj.end())
+    {
+        arcadeHandling.engineDrivenAcceleration = it->second.as_bool();
     }
     return arcadeHandling;
 }
@@ -1074,7 +1082,8 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
     stream << "    \"recoveryRate\": " << config.tireGrip.recoveryRate << ",\n";
     stream << "    \"handbrakeGripScale\": " << config.tireGrip.handbrakeGripScale << ",\n";
     stream << "    \"downforceGripScale\": " << config.tireGrip.downforceGripScale << ",\n";
-    stream << "    \"minTractionScale\": " << config.tireGrip.minTractionScale << "\n";
+    stream << "    \"minTractionScale\": " << config.tireGrip.minTractionScale << ",\n";
+    stream << "    \"combinedSlip\": " << (config.tireGrip.combinedSlip ? "true" : "false") << "\n";
     stream << "  },\n";
     stream << "  \"wheelTire\": {\n";
     stream << "    \"enabled\": " << (config.wheelTire.enabled ? "true" : "false") << ",\n";
@@ -1098,7 +1107,8 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
     stream << "    \"lowSpeedSteerInputBoost\": " << config.arcadeHandling.lowSpeedSteerInputBoost << ",\n";
     stream << "    \"highSpeedSteerCut\": " << config.arcadeHandling.highSpeedSteerCut << ",\n";
     stream << "    \"idleRPM\": " << config.arcadeHandling.idleRPM << ",\n";
-    stream << "    \"redlineRPM\": " << config.arcadeHandling.redlineRPM << "\n";
+    stream << "    \"redlineRPM\": " << config.arcadeHandling.redlineRPM << ",\n";
+    stream << "    \"engineDrivenAcceleration\": " << (config.arcadeHandling.engineDrivenAcceleration ? "true" : "false") << "\n";
     stream << "  },\n";
     stream << "  \"tireDynamics\": {\n";
     stream << "    \"frontGripBias\": " << config.tireDynamics.frontGripBias << ",\n";
@@ -1449,20 +1459,134 @@ void applyVehicleSetupPresets(VehicleConfig &config)
     config.tireDynamics.counterSteerTorque = 0.42f + assist * 0.52f;
     config.yawDynamics.spinRecovery = 2.8f + assist * 3.6f;
 
+    // ---------------------------------------------------------------------
+    // Simulation level. The blocks above build the car; this one decides how
+    // much of the driving it does for you.
+    //
+    // The lateral model weighs a corner demand that cannot exceed 1.0
+    // (steering * speedFraction^2) against tireGrip.lateralGrip / 5. Slick
+    // grip alone puts that limit near 1.6, out of the driver reach, which is
+    // why a GT car on the untouched table sticks however it is thrown at a
+    // corner. Pulling lateralGrip down is what brings the limit back into
+    // range; the rest shapes what happens once it is crossed.
+    //
+    // Values the compound and balance tables own were just rebuilt from those
+    // tables, so scaling them here is repeatable. On a Custom compound or
+    // balance the author owns those numbers, and repeated applies must not
+    // walk them down, so the level clamps to an absolute bound instead.
+    const bool compoundManaged = tireCompound != "custom";
+    const bool balanceManaged = handlingBalance != "custom";
+    auto tune = [](float &value, bool managed, float scale, float bound) {
+        value = managed
+            ? value * scale
+            : (scale < 1.0f ? (std::min)(value, bound) : (std::max)(value, bound));
+    };
+
     const std::string simulationLevel = lowercaseCopy(config.setup.simulationLevel);
     if (presetEquals(simulationLevel, "Arcade"))
     {
+        // Grip you cannot run out of, slides that end themselves.
+        tune(config.tireGrip.slipAngleLimit, compoundManaged, 1.15f, 16.0f);
+        config.tireGrip.slideGripLoss = (std::min)(config.tireGrip.slideGripLoss, 0.35f);
+        config.tireGrip.recoveryRate = (std::max)(config.tireGrip.recoveryRate, 9.0f);
+        config.tireGrip.minTractionScale = (std::max)(config.tireGrip.minTractionScale, 0.62f);
+        config.tireGrip.combinedSlip = false;
+
         config.tireDynamics.gripRecoveryRate = (std::max)(config.tireDynamics.gripRecoveryRate, 2.8f);
         config.tireDynamics.velocityAlignmentRate = (std::max)(config.tireDynamics.velocityAlignmentRate, 2.3f);
-        config.tireGrip.minTractionScale = (std::max)(config.tireGrip.minTractionScale, 0.62f);
+
+        // Weight transfer barely costs the rear axle anything, so lifting or
+        // braking mid-corner never bites.
+        config.tireDynamics.liftOffRearGripLoss = (std::min)(config.tireDynamics.liftOffRearGripLoss, 0.22f);
+        config.tireDynamics.brakeRearGripLoss = (std::min)(config.tireDynamics.brakeRearGripLoss, 0.28f);
+        config.tireDynamics.throttleRearGripLoss = (std::min)(config.tireDynamics.throttleRearGripLoss, 0.12f);
+        config.tireDynamics.overSpeedGripLoss = (std::min)(config.tireDynamics.overSpeedGripLoss, 0.22f);
+
+        // The car supplies the correction the driver did not.
+        config.tireDynamics.counterSteerTorque = (std::max)(config.tireDynamics.counterSteerTorque, 0.55f);
+        config.tireDynamics.frontSlipYawDamping = (std::max)(config.tireDynamics.frontSlipYawDamping, 0.75f);
+
         config.yawDynamics.maxYawRate = (std::min)(config.yawDynamics.maxYawRate, 145.0f);
+        config.yawDynamics.spinSlipAngle = (std::max)(config.yawDynamics.spinSlipAngle, 42.0f);
+        config.yawDynamics.spinRecovery = (std::max)(config.yawDynamics.spinRecovery, 4.2f);
+
+        // Flat pull in every gear: hold the throttle and go, and the box
+        // picks the gear for you.
+        config.arcadeHandling.engineDrivenAcceleration = false;
+        config.transmission.mode = TransmissionConfig::Mode::Automatic;
+    }
+    else if (presetEquals(simulationLevel, "Simcade"))
+    {
+        // Reachable limit, but the car still meets the driver halfway.
+        tune(config.tireGrip.lateralGrip, compoundManaged, 0.72f, 5.4f);
+        config.tireGrip.slideGripLoss = (std::max)(config.tireGrip.slideGripLoss, 0.50f);
+        config.tireGrip.minTractionScale = (std::min)(config.tireGrip.minTractionScale, 0.46f);
+        config.tireGrip.combinedSlip = false;
+
+        config.tireDynamics.gripRecoveryRate = (std::min)(config.tireDynamics.gripRecoveryRate, 1.6f);
+        config.tireDynamics.velocityAlignmentRate = (std::min)(config.tireDynamics.velocityAlignmentRate, 1.25f);
+        config.tireDynamics.liftOffRearGripLoss = (std::max)(config.tireDynamics.liftOffRearGripLoss, 0.40f);
+        config.tireDynamics.throttleRearGripLoss = (std::max)(config.tireDynamics.throttleRearGripLoss, 0.22f);
+        config.tireDynamics.overSpeedGripLoss = (std::max)(config.tireDynamics.overSpeedGripLoss, 0.38f);
+
+        config.yawDynamics.maxYawRate = (std::max)(config.yawDynamics.maxYawRate, 170.0f);
+        config.yawDynamics.spinRecovery = (std::min)(config.yawDynamics.spinRecovery, 2.2f + assist * 3.6f);
+
+        config.arcadeHandling.engineDrivenAcceleration = false;
     }
     else if (presetEquals(simulationLevel, "Simulation"))
     {
-        config.tireDynamics.gripRecoveryRate = (std::min)(config.tireDynamics.gripRecoveryRate, 1.6f);
-        config.tireDynamics.velocityAlignmentRate = (std::min)(config.tireDynamics.velocityAlignmentRate, 1.25f);
-        config.tireGrip.minTractionScale = (std::min)(config.tireGrip.minTractionScale, 0.50f);
-        config.yawDynamics.maxYawRate = (std::max)(config.yawDynamics.maxYawRate, 170.0f);
+        // A limit the driver reaches on any fast corner, so the car has to be
+        // slowed down for one instead of steered through it.
+        tune(config.tireGrip.lateralGrip, compoundManaged, 0.46f, 3.6f);
+        tune(config.tireGrip.longitudinalGrip, compoundManaged, 0.86f, 0.62f);
+        tune(config.tireGrip.slipAngleLimit, compoundManaged, 0.72f, 11.0f);
+        config.tireGrip.slideGripLoss = (std::max)(config.tireGrip.slideGripLoss, 0.62f);
+        config.tireGrip.recoveryRate = (std::min)(config.tireGrip.recoveryRate, 4.5f);
+        config.tireGrip.minTractionScale = (std::min)(config.tireGrip.minTractionScale, 0.34f);
+
+        // One friction budget for stopping and turning, so the corner has
+        // to be arrived at slowed down rather than braked through.
+        config.tireGrip.combinedSlip = true;
+
+        // Slip arrives fast and leaves slowly, and the chassis no longer
+        // walks itself back onto its velocity vector.
+        config.tireDynamics.lateralRelaxationRate = (std::max)(config.tireDynamics.lateralRelaxationRate, 3.1f);
+        config.tireDynamics.gripRecoveryRate = (std::min)(config.tireDynamics.gripRecoveryRate, 0.9f);
+        config.tireDynamics.velocityAlignmentRate = (std::min)(config.tireDynamics.velocityAlignmentRate, 0.55f);
+        config.tireDynamics.maxSideSlipSpeedScale = (std::max)(config.tireDynamics.maxSideSlipSpeedScale, 0.30f);
+
+        // Weight transfer costs the rear axle real grip: lift, brake or feed
+        // the power in mid-corner and the back steps out.
+        config.tireDynamics.liftOffRearGripLoss = (std::max)(config.tireDynamics.liftOffRearGripLoss, 0.62f);
+        config.tireDynamics.brakeRearGripLoss = (std::max)(config.tireDynamics.brakeRearGripLoss, 0.66f);
+        config.tireDynamics.throttleRearGripLoss = (std::max)(config.tireDynamics.throttleRearGripLoss, 0.34f);
+        config.tireDynamics.handbrakeRearGripLoss = (std::max)(config.tireDynamics.handbrakeRearGripLoss, 0.85f);
+        config.tireDynamics.overSpeedGripLoss = (std::max)(config.tireDynamics.overSpeedGripLoss, 0.55f);
+        config.tireDynamics.brakeYawInstability = (std::max)(config.tireDynamics.brakeYawInstability, 0.55f);
+
+        // Rotation builds on rear slip and is barely damped. Catching it is
+        // the driver job now, not the car.
+        tune(config.tireDynamics.yawFromRearSlip, balanceManaged, 1.25f, 78.0f);
+        tune(config.tireDynamics.yawDrag, balanceManaged, 0.78f, 2.1f);
+        config.tireDynamics.rearSlipYawTorque = (std::max)(config.tireDynamics.rearSlipYawTorque, 1.45f);
+        config.tireDynamics.counterSteerTorque = (std::min)(config.tireDynamics.counterSteerTorque, 0.10f + assist * 0.52f);
+        config.tireDynamics.frontSlipYawDamping = (std::min)(config.tireDynamics.frontSlipYawDamping, 0.22f + assist * 0.60f);
+
+        tune(config.yawDynamics.slipYawResponse, balanceManaged, 1.30f, 54.0f);
+        tune(config.yawDynamics.yawDamping, balanceManaged, 0.80f, 4.8f);
+        config.yawDynamics.maxYawRate = (std::max)(config.yawDynamics.maxYawRate, 200.0f);
+        config.yawDynamics.throttleRearSlipBoost = (std::max)(config.yawDynamics.throttleRearSlipBoost, 0.45f);
+        config.yawDynamics.sideSlipToYaw = (std::max)(config.yawDynamics.sideSlipToYaw, 0.52f);
+        config.yawDynamics.spinSlipAngle = (std::min)(config.yawDynamics.spinSlipAngle, 26.0f);
+        config.yawDynamics.spinYawBoost = (std::max)(config.yawDynamics.spinYawBoost, 1.70f);
+        config.yawDynamics.spinRecovery = (std::min)(config.yawDynamics.spinRecovery, 1.10f + assist * 3.6f);
+
+        // The gearbox stops being decoration: come out of a corner off the
+        // torque band and the engine will not pull you out of it, and the
+        // driver is the one choosing the gear.
+        config.arcadeHandling.engineDrivenAcceleration = true;
+        config.transmission.mode = TransmissionConfig::Mode::Manual;
     }
 }
 

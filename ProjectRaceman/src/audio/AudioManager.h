@@ -54,6 +54,10 @@ public:
     void SetVoiceVolume(AudioVoice* voice, float volume);
     void SetVoicePitch(AudioVoice* voice, float pitch);
     void SetVoicePosition(AudioVoice* voice, const glm::vec3& position);
+    // Doppler needs both ends moving. Without velocities a car passing at
+    // 200 km/h has no pitch shift at all, which reads as unmistakably fake.
+    void SetVoiceVelocity(AudioVoice* voice, const glm::vec3& velocity, float dopplerFactor);
+    void SetListenerVelocity(const glm::vec3& velocity);
     // spatialBlend 0 = fully 2D, 1 = fully 3D. minDistance/maxDistance in metres.
     void SetVoiceAttenuation(AudioVoice* voice, float minDistance, float maxDistance, float spatialBlend);
     bool IsVoiceFinished(const AudioVoice* voice) const;

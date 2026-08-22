@@ -48,12 +48,12 @@
     "enabled": true,
     "lateralGrip": 7.800,
     "longitudinalGrip": 0.720,
-    "slipAngleLimit": 15.000,
-    "slideGripLoss": 0.420,
-    "recoveryRate": 8.500,
+    "slipAngleLimit": 17.250,
+    "slideGripLoss": 0.350,
+    "recoveryRate": 9.000,
     "handbrakeGripScale": 0.350,
     "downforceGripScale": 0.320,
-    "minTractionScale": 0.500
+    "minTractionScale": 0.620
   },
   "wheelTire": {
     "enabled": true,
@@ -76,30 +76,31 @@
     "lowSpeedSteerFloor": 0.660,
     "lowSpeedSteerInputBoost": 0.320,
     "highSpeedSteerCut": 0.380,
-    "idleRPM": 900.000,
-    "redlineRPM": 7000.000
+    "idleRPM": 1050.000,
+    "redlineRPM": 7500.000,
+    "engineDrivenAcceleration": false
   },
   "tireDynamics": {
     "frontGripBias": 1.050,
     "rearGripBias": 1.040,
     "lateralRelaxationRate": 2.650,
-    "gripRecoveryRate": 1.600,
+    "gripRecoveryRate": 2.800,
     "slideFriction": 3.700,
     "maxSideSlipSpeedScale": 0.180,
-    "liftOffRearGripLoss": 0.340,
-    "brakeRearGripLoss": 0.400,
-    "throttleRearGripLoss": 0.180,
+    "liftOffRearGripLoss": 0.220,
+    "brakeRearGripLoss": 0.280,
+    "throttleRearGripLoss": 0.120,
     "handbrakeRearGripLoss": 0.720,
-    "overSpeedGripLoss": 0.320,
+    "overSpeedGripLoss": 0.220,
     "yawFromRearSlip": 66.000,
     "yawFromFrontSlip": 30.000,
     "yawInertiaScale": 0.740,
     "yawDrag": 2.550,
-    "counterSteerTorque": 0.420,
+    "counterSteerTorque": 0.550,
     "tireScrub": 4.100,
-    "velocityAlignmentRate": 1.250,
+    "velocityAlignmentRate": 2.300,
     "rearSlipYawTorque": 1.050,
-    "frontSlipYawDamping": 0.550,
+    "frontSlipYawDamping": 0.750,
     "brakeYawInstability": 0.350,
     "loadMemory": 0.450
   },
@@ -114,19 +115,30 @@
     "maxAeroGripBoost": 0.180,
     "visualSmoothing": 9.000
   },
+  "collision": {
+    "enabled": true,
+    "restitution": 0.150,
+    "friction": 0.450,
+    "yawResponse": 1.000,
+    "maxImpactYawRate": 160.000,
+    "minImpactSpeed": 0.350,
+    "obstacleMass": 0.000,
+    "energyLoss": 0.200,
+    "impulseRetention": 1.000
+  },
   "yawDynamics": {
     "enabled": true,
     "minSpeed": 5.500,
     "steeringYawResponse": 168.000,
     "slipYawResponse": 46.000,
-    "maxYawRate": 170.000,
+    "maxYawRate": 145.000,
     "yawDamping": 5.600,
     "counterSteerRecovery": 2.000,
     "handbrakeRearSlipBoost": 1.250,
     "throttleRearSlipBoost": 0.220,
-    "spinSlipAngle": 36.000,
+    "spinSlipAngle": 42.000,
     "spinYawBoost": 1.350,
-    "spinRecovery": 2.800,
+    "spinRecovery": 4.200,
     "sideSlipToYaw": 0.380
   },
   "brakes": {
@@ -152,8 +164,8 @@
     "powerLock": 0.420
   },
   "engine": {
-    "idleRPM": 900.000,
-    "redlineRPM": 7000.000,
+    "idleRPM": 1050.000,
+    "redlineRPM": 7500.000,
     "stallRPM": 650.000,
     "inertia": 0.320,
     "torqueCurve": [

@@ -47,12 +47,27 @@ $suites = @(
         Includes = @((Join-Path $srcRoot "audio"), (Join-Path $srcRoot "physics"))
         # Renders listenable WAVs next to the test binaries.
         Args     = @($outDir)
+    },
+    @{
+        Name     = "tyre_synth"
+        Source   = Join-Path $testRoot "test_tyre_synth.cpp"
+        Deps     = @(
+            (Join-Path $srcRoot "audio\TyreSynth.cpp"),
+            (Join-Path $srcRoot "audio\TyreSoundProfile.cpp"),
+            (Join-Path $srcRoot "audio\EngineSynthGenerator.cpp"),
+            (Join-Path $srcRoot "physics\VehicleConfig.cpp")
+        )
+        Includes = @((Join-Path $srcRoot "audio"), (Join-Path $srcRoot "physics"))
+        Args     = @($outDir)
     }
 )
 
 $failed = 0
 foreach ($suite in $suites) {
     $exe = Join-Path $outDir "test_$($suite.Name).exe"
+    # Delete first. Otherwise a compile failure leaves the previous binary in
+    # place, the runner happily executes it, and stale code reports ALL PASS.
+    if (Test-Path $exe) { Remove-Item -Force $exe }
     Write-Host "=== building $($suite.Name) ===" -ForegroundColor Cyan
 
     $clArgs = @("/nologo", "/EHsc", "/std:c++17", "/MD", "/W3")

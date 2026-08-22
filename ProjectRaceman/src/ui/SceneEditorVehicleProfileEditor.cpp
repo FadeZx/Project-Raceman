@@ -345,6 +345,10 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                 applyDragFloatEdit("Idle RPM", "##vehicleProfileArcadeIdleRpm", arcadeHandling.idleRPM, 10.0f, 0.0f, 20000.0f);
                 ImGui::TableNextColumn();
                 applyDragFloatEdit("Redline RPM", "##vehicleProfileArcadeRedlineRpm", arcadeHandling.redlineRPM, 10.0f, 100.0f, 30000.0f);
+                ImGui::TableNextColumn();
+                applyCheckboxEdit("Engine Driven Acceleration##vehicleProfileArcadeEngineDrivenAcceleration", arcadeHandling.engineDrivenAcceleration);
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("Off: flat pull in every gear. On: scaled by torque at gear and RPM.");
                 ImGui::EndTable();
             }
             endCard();

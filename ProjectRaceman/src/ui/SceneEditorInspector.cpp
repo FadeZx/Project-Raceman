@@ -1377,6 +1377,24 @@ void SceneEditor::RenderInspectorPanel() {
                         if (onDirty_) onDirty_();
                     }
                 }
+                if (!obj.hasAudioReverbZone) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Audio Reverb Zone")) {
+                        PushUndoState();
+                        obj.hasAudioReverbZone = true;
+                        obj.audioReverbZone = AudioReverbZoneComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
+                if (!obj.hasAudioEnvironment) {
+                    anyAvailable = true;
+                    if (ImGui::MenuItem("Audio Environment")) {
+                        PushUndoState();
+                        obj.hasAudioEnvironment = true;
+                        obj.audioEnvironment = AudioEnvironmentComponent{};
+                        if (onDirty_) onDirty_();
+                    }
+                }
                 if (!obj.hasTrackGenerator) {
                     anyAvailable = true;
                     if (ImGui::MenuItem("Track Generator")) {
@@ -3542,8 +3560,278 @@ void SceneEditor::RenderInspectorPanel() {
                     // by the runtime, which previously looked identical to broken audio.
                     ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.28f, 1.0f),
                                        "No profile assigned - this vehicle will be silent.");
+                } else {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled(IsEngineSoundAssetPath(currentProfile) ? "(procedural synth)"
+                                                                              : "(legacy samples)");
+                }
+
+                // --- tyres: a separate voice, and a separate asset ---
+                ImGui::Spacing();
+                ImGui::TextDisabled("Tyres");
+                std::vector<std::string> tyreProfiles;
+                for (const std::string& projectFile : projectFiles_) {
+                    if (IsTyreSoundAssetPath(projectFile)) {
+                        tyreProfiles.push_back(projectFile);
+                    }
+                }
+                const std::string& currentTyre = obj.vehicleSound.tyreProfilePath;
+                const std::string tyrePreview = currentTyre.empty()
+                    ? std::string("(none)")
+                    : fs::path(currentTyre).filename().string();
+                ImGui::SetNextItemWidth(-1.0f);
+                if (ImGui::BeginCombo("##VehicleTyreProfile", tyrePreview.c_str())) {
+                    if (ImGui::Selectable("(none)", currentTyre.empty())) {
+                        PushUndoState();
+                        obj.vehicleSound.tyreProfilePath.clear();
+                        if (onDirty_) onDirty_();
+                    }
+                    for (const std::string& tyrePath : tyreProfiles) {
+                        const std::string label = fs::path(tyrePath).filename().string() + "##" + tyrePath;
+                        if (ImGui::Selectable(label.c_str(), tyrePath == currentTyre)) {
+                            PushUndoState();
+                            obj.vehicleSound.tyreProfilePath = tyrePath;
+                            if (onDirty_) onDirty_();
+                        }
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tyrePath.c_str());
+                    }
+                    if (tyreProfiles.empty()) {
+                        ImGui::TextDisabled("No .tyresound.json assets in this project");
+                    }
+                    ImGui::EndCombo();
+                }
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                        const char* dragPath = static_cast<const char*>(payload->Data);
+                        if (dragPath && IsTyreSoundAssetPath(dragPath)) {
+                            PushUndoState();
+                            obj.vehicleSound.tyreProfilePath = dragPath;
+                            if (onDirty_) onDirty_();
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+                if (currentTyre.empty()) {
+                    ImGui::TextColored(ImVec4(0.75f, 0.75f, 0.78f, 1.0f),
+                                       "No tyre profile - rolling and squeal are silent.");
+                }
+
+                // --- emission: a property of this vehicle, not of the engine ---
+                ImGui::Spacing();
+                ImGui::SeparatorText("Emission");
+                if (!obj.vehicleSound.overridesProfileAudio) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.28f, 1.0f),
+                                       "Still using the profile's copy of these settings.");
+                    if (ImGui::Button("Move onto this component##VS")) {
+                        PushUndoState();
+                        // Lift whatever the profile currently supplies so nothing
+                        // changes audibly; from here the component is the truth.
+                        const std::string absolute = ProjectAssetPathToAbsolute(currentProfile).string();
+                        if (IsEngineSoundAssetPath(currentProfile)) {
+                            const EngineSoundProfile loaded = EngineSoundProfileLoader::loadFromFile(absolute);
+                            obj.vehicleSound.spatialBlend  = loaded.spatialBlend;
+                            obj.vehicleSound.minDistance   = loaded.minDistance;
+                            obj.vehicleSound.maxDistance   = loaded.maxDistance;
+                            obj.vehicleSound.triggerSounds = loaded.triggerSounds;
+                        } else {
+                            const VehicleSoundProfile loaded = VehicleSoundProfileLoader::loadFromFile(absolute);
+                            obj.vehicleSound.spatialBlend  = loaded.spatialBlend;
+                            obj.vehicleSound.minDistance   = loaded.minDistance;
+                            obj.vehicleSound.maxDistance   = loaded.maxDistance;
+                            obj.vehicleSound.triggerSounds = loaded.triggerSounds;
+                        }
+                        obj.vehicleSound.overridesProfileAudio = true;
+                        if (onDirty_) onDirty_();
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Copies the 3D settings and trigger clips out of the profile\n"
+                                          "onto this vehicle. The profile then only describes how the\n"
+                                          "engine sounds, which is all it should ever have described.");
+                    }
+                } else {
+                    auto vsDrag = [&](const char* label, float* value, float speed, float lo, float hi,
+                                      const char* fmt) {
+                        if (ImGui::DragFloat(label, value, speed, lo, hi, fmt)) {
+                            PushUndoState();
+                            *value = (std::clamp)(*value, lo, hi);
+                            if (onDirty_) onDirty_();
+                        }
+                    };
+                    vsDrag("Spatial blend##VS", &obj.vehicleSound.spatialBlend, 0.01f, 0.0f, 1.0f, "%.2f");
+                    vsDrag("Min distance##VS", &obj.vehicleSound.minDistance, 0.1f, 0.1f, 200.0f, "%.1f m");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Full volume within this radius. Below ~5 m the engine is\n"
+                                          "near-inaudible from a chase camera.");
+                    }
+                    vsDrag("Max distance##VS", &obj.vehicleSound.maxDistance, 1.0f, 1.0f, 1000.0f, "%.0f m");
+
+                    ImGui::Spacing();
+                    ImGui::SeparatorText("Trigger sounds");
+                    ImGui::TextDisabled("Gear shifts, tyres, start/stop. Not engine sound.");
+
+                    int removeTrigger = -1;
+                    for (std::size_t ti = 0; ti < obj.vehicleSound.triggerSounds.size(); ++ti) {
+                        VehicleSoundTriggerEntry& trig = obj.vehicleSound.triggerSounds[ti];
+                        ImGui::PushID(static_cast<int>(ti));
+
+                        static const char* kTriggerNames[] = {
+                            "Gear Up", "Gear Down", "Backfire", "Engine Start", "Engine Stop", "Tire Squeal"
+                        };
+                        int triggerIndex = static_cast<int>(trig.trigger);
+                        ImGui::SetNextItemWidth(120.0f);
+                        if (ImGui::Combo("##trigType", &triggerIndex, kTriggerNames, 6)) {
+                            PushUndoState();
+                            trig.trigger = static_cast<VehicleSoundTrigger>(triggerIndex);
+                            if (onDirty_) onDirty_();
+                        }
+                        ImGui::SameLine();
+
+                        char clipBuf[512]{};
+                        std::snprintf(clipBuf, sizeof(clipBuf), "%s", trig.clipPath.c_str());
+                        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 60.0f);
+                        ImGui::InputText("##trigClip", clipBuf, sizeof(clipBuf), ImGuiInputTextFlags_ReadOnly);
+                        if (ImGui::BeginDragDropTarget()) {
+                            if (const ImGuiPayload* pl = ImGui::AcceptDragDropPayload(kProjectFilePayload)) {
+                                const char* dp = static_cast<const char*>(pl->Data);
+                                if (dp && IsAudioAssetPath(dp)) {
+                                    PushUndoState();
+                                    trig.clipPath = dp;
+                                    if (onDirty_) onDirty_();
+                                }
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("X")) { removeTrigger = static_cast<int>(ti); }
+
+                        ImGui::SetNextItemWidth(120.0f);
+                        if (ImGui::DragFloat("Volume##trig", &trig.volume, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                            PushUndoState();
+                            if (onDirty_) onDirty_();
+                        }
+                        ImGui::PopID();
+                    }
+                    if (removeTrigger >= 0) {
+                        PushUndoState();
+                        obj.vehicleSound.triggerSounds.erase(
+                            obj.vehicleSound.triggerSounds.begin() + removeTrigger);
+                        if (onDirty_) onDirty_();
+                    }
+                    if (ImGui::Button("Add trigger##VS")) {
+                        PushUndoState();
+                        obj.vehicleSound.triggerSounds.push_back(VehicleSoundTriggerEntry{});
+                        if (onDirty_) onDirty_();
+                    }
                 }
             }
+            }
+
+            // ---- Audio Reverb Zone ----
+            if (currentComponentToRender == SceneInspectorComponentType::AudioReverbZone && obj.hasAudioReverbZone) {
+                bool removeZone = false;
+                SceneInspectorComponentType zoneType = SceneInspectorComponentType::AudioReverbZone;
+                bool zoneEnabledChanged = false, zoneHeaderActive = false, zoneHeaderToggledOpen = false;
+                bool zoneApply = false, zoneRevert = false;
+                const bool zoneEnabledBefore = obj.audioReverbZone.enabled;
+                const std::string zoneKey = prepareComponentOpenState(SceneInspectorComponentType::AudioReverbZone);
+                const bool zoneOpen = RenderRemovableComponentHeader(
+                    "Audio Reverb Zone", "AudioReverbZoneHeader", GetComponentIconTexture("component-audio-source.png"),
+                    &obj.audioReverbZone.enabled, zoneEnabledChanged, removeZone, &zoneType,
+                    &reorderDraggedType, &reorderTargetType, &zoneHeaderActive, &zoneHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::AudioReverbZone),
+                    &zoneApply, &zoneRevert);
+                handlePrefabComponentMenu(zoneApply, zoneRevert, SceneComponentType::AudioReverbZone);
+                finishComponentHeaderState(zoneKey, SceneInspectorComponentType::AudioReverbZone,
+                                           zoneHeaderActive, zoneHeaderToggledOpen, zoneOpen);
+                if (removeZone) {
+                    PushUndoState();
+                    obj.hasAudioReverbZone = false;
+                    if (onDirty_) onDirty_();
+                } else if (zoneEnabledChanged) {
+                    const bool after = obj.audioReverbZone.enabled;
+                    obj.audioReverbZone.enabled = zoneEnabledBefore;
+                    PushUndoState();
+                    obj.audioReverbZone.enabled = after;
+                    if (onDirty_) onDirty_();
+                } else if (zoneOpen) {
+                    AudioReverbZoneComponent& z = obj.audioReverbZone;
+                    auto zd = [&](const char* label, float* v, float speed, float lo, float hi, const char* fmt) {
+                        if (ImGui::DragFloat(label, v, speed, lo, hi, fmt)) {
+                            PushUndoState();
+                            *v = (std::clamp)(*v, lo, hi);
+                            if (onDirty_) onDirty_();
+                        }
+                    };
+                    ImGui::TextDisabled("Acoustics of a place. Overrides the scene default while the");
+                    ImGui::TextDisabled("listener is inside: tunnels, bridges, pit garages.");
+                    if (ImGui::DragFloat3("Half extents", &z.halfExtents.x, 0.1f, 0.1f, 500.0f, "%.1f")) {
+                        PushUndoState();
+                        if (onDirty_) onDirty_();
+                    }
+                    zd("Blend (m)", &z.blendMetres, 0.1f, 0.01f, 50.0f, "%.1f");
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Fade band at the boundary, so entering is a transition.");
+                    if (ImGui::DragInt("Priority", &z.priority, 0.1f, -16, 16)) {
+                        PushUndoState();
+                        if (onDirty_) onDirty_();
+                    }
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Higher wins where zones overlap (a garage inside a pit lane).");
+                    ImGui::SeparatorText("Acoustics");
+                    zd("Early gain", &z.earlyGain, 0.01f, 0.0f, 2.0f, "%.2f");
+                    zd("Early spread (ms)", &z.earlySpreadMs, 0.5f, 2.0f, 120.0f, "%.1f");
+                    zd("Tail gain", &z.tailGain, 0.01f, 0.0f, 2.0f, "%.2f");
+                    zd("Tail decay (s)", &z.tailDecaySeconds, 0.01f, 0.05f, 6.0f, "%.2f");
+                    zd("Tail damping", &z.tailDamping, 0.01f, 0.0f, 0.95f, "%.2f");
+                    zd("Low-pass scale", &z.lowPassScale, 0.01f, 0.1f, 1.0f, "%.2f");
+                    zd("Volume scale", &z.volumeScale, 0.01f, 0.0f, 3.0f, "%.2f");
+                }
+            }
+
+            // ---- Audio Environment ----
+            if (currentComponentToRender == SceneInspectorComponentType::AudioEnvironment && obj.hasAudioEnvironment) {
+                bool removeEnv = false;
+                SceneInspectorComponentType envType = SceneInspectorComponentType::AudioEnvironment;
+                bool envEnabledChanged = false, envHeaderActive = false, envHeaderToggledOpen = false;
+                bool envApply = false, envRevert = false;
+                const bool envEnabledBefore = obj.audioEnvironment.enabled;
+                const std::string envKey = prepareComponentOpenState(SceneInspectorComponentType::AudioEnvironment);
+                const bool envOpen = RenderRemovableComponentHeader(
+                    "Audio Environment", "AudioEnvironmentHeader", GetComponentIconTexture("component-audio-listener.png"),
+                    &obj.audioEnvironment.enabled, envEnabledChanged, removeEnv, &envType,
+                    &reorderDraggedType, &reorderTargetType, &envHeaderActive, &envHeaderToggledOpen,
+                    objectIsPrefabInstance, HasComponentOverride(selectedIndex_, SceneComponentType::AudioEnvironment),
+                    &envApply, &envRevert);
+                handlePrefabComponentMenu(envApply, envRevert, SceneComponentType::AudioEnvironment);
+                finishComponentHeaderState(envKey, SceneInspectorComponentType::AudioEnvironment,
+                                           envHeaderActive, envHeaderToggledOpen, envOpen);
+                if (removeEnv) {
+                    PushUndoState();
+                    obj.hasAudioEnvironment = false;
+                    if (onDirty_) onDirty_();
+                } else if (envEnabledChanged) {
+                    const bool after = obj.audioEnvironment.enabled;
+                    obj.audioEnvironment.enabled = envEnabledBefore;
+                    PushUndoState();
+                    obj.audioEnvironment.enabled = after;
+                    if (onDirty_) onDirty_();
+                } else if (envOpen) {
+                    AudioEnvironmentComponent& e = obj.audioEnvironment;
+                    auto ed = [&](const char* label, float* v, float speed, float lo, float hi, const char* fmt) {
+                        if (ImGui::DragFloat(label, v, speed, lo, hi, fmt)) {
+                            PushUndoState();
+                            *v = (std::clamp)(*v, lo, hi);
+                            if (onDirty_) onDirty_();
+                        }
+                    };
+                    ImGui::TextDisabled("Scene-wide default acoustics, used wherever no zone applies.");
+                    ImGui::TextDisabled("One per scene is enough; the first enabled one wins.");
+                    ed("Early gain", &e.earlyGain, 0.01f, 0.0f, 2.0f, "%.2f");
+                    ed("Early spread (ms)", &e.earlySpreadMs, 0.5f, 2.0f, 120.0f, "%.1f");
+                    ed("Tail gain", &e.tailGain, 0.01f, 0.0f, 2.0f, "%.2f");
+                    ed("Tail decay (s)", &e.tailDecaySeconds, 0.01f, 0.05f, 6.0f, "%.2f");
+                    ed("Tail damping", &e.tailDamping, 0.01f, 0.0f, 0.95f, "%.2f");
+                    ed("Low-pass scale", &e.lowPassScale, 0.01f, 0.1f, 1.0f, "%.2f");
+                    ed("Volume scale", &e.volumeScale, 0.01f, 0.0f, 3.0f, "%.2f");
+                }
             }
 
             // ---- Track Generator ----

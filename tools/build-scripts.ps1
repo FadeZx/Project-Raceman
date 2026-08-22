@@ -37,7 +37,11 @@ if (-not (Test-Path $scriptProjectPath)) {
 
 $msbuild = Find-MSBuild
 Write-Host "Building ProjectScripts $Configuration|$Platform..."
-& $msbuild $scriptProjectPath /m "/p:Configuration=$Configuration" "/p:Platform=$Platform"
+# PreferredToolArchitecture: force the 64-bit hosted cl.exe. The x86-hosted
+# default runs out of address space compiling a script TU against the engine and
+# Jolt headers (C1002, "out of heap space in pass 2"). Passed as a global
+# property so it applies even to a .vcxproj generated before this was default.
+& $msbuild $scriptProjectPath /m "/p:Configuration=$Configuration" "/p:Platform=$Platform" /p:PreferredToolArchitecture=x64
 if ($LASTEXITCODE -ne 0) {
     throw "ProjectScripts build failed with exit code $LASTEXITCODE."
 }

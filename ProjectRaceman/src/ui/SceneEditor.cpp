@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <unordered_set>
@@ -705,6 +706,11 @@ std::string BuildScriptProjectSource(const std::vector<ScriptSourceInfo>& script
     project += "    <ProjectGuid>{B02D47B2-2BAA-4F5F-8E4C-4A0A61A6618F}</ProjectGuid>\n";
     project += "    <RootNamespace>ProjectScripts</RootNamespace>\n";
     project += "    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>\n";
+    // Build with the 64-bit hosted compiler. MSBuild defaults to the x86-hosted
+    // cl.exe even for an x64 target, and a script TU that pulls in the engine
+    // and Jolt headers exhausts its ~3 GB address space during codegen:
+    // "fatal error C1002: compiler is out of heap space in pass 2".
+    project += "    <PreferredToolArchitecture>x64</PreferredToolArchitecture>\n";
     project += "  </PropertyGroup>\n";
     project += "  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.Default.props\" />\n";
     project += "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Debug|x64'\" Label=\"Configuration\"><ConfigurationType>DynamicLibrary</ConfigurationType><UseDebugLibraries>true</UseDebugLibraries><PlatformToolset>v143</PlatformToolset><CharacterSet>MultiByte</CharacterSet></PropertyGroup>\n";
@@ -825,10 +831,14 @@ SceneEditor::SceneEditor() {
     } else {
         std::cout << "[Player] SceneEditor: deferred script load for player runtime." << std::endl;
     }
+    // Restored last so the panels point at assets the loaded project actually has.
+    LoadAudioEditorPanelState();
     std::cout << "[Player] SceneEditor: ready." << std::endl;
 }
 
 SceneEditor::~SceneEditor() {
+    // Flush whatever the rate-limited tick has not written yet.
+    SaveAudioEditorPanelState();
     // If a background physics build is running, cancel it and wait for the thread to finish
     // before any member destruction occurs (the thread holds a raw pointer into pendingWorld).
     if (playModeLoad_.buildThread && playModeLoad_.buildThread->joinable()) {
@@ -1054,18 +1064,43 @@ void SceneEditor::AddEmptyObject() {
 }
 
 void SceneEditor::TickPendingSceneSave() {
-    if (!saveProgress_.IsValid() || !saveProgress_.HasBeenRendered()) return;
+    if (!saveProgress_.IsValid()) return;
+    // The save blocks the main thread, so it must not start until the popup has
+    // been drawn and presented at least once.
+    if (!saveProgress_.HasBeenRendered()) {
+        if (!saveWaitingForPopup_) {
+            saveWaitingForPopup_ = true;
+            std::printf("[save] waiting for progress popup to become visible\n");
+            std::fflush(stdout);
+        }
+        return;
+    }
+    saveWaitingForPopup_ = false;
+
+    const double startSeconds = glfwGetTime();
+    auto elapsedMs = [startSeconds]() {
+        return (glfwGetTime() - startSeconds) * 1000.0;
+    };
 
     if (projectSaveRequested_) {
         saveProgress_.SetDetail("Writing project.raceman.json");
+        std::printf("[save] project begin\n");
+        std::fflush(stdout);
         SaveProject();
         projectSaveRequested_ = false;
+        std::printf("[save] project done in %.1fms\n", elapsedMs());
+        std::fflush(stdout);
         saveProgress_.Complete("Project saved.");
         saveProgress_ = {};
     } else if (sceneSaveRequested_) {
-        saveProgress_.SetDetail(NormalizeSlashes(savePath_));
+        const std::string scenePath = NormalizeSlashes(savePath_);
+        saveProgress_.SetDetail(scenePath);
+        std::printf("[save] scene begin: %s\n", scenePath.c_str());
+        std::fflush(stdout);
         SaveCurrentScene();
         sceneSaveRequested_ = false;
+        std::printf("[save] scene done in %.1fms: %s\n", elapsedMs(), scenePath.c_str());
+        std::fflush(stdout);
         saveProgress_.Complete("Scene saved.");
         saveProgress_ = {};
     }
@@ -1233,6 +1268,7 @@ void SceneEditor::RenderUI(float deltaTime) {
     RenderVehicleConfigEditorWindow();
     RenderVehicleSoundEditorWindow();
     RenderEngineSoundEditorWindow();
+    TickAudioEditorPanelStatePersistence();
     RenderTrackGeneratorWindow();
     frameTimings_.auxiliaryWindowsMs = elapsedMs(timingStart);
 
@@ -5629,7 +5665,39 @@ SceneProfilerStats SceneEditor::CollectProfilerStats() const {
     return stats;
 }
 
-SkidMarkSettings SceneEditor::SkidMarkSettingsFromProfile(const GraphicsProfile& profile) const {
+SkidMarkDecalTemplate SceneEditor::ResolveSkidMarkDecalTemplate(const std::string& prefabPath) {
+    SkidMarkDecalTemplate result;
+    if (prefabPath.empty()) return result;
+
+    const PrefabSourceDocument* document = GetOrLoadPrefabSourceDocument(prefabPath);
+    if (document == nullptr) return result;
+
+    for (const SceneObject& object : document->objects) {
+        if (!object.hasDecal || !object.decal.enabled) continue;
+
+        result.valid = true;
+        result.texturePath = object.decal.texturePath;
+        result.color = glm::vec4(object.decal.color[0], object.decal.color[1],
+                                 object.decal.color[2], object.decal.color[3]);
+        result.opacity = object.decal.opacity;
+        result.angleFadeDegrees = object.decal.angleFadeDegrees;
+        result.uvTiling = glm::vec2(object.decal.uvTiling[0], object.decal.uvTiling[1]);
+        result.uvOffset = glm::vec2(object.decal.uvOffset[0], object.decal.uvOffset[1]);
+        result.alphaBlend = object.decal.blendMode == DecalBlendModeSetting::AlphaBlend;
+        result.sortOrder = object.decal.sortOrder;
+        // The prefab's Transform is the projection volume, exactly as it is for a
+        // placed decal: X across the tyre, Y the projection depth, Z the length
+        // of one texture repeat along the trail. The trail's own length comes
+        // from how far the tyre slid, so Z cannot be the segment size.
+        result.width = std::fabs(object.transform.scale.x);
+        result.thickness = std::fabs(object.transform.scale.y);
+        result.tileLength = std::fabs(object.transform.scale.z);
+        break;
+    }
+    return result;
+}
+
+SkidMarkSettings SceneEditor::SkidMarkSettingsFromProfile(const GraphicsProfile& profile) {
     SkidMarkSettings settings;
     settings.enabled = profile.skidMarks;
     settings.slipThreshold = profile.skidMarkSlipThreshold;
@@ -5639,6 +5707,10 @@ SkidMarkSettings SceneEditor::SkidMarkSettingsFromProfile(const GraphicsProfile&
     settings.fadeSeconds = profile.skidMarkFadeSeconds;
     settings.maxMarks = profile.maxSkidMarks;
     settings.color = profile.skidMarkColor;
+    settings.decal = ResolveSkidMarkDecalTemplate(profile.skidMarkDecalPrefab);
+    if (settings.decal.valid) {
+        settings.texturePath = settings.decal.texturePath;
+    }
     return settings;
 }
 

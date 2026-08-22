@@ -126,8 +126,16 @@ static void TestCrossPlaneVsFlatPlane() {
     // per-bank exhaust runners work, the spectra must diverge at half orders.
     const float rpm = 3000.0f;
     const double crankHz = rpm / 60.0;
-    const std::vector<float> cross = RenderSteady(MakeProfile(EngineLayoutPreset::V8CrossPlane, 7000.0f), rpm, 1.0f, 1.5f);
-    const std::vector<float> flat  = RenderSteady(MakeProfile(EngineLayoutPreset::V8FlatPlane,  7000.0f), rpm, 1.0f, 1.5f);
+    // Roar is disabled here on purpose: it is broadband and identical for both
+    // engines, so it lands in the very half-order bins that carry the bank
+    // signature and dilutes the comparison. Worth remembering when tuning -
+    // too much roar audibly washes out the cross-plane burble.
+    EngineSoundProfile crossProfile = MakeProfile(EngineLayoutPreset::V8CrossPlane, 7000.0f);
+    EngineSoundProfile flatProfile  = MakeProfile(EngineLayoutPreset::V8FlatPlane,  7000.0f);
+    crossProfile.roar.gain = 0.0f;
+    flatProfile.roar.gain  = 0.0f;
+    const std::vector<float> cross = RenderSteady(crossProfile, rpm, 1.0f, 1.5f);
+    const std::vector<float> flat  = RenderSteady(flatProfile,  rpm, 1.0f, 1.5f);
 
     // Half orders (0.5, 1.5, 2.5, 3.5) carry the uneven-bank signature.
     double crossHalf = 0.0, flatHalf = 0.0;
@@ -221,6 +229,114 @@ static void TestIgnitionCutSilencesCombustion() {
     Check(cRms < nRms * 0.25, "ignition cut drops the level sharply", detail);
 }
 
+static void TestRoarAddsBroadbandEnergy() {
+    std::printf("\n7. Roar bed adds broadband energy between the comb peaks\n");
+    // A pure waveguide gives discrete peaks with near-silent gaps - the "tin
+    // can". The roar bed should fill those gaps with pulsing noise.
+    EngineSoundProfile quiet = MakeProfile(EngineLayoutPreset::V8CrossPlane, 7000.0f);
+    quiet.roar.gain = 0.0f;
+    EngineSoundProfile loud = quiet;
+    loud.roar.gain = 1.0f;
+
+    const float rpm = 3000.0f;
+    const double crankHz = rpm / 60.0;
+    const std::vector<float> dry = RenderSteady(quiet, rpm, 1.0f, 1.25f);
+    const std::vector<float> wet = RenderSteady(loud, rpm, 1.0f, 1.25f);
+
+    // Sample clearly between harmonics of the 200 Hz firing order.
+    double dryGap = 0.0, wetGap = 0.0;
+    for (double f : {130.0, 170.0, 230.0, 270.0, 310.0}) {
+        dryGap += BinMagnitude(dry, f, kRate);
+        wetGap += BinMagnitude(wet, f, kRate);
+    }
+    char detail[160];
+    std::snprintf(detail, sizeof(detail), "between-harmonic energy %.5f -> %.5f (%.1fx)",
+                  dryGap, wetGap, dryGap > 0 ? wetGap / dryGap : 0.0);
+    Check(wetGap > dryGap * 1.5, "roar fills the gaps between comb peaks", detail);
+
+    // Modulation depth is about texture rather than level. The RNG is
+    // deterministic, so comparing the two renders sample-wise shows directly
+    // whether gating changes the signal at all.
+    EngineSoundProfile flat = loud;   flat.roar.modDepth = 0.0f;   flat.roar.gain = 2.0f;
+    EngineSoundProfile pulsed = loud; pulsed.roar.modDepth = 1.0f; pulsed.roar.gain = 2.0f;
+    const std::vector<float> flatOut   = RenderSteady(flat, rpm, 1.0f, 1.0f);
+    const std::vector<float> pulsedOut = RenderSteady(pulsed, rpm, 1.0f, 1.0f);
+
+    double diffSq = 0.0, refSq = 0.0;
+    const size_t n = std::min(flatOut.size(), pulsedOut.size());
+    for (size_t i = 0; i < n; ++i) {
+        const double d = double(flatOut[i]) - pulsedOut[i];
+        diffSq += d * d;
+        refSq  += double(flatOut[i]) * flatOut[i];
+    }
+    const double relative = (refSq > 1e-12) ? std::sqrt(diffSq / refSq) : 0.0;
+    std::snprintf(detail, sizeof(detail), "gated vs ungated differ by %.1f%% RMS", relative * 100.0);
+    Check(relative > 0.05, "modulation depth measurably gates the roar", detail);
+}
+
+static void TestReverbAddsTail() {
+    std::printf("\n8. Reverb puts the engine in a space\n");
+    EngineSoundProfile dryP = MakeProfile(EngineLayoutPreset::V8CrossPlane, 7000.0f);
+    dryP.reverb.enabled = false;
+    EngineSoundProfile wetP = dryP;
+    wetP.reverb.enabled = true;
+    wetP.reverb.earlyGain = 0.5f;
+    wetP.reverb.tailGain = 0.35f;
+    wetP.reverb.tailDecaySeconds = 0.8f;
+
+    // Render a burst then silence, and measure what is still ringing after the
+    // engine stops. A dry synth goes quiet almost immediately.
+    auto renderDecay = [&](const EngineSoundProfile& profile) {
+        EngineSynth synth;
+        synth.SetProfile(EngineSynthBaked::Bake(profile, 900.0f, 7000.0f, kRate));
+        EngineSynthParams params;
+        params.rpm = 4000.0f; params.idleRpm = 900.0f; params.redlineRpm = 7000.0f;
+        params.load = 1.0f; params.throttle = 1.0f;
+        synth.SetParams(params);
+        std::vector<float> out(kRate, 0.0f);
+        for (int i = 0; i < kRate / 2; i += 480) synth.Render(out.data() + i, 480, kRate);
+        // Cut ignition: only the space should still be audible.
+        params.ignitionCut = true; params.load = 0.0f; params.throttle = 0.0f;
+        synth.SetParams(params);
+        for (int i = kRate / 2; i < kRate; i += 480) synth.Render(out.data() + i, 480, kRate);
+        double tailSq = 0.0;
+        const int tailStart = kRate / 2 + kRate / 100;   // 10 ms after the cut
+        const int tailEnd   = kRate / 2 + kRate / 12;    // ~83 ms after
+        for (int i = tailStart; i < tailEnd; ++i) tailSq += double(out[i]) * out[i];
+        return std::sqrt(tailSq / std::max(1, tailEnd - tailStart));
+    };
+
+    const double dryTail = renderDecay(dryP);
+    const double wetTail = renderDecay(wetP);
+    char detail[160];
+    std::snprintf(detail, sizeof(detail), "post-cut ring: dry %.5f vs wet %.5f (%.1fx)",
+                  dryTail, wetTail, dryTail > 1e-9 ? wetTail / dryTail : 0.0);
+    Check(wetTail > dryTail * 1.25, "reverb leaves a tail after the engine stops", detail);
+}
+
+static void TestAttackAddsTransient() {
+    std::printf("\n9. Attack spike sharpens the bark\n");
+    EngineSoundProfile soft = MakeProfile(EngineLayoutPreset::V8CrossPlane, 7000.0f);
+    soft.combustionAttackGain = 0.0f;
+    EngineSoundProfile hard = soft;
+    hard.combustionAttackGain = 1.0f;
+
+    // Crest factor of the final mix is a poor measure here: the waveguides and
+    // reverb smear the spike. What the attack actually contributes is
+    // high-frequency bite, so measure that directly.
+    auto highEnergy = [](const std::vector<float>& x) {
+        double sum = 0.0;
+        for (double f : {1500.0, 2200.0, 3000.0, 4000.0}) sum += BinMagnitude(x, f, kRate);
+        return sum;
+    };
+    const double softHigh = highEnergy(RenderSteady(soft, 3000.0f, 1.0f, 1.0f));
+    const double hardHigh = highEnergy(RenderSteady(hard, 3000.0f, 1.0f, 1.0f));
+    char detail[160];
+    std::snprintf(detail, sizeof(detail), "high-frequency energy %.6f -> %.6f (%.1fx)",
+                  softHigh, hardHigh, softHigh > 1e-12 ? hardHigh / softHigh : 0.0);
+    Check(hardHigh > softHigh * 1.2, "attack adds high-frequency bite", detail);
+}
+
 // --- WAV output so the result can actually be listened to -------------------
 
 static void WriteWav(const std::string& path, const std::vector<float>& samples, int rate) {
@@ -296,6 +412,9 @@ int main(int argc, char** argv) {
     TestNoAliasingOrBlowUp();
     TestLoadChangesTimbre();
     TestIgnitionCutSilencesCombustion();
+    TestRoarAddsBroadbandEnergy();
+    TestReverbAddsTail();
+    TestAttackAddsTransient();
     RenderAudibleExamples(argc > 1 ? argv[1] : ".");
     std::printf("\n===========================\n");
     std::printf("%s (%d failure%s)\n", g_failures == 0 ? "ALL PASS" : "FAILURES",

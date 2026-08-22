@@ -247,9 +247,22 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
     // ----------------------------------------------------------------------
     // Tabs
     // ----------------------------------------------------------------------
+    // Remember which tab the panel was left on. The pending name is consumed on
+    // the first frame after a restore, so tab clicks behave normally after that.
+    auto beginTab = [&](const char* name) {
+        const ImGuiTabItemFlags flags = (engineSoundEditorPendingTab_ == name)
+                                            ? ImGuiTabItemFlags_SetSelected
+                                            : ImGuiTabItemFlags_None;
+        if (!ImGui::BeginTabItem(name, nullptr, flags)) {
+            return false;
+        }
+        engineSoundEditorActiveTab_ = name;
+        return true;
+    };
+
     if (ImGui::BeginTabBar("EngineSoundTabs")) {
 
-        if (ImGui::BeginTabItem("Engine")) {
+        if (beginTab("Engine")) {
             ImGui::TextDisabled("Firing layout decides the engine's character more than any filter.");
             ImGui::Spacing();
 
@@ -286,18 +299,25 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
                                   "'tin can' sound. Raise this for a fatter thump.");
             }
             dragFloat("Combustion noise", &p.combustionNoise, 0.01f, 0.0f, 1.0f, "%.2f");
+            dragFloat("Attack gain", &p.combustionAttackGain, 0.01f, 0.0f, 2.0f, "%.2f");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("The crack. A fast pressure-rise spike on top of the slower "
+                                  "blowdown. Raise this if the engine sounds soft or breathy.");
+            }
+            dragFloat("Attack time (ms)", &p.combustionAttackMs, 0.01f, 0.05f, 10.0f, "%.2f");
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("0 = pure thump, 1 = all hiss.");
 
             ImGui::Spacing();
             ImGui::TextDisabled("Cylinders - fire angle within the %.0f degree cycle, and which bank's runner it feeds",
                                 p.strokes == 2 ? 360.0f : 720.0f);
-            if (ImGui::BeginTable("EngineCylinderTable", 5,
+            if (ImGui::BeginTable("EngineCylinderTable", 6,
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
                 ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 26.0f);
                 ImGui::TableSetupColumn("Fire angle");
                 ImGui::TableSetupColumn("Bank", ImGuiTableColumnFlags_WidthFixed, 70.0f);
                 ImGui::TableSetupColumn("Gain");
                 ImGui::TableSetupColumn("Jitter");
+                ImGui::TableSetupColumn("Primary");
                 ImGui::TableHeadersRow();
 
                 const float cycle = (p.strokes == 2) ? 360.0f : 720.0f;
@@ -329,6 +349,15 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
                     ImGui::SetNextItemWidth(-1.0f);
                     dragFloat("##jitter", &cyl.timingJitter, 0.05f, 0.0f, 10.0f, "%.1f");
 
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1.0f);
+                    dragFloat("##primary", &cyl.runnerLengthScale, 0.005f, 0.1f, 4.0f, "%.2f");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("This cylinder's header primary, relative to the bank runner. "
+                                          "All 1.00 = equal-length race headers and identical-sounding "
+                                          "cylinders; spread them for the unequal-length rumble.");
+                    }
+
                     ImGui::PopID();
                 }
                 ImGui::EndTable();
@@ -336,7 +365,7 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Exhaust")) {
+        if (beginTab("Exhaust")) {
             ImGui::TextDisabled("Each bank has its own runner; they merge at the collector.");
             ImGui::Spacing();
             dragFloat("Runner length (m)", &p.exhaust.runnerLengthM, 0.01f, 0.05f, 3.0f, "%.2f");
@@ -360,7 +389,7 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Intake")) {
+        if (beginTab("Intake")) {
             dragFloat("Length (m)", &p.intake.lengthM, 0.01f, 0.05f, 2.0f, "%.2f");
             dragFloat("Air speed (m/s)", &p.intake.airSpeedMs, 1.0f, 200.0f, 500.0f, "%.0f");
             dragFloat("Reflection", &p.intake.reflection, 0.01f, 0.0f, 0.95f, "%.2f");
@@ -370,7 +399,7 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Orders")) {
+        if (beginTab("Orders")) {
             ImGui::TextDisabled("Sinusoids at multiples of crank frequency. The dominant order is %.1f.",
                                 DominantOrder(p));
             ImGui::TextDisabled("Two curves per order: on-load and off-load, crossfaded by engine load.");
@@ -447,7 +476,7 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Turbo")) {
+        if (beginTab("Turbo")) {
             bool enabled = p.turbo.enabled;
             if (ImGui::Checkbox("Enabled", &enabled)) { beginEdit(); p.turbo.enabled = enabled; }
             bool super = p.turbo.supercharger;
@@ -463,7 +492,7 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Drivetrain")) {
+        if (beginTab("Drivetrain")) {
             dragFloat("Gear whine gain", &p.drivetrain.whineGain, 0.005f, 0.0f, 1.0f, "%.3f");
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("Straight-cut gearboxes sing; helical ones do not.");
             dragFloat("Whine ratio", &p.drivetrain.whineRatio, 0.1f, 1.0f, 80.0f, "%.1f");
@@ -472,7 +501,7 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Pops")) {
+        if (beginTab("Pops")) {
             bool enabled = p.overrun.enabled;
             if (ImGui::Checkbox("Overrun pops enabled", &enabled)) { beginEdit(); p.overrun.enabled = enabled; }
             ImGui::BeginDisabled(!p.overrun.enabled);
@@ -486,7 +515,7 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Body")) {
+        if (beginTab("Body")) {
             ImGui::TextDisabled("Fixed low resonances. These do NOT track rpm, so the firing");
             ImGui::TextDisabled("harmonics sweep through them as the engine revs - that moving");
             ImGui::TextDisabled("relationship is what stops a sweep sounding like a siren.");
@@ -504,6 +533,20 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             dragFloat("Sub cutoff (Hz)", &p.body.subCutoffHz, 1.0f, 20.0f, 400.0f, "%.0f");
             ImGui::Spacing();
             dragFloat("Tone tilt", &p.body.toneTilt, 0.01f, 0.0f, 1.0f, "%.2f");
+            ImGui::Spacing();
+            ImGui::SeparatorText("Roar");
+            ImGui::TextDisabled("Broadband gas noise gated by each firing event. Pipe resonance");
+            ImGui::TextDisabled("alone gives discrete comb peaks - that is the 'tin can'. This is");
+            ImGui::TextDisabled("what turns a hollow boing into a roar.");
+            dragFloat("Roar gain", &p.roar.gain, 0.01f, 0.0f, 3.0f, "%.2f");
+            dragFloat("Roar low (Hz)", &p.roar.lowHz, 1.0f, 20.0f, 800.0f, "%.0f");
+            dragFloat("Roar high (Hz)", &p.roar.highHz, 5.0f, 60.0f, 6000.0f, "%.0f");
+            dragFloat("Roar mod depth", &p.roar.modDepth, 0.01f, 0.0f, 1.0f, "%.2f");
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("0 = steady hiss, 1 = fully pulsed by each firing.");
+            dragFloat("Growl", &p.roar.growl, 0.01f, 0.0f, 2.0f, "%.2f");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Asymmetric saturation. Even harmonics fatten the low end.");
+            }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("0 = raw and bright, 1 = dark and distant. "
                                   "Raise this if the engine sounds sharp or fizzy.");
@@ -511,7 +554,71 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Mix")) {
+        if (beginTab("Space")) {
+            ImGui::TextDisabled("A completely dry engine cannot sound natural. Outdoors you always");
+            ImGui::TextDisabled("hear the ground bounce and nearby surfaces; without them the synth");
+            ImGui::TextDisabled("sounds like it was recorded in a vacuum.");
+            ImGui::Spacing();
+            bool reverbEnabled = p.reverb.enabled;
+            if (ImGui::Checkbox("Reverb enabled", &reverbEnabled)) { beginEdit(); p.reverb.enabled = reverbEnabled; }
+            ImGui::BeginDisabled(!p.reverb.enabled);
+            dragFloat("Early gain", &p.reverb.earlyGain, 0.01f, 0.0f, 1.5f, "%.2f");
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Ground bounce and nearby surfaces. Gives the car size.");
+            dragFloat("Early spread (ms)", &p.reverb.earlySpreadMs, 0.5f, 2.0f, 80.0f, "%.1f");
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("How far away those surfaces are.");
+            ImGui::Spacing();
+            dragFloat("Tail gain", &p.reverb.tailGain, 0.01f, 0.0f, 1.0f, "%.2f");
+            dragFloat("Tail decay (s)", &p.reverb.tailDecaySeconds, 0.01f, 0.05f, 4.0f, "%.2f");
+            dragFloat("Tail damping", &p.reverb.tailDamping, 0.01f, 0.0f, 0.95f, "%.2f");
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("High frequencies die first, as they do in open air.");
+            ImGui::EndDisabled();
+            ImGui::EndTabItem();
+        }
+
+        if (beginTab("Perspective")) {
+            ImGui::TextDisabled("An engine heard from behind is mostly exhaust; from in front,");
+            ImGui::TextDisabled("mostly intake. From far away it is mostly low frequencies and");
+            ImGui::TextDisabled("reflections, because air eats the top end. Modelling none of");
+            ImGui::TextDisabled("that is what makes an accurate synth sound glued to the camera.");
+            ImGui::Spacing();
+            bool perspEnabled = p.perspective.enabled;
+            if (ImGui::Checkbox("Perspective mixing enabled", &perspEnabled)) {
+                beginEdit();
+                p.perspective.enabled = perspEnabled;
+            }
+            ImGui::BeginDisabled(!p.perspective.enabled);
+            ImGui::SeparatorText("Directivity");
+            dragFloat("Exhaust behind", &p.perspective.exhaustRear, 0.01f, 0.0f, 3.0f, "%.2f");
+            dragFloat("Exhaust ahead", &p.perspective.exhaustFront, 0.01f, 0.0f, 3.0f, "%.2f");
+            dragFloat("Intake behind", &p.perspective.intakeRear, 0.01f, 0.0f, 3.0f, "%.2f");
+            dragFloat("Intake ahead", &p.perspective.intakeFront, 0.01f, 0.0f, 3.0f, "%.2f");
+            dragFloat("Block falloff (m)", &p.perspective.blockFalloffMetres, 0.5f, 1.0f, 200.0f, "%.0f");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Mechanical clatter is local and dies well before the exhaust does.");
+            }
+            ImGui::SeparatorText("Air and space");
+            dragFloat("Air absorption (m)", &p.perspective.airAbsorptionMetres, 1.0f, 5.0f, 500.0f, "%.0f");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Distance at which the top end is essentially gone.");
+            }
+            dragFloat("Reverb distance (m)", &p.perspective.reverbDistanceMetres, 1.0f, 2.0f, 300.0f, "%.0f");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Distance at which the reverberant field dominates the direct sound.");
+            }
+            dragFloat("Doppler factor", &p.perspective.dopplerFactor, 0.01f, 0.0f, 3.0f, "%.2f");
+            ImGui::SeparatorText("Octave / hood");
+            ImGui::TextDisabled("Up close you sit among the cylinders. From outside, the bodywork");
+            ImGui::TextDisabled("radiates the low orders and the firing detail is lost, so the");
+            ImGui::TextDisabled("engine reads an octave bigger and deeper.");
+            dragFloat("Octave tilt (m)", &p.perspective.octaveTiltMetres, 0.5f, 1.0f, 200.0f, "%.0f");
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Distance at which the outside balance is fully reached.");
+            dragFloat("Octave tilt amount", &p.perspective.octaveTiltAmount, 0.01f, 0.0f, 1.0f, "%.2f");
+            ImGui::EndDisabled();
+            ImGui::TextDisabled("These only apply in play mode: the audition voice is 2D.");
+            ImGui::EndTabItem();
+        }
+
+        if (beginTab("Mix")) {
             dragFloat("Exhaust", &p.mix.exhaustGain, 0.01f, 0.0f, 3.0f, "%.2f");
             dragFloat("Intake", &p.mix.intakeGain, 0.01f, 0.0f, 3.0f, "%.2f");
             dragFloat("Block", &p.mix.blockGain, 0.01f, 0.0f, 3.0f, "%.2f");
@@ -522,17 +629,21 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             dragFloat("Valvetrain freq", &p.noise.valvetrainFreq, 25.0f, 200.0f, 12000.0f, "%.0f");
             dragFloat("Valvetrain Q", &p.noise.valvetrainQ, 0.05f, 0.1f, 10.0f, "%.2f");
             ImGui::Spacing();
-            dragFloat("Spatial blend", &p.spatialBlend, 0.01f, 0.0f, 1.0f, "%.2f");
-            dragFloat("Min distance (m)", &p.minDistance, 0.1f, 0.1f, 100.0f, "%.1f");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Full volume within this radius. Below ~5 m the engine goes\n"
-                                  "near-inaudible from a chase camera.");
-            }
-            dragFloat("Max distance (m)", &p.maxDistance, 1.0f, 1.0f, 1000.0f, "%.0f");
+            ImGui::SeparatorText("Legacy");
+            ImGui::TextDisabled("3D settings and trigger clips now live on the VehicleSound");
+            ImGui::TextDisabled("component: they describe how a particular car emits, not how");
+            ImGui::TextDisabled("the engine sounds. These remain only so older scenes keep");
+            ImGui::TextDisabled("working - edit them on the vehicle instead.");
+            ImGui::BeginDisabled(true);
+            ImGui::DragFloat("Spatial blend (legacy)", &p.spatialBlend, 0.01f, 0.0f, 1.0f, "%.2f");
+            ImGui::DragFloat("Min distance (legacy)", &p.minDistance, 0.1f, 0.1f, 100.0f, "%.1f");
+            ImGui::DragFloat("Max distance (legacy)", &p.maxDistance, 1.0f, 1.0f, 1000.0f, "%.0f");
+            ImGui::EndDisabled();
             ImGui::EndTabItem();
         }
 
         ImGui::EndTabBar();
+        engineSoundEditorPendingTab_.clear();
     }
 
     // ----------------------------------------------------------------------

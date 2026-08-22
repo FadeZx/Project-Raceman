@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 #include <glm/gtc/quaternion.hpp>
 
@@ -37,11 +38,127 @@ float DifferentialLockForThrottle(const raceman::physics::DifferentialConfig& di
     }
 }
 
+} // namespace
+
+// Tractive effort the engine is actually making, normalised so a mid-gear
+// pull at the torque peak comes out at 1.0 and matches the flat arcade rate.
+// Short gears therefore pull harder than the flat rate and top gear pulls
+// less, which is what makes a gear choice worth anything to the driver.
+//
+// The gear and RPM are last step values: UpdateArcadeAutomaticGear runs after
+// the dynamics. At 60 Hz that is a step of lag on a signal that moves in
+// tenths of a second.
+float EngineDriveTorqueScale(const raceman::physics::VehicleConfig& config,
+                             int gear,
+                             float rpm,
+                             float absSpeed,
+                             float maxForwardSpeed,
+                             float shiftCooldown) {
+    const std::vector<float>& gearRatios = config.transmission.gearRatios;
+    if (gearRatios.empty() || config.engine.torqueCurve.empty()) {
+        return 1.0f;
+    }
+
+    float peakTorque = 0.0f;
+    for (const raceman::physics::TorquePoint& point : config.engine.torqueCurve) {
+        peakTorque = (std::max)(peakTorque, point.torque);
+    }
+    if (peakTorque <= 0.0f) {
+        return 1.0f;
+    }
+
+    const int gearCount = static_cast<int>(gearRatios.size());
+    const float finalDrive = std::fabs(config.transmission.finalDriveRatio);
+    const int referenceGear = (std::clamp)((gearCount + 1) / 2, 1, gearCount);
+    const float referenceEffort = std::fabs(gearRatios[referenceGear - 1]) * finalDrive * peakTorque;
+    if (referenceEffort <= 0.0001f) {
+        return 1.0f;
+    }
+
+    // Neutral and reverse have no meaningful band to sit in; leave them flat.
+    if (gear <= 0) {
+        return 1.0f;
+    }
+    const int clampedGear = (std::clamp)(gear, 1, gearCount);
+    const float effort = std::fabs(gearRatios[clampedGear - 1]) * finalDrive *
+        raceman::physics::sampleTorqueCurve(config.engine, rpm);
+
+    float scale = effort / referenceEffort;
+
+    // Speed past what the gear can turn is RPM past the redline. Drive dies
+    // across a narrow band above it, so an unshifted gear is a wall the car
+    // runs into rather than a ceiling it drifts through.
+    const float topRatio = (std::max)(0.01f, std::fabs(gearRatios.back()));
+    const float gearRatio = (std::max)(0.01f, std::fabs(gearRatios[clampedGear - 1]));
+    const float gearTopSpeed = (std::max)(1.0f, maxForwardSpeed * topRatio / gearRatio);
+    if (absSpeed > gearTopSpeed) {
+        scale *= (std::clamp)(1.0f - (absSpeed / gearTopSpeed - 1.0f) / 0.06f, 0.0f, 1.0f);
+    }
+
+    if (shiftCooldown > 0.0f) {
+        // Clutch is out. No drive reaches the road during the shift.
+        scale *= 0.12f;
+    }
+    return (std::clamp)(scale, 0.0f, 2.5f);
+}
+
+namespace {
+
+// A closed throttle is a brake, and how much of one depends entirely on what
+// the engine is being turned by. Low gear at high RPM slows the car hard, top
+// gear barely at all, and neutral not at all: the gearbox is disconnected and
+// only the bearings are left. This is what makes a downshift into a corner
+// worth taking.
+float EngineBrakeDeceleration(const raceman::physics::VehicleConfig& config,
+                              int gear,
+                              float rpm,
+                              const raceman::physics::VehicleArcadeHandlingConfig& handling) {
+    const float coast = (std::max)(0.0f, handling.coastDeceleration);
+    const std::vector<float>& gearRatios = config.transmission.gearRatios;
+    if (gear == 0 || gearRatios.empty()) {
+        return coast * 0.15f;
+    }
+
+    const int gearCount = static_cast<int>(gearRatios.size());
+    const int clampedGear = (std::clamp)(std::abs(gear), 1, gearCount);
+    const int referenceGear = (std::clamp)((gearCount + 1) / 2, 1, gearCount);
+    const float ratio = (std::max)(0.01f, std::fabs(gearRatios[clampedGear - 1]));
+    const float reference = (std::max)(0.01f, std::fabs(gearRatios[referenceGear - 1]));
+
+    const float idleRpm = (std::max)(0.0f, handling.idleRPM);
+    const float redlineRpm = (std::max)(idleRpm + 1.0f, handling.redlineRPM);
+    const float rpmFraction = (std::clamp)((rpm - idleRpm) / (redlineRpm - idleRpm), 0.0f, 1.0f);
+
+    return coast * (ratio / reference) * (0.35f + 0.85f * rpmFraction);
+}
+
+// Drag rises with the square of speed, so top speed stops being a number the
+// car is clamped to and becomes one it runs out of breath at. The coefficient
+// is derived rather than authored: at maxForwardSpeed in top gear the engine
+// is making exactly enough to hold that speed, which is what a top speed is.
+float AeroDragCoefficient(const raceman::physics::VehicleConfig& config,
+                          const raceman::physics::VehicleArcadeHandlingConfig& handling) {
+    const float maxSpeed = (std::max)(1.0f, handling.maxForwardSpeed);
+    const int gearCount = (std::max)(1, static_cast<int>(config.transmission.gearRatios.size()));
+    const float redlineRpm = (std::max)(handling.idleRPM + 1.0f, handling.redlineRPM);
+    const float topGearThrust = EngineDriveTorqueScale(config, gearCount, redlineRpm, maxSpeed, maxSpeed, 0.0f);
+    // Drive reaching the road is already scaled by longitudinal grip, so the
+    // drag it has to balance must be too, or the car tops out short of the
+    // speed it is authored to reach.
+    const float gripScale = config.tireGrip.enabled ? (std::max)(0.05f, config.tireGrip.longitudinalGrip) : 1.0f;
+    return (std::max)(0.0f, handling.acceleration) * topGearThrust * gripScale / (maxSpeed * maxSpeed);
+}
+
 void ApplyArcadeDrivetrain(float& speed,
                            const ArcadeVehicleInput& input,
                            const VehicleControlAmounts& controls,
                            bool routeInput,
+                           bool manualGearbox,
+                           int gear,
                            float driveGripScale,
+                           float driveTorqueScale,
+                           float coastDeceleration,
+                           float dragCoefficient,
                            float contactRollingDrag,
                            const raceman::physics::VehicleArcadeHandlingConfig& handling,
                            float deltaTime) {
@@ -49,26 +166,42 @@ void ApplyArcadeDrivetrain(float& speed,
     const bool wantsForward = routeInput && controls.throttle > kDriveIntentInputThreshold;
     const bool wantsReverseOrBrake = routeInput && controls.brake > kDriveIntentInputThreshold;
     const float brakeDeceleration = (std::max)(0.0f, handling.brakeDeceleration);
-    if (wantsForward && wantsReverseOrBrake) {
+    if (manualGearbox) {
+        // With a gear lever the brake is only ever a brake, and which way the
+        // car pulls is the driver's choice rather than a guess made from the
+        // sign of the speed. Neutral drives nothing at all.
+        if (wantsReverseOrBrake) {
+            speed = MoveTowards(speed, 0.0f, brakeDeceleration * driveGripScale * controls.brake * deltaTime);
+        } else if (wantsForward && gear > 0) {
+            speed += controls.throttle * (std::max)(0.0f, handling.acceleration) * driveGripScale * driveTorqueScale * deltaTime;
+        } else if (wantsForward && gear < 0) {
+            speed -= controls.throttle * (std::max)(0.0f, handling.reverseAcceleration) * driveGripScale * driveTorqueScale * deltaTime;
+        } else {
+            speed = MoveTowards(speed, 0.0f, (std::max)(0.0f, coastDeceleration) * deltaTime);
+        }
+    } else if (wantsForward && wantsReverseOrBrake) {
         speed = MoveTowards(speed, 0.0f, brakeDeceleration * driveGripScale * controls.brake * deltaTime);
     } else if (wantsForward) {
         if (speed < -0.1f) {
             speed = MoveTowards(speed, 0.0f, brakeDeceleration * driveGripScale * controls.throttle * deltaTime);
         } else {
-            speed += controls.throttle * (std::max)(0.0f, handling.acceleration) * driveGripScale * deltaTime;
+            speed += controls.throttle * (std::max)(0.0f, handling.acceleration) * driveGripScale * driveTorqueScale * deltaTime;
         }
     } else if (wantsReverseOrBrake) {
         if (speed > 0.75f) {
             speed = MoveTowards(speed, 0.0f, brakeDeceleration * driveGripScale * controls.brake * deltaTime);
         } else {
-            speed -= controls.brake * (std::max)(0.0f, handling.reverseAcceleration) * driveGripScale * deltaTime;
+            speed -= controls.brake * (std::max)(0.0f, handling.reverseAcceleration) * driveGripScale * driveTorqueScale * deltaTime;
         }
     } else {
-        speed = MoveTowards(speed, 0.0f, (std::max)(0.0f, handling.coastDeceleration) * deltaTime);
+        speed = MoveTowards(speed, 0.0f, (std::max)(0.0f, coastDeceleration) * deltaTime);
     }
 
     if (input.handbrake > 0.0f) {
         speed = MoveTowards(speed, 0.0f, (std::max)(0.0f, handling.handbrakeDeceleration) * driveGripScale * input.handbrake * deltaTime);
+    }
+    if (dragCoefficient > 0.0f) {
+        speed = MoveTowards(speed, 0.0f, dragCoefficient * speed * speed * deltaTime);
     }
     speed = MoveTowards(speed, 0.0f, contactRollingDrag * deltaTime);
     speed = (std::clamp)(speed, -(std::max)(0.0f, handling.maxReverseSpeed), (std::max)(1.0f, handling.maxForwardSpeed));
@@ -211,7 +344,84 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
     const float driveGripScale = tireGrip.enabled
         ? effectiveSurfaceGrip * (std::max)(0.0f, tireGrip.longitudinalGrip) * tractionScale
         : contactGripMultiplier;
-    ApplyArcadeDrivetrain(speed, input, controls, routeInput, driveGripScale, contactRollingDrag, arcadeHandling, deltaTime);
+    // Braking and the handbrake stay on grip alone; only the engine side is
+    // gated by what the drivetrain can deliver in the gear it is in.
+    const float driveTorqueScale = arcadeHandling.engineDrivenAcceleration
+        ? EngineDriveTorqueScale(runtimeVehicle.config,
+                                 runtimeVehicle.arcadeGear,
+                                 runtimeVehicle.arcadeEngineRPM,
+                                 absSpeedBeforeDrive,
+                                 maxForwardSpeed,
+                                 runtimeVehicle.autoShiftCooldown)
+        : 1.0f;
+    const bool manualGearbox =
+        runtimeVehicle.config.transmission.mode == raceman::physics::TransmissionConfig::Mode::Manual;
+
+    // ---------------------------------------------------------------------
+    // Friction circle. A tyre has one budget, and stopping, driving and
+    // turning all draw on it. What the driver spends on the brake pedal is
+    // not there to corner with, which is the whole reason a corner has to be
+    // arrived at slowed down instead of braked through.
+    //
+    // Utilisation is measured against what the tyre has at this moment, so
+    // downforce genuinely buys braking: the same pedal that locks the fronts
+    // at 30 m/s is comfortably inside the tyre at 55 m/s.
+    // ---------------------------------------------------------------------
+    const float brakeFrontShare = 0.5f + (std::clamp)(brakes.frontBias, 0.0f, 1.0f) * 0.5f;
+    const float brakeRearShare = 1.5f - brakeFrontShare;
+    float frontCircleScale = 1.0f;
+    float rearCircleScale = 1.0f;
+    float brakeLock = 0.0f;
+    if (tireGrip.combinedSlip && tireGrip.enabled) {
+        constexpr float kBrakeCircleGain = 1.15f;
+        constexpr float kDriveCircleGain = 0.70f;
+        const float longitudinalCapacity = (std::max)(0.05f, effectiveSurfaceGrip * downforceGripScale);
+        const float frontBrakeUse = controls.brake * brakeFrontShare * kBrakeCircleGain / longitudinalCapacity;
+        const float rearBrakeUse = controls.brake * brakeRearShare * kBrakeCircleGain / longitudinalCapacity;
+        const float rearDriveUse =
+            controls.throttle * driveTorqueScale * rearDrivenRatio * kDriveCircleGain / longitudinalCapacity;
+
+        const float frontUse = (std::clamp)(frontBrakeUse, 0.0f, 1.0f);
+        const float rearUse = (std::clamp)((std::max)(rearBrakeUse, rearDriveUse), 0.0f, 1.0f);
+        frontCircleScale = std::sqrt((std::max)(0.0f, 1.0f - frontUse * frontUse));
+        rearCircleScale = std::sqrt((std::max)(0.0f, 1.0f - rearUse * rearUse));
+
+        // Asked for more than the tyre has and it stops rotating. A locked
+        // wheel steers nothing and stops worse than one held at the limit,
+        // so the pedal has to be released to get the car back.
+        brakeLock = (std::clamp)((frontBrakeUse - 0.98f) / 0.10f, 0.0f, 1.0f);
+    }
+
+    // Engine braking and drag only exist for a car whose longitudinal axis is
+    // modelled; everything else keeps the flat coast it was authored with.
+    const float coastDeceleration = arcadeHandling.engineDrivenAcceleration
+        ? EngineBrakeDeceleration(runtimeVehicle.config,
+                                  runtimeVehicle.arcadeGear,
+                                  runtimeVehicle.arcadeEngineRPM,
+                                  arcadeHandling)
+        : (std::max)(0.0f, arcadeHandling.coastDeceleration);
+    const float dragCoefficient = arcadeHandling.engineDrivenAcceleration
+        ? AeroDragCoefficient(runtimeVehicle.config, arcadeHandling)
+        : 0.0f;
+
+    // A locked tyre slides, and a sliding tyre stops the car less well than
+    // one held just short of it. Only braking can reach a lock, so folding
+    // this into the shared grip scale costs the throttle nothing.
+    const float lockedGripScale = 1.0f - brakeLock * 0.25f;
+
+    ApplyArcadeDrivetrain(speed,
+                          input,
+                          controls,
+                          routeInput,
+                          manualGearbox,
+                          runtimeVehicle.arcadeGear,
+                          driveGripScale * lockedGripScale,
+                          driveTorqueScale,
+                          coastDeceleration,
+                          dragCoefficient,
+                          contactRollingDrag,
+                          arcadeHandling,
+                          deltaTime);
     const float speedDelta = speed - previousSpeed;
     const float longitudinalLoad = loadTransfer.enabled
         ? (std::clamp)(speedDelta / ((std::max)(0.0001f, deltaTime) * 20.0f), -1.0f, 1.0f)
@@ -226,7 +436,9 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
         : 0.0f;
     const float speedForSteer = (std::max)((std::clamp)(absSpeed / lowSpeedSteerSpeed, 0.0f, 1.0f), lowSpeedSteerFloor);
     const float highSpeedSteerScale = 1.0f - (std::clamp)(absSpeed / maxForwardSpeed, 0.0f, highSpeedSteerCut);
-    const float gripSteerScale = (std::clamp)(effectiveSurfaceGrip * tractionScale, 0.15f, 1.5f);
+    // Locked fronts point wherever the car is already going.
+    const float gripSteerScale =
+        (std::clamp)(effectiveSurfaceGrip * tractionScale, 0.15f, 1.5f) * (1.0f - brakeLock * 0.85f);
     const float throttleLift = (std::max)(0.0f, previousThrottleInput - throttleAmount);
     const float rearDriveFactor = rearDrivenRatio;
     const float speedCornerDemand = steerAbs * speedFactorBeforeDrive * speedFactorBeforeDrive;
@@ -240,8 +452,10 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
     const float liftOffDemand = throttleLift * steerAbs * speedFactorBeforeDrive;
     const float throttleTurnDemand = throttleAmount * steerAbs * speedFactorBeforeDrive * rearDriveFactor * (1.0f + diffLock * 0.35f);
     const float handbrakeDemand = input.handbrake * (0.35f + 0.65f * speedFactorBeforeDrive);
-    const float frontGripCapacity = (std::max)(0.05f, availableCornerGrip * (std::max)(0.05f, tireDynamics.frontGripBias));
-    float rearGripCapacity = (std::max)(0.05f, availableCornerGrip * (std::max)(0.05f, tireDynamics.rearGripBias));
+    const float frontGripCapacity =
+        (std::max)(0.05f, availableCornerGrip * (std::max)(0.05f, tireDynamics.frontGripBias) * frontCircleScale);
+    float rearGripCapacity =
+        (std::max)(0.05f, availableCornerGrip * (std::max)(0.05f, tireDynamics.rearGripBias) * rearCircleScale);
     const float rearGripLoss =
         liftOffDemand * (std::max)(0.0f, tireDynamics.liftOffRearGripLoss) +
         rearBrakeDemand * (std::max)(0.0f, tireDynamics.brakeRearGripLoss) +

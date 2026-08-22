@@ -42,6 +42,11 @@ std::shared_ptr<const EngineSynthBaked> EngineSynthBaked::Bake(const EngineSound
         dst.bankId = (std::clamp)(src.bankId, 0, kMaxBanks - 1);
         dst.gain = (std::max)(0.0f, src.gain);
         dst.timingJitter = (std::max)(0.0f, src.timingJitter);
+        // Each cylinder gets its own primary, scaled off the bank runner length.
+        const float scale = (std::clamp)(src.runnerLengthScale, 0.1f, 4.0f);
+        const int primary = DelaySamplesFor(profile.exhaust.runnerLengthM * scale,
+                                            profile.exhaust.gasSpeedMs, sampleRate);
+        dst.runnerDelay = (std::clamp)(primary, 2, kRunnerDelaySize - 2);
         highestBank = (std::max)(highestBank, dst.bankId);
     }
     baked->bankCount = highestBank + 1;
@@ -85,6 +90,8 @@ std::shared_ptr<const EngineSynthBaked> EngineSynthBaked::Bake(const EngineSound
     baked->intakePulseGain = (std::max)(0.0f, profile.intake.pulseGain);
 
     baked->idleInstability = (std::max)(0.0f, profile.idleInstability);
+    baked->idleInstabilityHz = (std::clamp)(profile.idleInstabilityHz, 0.05f, 12.0f);
+    baked->idleLevel = (std::clamp)(profile.idleLevel, 0.0f, 1.0f);
     baked->combustionVariance = Clamp01(profile.combustionVariance);
     baked->combustionDurationMs = (std::clamp)(profile.combustionDurationMs, 0.3f, 40.0f);
     baked->combustionNoise = Clamp01(profile.combustionNoise);
@@ -93,6 +100,11 @@ std::shared_ptr<const EngineSynthBaked> EngineSynthBaked::Bake(const EngineSound
     baked->overrun = profile.overrun;
     baked->noise = profile.noise;
     baked->body = profile.body;
+    baked->roar = profile.roar;
+    baked->reverb = profile.reverb;
+    baked->perspective = profile.perspective;
+    baked->combustionAttackMs = (std::clamp)(profile.combustionAttackMs, 0.05f, 10.0f);
+    baked->combustionAttackGain = (std::max)(0.0f, profile.combustionAttackGain);
     baked->mix = profile.mix;
 
     return baked;
@@ -135,6 +147,74 @@ float EngineSynth::DelayLine::Process(float input, int delaySamples, float refle
     return out;
 }
 
+void EngineSynth::Reverb::Reset() {
+    std::memset(early, 0, sizeof(early));
+    std::memset(comb, 0, sizeof(comb));
+    std::memset(allpass, 0, sizeof(allpass));
+    earlyWrite = 0;
+    for (int i = 0; i < kCombCount; ++i) { combWrite[i] = 0; combLowpass[i] = 0.0f; }
+    for (int i = 0; i < kAllpassCount; ++i) { allpassWrite[i] = 0; }
+}
+
+float EngineSynth::Reverb::Process(float input, const int* earlyTaps, const float* earlyGains,
+                                   int earlyTapCount, const int* combDelays, float combFeedback,
+                                   float damping, const int* allpassDelays,
+                                   float earlyGain, float tailGain) {
+    // --- early reflections ---
+    early[earlyWrite] = input;
+    float earlySum = 0.0f;
+    for (int t = 0; t < earlyTapCount; ++t) {
+        const int delay = (std::clamp)(earlyTaps[t], 1, kEarlySize - 1);
+        const int index = (earlyWrite - delay + kEarlySize) % kEarlySize;
+        earlySum += early[index] * earlyGains[t];
+    }
+    earlyWrite = (earlyWrite + 1) % kEarlySize;
+
+    // --- diffuse tail: parallel damped combs, then allpass diffusion ---
+    float tail = 0.0f;
+    const float tailInput = input + earlySum * 0.5f;
+    for (int c = 0; c < kCombCount; ++c) {
+        const int delay = (std::clamp)(combDelays[c], 1, kCombSize - 1);
+        const int index = (combWrite[c] - delay + kCombSize) % kCombSize;
+        const float out = comb[c][index];
+        // Damping in the feedback path: open air loses highs with every bounce.
+        combLowpass[c] += (out - combLowpass[c]) * (1.0f - damping);
+        comb[c][combWrite[c]] = tailInput + combLowpass[c] * combFeedback;
+        combWrite[c] = (combWrite[c] + 1) % kCombSize;
+        tail += out;
+    }
+    tail *= 1.0f / static_cast<float>(kCombCount);
+
+    for (int a = 0; a < kAllpassCount; ++a) {
+        const int delay = (std::clamp)(allpassDelays[a], 1, kAllpassSize - 1);
+        const int index = (allpassWrite[a] - delay + kAllpassSize) % kAllpassSize;
+        const float buffered = allpass[a][index];
+        constexpr float g = 0.5f;
+        const float out = -tail * g + buffered;
+        allpass[a][allpassWrite[a]] = tail + buffered * g;
+        allpassWrite[a] = (allpassWrite[a] + 1) % kAllpassSize;
+        tail = out;
+    }
+
+    return earlySum * earlyGain + tail * tailGain;
+}
+
+void EngineSynth::ShortDelayLine::Reset() {
+    std::memset(buffer, 0, sizeof(buffer));
+    writeIndex = 0;
+    lowpassState = 0.0f;
+}
+
+float EngineSynth::ShortDelayLine::Process(float input, int delaySamples, float reflection, float damping) {
+    const int length = (std::clamp)(delaySamples, 1, kSize - 1);
+    const int readIndex = (writeIndex - length + kSize) % kSize;
+    const float out = buffer[readIndex];
+    lowpassState += (out - lowpassState) * (1.0f - damping);
+    buffer[writeIndex] = input - reflection * lowpassState;
+    writeIndex = (writeIndex + 1) % kSize;
+    return out;
+}
+
 float EngineSynth::Resonator::Process(float input, float f, float q) {
     low += f * band;
     const float high = input - low - q * band;
@@ -147,10 +227,12 @@ float EngineSynth::Resonator::Process(float input, float f, float q) {
 // -------------------------------------------------------------------------
 
 EngineSynth::EngineSynth() {
+    for (auto& runner : cylinderRunners_) runner.Reset();
     for (auto& runner : runners_) runner.Reset();
     collector_.Reset();
     for (auto& stage : muffler_) stage.Reset();
     intake_.Reset();
+    reverb_.Reset();
 }
 
 void EngineSynth::SetProfile(const std::shared_ptr<const EngineSynthBaked>& baked) {
@@ -253,10 +335,17 @@ void EngineSynth::Render(float* output, int frameCount, int sampleRate) {
     // Idle instability: a dead-steady idle reads as synthetic immediately, so
     // wander the target slightly when the engine is near idle and unloaded.
     const float idleProximity = 1.0f - Clamp01((targetRpm - b.idleRpm) / (std::max)(1.0f, b.redlineRpm - b.idleRpm) * 4.0f);
-    if (std::fabs(idleWander_ - idleWanderTarget_) < 0.005f) {
+    // Random walk paced in Hz rather than "as fast as it can get there". The
+    // old form re-rolled the target the instant it arrived, which modulated RPM
+    // at about 32 Hz - not an idle lope but a buzz sitting on the note.
+    idleWanderCountdown_ -= static_cast<float>(frameCount) / sr;
+    if (idleWanderCountdown_ <= 0.0f) {
         idleWanderTarget_ = NextNoise() * b.idleInstability;
+        idleWanderCountdown_ = 1.0f / (std::max)(0.05f, b.idleInstabilityHz);
     }
-    idleWander_ += (idleWanderTarget_ - idleWander_) * 0.002f;
+    const float wanderAlpha =
+        1.0f - std::exp(-static_cast<float>(frameCount) / (sr * 0.35f / (std::max)(0.05f, b.idleInstabilityHz)));
+    idleWander_ += (idleWanderTarget_ - idleWander_) * wanderAlpha;
     const float wanderedRpm = targetRpm * (1.0f + idleWander_ * idleProximity);
 
     const float startRpm = smoothedRpm_;
@@ -265,16 +354,31 @@ void EngineSynth::Render(float* output, int frameCount, int sampleRate) {
     const float rpmStep = (wanderedRpm - startRpm) / static_cast<float>(frameCount);
 
     const float load = Clamp01(params.load);
-    const float ignitionGate = params.ignitionCut ? 0.0f : 1.0f;
+    const float ignitionGate = params.ignitionCut
+        ? (std::clamp)(params.ignitionScale, 0.0f, 1.0f)
+        : 1.0f;
 
     // Order gains, evaluated once per block: RPM moves far too slowly to justify
     // re-walking the curves every sample.
+    // Order balance shifts with distance. Close up the high orders and the
+    // individual cylinder detail dominate; from outside the bodywork radiates
+    // the low orders and the engine reads an octave bigger and deeper.
+    const float dominantOrder = (std::max)(1.0f, static_cast<float>(b.cylinderCount) *
+                                                 (b.cycleDegrees > 400.0f ? 0.5f : 1.0f));
+    const float tilt = (std::clamp)(params.octaveTilt, 0.0f, 1.0f);
     float orderGain[EngineSynthBaked::kMaxOrders]{};
     for (int i = 0; i < b.orderCount; ++i) {
         orderGain[i] = b.SampleOrderGain(i, wanderedRpm, load);
+        if (tilt > 0.001f) {
+            const float ratio = dominantOrder / (std::max)(0.25f, b.orders[i].order);
+            // Orders below the dominant gain, orders above it lose.
+            orderGain[i] *= std::pow(ratio, tilt * 0.9f);
+        }
     }
 
-    const float combustionLevel = 0.35f + 0.65f * load;
+    // Idle-to-full-load span. The old 0.35 floor left only ~9 dB between
+    // idling and pulling hard; a real engine spans far more than that.
+    const float combustionLevel = b.idleLevel + (1.0f - b.idleLevel) * load;
     const float intakeLevel = b.intakePulseGain * (0.25f + 0.75f * load);
     // Air still flows on a fuel cut, but the cylinders stop pumping against
     // combustion, so most of the intake roar goes with it. Without this the
@@ -308,6 +412,56 @@ void EngineSynth::Render(float* output, int frameCount, int sampleRate) {
     // Cutoff falls as tilt rises: 1 keeps only the low end.
     const float toneCoeff = (std::clamp)(kTwoPi * (400.0f + 9000.0f * (1.0f - toneTilt)) / sr, 0.001f, 0.98f);
 
+    // Roar bed: broadband noise band-limited to the exhaust's range, then gated
+    // by the firing envelope so it pulses with the engine instead of hissing.
+    const float roarCentre = std::sqrt((std::max)(20.0f, b.roar.lowHz) * (std::max)(30.0f, b.roar.highHz));
+    const float roarF = 2.0f * std::sin(3.14159265f * (std::clamp)(roarCentre, 20.0f, nyquist * 0.9f) / sr);
+    // Wide band, so it reads as noise rather than another resonant peak.
+    const float roarQ = 1.0f / (std::max)(0.35f, roarCentre / (std::max)(1.0f, b.roar.highHz - b.roar.lowHz));
+    const float roarHpCoeff = (std::clamp)(kTwoPi * (std::max)(20.0f, b.roar.lowHz) / sr, 0.001f, 0.9f);
+    const float roarModDepth = Clamp01(b.roar.modDepth);
+    const float roarGain = (std::max)(0.0f, b.roar.gain);
+    const float growl = (std::max)(0.0f, b.roar.growl);
+    // Must decay faster than the gap between firings or the gate never dips and
+    // modulation depth does nothing. 6 ms sits well inside a 25 ms V8 gap at
+    // 3000 rpm while still smoothing the individual pulse.
+    const float roarEnvDecay = std::exp(-1.0f / (0.006f * sr));
+
+    // Attack envelope: a fast spike layered on the slower blowdown body.
+    const float attackDecay = std::exp(-1.0f / ((std::max)(0.00005f, b.combustionAttackMs * 0.001f) * sr));
+    const float attackGain = b.combustionAttackGain;
+
+    // Reverb geometry, derived once per block. Prime-ish ratios keep the taps
+    // from lining up and sounding like a single slapback echo.
+    // Environment overrides, when the scene supplies them. Negative means the
+    // profile's own value stands, which keeps standalone auditioning working.
+    const float envEarlyGain   = params.reverbEarlyGain   >= 0.0f ? params.reverbEarlyGain   : b.reverb.earlyGain;
+    const float envSpreadMs    = params.reverbEarlySpreadMs >= 0.0f ? params.reverbEarlySpreadMs : b.reverb.earlySpreadMs;
+    const float envTailGain    = params.reverbTailGain    >= 0.0f ? params.reverbTailGain    : b.reverb.tailGain;
+    const float envTailDecay   = params.reverbTailDecaySeconds >= 0.0f ? params.reverbTailDecaySeconds : b.reverb.tailDecaySeconds;
+    const float envTailDamping = params.reverbTailDamping >= 0.0f ? params.reverbTailDamping : b.reverb.tailDamping;
+
+    const float spreadSamples = (std::max)(1.0f, envSpreadMs * 0.001f * sr);
+    const int earlyTaps[4] = {
+        static_cast<int>(spreadSamples * 0.31f), static_cast<int>(spreadSamples * 0.57f),
+        static_cast<int>(spreadSamples * 0.83f), static_cast<int>(spreadSamples * 1.00f),
+    };
+    const float earlyGains[4] = {0.85f, -0.62f, 0.48f, -0.35f};
+    const int combDelays[3] = {
+        static_cast<int>(spreadSamples * 1.41f), static_cast<int>(spreadSamples * 1.87f),
+        static_cast<int>(spreadSamples * 2.33f),
+    };
+    const int allpassDelays[3] = {
+        static_cast<int>(spreadSamples * 0.19f), static_cast<int>(spreadSamples * 0.13f),
+        static_cast<int>(spreadSamples * 0.09f),
+    };
+    // Feedback for the requested RT60 over the mean comb delay.
+    const float meanCombSeconds = (std::max)(0.001f, spreadSamples * 1.87f / sr);
+    const float combFeedback = (std::clamp)(
+        std::pow(0.001f, meanCombSeconds / (std::max)(0.05f, envTailDecay)), 0.0f, 0.92f);
+    const float reverbDamping = (std::clamp)(envTailDamping, 0.0f, 0.95f);
+    const bool reverbOn = b.reverb.enabled && (envEarlyGain > 1.0e-4f || envTailGain > 1.0e-4f);
+
     const float exhaustBus = b.mix.exhaustGain * params.exhaustWeight;
     const float intakeBus  = b.mix.intakeGain  * params.intakeWeight;
     const float blockBus   = b.mix.blockGain   * params.blockWeight;
@@ -338,6 +492,8 @@ void EngineSynth::Render(float* output, int frameCount, int sampleRate) {
         // --- ignition -------------------------------------------------------
         float bankExcitation[EngineSynthBaked::kMaxBanks] = {0.0f, 0.0f};
         float intakeExcitation = 0.0f;
+        float firingEnergy = 0.0f;
+        float attackDirect = 0.0f;
 
         for (int c = 0; c < b.cylinderCount; ++c) {
             const EngineSynthBaked::BakedCylinder& cyl = b.cylinders[c];
@@ -351,12 +507,30 @@ void EngineSynth::Render(float* output, int frameCount, int sampleRate) {
             if (crossed) {
                 // Per-cylinder variance stops the engine sounding like a metronome.
                 const float variance = 1.0f + b.combustionVariance * NextNoise();
-                state.envelope = cyl.gain * combustionLevel * variance * ignitionGate;
+                const float strength = cyl.gain * combustionLevel * variance * ignitionGate;
+                state.envelope = strength;
+                state.attackEnvelope = strength * attackGain;
+            }
+
+            if (state.attackEnvelope > 1.0e-5f) {
+                // The crack. Short and broadband, it is what makes the engine
+                // sound like it is hitting something rather than breathing.
+                const float spike = state.attackEnvelope * (0.4f + 0.6f * NextNoise());
+                bankExcitation[cyl.bankId] += spike;
+                // Part of it radiates straight off the headers and block rather
+                // than travelling the whole exhaust. Without this direct path the
+                // pipe damping swallows the transient and the engine sounds soft.
+                attackDirect += spike;
+                state.attackEnvelope *= attackDecay;
             }
 
             if (state.envelope > 1.0e-5f) {
                 const float burst = state.envelope * (burstTone + burstNoise * NextNoise());
-                bankExcitation[cyl.bankId] += burst;
+                // Through this cylinder's own header primary first. Sharing one
+                // line per bank made every cylinder sound identical.
+                bankExcitation[cyl.bankId] += cylinderRunners_[c].Process(
+                    burst, cyl.runnerDelay, b.runnerReflection * 0.8f, b.runnerDamping);
+                firingEnergy += state.envelope;
                 // Intake draws half a cycle out of phase with the power stroke.
                 intakeExcitation += state.envelope * intakeLevel * 0.5f;
                 state.envelope *= envelopeDecay;
@@ -381,6 +555,29 @@ void EngineSynth::Render(float* output, int frameCount, int sampleRate) {
         // why exhausts are simultaneously bright and boxy.
         float radiated = exhaust - tailpipePrev_ * b.tailpipeBrightness;
         tailpipePrev_ = exhaust;
+
+        // --- roar bed --------------------------------------------------------
+        // Envelope follower over the firing energy, so the noise swells with each
+        // combustion event rather than sitting as a constant hiss.
+        // Normalise against the current combustion level, otherwise firingEnergy
+        // exceeds 1 under load, Clamp01 pins the gate wide open and modDepth
+        // silently stops doing anything.
+        const float firingNormalised = firingEnergy / (std::max)(0.15f, combustionLevel);
+        roarEnvelope_ = (std::max)(roarEnvelope_ * roarEnvDecay, firingNormalised);
+        if (roarGain > 1.0e-4f) {
+            const float roarRaw = roarResonator_.Process(NextNoise(), roarF, roarQ);
+            roarHighpass_ += (roarRaw - roarHighpass_) * roarHpCoeff;
+            const float roarBand = roarRaw - roarHighpass_;
+            const float modulator = (1.0f - roarModDepth) + roarModDepth * Clamp01(roarEnvelope_);
+            radiated += roarBand * modulator * roarGain * combustionLevel;
+        }
+
+        // Asymmetric saturation. Even harmonics fatten the low end and turn a
+        // clean tube resonance into a growl.
+        if (growl > 1.0e-4f) {
+            const float driven = radiated * (1.0f + growl);
+            radiated = (driven - growl * 0.5f * driven * std::fabs(driven)) / (1.0f + growl * 0.5f);
+        }
 
         // Body resonance and sub weight, added to the radiated exhaust.
         const float bodyRing = bodyResonator1_.Process(radiated, bodyF1, bodyQ1) * b.body.resonance1Gain
@@ -451,6 +648,7 @@ void EngineSynth::Render(float* output, int frameCount, int sampleRate) {
         float mixed = radiated * exhaustBus
                     + intakeRadiated * intakeBus
                     + (block + valvetrain) * blockBus
+                    + attackDirect * attackGain * 0.6f
                     + turbo + whine;
 
         // Soft clip. tanh-like without the transcendental cost.
@@ -464,6 +662,19 @@ void EngineSynth::Render(float* output, int frameCount, int sampleRate) {
         toneLowpass_ += (mixed - toneLowpass_) * toneCoeff;
         if (toneTilt > 0.001f) {
             mixed = mixed + (toneLowpass_ - mixed) * toneTilt;
+        }
+
+        if (reverbOn) {
+            // Wet amount rises with distance. Close up you hear mostly direct
+            // sound; far away the reverberant field dominates, and that ratio is
+            // one of the strongest distance cues there is.
+            const float wetScale = (std::max)(0.0f, params.reverbWet);
+            const float wet = reverb_.Process(mixed, earlyTaps, earlyGains, 4,
+                                              combDelays, combFeedback, reverbDamping,
+                                              allpassDelays,
+                                              envEarlyGain * wetScale,
+                                              envTailGain * wetScale);
+            mixed += wet;
         }
 
         mixed *= masterGain;

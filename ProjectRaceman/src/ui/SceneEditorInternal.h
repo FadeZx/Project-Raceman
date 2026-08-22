@@ -3,6 +3,7 @@
 #include "SceneEditor.h"
 #include "./ObjImport.h"
 #include "Console.h"
+#include "DragDropPayloads.h"
 #include "../rendering/PrimitivePlane.h"
 #include "../rendering/Renderer.h"
 #include "../physics/PhysicsWorld.h"
@@ -285,6 +286,8 @@ inline std::vector<SceneInspectorComponentType> DefaultInspectorComponentOrder()
         SceneInspectorComponentType::AudioListener,
         SceneInspectorComponentType::AudioSource,
         SceneInspectorComponentType::VehicleSound,
+        SceneInspectorComponentType::AudioReverbZone,
+        SceneInspectorComponentType::AudioEnvironment,
         SceneInspectorComponentType::TrackGenerator
     };
 }
@@ -325,6 +328,10 @@ inline bool HasInspectorComponent(const SceneObject& object, SceneInspectorCompo
         return object.hasAudioSource;
     case SceneInspectorComponentType::VehicleSound:
         return object.hasVehicleSound;
+    case SceneInspectorComponentType::AudioReverbZone:
+        return object.hasAudioReverbZone;
+    case SceneInspectorComponentType::AudioEnvironment:
+        return object.hasAudioEnvironment;
     case SceneInspectorComponentType::TrackGenerator:
         return object.hasTrackGenerator;
     }
@@ -475,6 +482,10 @@ inline bool IsSceneAssetPath(const std::string& path) {
 
 inline bool IsPrefabAssetPath(const std::string& path) {
     return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".prefab.json");
+}
+
+inline bool IsTyreSoundAssetPath(const std::string& path) {
+    return EndsWith(ToLowerCopy(NormalizeSlashes(path)), ".tyresound.json");
 }
 
 inline bool IsEngineSoundAssetPath(const std::string& path) {
@@ -1477,6 +1488,8 @@ inline const char* InspectorComponentTypeToString(SceneInspectorComponentType ty
     case SceneInspectorComponentType::AudioListener: return "AudioListener";
     case SceneInspectorComponentType::AudioSource: return "AudioSource";
     case SceneInspectorComponentType::VehicleSound: return "VehicleSound";
+    case SceneInspectorComponentType::AudioReverbZone: return "AudioReverbZone";
+    case SceneInspectorComponentType::AudioEnvironment: return "AudioEnvironment";
     case SceneInspectorComponentType::TrackGenerator: return "TrackGenerator";
     }
     return "Transform";
@@ -1500,6 +1513,8 @@ inline bool InspectorComponentTypeFromString(const std::string& value, SceneInsp
     if (value == "AudioListener") { outType = SceneInspectorComponentType::AudioListener; return true; }
     if (value == "AudioSource") { outType = SceneInspectorComponentType::AudioSource; return true; }
     if (value == "VehicleSound") { outType = SceneInspectorComponentType::VehicleSound; return true; }
+    if (value == "AudioReverbZone") { outType = SceneInspectorComponentType::AudioReverbZone; return true; }
+    if (value == "AudioEnvironment") { outType = SceneInspectorComponentType::AudioEnvironment; return true; }
     if (value == "TrackGenerator") { outType = SceneInspectorComponentType::TrackGenerator; return true; }
     return false;
 }
@@ -1531,6 +1546,8 @@ inline const char* SceneComponentTypeToString(SceneComponentType type) {
     case SceneComponentType::AudioListener: return "AudioListener";
     case SceneComponentType::AudioSource: return "AudioSource";
     case SceneComponentType::VehicleSound: return "VehicleSound";
+    case SceneComponentType::AudioReverbZone: return "AudioReverbZone";
+    case SceneComponentType::AudioEnvironment: return "AudioEnvironment";
     case SceneComponentType::TrackGenerator: return "TrackGenerator";
     }
     return "Transform";
@@ -2053,13 +2070,8 @@ inline bool AppendSupportedVehicleChassisColliders(const SceneObject& object,
     return outColliders.size() > beforeCount;
 }
 
-inline constexpr const char* kObjAssetPayload = "RACEMAN_PROJECT_OBJ";
-inline constexpr const char* kMeshAssetPayload = "RACEMAN_PROJECT_MESH";
-inline constexpr const char* kModelChildAssetPayload = "RACEMAN_PROJECT_MODEL_CHILD";
-inline constexpr const char* kMaterialAssetPayload = "RACEMAN_PROJECT_MATERIAL";
-inline constexpr const char* kProjectFilePayload = "RACEMAN_PROJECT_FILE";
-inline constexpr const char* kHierarchyObjectPayload = "SCENE_HIERARCHY_OBJECT_INDEX";
-inline constexpr const char* kHierarchyMultiObjectPayload = "SCENE_HIERARCHY_OBJECT_IDS";
+// Payload ids come from DragDropPayloads.h (namespace raceman), so they are
+// still visible unqualified from here.
 
 inline bool ParseModelChildAssetPayload(const void* data, int size, std::string& outPath, int& outMeshIndex) {
     outPath.clear();

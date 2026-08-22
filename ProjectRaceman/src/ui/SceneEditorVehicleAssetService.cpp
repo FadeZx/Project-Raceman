@@ -1,17 +1,200 @@
 #include "SceneEditorInternal.h"
 #include "SceneEditorVehicleValidation.h"
 #include "../audio/VehicleSoundProfile.h"
+#include "../physics/SimpleJson.h"
 #include "../physics/VehicleConfig.h"
 
 #include <imgui/imgui.h>
+#include <algorithm>
 #include <cctype>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <sstream>
 #include <string>
 
 namespace fs = std::filesystem;
 
 namespace raceman {
 using namespace scene_editor_internal;
+
+namespace {
+
+namespace json = raceman::physics::json;
+
+// Sits next to config/imgui.ini so the window layout and what the audio panels
+// were showing come back from the same startup.
+constexpr const char* kAudioEditorPanelStatePath = "config/audio_editor_state.json";
+
+std::string QuoteJsonString(const std::string& value) {
+    std::string out = "\"";
+    for (char c : value) {
+        switch (c) {
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default:   out += c; break;
+        }
+    }
+    out += "\"";
+    return out;
+}
+
+const json::Object* JsonSection(const json::Object& root, const char* key) {
+    auto it = root.find(key);
+    return (it != root.end() && it->second.is_object()) ? &it->second.as_object() : nullptr;
+}
+
+void JsonReadFloat(const json::Object& obj, const char* key, float& out, float lo, float hi) {
+    auto it = obj.find(key);
+    if (it != obj.end() && it->second.is_number()) {
+        out = (std::clamp)(static_cast<float>(it->second.as_number()), lo, hi);
+    }
+}
+
+void JsonReadInt(const json::Object& obj, const char* key, int& out, int lo, int hi) {
+    auto it = obj.find(key);
+    if (it != obj.end() && it->second.is_number()) {
+        out = (std::clamp)(static_cast<int>(it->second.as_number()), lo, hi);
+    }
+}
+
+void JsonReadBool(const json::Object& obj, const char* key, bool& out) {
+    auto it = obj.find(key);
+    if (it != obj.end() && it->second.is_bool()) {
+        out = it->second.as_bool();
+    }
+}
+
+void JsonReadString(const json::Object& obj, const char* key, std::string& out) {
+    auto it = obj.find(key);
+    if (it != obj.end() && it->second.is_string()) {
+        out = it->second.as_string();
+    }
+}
+
+// A remembered profile is only worth restoring while the asset it names is
+// still on disk - projects get moved and files get deleted between sessions.
+bool RememberedAssetExists(const std::string& projectPath) {
+    if (projectPath.empty()) {
+        return false;
+    }
+    std::error_code ec;
+    return fs::is_regular_file(ProjectAssetPathToAbsolute(projectPath), ec);
+}
+
+} // namespace
+
+std::string SceneEditor::SerializeAudioEditorPanelState() const {
+    std::ostringstream out;
+    out << "{\n";
+    out << "  \"engineSoundEditor\": {\n";
+    out << "    \"open\": " << (showEngineSoundEditor_ ? "true" : "false") << ",\n";
+    out << "    \"path\": " << QuoteJsonString(inspectedEngineSoundPath_) << ",\n";
+    out << "    \"tab\": " << QuoteJsonString(engineSoundEditorActiveTab_) << ",\n";
+    out << "    \"selectedOrder\": " << engineSoundSelectedOrder_ << ",\n";
+    out << "    \"idleRpm\": " << engineSoundAuditionIdle_ << ",\n";
+    out << "    \"redlineRpm\": " << engineSoundAuditionRedline_ << ",\n";
+    out << "    \"rpm\": " << engineSoundAuditionRpm_ << ",\n";
+    out << "    \"throttle\": " << engineSoundAuditionThrottle_ << "\n";
+    out << "  },\n";
+    out << "  \"vehicleSoundEditor\": {\n";
+    out << "    \"open\": " << (showVehicleSoundEditor_ ? "true" : "false") << ",\n";
+    out << "    \"path\": " << QuoteJsonString(inspectedVehicleSoundPath_) << "\n";
+    out << "  }\n";
+    out << "}\n";
+    return out.str();
+}
+
+void SceneEditor::LoadAudioEditorPanelState() {
+    std::ifstream file(kAudioEditorPanelStatePath);
+    if (file.is_open()) {
+        const std::string content((std::istreambuf_iterator<char>(file)),
+                                  std::istreambuf_iterator<char>());
+        json::Value root;
+        try {
+            root = json::parse(content);
+        } catch (const std::exception&) {
+            root = json::Value{};  // a corrupt state file falls back to defaults rather than failing startup
+        }
+
+        if (root.is_object()) {
+            const json::Object& obj = root.as_object();
+
+            if (const json::Object* engine = JsonSection(obj, "engineSoundEditor")) {
+                // The audition rig comes back whether or not the profile does:
+                // idle and redline are how the panel was calibrated by ear.
+                JsonReadFloat(*engine, "idleRpm", engineSoundAuditionIdle_, 300.0f, 3000.0f);
+                JsonReadFloat(*engine, "redlineRpm", engineSoundAuditionRedline_, 2000.0f, 20000.0f);
+                engineSoundAuditionRedline_ =
+                    (std::max)(engineSoundAuditionIdle_ + 500.0f, engineSoundAuditionRedline_);
+                JsonReadFloat(*engine, "rpm", engineSoundAuditionRpm_, engineSoundAuditionIdle_,
+                              engineSoundAuditionRedline_);
+                JsonReadFloat(*engine, "throttle", engineSoundAuditionThrottle_, 0.0f, 1.0f);
+                JsonReadInt(*engine, "selectedOrder", engineSoundSelectedOrder_, 0, 1024);
+                JsonReadString(*engine, "tab", engineSoundEditorPendingTab_);
+                engineSoundEditorActiveTab_ = engineSoundEditorPendingTab_;
+
+                std::string path;
+                JsonReadString(*engine, "path", path);
+                if (RememberedAssetExists(path)) {
+                    inspectedEngineSoundPath_ = NormalizeSlashes(path);
+                    inspectedEngineSoundLoaded_ = false;
+                    inspectedEngineSoundError_.clear();
+                    engineSoundProfileDirty_ = true;
+                    bool open = false;
+                    JsonReadBool(*engine, "open", open);
+                    showEngineSoundEditor_ = open;
+                }
+            }
+
+            if (const json::Object* vehicle = JsonSection(obj, "vehicleSoundEditor")) {
+                std::string path;
+                JsonReadString(*vehicle, "path", path);
+                if (RememberedAssetExists(path)) {
+                    inspectedVehicleSoundPath_ = NormalizeSlashes(path);
+                    inspectedVehicleSoundLoaded_ = false;
+                    inspectedVehicleSoundError_.clear();
+                    bool open = false;
+                    JsonReadBool(*vehicle, "open", open);
+                    showVehicleSoundEditor_ = open;
+                }
+            }
+        }
+    }
+
+    // Seed the comparison snapshot so a session that changes nothing never
+    // rewrites the file.
+    audioEditorPanelStateLastWritten_ = SerializeAudioEditorPanelState();
+}
+
+void SceneEditor::SaveAudioEditorPanelState() {
+    const std::string content = SerializeAudioEditorPanelState();
+    if (content == audioEditorPanelStateLastWritten_) {
+        return;
+    }
+    std::error_code ec;
+    fs::create_directories("config", ec);
+    std::ofstream file(kAudioEditorPanelStatePath, std::ios::trunc);
+    if (!file.is_open()) {
+        return;
+    }
+    file << content;
+    audioEditorPanelStateLastWritten_ = content;
+}
+
+void SceneEditor::TickAudioEditorPanelStatePersistence() {
+    // Dragging the RPM slider changes the state every frame, so the write is
+    // rate-limited rather than driven off the change itself.
+    const double now = ImGui::GetTime();
+    if (now < audioEditorPanelStateNextWriteTime_) {
+        return;
+    }
+    audioEditorPanelStateNextWriteTime_ = now + 1.0;
+    SaveAudioEditorPanelState();
+}
 
 void SceneEditor::PushVehicleConfigUndoState() {
     if (!showVehicleConfigEditor_ || inspectedVehicleConfigPath_.empty() || !inspectedVehicleConfigLoaded_) {

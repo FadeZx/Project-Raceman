@@ -49,6 +49,12 @@ struct VehicleEngineTuning
     float limiterCutSeconds{0.06f};
     float limiterReleaseRpm{220.0f};
 
+    // Ignition cut on an upshift. Deliberately NOT the gearbox's shift time:
+    // the clutch is out for the whole mechanical shift, but fuel is only
+    // interrupted for a fraction of it. Tying the two together silences the
+    // engine for a quarter second on every gear change.
+    float shiftCutSeconds{0.07f};
+
     // Forced induction. The sim has no boost model, so it is integrated here.
     bool  turboEnabled{false};
     bool  supercharger{false};      // rigid RPM lock, no spool lag
@@ -95,6 +101,7 @@ struct VehicleEngineState
     bool  initialized{false};
 
     float limiterTimer{0.0f};
+    float shiftCutTimer{0.0f};
 
     EngineShiftEvent shiftEvents[kMaxPendingShiftEvents]{};
     int shiftEventCount{0};

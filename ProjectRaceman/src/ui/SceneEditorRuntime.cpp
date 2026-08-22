@@ -197,6 +197,78 @@ void SceneEditor::UpdateScripts(float deltaTime) {
     }
 }
 
+// Starts the threaded physics/collision build for play mode. Reuses the
+// existing play-mode progress window when there is one, so the whole entry
+// sequence stays inside a single popup instead of opening a new one per stage.
+void SceneEditor::StartPlayModePhysicsBuild() {
+    std::fprintf(stdout, "[Play] Building scene...\n");
+    std::fflush(stdout);
+
+    EditorProgressTask window = playModeLoad_.window;
+
+    // The script build thread, if any, was already joined by TickPlayModeLoading().
+    playModeLoad_.scriptBuild.reset();
+    playModeLoad_.scriptBuildThread.reset();
+
+    // scriptsRunning_ is set to true by TickPlayModeLoading once the background build completes.
+    RebuildVehicleRuntime();
+    std::vector<PhysicsBodyDesc> physicsBodies;
+    std::vector<PhysicsCharacterDesc> physicsCharacters;
+    BuildRuntimePhysicsDescriptors(physicsBodies, physicsCharacters);
+    std::fprintf(stdout, "[Play] Runtime physics descriptors: %zu bodies, %zu characters, 0 Jolt vehicles (arcade vehicle runtime).\n",
+                 physicsBodies.size(),
+                 physicsCharacters.size());
+    std::fflush(stdout);
+
+    if (IsEnvironmentFlagEnabled("RACEMAN_DISABLE_PLAYER_PHYSICS")) {
+        std::fprintf(stdout, "[Play] Player physics disabled by RACEMAN_DISABLE_PLAYER_PHYSICS=1.\n");
+        std::fflush(stdout);
+        physicsWorld_.reset();
+        playModeLoad_ = {};
+        RebuildVehicleRuntime();
+        RebuildAudioRuntime();
+        RebuildScriptRuntime();
+        scriptsRunning_ = true;
+        if (inputManager_ != nullptr) {
+            inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+            inputManager_->SetWheelForceFeedbackActive(false);
+        }
+        if (window.IsValid()) window.Complete("Play mode ready.");
+        return;
+    }
+
+    std::fprintf(stdout, "[Play] Creating physics world...\n");
+    std::fflush(stdout);
+    playModeLoad_.pendingWorld = std::make_unique<PhysicsWorld>(physicsLayerCollisionMatrix_);
+    playModeLoad_.progress = std::make_shared<PhysicsBuildProgress>();
+    playModeLoad_.progress->stepsTotal.store(static_cast<int>(physicsBodies.size()));
+    playModeLoad_.buildStart = std::chrono::high_resolution_clock::now();
+    if (!window.IsValid()) {
+        window = EditorProgressService::Get().Begin("Entering Play Mode", "Building scene...", 0, false);
+    }
+    window.SetMessage("Building scene physics...");
+    window.SetDetail("Preparing or baking collision geometry...");
+    window.SetProgress(0, static_cast<int>(physicsBodies.size()));
+    window.SetCancellable(true);
+    playModeLoad_.window = window;
+
+    PhysicsWorld* worldPtr = playModeLoad_.pendingWorld.get();
+    PhysicsBuildProgress* progressPtr = playModeLoad_.progress.get();
+    std::fprintf(stdout, "[Play] Starting physics build thread...\n");
+    std::fflush(stdout);
+    playModeLoad_.buildThread = std::make_unique<std::thread>(
+        [worldPtr, progressPtr,
+         bodies  = std::move(physicsBodies),
+         chars   = std::move(physicsCharacters)]() mutable {
+            std::fprintf(stdout, "[Play] Physics build thread started.\n");
+            std::fflush(stdout);
+            worldPtr->Build(bodies, chars, progressPtr);
+        });
+    playModeLoad_.phase = PlayModeLoadState::Phase::BuildingPhysics;
+    playModeLoad_.stageAnnounced = true;
+    // TickPlayModeLoading() will finalize once the thread completes.
+}
+
 void SceneEditor::SetScriptsRunning(bool running) {
     if (scriptsRunning_ == running) {
         return;
@@ -213,99 +285,25 @@ void SceneEditor::SetScriptsRunning(bool running) {
                 inputManager_->SetWheelForceFeedbackActive(false);
                 inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
             }
-            ClearScriptRuntime();
-            UnloadScriptAssembly();
-            SaveCurrentScene();
-            profilerStats_ = CollectProfilerStats();
-            playModeSnapshot_ = {objects_, selectedIndex_, selectedIndices_};
-            hasPlayModeSnapshot_ = true;
             activeViewport_ = SceneEditorActiveViewport::Game;
             scriptsPaused_ = false;
-            SyncScriptProjectFiles(false);
 
+            // Open the popup before any of the work happens. Saving the scene,
+            // syncing the script project and building the physics descriptors
+            // all block the main thread, so unless the window exists (and has
+            // been rendered) first, those stages pass by invisibly and only the
+            // threaded collision-cache stage is ever seen.
             playModeLoad_ = {};
-            playModeLoad_.scriptBuild = std::make_shared<PlayModeLoadState::ScriptBuildStatus>();
             playModeLoad_.window = EditorProgressService::Get().Begin(
-                "Compiling Scripts", "Building ProjectScripts.dll...", 0, false);
-            playModeLoad_.window.SetDetail("Compiling C++ scripts with MSBuild.");
+                "Entering Play Mode", "Preparing scene...", 0, false);
+            playModeLoad_.window.SetDetail("Saving the scene and syncing script project files.");
             playModeLoad_.buildStart = std::chrono::high_resolution_clock::now();
-            auto status = playModeLoad_.scriptBuild;
-            const EditorProgressTask progressWindow = playModeLoad_.window;
-            playModeLoad_.scriptBuildThread = std::make_unique<std::thread>([status, progressWindow]() {
-                // Give the main thread an opportunity to present the modal
-                // before MSBuild begins. Without this handshake, a fast
-                // incremental build can finish and transition to scene loading
-                // before the first progress frame reaches the screen.
-                const auto renderDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(250);
-                while (!progressWindow.HasBeenRendered() && std::chrono::steady_clock::now() < renderDeadline) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                }
-                std::string error;
-                const bool ok = BuildScriptAssembly(&error);
-                {
-                    std::lock_guard<std::mutex> lock(status->mutex);
-                    status->error = std::move(error);
-                }
-                status->success.store(ok);
-                status->isDone.store(true);
-            });
-            playModeLoad_.phase = PlayModeLoadState::Phase::BuildingScripts;
+            playModeLoad_.phase = PlayModeLoadState::Phase::Preparing;
             return;
         }
 
         playModeScriptAssemblyReady_ = false;
-        std::fprintf(stdout, "[Play] Building scene...\n");
-        std::fflush(stdout);
-
-        // scriptsRunning_ is set to true by TickPlayModeLoading once the background build completes.
-        RebuildVehicleRuntime();
-        std::vector<PhysicsBodyDesc> physicsBodies;
-        std::vector<PhysicsCharacterDesc> physicsCharacters;
-        BuildRuntimePhysicsDescriptors(physicsBodies, physicsCharacters);
-        // Launch async build on background thread.
-        std::fprintf(stdout, "[Play] Runtime physics descriptors: %zu bodies, %zu characters, 0 Jolt vehicles (arcade vehicle runtime).\n",
-                     physicsBodies.size(),
-                     physicsCharacters.size());
-        std::fflush(stdout);
-        if (IsEnvironmentFlagEnabled("RACEMAN_DISABLE_PLAYER_PHYSICS")) {
-            std::fprintf(stdout, "[Play] Player physics disabled by RACEMAN_DISABLE_PLAYER_PHYSICS=1.\n");
-            std::fflush(stdout);
-            physicsWorld_.reset();
-            playModeLoad_ = {};
-            RebuildVehicleRuntime();
-            RebuildAudioRuntime();
-            RebuildScriptRuntime();
-            scriptsRunning_ = true;
-            if (inputManager_ != nullptr) {
-                inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
-                inputManager_->SetWheelForceFeedbackActive(false);
-            }
-            return;
-        }
-        std::fprintf(stdout, "[Play] Creating physics world...\n");
-        std::fflush(stdout);
-        playModeLoad_.pendingWorld = std::make_unique<PhysicsWorld>(physicsLayerCollisionMatrix_);
-        playModeLoad_.progress = std::make_shared<PhysicsBuildProgress>();
-        playModeLoad_.progress->stepsTotal.store(static_cast<int>(physicsBodies.size()));
-        playModeLoad_.buildStart = std::chrono::high_resolution_clock::now();
-        playModeLoad_.window = EditorProgressService::Get().Begin(
-            "Building Scene", "Preparing or baking collision geometry...",
-            static_cast<int>(physicsBodies.size()), true);
-
-        PhysicsWorld* worldPtr = playModeLoad_.pendingWorld.get();
-        PhysicsBuildProgress* progressPtr = playModeLoad_.progress.get();
-        std::fprintf(stdout, "[Play] Starting physics build thread...\n");
-        std::fflush(stdout);
-        playModeLoad_.buildThread = std::make_unique<std::thread>(
-            [worldPtr, progressPtr,
-             bodies  = std::move(physicsBodies),
-             chars   = std::move(physicsCharacters)]() mutable {
-                std::fprintf(stdout, "[Play] Physics build thread started.\n");
-                std::fflush(stdout);
-                worldPtr->Build(bodies, chars, progressPtr);
-            });
-        playModeLoad_.phase = PlayModeLoadState::Phase::BuildingPhysics;
-        // TickPlayModeLoading() will finalize once the thread completes.
+        StartPlayModePhysicsBuild();
     } else {
         if (inputManager_ != nullptr) {
             inputManager_->SetWheelForceFeedbackActive(false);
@@ -397,6 +395,74 @@ void SceneEditor::TickPlayModeLoading() {
         return;
     }
 
+    // Main-thread stages run one frame after their label is published, so each
+    // one is actually drawn before the work stalls the frame.
+    const auto announce = [this](PlayModeLoadState::Phase phase,
+                                 const char* message,
+                                 const char* detail) {
+        playModeLoad_.phase = phase;
+        playModeLoad_.stageAnnounced = false;
+        if (playModeLoad_.window.IsValid()) {
+            playModeLoad_.window.SetMessage(message);
+            playModeLoad_.window.SetDetail(detail);
+            playModeLoad_.window.SetIndeterminate(true);
+        }
+    };
+    const auto failPlayMode = [this](const std::string& message) {
+        playModeLoad_.window.Fail(message);
+        if (playModeLoad_.scriptBuildThread && playModeLoad_.scriptBuildThread->joinable()) {
+            playModeLoad_.scriptBuildThread->join();
+        }
+        playModeLoad_ = {};
+        RestoreFromPlayModeSnapshot();
+        if (console_) {
+            console_->AddError(message);
+        }
+        std::fprintf(stdout, "[Play] %s\n", message.c_str());
+        std::fflush(stdout);
+    };
+
+    if (playModeLoad_.phase == PlayModeLoadState::Phase::Preparing) {
+        if (!playModeLoad_.stageAnnounced) {
+            playModeLoad_.stageAnnounced = true;
+            return; // let the popup reach the screen before the frame stalls
+        }
+
+        ClearScriptRuntime();
+        UnloadScriptAssembly();
+        SaveCurrentScene();
+        profilerStats_ = CollectProfilerStats();
+        playModeSnapshot_ = {objects_, selectedIndex_, selectedIndices_};
+        hasPlayModeSnapshot_ = true;
+        SyncScriptProjectFiles(false);
+
+        playModeLoad_.scriptBuild = std::make_shared<PlayModeLoadState::ScriptBuildStatus>();
+        auto status = playModeLoad_.scriptBuild;
+        const EditorProgressTask progressWindow = playModeLoad_.window;
+        playModeLoad_.scriptBuildThread = std::make_unique<std::thread>([status, progressWindow]() {
+            // Give the main thread an opportunity to present the modal
+            // before MSBuild begins. Without this handshake, a fast
+            // incremental build can finish and transition to scene loading
+            // before the first progress frame reaches the screen.
+            const auto renderDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(250);
+            while (!progressWindow.HasBeenRendered() && std::chrono::steady_clock::now() < renderDeadline) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            std::string error;
+            const bool ok = BuildScriptAssembly(&error);
+            {
+                std::lock_guard<std::mutex> lock(status->mutex);
+                status->error = std::move(error);
+            }
+            status->success.store(ok);
+            status->isDone.store(true);
+        });
+        announce(PlayModeLoadState::Phase::BuildingScripts,
+                 "Compiling scripts...", "Building ProjectScripts.dll with MSBuild.");
+        playModeLoad_.stageAnnounced = true; // the build already runs on its own thread
+        return;
+    }
+
     if (playModeLoad_.phase == PlayModeLoadState::Phase::BuildingScripts) {
         auto status = playModeLoad_.scriptBuild;
         if (!status || !status->isDone.load()) {
@@ -414,29 +480,24 @@ void SceneEditor::TickPlayModeLoading() {
         }
 
         if (!status->success.load()) {
-            playModeLoad_.window.Fail(error.empty() ? "Script DLL build failed." : error);
-            playModeLoad_ = {};
-            RestoreFromPlayModeSnapshot();
-            const std::string message = error.empty() ? "Script DLL build failed. Check the build output for compiler errors." : error;
-            if (console_) {
-                console_->AddError(message);
-            }
-            std::fprintf(stdout, "[Play] Script build failed: %s\n", message.c_str());
-            std::fflush(stdout);
+            failPlayMode(error.empty() ? "Script DLL build failed. Check the build output for compiler errors." : error);
+            return;
+        }
+
+        announce(PlayModeLoadState::Phase::LoadingScripts,
+                 "Loading scripts...", "Loading ProjectScripts.dll and registering script types.");
+        return;
+    }
+
+    if (playModeLoad_.phase == PlayModeLoadState::Phase::LoadingScripts) {
+        if (!playModeLoad_.stageAnnounced) {
+            playModeLoad_.stageAnnounced = true;
             return;
         }
 
         std::string loadError;
         if (!LoadScriptAssembly(&loadError)) {
-            playModeLoad_.window.Fail(loadError.empty() ? "Script DLL load failed." : loadError);
-            playModeLoad_ = {};
-            RestoreFromPlayModeSnapshot();
-            const std::string message = loadError.empty() ? "Script DLL load failed." : loadError;
-            if (console_) {
-                console_->AddError(message);
-            }
-            std::fprintf(stdout, "[Play] Script load failed: %s\n", message.c_str());
-            std::fflush(stdout);
+            failPlayMode(loadError.empty() ? "Script DLL load failed." : loadError);
             return;
         }
 
@@ -444,10 +505,38 @@ void SceneEditor::TickPlayModeLoading() {
             console_->AddLog("Loaded script DLL with " + std::to_string(GetRegisteredScripts().size()) + " script(s).");
         }
 
-        playModeLoad_.window.Complete("Scripts compiled and loaded.");
-        playModeLoad_ = {};
-        playModeScriptAssemblyReady_ = true;
-        SetScriptsRunning(true);
+        announce(PlayModeLoadState::Phase::PreparingPhysics,
+                 "Building scene...", "Collecting runtime objects and physics descriptors.");
+        return;
+    }
+
+    if (playModeLoad_.phase == PlayModeLoadState::Phase::PreparingPhysics) {
+        if (!playModeLoad_.stageAnnounced) {
+            playModeLoad_.stageAnnounced = true;
+            return;
+        }
+        StartPlayModePhysicsBuild(); // moves on to BuildingPhysics (or finishes outright)
+        return;
+    }
+
+    if (playModeLoad_.phase == PlayModeLoadState::Phase::Finalizing) {
+        if (!playModeLoad_.stageAnnounced) {
+            playModeLoad_.stageAnnounced = true;
+            return;
+        }
+
+        const EditorProgressTask window = playModeLoad_.window;
+        playModeLoad_ = {}; // reset (clears phase to Idle)
+
+        RebuildVehicleRuntime();
+        RebuildAudioRuntime();
+        RebuildScriptRuntime();
+        scriptsRunning_ = true;
+        if (inputManager_ != nullptr) {
+            inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
+            inputManager_->SetWheelForceFeedbackActive(true);
+        }
+        window.Complete("Play mode ready.");
         return;
     }
 
@@ -489,17 +578,11 @@ void SceneEditor::TickPlayModeLoading() {
     std::fprintf(stdout, "[Play] Build complete in %.1f ms\n", ms);
     std::fflush(stdout);
 
-    playModeLoad_.window.Complete("Scene build complete.");
-    playModeLoad_ = {}; // reset (clears phase to Idle)
-
-    RebuildVehicleRuntime();
-    RebuildAudioRuntime();
-    RebuildScriptRuntime();
-    scriptsRunning_ = true;
-    if (inputManager_ != nullptr) {
-        inputManager_->SetWheelForceFeedbackState(0.0f, 0.0f, 0.0f);
-        inputManager_->SetWheelForceFeedbackActive(true);
-    }
+    playModeLoad_.progress.reset();
+    playModeLoad_.buildThread.reset();
+    playModeLoad_.window.SetCancellable(false);
+    announce(PlayModeLoadState::Phase::Finalizing,
+             "Starting runtime...", "Spawning vehicles, audio and scripts.");
 
     if (console_) {
         char buf[64];
@@ -788,6 +871,72 @@ bool SceneEditor::GetActiveAudioListenerPose(glm::vec3& outPosition, glm::vec3& 
     return false;
 }
 
+SceneEditor::ResolvedAudioEnvironment
+SceneEditor::ResolveListenerEnvironment(const glm::vec3& listenerPosition) const {
+    ResolvedAudioEnvironment resolved;
+
+    // Scene default first: the open-air character of the track.
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& obj = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !obj.hasAudioEnvironment || !obj.audioEnvironment.enabled) continue;
+        const AudioEnvironmentComponent& env = obj.audioEnvironment;
+        resolved.earlyGain         = env.earlyGain;
+        resolved.earlySpreadMs     = env.earlySpreadMs;
+        resolved.tailGain          = env.tailGain;
+        resolved.tailDecaySeconds  = env.tailDecaySeconds;
+        resolved.tailDamping       = env.tailDamping;
+        resolved.lowPassScale      = env.lowPassScale;
+        resolved.volumeScale       = env.volumeScale;
+        break;
+    }
+
+    // Then blend in the highest-priority zone containing the listener. The
+    // blend band means driving into a tunnel is a transition, not a switch.
+    const AudioReverbZoneComponent* best = nullptr;
+    int bestPriority = (std::numeric_limits<int>::min)();
+    float bestWeight = 0.0f;
+
+    for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
+        const SceneObject& obj = objects_[i];
+        if (!IsObjectEffectivelyEnabled(i) || !obj.hasAudioReverbZone || !obj.audioReverbZone.enabled) continue;
+        const AudioReverbZoneComponent& zone = obj.audioReverbZone;
+
+        // Work in the zone's local space so rotated volumes behave.
+        const glm::mat4 world = GetObjectWorldMatrix(i);
+        const glm::vec3 local = glm::vec3(glm::inverse(world) * glm::vec4(listenerPosition, 1.0f));
+        const glm::vec3 extents = (glm::max)(zone.halfExtents, glm::vec3(0.01f));
+
+        // Signed distance to the box surface, negative inside.
+        const glm::vec3 d = glm::abs(local) - extents;
+        const float outside = glm::length((glm::max)(d, glm::vec3(0.0f)));
+        const float inside  = (std::min)((std::max)(d.x, (std::max)(d.y, d.z)), 0.0f);
+        const float signedDistance = outside + inside;
+
+        const float blend = (std::max)(0.01f, zone.blendMetres);
+        const float weight = (std::clamp)(-signedDistance / blend, 0.0f, 1.0f);
+        if (weight <= 0.0f) continue;
+
+        if (zone.priority > bestPriority || (zone.priority == bestPriority && weight > bestWeight)) {
+            best = &zone;
+            bestPriority = zone.priority;
+            bestWeight = weight;
+        }
+    }
+
+    if (best != nullptr && bestWeight > 0.0f) {
+        const float t = bestWeight;
+        auto mix = [t](float a, float b) { return a + (b - a) * t; };
+        resolved.earlyGain        = mix(resolved.earlyGain, best->earlyGain);
+        resolved.earlySpreadMs    = mix(resolved.earlySpreadMs, best->earlySpreadMs);
+        resolved.tailGain         = mix(resolved.tailGain, best->tailGain);
+        resolved.tailDecaySeconds = mix(resolved.tailDecaySeconds, best->tailDecaySeconds);
+        resolved.tailDamping      = mix(resolved.tailDamping, best->tailDamping);
+        resolved.lowPassScale     = mix(resolved.lowPassScale, best->lowPassScale);
+        resolved.volumeScale      = mix(resolved.volumeScale, best->volumeScale);
+    }
+    return resolved;
+}
+
 void SceneEditor::UpdateAudio(float deltaTime) {
     if (!audioManager_ || !audioManager_->IsInitialized()) return;
     audioManager_->Update(); // reap finished one-shots
@@ -798,6 +947,23 @@ void SceneEditor::UpdateAudio(float deltaTime) {
         glm::vec3 listenerPos(0.0f), listenerForward(0.0f, 0.0f, -1.0f), listenerUp(0.0f, 1.0f, 0.0f);
         if (GetActiveAudioListenerPose(listenerPos, listenerForward, listenerUp)) {
             audioManager_->SetListenerTransform(listenerPos, listenerForward, listenerUp);
+            // Doppler is relative, so the listener's own motion matters as much
+            // as the car's - a chase camera moving with the car should hear no
+            // shift at all.
+            if (deltaTime > 0.0f && listenerVelocityValid_) {
+                const glm::vec3 velocity = (listenerPos - previousListenerPosition_) / deltaTime;
+                // Camera cuts teleport the listener; a huge spurious velocity
+                // would produce an absurd pitch jump, so ignore those frames.
+                if (glm::length(velocity) < 200.0f) {
+                    audioManager_->SetListenerVelocity(velocity);
+                } else {
+                    audioManager_->SetListenerVelocity(glm::vec3(0.0f));
+                }
+            }
+            previousListenerPosition_ = listenerPos;
+            listenerVelocityValid_ = true;
+        } else {
+            listenerVelocityValid_ = false;
         }
     }
 

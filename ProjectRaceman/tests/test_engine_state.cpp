@@ -153,6 +153,36 @@ static void TestLaunchEventFires() {
           "downshift is classified correctly", "");
 }
 
+static void TestShiftCutIsShort() {
+    std::printf("\n10. Upshift fuel cut is short, not the whole gearbox time\n");
+    VehicleEngineTuning t = MakeTuning();
+    VehicleEngineState s; VehicleEngineInput in = MakeInput();
+    in.gear = 2; in.throttle = 1.0f; in.targetRpmFromGearing = 5000.0f;
+    for (int i = 0; i < 30; ++i) s.Update(t, in);
+
+    // Upshift. The gearbox stays busy for 300 ms; fuel must not be.
+    in.gear = 3; in.shifting = true;
+    int cutSteps = 0, shiftingSteps = 0;
+    for (int i = 0; i < 30; ++i) {          // 500 ms
+        if (i >= 18) in.shifting = false;   // gearbox done at ~300 ms
+        s.Update(t, in);
+        if (s.shiftCut) ++cutSteps;
+        if (in.shifting) ++shiftingSteps;
+    }
+    const float cutMs = cutSteps * 1000.0f / 60.0f;
+    Check(cutMs > 30.0f && cutMs < 110.0f, "fuel cut lasts roughly one paddle-shift",
+          "cut=" + std::to_string(cutMs) + " ms over a " + std::to_string(shiftingSteps * 1000 / 60) + " ms shift");
+
+    // A downshift blips rather than cutting.
+    VehicleEngineState d; VehicleEngineInput di = MakeInput();
+    di.gear = 4; di.throttle = 0.5f; di.targetRpmFromGearing = 4000.0f;
+    for (int i = 0; i < 30; ++i) d.Update(t, di);
+    di.gear = 3;
+    int downCut = 0;
+    for (int i = 0; i < 20; ++i) { d.Update(t, di); if (d.shiftCut) ++downCut; }
+    Check(downCut == 0, "downshift does not cut fuel", "steps cut=" + std::to_string(downCut));
+}
+
 static void TestLoadDiscriminates() {
     std::printf("\n7. Load separates pulling from coasting and from wheelspin\n");
     VehicleEngineTuning t = MakeTuning();
@@ -266,6 +296,7 @@ int main() {
     TestLimiterBounces();
     TestLaunchEventFires();
     TestLoadDiscriminates();
+    TestShiftCutIsShort();
     TestTurboSpool();
     TestFrameRateIndependence();
     std::printf("\n===================================\n");

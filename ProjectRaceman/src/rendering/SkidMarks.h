@@ -11,6 +11,29 @@ namespace raceman {
 
 class Renderer;
 
+// The authored half of a skid mark, read from a Decal prefab's component.
+// Everything here is per-look; the physical side (when a tyre marks, how far
+// apart segments sit, how many survive) stays in SkidMarkSettings.
+struct SkidMarkDecalTemplate {
+    bool valid{false};
+    std::string texturePath;
+    glm::vec4 color{1.0f, 1.0f, 1.0f, 1.0f};
+    float opacity{1.0f};
+    float angleFadeDegrees{55.0f};
+    glm::vec2 uvTiling{1.0f, 1.0f};
+    glm::vec2 uvOffset{0.0f, 0.0f};
+    bool alphaBlend{false};
+    int sortOrder{-100};
+    // From the prefab's Transform scale. 0 means "not authored, use the default".
+    float width{0.0f};       // scale X: mark width across the tyre
+    float thickness{0.0f};   // scale Y: depth of the projection volume
+    // scale Z: metres of track per texture repeat. Without this every segment
+    // stretches one full copy of the texture across itself, so a tread pattern
+    // changes size with speed and never lines up with its neighbour - which is
+    // what makes an untiled trail read as a row of arrows instead of a track.
+    float tileLength{0.0f};
+};
+
 struct SkidMarkSettings {
     bool enabled{true};
     // Slip magnitude at which a tyre starts leaving rubber. Below this the tyre
@@ -30,6 +53,8 @@ struct SkidMarkSettings {
     int maxMarks{300};
     glm::vec3 color{0.06f, 0.055f, 0.05f};
     std::string texturePath;
+    // Look sourced from the decal prefab, when one is configured.
+    SkidMarkDecalTemplate decal;
 };
 
 // Lays projected decals along a tyre's contact patch while it is sliding.
@@ -75,11 +100,17 @@ private:
         // Bounding sphere for culling, so a mark never needs its corners rebuilt.
         glm::vec3 center{0.0f};
         float radius{0.0f};
+        // Baked at emission so the trail's texture continues across segments
+        // instead of restarting inside each one.
+        glm::vec2 uvTiling{1.0f, 1.0f};
+        glm::vec2 uvOffset{0.0f, 0.0f};
     };
 
     struct WheelTrail {
         glm::vec3 lastEmitPosition{0.0f};
         bool active{false};
+        // Metres laid since the trail started, used as the texture's V origin.
+        float distance{0.0f};
     };
 
     std::vector<Mark> marks_;
@@ -92,6 +123,7 @@ private:
                   const glm::vec3& to,
                   const glm::vec3& normal,
                   float strength,
+                  float distanceAtFrom,
                   const SkidMarkSettings& settings);
 };
 

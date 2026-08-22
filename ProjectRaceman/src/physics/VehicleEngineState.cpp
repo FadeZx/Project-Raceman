@@ -87,7 +87,13 @@ void VehicleEngineState::Update(const VehicleEngineTuning& tuning, const Vehicle
         event.rpmBefore = rpm;
         PushShiftEvent(event);
         gear = input.gear;
+        // Fuel is interrupted briefly on an upshift only. A downshift blips
+        // rather than cutting, and neutral/reverse are not power shifts.
+        if (event.kind == EngineShiftKind::Up) {
+            shiftCutTimer = (std::max)(0.0f, tuning.shiftCutSeconds);
+        }
     }
+    shiftCutTimer = (std::max)(0.0f, shiftCutTimer - deltaTime);
 
     throttle = Clamp01(input.throttle);
 
@@ -96,7 +102,9 @@ void VehicleEngineState::Update(const VehicleEngineTuning& tuning, const Vehicle
     // neutral or mid-shift it is free to follow the throttle on its own inertia,
     // which is what produces a downshift flare and lets it rev at a standstill.
     const bool inGear = input.gear != 0;
-    shiftCut = input.shifting && inGear;
+    // Ignition cut is short and independent; the clutch stays out for the whole
+    // mechanical shift so the flare still happens over the full duration.
+    shiftCut = shiftCutTimer > 0.0f && inGear;
     clutchEngaged = inGear && !input.shifting;
 
     // --- target ------------------------------------------------------------
