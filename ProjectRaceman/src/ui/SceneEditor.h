@@ -24,6 +24,7 @@
 #include "../physics/VehicleConfig.h"
 #include "../rendering/Renderer.h"
 #include "../rendering/SkidMarks.h"
+#include "../rendering/TyreSmoke.h"
 #include "../rendering/Material.h"
 #include "../rendering/PrimitiveMeshes.h"
 #include "../scripting/ObjectScript.h"
@@ -491,6 +492,7 @@ private:
     SkyboxFaces skyboxFaces_{};
     GraphicsProfile graphicsProfile_{};
     SkidMarkSystem skidMarks_;
+    TyreSmokeSystem tyreSmoke_;
     void UpdateWeather(float deltaTime);
     float runtimeWetness_{0.0f};
     bool weatherWetnessInitialized_{false};
@@ -498,6 +500,7 @@ private:
     // take effect without restarting the run. Not const: resolving the decal
     // prefab warms the prefab source cache.
     SkidMarkSettings SkidMarkSettingsFromProfile(const GraphicsProfile& profile);
+    TyreSmokeSettings TyreSmokeSettingsFromProfile(const GraphicsProfile& profile);
     // Reads the Decal component out of the configured skid-mark prefab. The
     // prefab is a look template, not something instantiated: nothing is added to
     // the scene, so runtime marks stay out of the hierarchy, undo and saves.
@@ -721,21 +724,12 @@ private:
     std::vector<RuntimeAudioSourceInstance> runtimeAudioSources_;
 
     // Vehicle sound runtime (one per VehicleSound component)
-    struct RuntimeVehicleSoundLayerState {
-        AudioVoice* voice{nullptr};
-        float smoothVolume{0.0f};
-        float smoothPitch{1.0f};
-    };
     struct RuntimeVehicleSoundInstance {
         std::string objectId;           // vehicle object id
         std::string vehicleObjectId;    // same object that has VehicleComponent
         VehicleSoundProfile profile;
-        std::vector<RuntimeVehicleSoundLayerState> layers;
-
-        // Procedural path. When the assigned asset is a .enginesound.json the
-        // pitched sample layers above are unused and a single synth voice
-        // replaces them entirely.
-        bool usesSynth{false};
+        // Every vehicle voice is procedural now; the pitched sample layers and
+        // the override that let a profile shadow the component are both gone.
         EngineSoundProfile engineProfile;
         std::shared_ptr<EngineSynth> synth;
         AudioVoice* synthVoice{nullptr};

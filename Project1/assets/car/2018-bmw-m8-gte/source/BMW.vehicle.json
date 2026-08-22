@@ -66,10 +66,10 @@
   "arcadeHandling": {
     "maxForwardSpeed": 78.000,
     "maxReverseSpeed": 12.000,
-    "acceleration": 4.200,
+    "acceleration": 7.200,
     "reverseAcceleration": 5.500,
-    "brakeDeceleration": 14.500,
-    "coastDeceleration": 1.600,
+    "brakeDeceleration": 17.000,
+    "coastDeceleration": 2.600,
     "handbrakeDeceleration": 28.000,
     "fallbackSteerDegreesPerSecond": 108.000,
     "lowSpeedSteerSpeed": 1.100,

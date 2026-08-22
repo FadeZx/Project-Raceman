@@ -37,20 +37,44 @@ static double Rms(const std::vector<float>& x) {
     return std::sqrt(s / std::max<size_t>(1, x.size()));
 }
 
-static std::vector<float> Render(const TyreSoundProfile& profile, float speed, float slip,
-                                 int surface, float seconds = 0.6f, float load = 0.5f) {
+// The synth takes raw slide velocities now, so the tests express slip as a
+// normalised 0..1 and convert through the same speed-scaled reference the DSP
+// uses. That keeps "slip 0.5" meaning the same thing at every speed.
+static float SlipToMps(const TyreSoundProfile& p, float speed, float slip) {
+    const float ref = std::max(0.5f, std::max(p.slipReferenceMps, speed * p.slipReferenceFraction));
+    return slip * ref;
+}
+
+enum class SlipKind { Scrub, Lock, Spin };
+
+static std::vector<float> RenderKind(const TyreSoundProfile& profile, float speed, float slip,
+                                     int surface, SlipKind kind, float seconds = 0.6f,
+                                     float load = 0.5f) {
     TyreSynth synth;
     synth.SetProfile(std::make_shared<TyreSoundProfile>(profile));
 
     TyreSynthParams params;
     params.speedMps = speed;
     params.wheelCount = 4;
+    const float mps = SlipToMps(profile, speed, slip);
     for (int w = 0; w < 4; ++w) {
         params.wheels[w].grounded = true;
         params.wheels[w].load = load;
-        params.wheels[w].slip = slip;
         params.wheels[w].surfaceA = surface;
         params.wheels[w].surfaceB = surface;
+        switch (kind) {
+            case SlipKind::Scrub:
+                params.wheels[w].lateralSlideMps = mps;
+                break;
+            case SlipKind::Lock:
+                params.wheels[w].longitudinalSlideMps = mps;
+                params.wheels[w].locked = slip > 0.0f;
+                break;
+            case SlipKind::Spin:
+                params.wheels[w].longitudinalSlideMps = mps;
+                params.wheels[w].spinning = slip > 0.0f;
+                break;
+        }
     }
     synth.SetParams(params);
 
@@ -61,6 +85,11 @@ static std::vector<float> Render(const TyreSoundProfile& profile, float speed, f
     }
     // Skip the settling period so envelopes have arrived.
     return std::vector<float>(out.begin() + kRate / 4, out.end());
+}
+
+static std::vector<float> Render(const TyreSoundProfile& profile, float speed, float slip,
+                                 int surface, float seconds = 0.6f, float load = 0.5f) {
+    return RenderKind(profile, speed, slip, surface, SlipKind::Scrub, seconds, load);
 }
 
 // ---------------------------------------------------------------------------
@@ -141,8 +170,112 @@ static void TestLooseSurfacesDoNotSing() {
     Check(tarmacSqueal > grassSqueal * 3.0, "grass does not sing at the limit", detail);
 }
 
+// --- the three kinds of slip are different events -------------------------
+
+static void TestLockUpIsNotASqueal() {
+    std::printf("\n5. A locked wheel graunches, it does not sing\n");
+    const TyreSoundProfile p = TyreSoundProfileLoader::makeDefault();
+    const std::vector<float> scrub = RenderKind(p, 25.0f, 1.0f, 0, SlipKind::Scrub);
+    const std::vector<float> lock  = RenderKind(p, 25.0f, 1.0f, 0, SlipKind::Lock);
+
+    // Lock-up energy sits at the lock centre; scrub energy sits up at the
+    // tread-block resonance. If these two came out the same, the whole point of
+    // splitting them has been lost.
+    const double scrubHigh = BinMagnitude(scrub, p.squealBaseHz + p.squealRiseHz, kRate);
+    const double lockHigh  = BinMagnitude(lock, p.squealBaseHz + p.squealRiseHz, kRate);
+    const double scrubLow  = BinMagnitude(scrub, p.lockCentreHz, kRate);
+    const double lockLow   = BinMagnitude(lock, p.lockCentreHz, kRate);
+
+    char detail[220];
+    std::snprintf(detail, sizeof(detail),
+                  "squeal band scrub %.6f / lock %.6f, lock band scrub %.6f / lock %.6f",
+                  scrubHigh, lockHigh, scrubLow, lockLow);
+    Check(scrubHigh > lockHigh * 2.0 && lockLow > scrubLow * 2.0,
+          "lock-up and scrub occupy different bands", detail);
+}
+
+static void TestLockUpTracksSpeedNotSlip() {
+    std::printf("\n6. Lock-up level follows road speed, and its pitch stays put\n");
+    const TyreSoundProfile p = TyreSoundProfileLoader::makeDefault();
+
+    // A fully locked wheel is at maximum slip by definition, so what changes is
+    // how fast the car is still travelling.
+    const double slow = Rms(RenderKind(p, 3.0f, 1.0f, 0, SlipKind::Lock));
+    const double fast = Rms(RenderKind(p, 25.0f, 1.0f, 0, SlipKind::Lock));
+    char detail[160];
+    std::snprintf(detail, sizeof(detail), "3 m/s RMS %.5f vs 25 m/s %.5f", slow, fast);
+    Check(fast > slow * 1.5, "a lock-up at speed is louder than one at walking pace", detail);
+
+    // And the pitch must NOT climb with slip. A sweeping lock-up is the single
+    // most synthetic-sounding mistake in tyre audio.
+    const double lightBand = BinMagnitude(RenderKind(p, 25.0f, 0.4f, 0, SlipKind::Lock),
+                                          p.lockCentreHz, kRate);
+    const double heavyBand = BinMagnitude(RenderKind(p, 25.0f, 1.0f, 0, SlipKind::Lock),
+                                          p.lockCentreHz, kRate);
+    const double heavyUp   = BinMagnitude(RenderKind(p, 25.0f, 1.0f, 0, SlipKind::Lock),
+                                          p.lockCentreHz * 2.0, kRate);
+    std::snprintf(detail, sizeof(detail),
+                  "centre at slip 0.4 %.6f / 1.0 %.6f, octave up %.6f",
+                  lightBand, heavyBand, heavyUp);
+    Check(heavyBand > heavyUp * 1.5, "lock-up pitch does not sweep with slip", detail);
+}
+
+static void TestWheelspinSitsAboveScrub() {
+    std::printf("\n7. Wheelspin is higher and thinner than a scrub\n");
+    const TyreSoundProfile p = TyreSoundProfileLoader::makeDefault();
+    const std::vector<float> scrub = RenderKind(p, 12.0f, 1.0f, 0, SlipKind::Scrub);
+    const std::vector<float> spin  = RenderKind(p, 12.0f, 1.0f, 0, SlipKind::Spin);
+
+    const double atSpin  = p.spinBaseHz + p.spinRiseHz;
+    const double atScrub = p.squealBaseHz + p.squealRiseHz;
+    const double spinAtSpin   = BinMagnitude(spin, atSpin, kRate);
+    const double scrubAtSpin  = BinMagnitude(scrub, atSpin, kRate);
+    char detail[200];
+    std::snprintf(detail, sizeof(detail),
+                  "%.0f Hz: spin %.6f vs scrub %.6f (scrub resonance %.0f Hz)",
+                  atSpin, spinAtSpin, scrubAtSpin, atScrub);
+    Check(spinAtSpin > scrubAtSpin * 2.0, "wheelspin sings above the scrub band", detail);
+}
+
+static void TestSlipReferenceScalesWithSpeed() {
+    std::printf("\n8. Slip is measured as a ratio, not an absolute speed\n");
+    const TyreSoundProfile p = TyreSoundProfileLoader::makeDefault();
+
+    // The same absolute 2.5 m/s of scrub is a lurid slide at 12 m/s and barely
+    // a twitch at 70 m/s. A fixed divisor made both read as full slip, which is
+    // why the squeal did not track what the car was doing.
+    TyreSynthParams base;
+    auto renderAbsolute = [&](float speed, float slideMps) {
+        TyreSynth synth;
+        synth.SetProfile(std::make_shared<TyreSoundProfile>(p));
+        TyreSynthParams params;
+        params.speedMps = speed;
+        params.wheelCount = 4;
+        for (int w = 0; w < 4; ++w) {
+            params.wheels[w].grounded = true;
+            params.wheels[w].load = 0.5f;
+            params.wheels[w].lateralSlideMps = slideMps;
+        }
+        synth.SetParams(params);
+        std::vector<float> out(kRate / 2, 0.0f);
+        for (int i = 0; i < (int)out.size(); i += 480) {
+            synth.Render(out.data() + i, std::min(480, (int)out.size() - i), kRate);
+        }
+        return std::vector<float>(out.begin() + kRate / 4, out.end());
+    };
+
+    const double atLowSpeed  = BinMagnitude(renderAbsolute(12.0f, 2.5f), p.squealBaseHz + 200.0, kRate);
+    const double atHighSpeed = BinMagnitude(renderAbsolute(70.0f, 2.5f), p.squealBaseHz + 200.0, kRate);
+    char detail[180];
+    std::snprintf(detail, sizeof(detail),
+                  "2.5 m/s scrub: at 12 m/s %.6f vs at 70 m/s %.6f",
+                  atLowSpeed, atHighSpeed);
+    Check(atLowSpeed > atHighSpeed * 1.5,
+          "the same slide reads as more slip at low speed", detail);
+}
+
 static void TestNumericalSafety() {
-    std::printf("\n5. Numerical safety\n");
+    std::printf("\n9. Numerical safety\n");
     const TyreSoundProfile p = TyreSoundProfileLoader::makeDefault();
     bool finite = true, inRange = true;
     for (int surface = 0; surface < 6; ++surface) {
@@ -181,7 +314,7 @@ static void WriteWav(const std::string& path, const std::vector<float>& samples,
 }
 
 static void RenderExamples(const std::string& outDir) {
-    std::printf("\n6. Rendering audible examples\n");
+    std::printf("\n10. Rendering audible examples\n");
     const TyreSoundProfile p = TyreSoundProfileLoader::makeDefault();
 
     // A lap-like pass: accelerate on tarmac, slide, clip a kerb, run wide onto grass.
@@ -202,7 +335,7 @@ static void RenderExamples(const std::string& outDir) {
         for (int w = 0; w < 4; ++w) {
             params.wheels[w].grounded = true;
             params.wheels[w].load = 0.5f;
-            params.wheels[w].slip = slip;
+            params.wheels[w].lateralSlideMps = SlipToMps(p, speed, slip);
             params.wheels[w].surfaceA = surface;
             params.wheels[w].surfaceB = surface;
         }
@@ -224,6 +357,10 @@ int main(int argc, char** argv) {
     TestSurfacesAreDistinct();
     TestSquealIsContinuous();
     TestLooseSurfacesDoNotSing();
+    TestLockUpIsNotASqueal();
+    TestLockUpTracksSpeedNotSlip();
+    TestWheelspinSitsAboveScrub();
+    TestSlipReferenceScalesWithSpeed();
     TestNumericalSafety();
     RenderExamples(argc > 1 ? argv[1] : ".");
     std::printf("\n==========================\n");

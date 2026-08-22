@@ -82,6 +82,9 @@ Renderer::~Renderer() {
     if (captureCubeVao_ != 0) glDeleteVertexArrays(1, &captureCubeVao_);
     if (rainQuadVbo_ != 0) glDeleteBuffers(1, &rainQuadVbo_);
     if (rainQuadVao_ != 0) glDeleteVertexArrays(1, &rainQuadVao_);
+    if (smokeInstanceVbo_ != 0) glDeleteBuffers(1, &smokeInstanceVbo_);
+    if (smokeQuadVbo_ != 0) glDeleteBuffers(1, &smokeQuadVbo_);
+    if (smokeQuadVao_ != 0) glDeleteVertexArrays(1, &smokeQuadVao_);
 
     if (environmentMaps_.irradiance != 0) {
         glDeleteTextures(1, &environmentMaps_.irradiance);
@@ -3162,6 +3165,9 @@ void Renderer::Flush() {
     if (viewportTargetActive_) {
         RenderDecals(GetViewportTarget(activeViewportTarget_));
         RenderRainParticles(GetViewportTarget(activeViewportTarget_));
+        // After rain so a puff in front of a drop occludes it, and after decals
+        // so smoke sits over the rubber it was laid alongside.
+        RenderSmokeParticles(GetViewportTarget(activeViewportTarget_));
     }
 
     glBindVertexArray(0);
@@ -3170,6 +3176,7 @@ void Renderer::Flush() {
     lightDrawList_.clear();
     reflectionProbeDrawList_.clear();
     decalDrawList_.clear();
+    smokeDrawList_.clear();
     weatherShelterDrawList_.clear();
 
     glLineWidth(lineWidth);
@@ -3212,6 +3219,12 @@ void Renderer::SubmitReflectionProbe(const ReflectionProbeDrawCommand& cmd) {
 
 void Renderer::SubmitDecal(const DecalDrawCommand& cmd) {
     if (decalDrawList_.size() < 1024) decalDrawList_.push_back(cmd);
+}
+
+void Renderer::SubmitSmokeParticle(const SmokeParticleDrawCommand& cmd) {
+    // The system that feeds this already caps itself; this is a backstop so a
+    // runaway emitter cannot grow the upload buffer without bound.
+    if (smokeDrawList_.size() < 4096) smokeDrawList_.push_back(cmd);
 }
 
 void Renderer::SubmitWeatherShelter(const WeatherShelterDrawCommand& cmd) {
@@ -3389,6 +3402,64 @@ void Renderer::RenderRainParticles(const ViewportTarget& target) {
     glEnable(GL_CULL_FACE);
 }
 
+void Renderer::RenderSmokeParticles(const ViewportTarget& target) {
+    (void)target;
+    if (smokeDrawList_.empty()) return;
+    if (!smokeParticleShader_ || !smokeParticleShader_->IsValid()) return;
+    if (smokeQuadVao_ == 0 || smokeInstanceVbo_ == 0) return;
+    if (Profile().forceUnlitShading || Profile().wireframeView || Profile().plainView) return;
+
+    // Farthest first. These are alpha blended and do not write depth, so
+    // without sorting a near puff drawn early lets a far one show through it.
+    const glm::vec3 cameraPosition = glm::vec3(glm::inverse(view_)[3]);
+    std::sort(smokeDrawList_.begin(), smokeDrawList_.end(),
+              [&cameraPosition](const SmokeParticleDrawCommand& a, const SmokeParticleDrawCommand& b) {
+                  const glm::vec3 da = a.position - cameraPosition;
+                  const glm::vec3 db = b.position - cameraPosition;
+                  return glm::dot(da, da) > glm::dot(db, db);
+              });
+
+    glBindBuffer(GL_ARRAY_BUFFER, smokeInstanceVbo_);
+    const std::size_t required = smokeDrawList_.size() * sizeof(SmokeParticleDrawCommand);
+    if (smokeDrawList_.size() > smokeInstanceCapacity_) {
+        // Grow and orphan in one call; the buffer is fully rewritten every
+        // frame, so there is nothing worth preserving across a resize.
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(required), smokeDrawList_.data(), GL_STREAM_DRAW);
+        smokeInstanceCapacity_ = smokeDrawList_.size();
+    } else {
+        glBufferSubData(GL_ARRAY_BUFFER, 0, static_cast<GLsizeiptr>(required), smokeDrawList_.data());
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // Colour only, like rain: the geometry buffers behind it belong to opaque
+    // surfaces and SSR/SSAO still need them intact.
+    glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glColorMaski(2, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glColorMaski(3, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    smokeParticleShader_->use();
+    smokeParticleShader_->setMat4("uView", view_);
+    smokeParticleShader_->setMat4("uViewProjection", proj_ * view_);
+
+    glBindVertexArray(smokeQuadVao_);
+    glDrawArraysInstanced(GL_TRIANGLES, 0, 6, static_cast<GLsizei>(smokeDrawList_.size()));
+    ++frameStats_.drawCallCount;
+    glBindVertexArray(0);
+
+    glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glColorMaski(3, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_CULL_FACE);
+}
+
 void Renderer::InitializeSsaoResources() {
     std::mt19937 randomEngine(0x52414345u);
     std::uniform_real_distribution<float> unitDistribution(0.0f, 1.0f);
@@ -3452,6 +3523,7 @@ void Renderer::InitializePipelines() {
     debugLineShader_ = std::make_unique<Shader>("src/shaders/default/default.vs", "src/shaders/post/debug_line.fs");
     decalShader_ = std::make_unique<Shader>("src/shaders/post/decal.vs", "src/shaders/post/decal.fs");
     rainParticleShader_ = std::make_unique<Shader>("src/shaders/post/rain_particles.vs", "src/shaders/post/rain_particles.fs");
+    smokeParticleShader_ = std::make_unique<Shader>("src/shaders/post/tyre_smoke.vs", "src/shaders/post/tyre_smoke.fs");
     if (smaaAreaTexture_ == 0) {
         glGenTextures(1, &smaaAreaTexture_);
         glBindTexture(GL_TEXTURE_2D, smaaAreaTexture_);
@@ -3514,6 +3586,46 @@ void Renderer::InitializeQuad() {
         glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
+        glBindVertexArray(0);
+    }
+    if (smokeQuadVao_ == 0) {
+        // Same unit quad as rain, but the per-instance stream is a real buffer
+        // uploaded each frame rather than something derived from gl_InstanceID.
+        constexpr float quadVertices[] = {
+            -0.5f, -0.5f,   0.5f, -0.5f,   0.5f, 0.5f,
+            -0.5f, -0.5f,   0.5f,  0.5f,  -0.5f, 0.5f,
+        };
+        glGenVertexArrays(1, &smokeQuadVao_);
+        glGenBuffers(1, &smokeQuadVbo_);
+        glGenBuffers(1, &smokeInstanceVbo_);
+        glBindVertexArray(smokeQuadVao_);
+
+        glBindBuffer(GL_ARRAY_BUFFER, smokeQuadVbo_);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
+
+        // position.xyz | radius | color.rgba | rotation, matching
+        // SmokeParticleDrawCommand's layout so the upload is a straight memcpy.
+        glBindBuffer(GL_ARRAY_BUFFER, smokeInstanceVbo_);
+        const GLsizei stride = static_cast<GLsizei>(sizeof(SmokeParticleDrawCommand));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride,
+                              reinterpret_cast<void*>(offsetof(SmokeParticleDrawCommand, position)));
+        glVertexAttribDivisor(1, 1);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, stride,
+                              reinterpret_cast<void*>(offsetof(SmokeParticleDrawCommand, radius)));
+        glVertexAttribDivisor(2, 1);
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride,
+                              reinterpret_cast<void*>(offsetof(SmokeParticleDrawCommand, color)));
+        glVertexAttribDivisor(3, 1);
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride,
+                              reinterpret_cast<void*>(offsetof(SmokeParticleDrawCommand, rotation)));
+        glVertexAttribDivisor(4, 1);
+
         glBindVertexArray(0);
     }
 }

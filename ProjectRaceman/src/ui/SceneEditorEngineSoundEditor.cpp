@@ -632,13 +632,7 @@ void SceneEditor::RenderEngineSoundEditorWindow() {
             ImGui::SeparatorText("Legacy");
             ImGui::TextDisabled("3D settings and trigger clips now live on the VehicleSound");
             ImGui::TextDisabled("component: they describe how a particular car emits, not how");
-            ImGui::TextDisabled("the engine sounds. These remain only so older scenes keep");
-            ImGui::TextDisabled("working - edit them on the vehicle instead.");
-            ImGui::BeginDisabled(true);
-            ImGui::DragFloat("Spatial blend (legacy)", &p.spatialBlend, 0.01f, 0.0f, 1.0f, "%.2f");
-            ImGui::DragFloat("Min distance (legacy)", &p.minDistance, 0.1f, 0.1f, 100.0f, "%.1f");
-            ImGui::DragFloat("Max distance (legacy)", &p.maxDistance, 1.0f, 1.0f, 1000.0f, "%.0f");
-            ImGui::EndDisabled();
+            ImGui::TextDisabled("the engine sounds. Edit them on the vehicle instead.");
             ImGui::EndTabItem();
         }
 

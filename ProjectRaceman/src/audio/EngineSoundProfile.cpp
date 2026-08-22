@@ -253,18 +253,8 @@ EngineSoundProfile EngineSoundProfileLoader::fromLegacyProfile(const VehicleSoun
     profile.cylinders = MakeEngineLayout(preset);
     profile.orders = MakeDefaultOrderBank(static_cast<int>(profile.cylinders.size()), 7000.0f);
     profile.mix.masterVolume = legacy.masterVolume;
-    profile.spatialBlend = legacy.spatialBlend;
-    profile.minDistance = legacy.minDistance;
-    profile.maxDistance = legacy.maxDistance;
-
-    // Engine layers are dropped - they are exactly what the synth replaces -
-    // but the discrete one-shots are still worth keeping.
-    for (const VehicleSoundTriggerEntry& trigger : legacy.triggerSounds) {
-        if (trigger.trigger == VehicleSoundTrigger::Backfire) {
-            continue; // now synthesised through the exhaust
-        }
-        profile.triggerSounds.push_back(trigger);
-    }
+    // Emission and triggers are not copied: they belong to the VehicleSound
+    // component, which is their only home.
     return profile;
 }
 
@@ -299,9 +289,6 @@ EngineSoundProfile EngineSoundProfileLoader::loadFromFile(const std::string& pat
     ReadNumber(obj, "combustionNoise", profile.combustionNoise);
     ReadNumber(obj, "combustionAttackMs", profile.combustionAttackMs);
     ReadNumber(obj, "combustionAttackGain", profile.combustionAttackGain);
-    ReadNumber(obj, "spatialBlend", profile.spatialBlend);
-    ReadNumber(obj, "minDistance", profile.minDistance);
-    ReadNumber(obj, "maxDistance", profile.maxDistance);
 
     if (auto it = obj.find("cylinders"); it != obj.end() && it->second.is_array()) {
         profile.cylinders.clear();
@@ -431,29 +418,6 @@ EngineSoundProfile EngineSoundProfileLoader::loadFromFile(const std::string& pat
         ReadNumber(m, "masterVolume", profile.mix.masterVolume);
     }
 
-    if (auto it = obj.find("triggerSounds"); it != obj.end() && it->second.is_array()) {
-        profile.triggerSounds.clear();
-        for (const json::Value& value : it->second.as_array()) {
-            if (!value.is_object()) continue;
-            const json::Object& t = value.as_object();
-            VehicleSoundTriggerEntry entry;
-            ReadString(t, "clipPath", entry.clipPath);
-            ReadNumber(t, "volume", entry.volume);
-            ReadNumber(t, "minRpmForBackfire", entry.minRpmForBackfire);
-            ReadNumber(t, "minLateralSpeedForSqueal", entry.minLateralSpeedForSqueal);
-            std::string triggerName;
-            ReadString(t, "trigger", triggerName);
-            if (triggerName == "gearUp")           entry.trigger = VehicleSoundTrigger::GearUp;
-            else if (triggerName == "gearDown")    entry.trigger = VehicleSoundTrigger::GearDown;
-            else if (triggerName == "engineStart") entry.trigger = VehicleSoundTrigger::EngineStart;
-            else if (triggerName == "engineStop")  entry.trigger = VehicleSoundTrigger::EngineStop;
-            else if (triggerName == "tireSqueal")  entry.trigger = VehicleSoundTrigger::TireSqueal;
-            else continue;
-            if (!entry.clipPath.empty()) {
-                profile.triggerSounds.push_back(entry);
-            }
-        }
-    }
 
     return profile;
 }
@@ -480,9 +444,6 @@ bool EngineSoundProfileLoader::saveToFile(const std::string& path, const EngineS
     file << "  \"combustionNoise\": " << profile.combustionNoise << "," << "\n";
     file << "  \"combustionAttackMs\": " << profile.combustionAttackMs << "," << "\n";
     file << "  \"combustionAttackGain\": " << profile.combustionAttackGain << "," << "\n";
-    file << "  \"spatialBlend\": " << profile.spatialBlend << ",\n";
-    file << "  \"minDistance\": " << profile.minDistance << ",\n";
-    file << "  \"maxDistance\": " << profile.maxDistance << ",\n";
 
     file << "  \"cylinders\": [\n";
     for (std::size_t i = 0; i < profile.cylinders.size(); ++i) {
@@ -620,28 +581,8 @@ bool EngineSoundProfileLoader::saveToFile(const std::string& path, const EngineS
     file << "    \"blockGain\": " << m.blockGain << ",\n";
     file << "    \"drive\": " << m.drive << ",\n";
     file << "    \"masterVolume\": " << m.masterVolume << "\n";
-    file << "  },\n";
+    file << "  }\n";
 
-    file << "  \"triggerSounds\": [\n";
-    for (std::size_t ti = 0; ti < profile.triggerSounds.size(); ++ti) {
-        const VehicleSoundTriggerEntry& trigger = profile.triggerSounds[ti];
-        const char* name = "gearUp";
-        switch (trigger.trigger) {
-            case VehicleSoundTrigger::GearUp:      name = "gearUp"; break;
-            case VehicleSoundTrigger::GearDown:    name = "gearDown"; break;
-            case VehicleSoundTrigger::EngineStart: name = "engineStart"; break;
-            case VehicleSoundTrigger::EngineStop:  name = "engineStop"; break;
-            case VehicleSoundTrigger::TireSqueal:  name = "tireSqueal"; break;
-            case VehicleSoundTrigger::Backfire:    name = "gearUp"; break; // now procedural
-        }
-        file << "    {\"clipPath\": " << EscapeJson(trigger.clipPath)
-             << ", \"trigger\": \"" << name << "\""
-             << ", \"volume\": " << trigger.volume
-             << ", \"minRpmForBackfire\": " << trigger.minRpmForBackfire
-             << ", \"minLateralSpeedForSqueal\": " << trigger.minLateralSpeedForSqueal << "}"
-             << (ti + 1 < profile.triggerSounds.size() ? "," : "") << "\n";
-    }
-    file << "  ]\n";
     file << "}\n";
 
     return file.good();

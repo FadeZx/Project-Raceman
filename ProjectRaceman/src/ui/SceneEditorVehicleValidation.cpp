@@ -100,7 +100,7 @@ std::vector<VehicleConfigValidationIssue> ValidateVehicleConfigForTuning(const r
     if (config.engine.redlineRPM <= config.engine.idleRPM + 100.0f) {
         AddIssue(issues, VehicleConfigValidationSeverity::Error, "Engine redline RPM must be comfortably above idle RPM.");
     }
-    if (config.arcadeHandling.redlineRPM <= config.arcadeHandling.idleRPM + 100.0f) {
+    if (config.engine.redlineRPM <= config.engine.idleRPM + 100.0f) {
         AddIssue(issues, VehicleConfigValidationSeverity::Error, "Arcade handling redline RPM must be above idle RPM.");
     }
     if (config.transmission.gearRatios.empty()) {

@@ -119,15 +119,13 @@ WheelForceFeedbackState BuildWheelForceFeedbackSample(const ArcadeVehicleTelemet
                 kerbImpulse = (std::max)(kerbImpulse, 1.0f);
             }
 
-            // Rolling speed of the tyre versus the speed of the car: a locked
-            // wheel under braking and a spinning wheel under power both show up
-            // here and both are felt through the rack.
-            const float rollingSpeed = std::fabs(wheel.angularVelocity) * (std::max)(0.05f, config.wheels[i].radius);
-            if (speedAbs > 3.0f && telemetry.brake > 0.15f) {
-                lockupAmount = (std::max)(lockupAmount, (std::clamp)(1.0f - rollingSpeed / speedAbs, 0.0f, 1.0f));
-            }
-            if (telemetry.throttle > 0.2f && rollingSpeed > speedAbs + 1.5f) {
-                spinAmount = (std::max)(spinAmount, (std::clamp)((rollingSpeed - speedAbs) / 10.0f, 0.0f, 1.0f));
+            // The tyre model already resolved this per wheel, so take its answer
+            // rather than inferring one from rolling speed. Slip ratio is signed:
+            // negative is a wheel being braked below rolling speed, positive is
+            // one being driven above it, and the rack feels both.
+            if (wheel.grounded) {
+                lockupAmount = (std::max)(lockupAmount, (std::clamp)(-wheel.slipRatio, 0.0f, 1.0f));
+                spinAmount = (std::max)(spinAmount, (std::clamp)(wheel.slipRatio, 0.0f, 1.0f));
             }
             suspensionTravelDelta = (std::max)(suspensionTravelDelta, std::fabs(wheel.suspensionTravel));
         }
@@ -157,8 +155,9 @@ WheelForceFeedbackState BuildWheelForceFeedbackSample(const ArcadeVehicleTelemet
     const float loadRatio = (std::clamp)(frontNormalForce / staticFrontLoad, 0.0f, 2.0f);
 
     // --- Self aligning torque --------------------------------------------
-    // Steering input carries the slip angle sign when the simulation does not
-    // report one (the arcade model reports magnitude only for some wheels).
+    // Each wheel now reports a real signed slip angle, so this only falls back
+    // to steering input when the front axle is airborne and there is no slip
+    // angle to read at all.
     const float slipSign = std::fabs(frontSlipAngle) > 0.01f
         ? (frontSlipAngle < 0.0f ? -1.0f : 1.0f)
         : (telemetry.steering < 0.0f ? -1.0f : 1.0f);

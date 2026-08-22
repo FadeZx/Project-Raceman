@@ -59,31 +59,33 @@ TyreSoundProfile TyreSoundProfileLoader::makeDefault() {
     // Asphalt: a clean, fairly bright hiss that sings readily at the limit.
     TyreSurfaceSound& asphalt = profile.surfaces[0];
     asphalt.rollGain = 1.00f; asphalt.rollLowHz = 140.0f; asphalt.rollHighHz = 2800.0f;
-    asphalt.grainAmount = 0.05f; asphalt.squealGain = 1.00f;
+    asphalt.grainAmount = 0.05f; asphalt.squealGain = 1.00f; asphalt.lockGain = 1.00f;
 
     // Dirt: darker, and grainy because loose material passes under the tread.
     TyreSurfaceSound& dirt = profile.surfaces[1];
     dirt.rollGain = 1.25f; dirt.rollLowHz = 90.0f; dirt.rollHighHz = 1700.0f;
     dirt.grainAmount = 0.75f; dirt.grainRateScale = 1.35f;
     dirt.squealGain = 0.18f;   // loose surfaces slide, they do not sing
+    dirt.lockGain = 0.85f;     // but a locked wheel ploughing gravel is loud
 
     // Grass: dull, washy, and essentially incapable of squealing.
     TyreSurfaceSound& grass = profile.surfaces[2];
     grass.rollGain = 1.05f; grass.rollLowHz = 70.0f; grass.rollHighHz = 1100.0f;
     grass.grainAmount = 0.45f; grass.grainRateScale = 0.8f;
     grass.squealGain = 0.05f;
+    grass.lockGain = 0.45f;
 
     // Kerb: periodic, not random. The rumble rate tracks road speed.
     TyreSurfaceSound& curb = profile.surfaces[3];
     curb.rollGain = 1.15f; curb.rollLowHz = 110.0f; curb.rollHighHz = 2200.0f;
     curb.grainAmount = 0.20f;
-    curb.squealGain = 0.55f;
+    curb.squealGain = 0.55f; curb.lockGain = 0.75f;
     curb.rumbleGain = 1.10f; curb.rumbleHz = 62.0f;
 
     // Wall: scraping contact rather than rolling.
     TyreSurfaceSound& wall = profile.surfaces[4];
     wall.rollGain = 0.85f; wall.rollLowHz = 200.0f; wall.rollHighHz = 3600.0f;
-    wall.grainAmount = 0.55f; wall.squealGain = 0.85f;
+    wall.grainAmount = 0.55f; wall.squealGain = 0.85f; wall.lockGain = 1.10f;
 
     profile.surfaces[5] = asphalt; // Custom falls back to tarmac behaviour
     return profile;
@@ -114,14 +116,28 @@ TyreSoundProfile TyreSoundProfileLoader::loadFromFile(const std::string& path) {
     ReadNumber(obj, "rollMasterGain", profile.rollMasterGain);
     ReadNumber(obj, "rollSpeedRefMps", profile.rollSpeedRefMps);
     ReadNumber(obj, "rollLoadInfluence", profile.rollLoadInfluence);
+    ReadNumber(obj, "slipReferenceMps", profile.slipReferenceMps);
+    ReadNumber(obj, "slipReferenceFraction", profile.slipReferenceFraction);
     ReadNumber(obj, "squealMasterGain", profile.squealMasterGain);
     ReadNumber(obj, "squealBaseHz", profile.squealBaseHz);
     ReadNumber(obj, "squealRiseHz", profile.squealRiseHz);
     ReadNumber(obj, "squealResonance", profile.squealResonance);
     ReadNumber(obj, "squealSlipThreshold", profile.squealSlipThreshold);
     ReadNumber(obj, "squealSlipFull", profile.squealSlipFull);
+    ReadNumber(obj, "squealLoadPitchInfluence", profile.squealLoadPitchInfluence);
     ReadNumber(obj, "squealAttackSeconds", profile.squealAttackSeconds);
     ReadNumber(obj, "squealReleaseSeconds", profile.squealReleaseSeconds);
+    ReadNumber(obj, "lockGain", profile.lockGain);
+    ReadNumber(obj, "lockCentreHz", profile.lockCentreHz);
+    ReadNumber(obj, "lockBandwidth", profile.lockBandwidth);
+    ReadNumber(obj, "lockFullSpeedMps", profile.lockFullSpeedMps);
+    ReadNumber(obj, "lockJudderHz", profile.lockJudderHz);
+    ReadNumber(obj, "lockJudderDepth", profile.lockJudderDepth);
+    ReadNumber(obj, "lockAttackSeconds", profile.lockAttackSeconds);
+    ReadNumber(obj, "lockReleaseSeconds", profile.lockReleaseSeconds);
+    ReadNumber(obj, "spinGain", profile.spinGain);
+    ReadNumber(obj, "spinBaseHz", profile.spinBaseHz);
+    ReadNumber(obj, "spinRiseHz", profile.spinRiseHz);
     ReadNumber(obj, "impactGain", profile.impactGain);
     ReadNumber(obj, "impactThreshold", profile.impactThreshold);
     ReadNumber(obj, "masterVolume", profile.masterVolume);
@@ -142,6 +158,7 @@ TyreSoundProfile TyreSoundProfileLoader::loadFromFile(const std::string& path) {
             ReadNumber(s, "grainAmount", dst.grainAmount);
             ReadNumber(s, "grainRateScale", dst.grainRateScale);
             ReadNumber(s, "squealGain", dst.squealGain);
+            ReadNumber(s, "lockGain", dst.lockGain);
             ReadNumber(s, "rumbleGain", dst.rumbleGain);
             ReadNumber(s, "rumbleHz", dst.rumbleHz);
         }
@@ -165,14 +182,28 @@ bool TyreSoundProfileLoader::saveToFile(const std::string& path, const TyreSound
     file << "  \"rollMasterGain\": " << profile.rollMasterGain << ",\n";
     file << "  \"rollSpeedRefMps\": " << profile.rollSpeedRefMps << ",\n";
     file << "  \"rollLoadInfluence\": " << profile.rollLoadInfluence << ",\n";
+    file << "  \"slipReferenceMps\": " << profile.slipReferenceMps << ",\n";
+    file << "  \"slipReferenceFraction\": " << profile.slipReferenceFraction << ",\n";
     file << "  \"squealMasterGain\": " << profile.squealMasterGain << ",\n";
     file << "  \"squealBaseHz\": " << profile.squealBaseHz << ",\n";
     file << "  \"squealRiseHz\": " << profile.squealRiseHz << ",\n";
     file << "  \"squealResonance\": " << profile.squealResonance << ",\n";
     file << "  \"squealSlipThreshold\": " << profile.squealSlipThreshold << ",\n";
     file << "  \"squealSlipFull\": " << profile.squealSlipFull << ",\n";
+    file << "  \"squealLoadPitchInfluence\": " << profile.squealLoadPitchInfluence << ",\n";
     file << "  \"squealAttackSeconds\": " << profile.squealAttackSeconds << ",\n";
     file << "  \"squealReleaseSeconds\": " << profile.squealReleaseSeconds << ",\n";
+    file << "  \"lockGain\": " << profile.lockGain << ",\n";
+    file << "  \"lockCentreHz\": " << profile.lockCentreHz << ",\n";
+    file << "  \"lockBandwidth\": " << profile.lockBandwidth << ",\n";
+    file << "  \"lockFullSpeedMps\": " << profile.lockFullSpeedMps << ",\n";
+    file << "  \"lockJudderHz\": " << profile.lockJudderHz << ",\n";
+    file << "  \"lockJudderDepth\": " << profile.lockJudderDepth << ",\n";
+    file << "  \"lockAttackSeconds\": " << profile.lockAttackSeconds << ",\n";
+    file << "  \"lockReleaseSeconds\": " << profile.lockReleaseSeconds << ",\n";
+    file << "  \"spinGain\": " << profile.spinGain << ",\n";
+    file << "  \"spinBaseHz\": " << profile.spinBaseHz << ",\n";
+    file << "  \"spinRiseHz\": " << profile.spinRiseHz << ",\n";
     file << "  \"impactGain\": " << profile.impactGain << ",\n";
     file << "  \"impactThreshold\": " << profile.impactThreshold << ",\n";
     file << "  \"masterVolume\": " << profile.masterVolume << ",\n";
@@ -191,6 +222,7 @@ bool TyreSoundProfileLoader::saveToFile(const std::string& path, const TyreSound
              << ", \"grainAmount\": " << s.grainAmount
              << ", \"grainRateScale\": " << s.grainRateScale
              << ", \"squealGain\": " << s.squealGain
+             << ", \"lockGain\": " << s.lockGain
              << ", \"rumbleGain\": " << s.rumbleGain
              << ", \"rumbleHz\": " << s.rumbleHz << "}"
              << (i + 1 < kSurfaceCount ? "," : "") << "\n";

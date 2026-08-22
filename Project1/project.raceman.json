@@ -82,7 +82,7 @@
     "ambientColor": [1, 1, 1],
     "fogMode": "ExponentialHeight",
     "fogColor": [0.62, 0.68, 0.76],
-    "fogDensity": 0.0004,
+    "fogDensity": 0.0006,
     "fogHeightFalloff": 0.031,
     "fogBaseHeight": 0,
     "fogStartDistance": 18.8,
@@ -106,6 +106,12 @@
     "weatherAutoWetness": true,
     "weatherWetRate": 0.017,
     "weatherDryRate": 0.541,
+    "tyreSmoke": true,
+    "tyreSmokeSlipThreshold": 0.53,
+    "tyreSmokeOpacity": 0.38,
+    "tyreSmokeLifetime": 2,
+    "tyreSmokeSpawnRate": 71,
+    "tyreSmokeMaxParticles": 1448,
     "skidMarks": true,
     "skidMarkSlipThreshold": 0.56,
     "skidMarkSpacing": 0.06,
@@ -181,12 +187,12 @@
       },
       {
         "type": "Dirt",
-        "gripMultiplier": 0.58,
-        "rollingDrag": 0.65
+        "gripMultiplier": 0.73,
+        "rollingDrag": 1.08
       },
       {
         "type": "Grass",
-        "gripMultiplier": 0.36,
+        "gripMultiplier": 0.68,
         "rollingDrag": 1.25
       },
       {
@@ -780,8 +786,8 @@
       {
         "id": "default_vehicle",
         "displayName": "Default Vehicle",
-        "keyboardSteeringSensitivity": 0.57,
-        "keyboardThrottleSensitivity": 1,
+        "keyboardSteeringSensitivity": 0.15,
+        "keyboardThrottleSensitivity": 0.75,
         "keyboardBrakeSensitivity": 1,
         "bindings": [
           {
@@ -1358,7 +1364,7 @@
         "steeringSpeedSensitivity": 0,
         "steeringReturnRate": 0,
         "steeringSensitivity": 0.1,
-        "steeringSaturation": 0.23,
+        "steeringSaturation": 0.3,
         "steeringInvert": false,
         "steeringDeadzone": 0.5,
         "steeringCalibrationMin": -1,

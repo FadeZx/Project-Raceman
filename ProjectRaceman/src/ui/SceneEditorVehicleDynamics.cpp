@@ -125,8 +125,8 @@ float EngineBrakeDeceleration(const raceman::physics::VehicleConfig& config,
     const float ratio = (std::max)(0.01f, std::fabs(gearRatios[clampedGear - 1]));
     const float reference = (std::max)(0.01f, std::fabs(gearRatios[referenceGear - 1]));
 
-    const float idleRpm = (std::max)(0.0f, handling.idleRPM);
-    const float redlineRpm = (std::max)(idleRpm + 1.0f, handling.redlineRPM);
+    const float idleRpm = (std::max)(0.0f, config.engine.idleRPM);
+    const float redlineRpm = (std::max)(idleRpm + 1.0f, config.engine.redlineRPM);
     const float rpmFraction = (std::clamp)((rpm - idleRpm) / (redlineRpm - idleRpm), 0.0f, 1.0f);
 
     return coast * (ratio / reference) * (0.35f + 0.85f * rpmFraction);
@@ -140,13 +140,52 @@ float AeroDragCoefficient(const raceman::physics::VehicleConfig& config,
                           const raceman::physics::VehicleArcadeHandlingConfig& handling) {
     const float maxSpeed = (std::max)(1.0f, handling.maxForwardSpeed);
     const int gearCount = (std::max)(1, static_cast<int>(config.transmission.gearRatios.size()));
-    const float redlineRpm = (std::max)(handling.idleRPM + 1.0f, handling.redlineRPM);
+    const float redlineRpm = (std::max)(config.engine.idleRPM + 1.0f, config.engine.redlineRPM);
     const float topGearThrust = EngineDriveTorqueScale(config, gearCount, redlineRpm, maxSpeed, maxSpeed, 0.0f);
     // Drive reaching the road is already scaled by longitudinal grip, so the
     // drag it has to balance must be too, or the car tops out short of the
     // speed it is authored to reach.
     const float gripScale = config.tireGrip.enabled ? (std::max)(0.05f, config.tireGrip.longitudinalGrip) : 1.0f;
     return (std::max)(0.0f, handling.acceleration) * topGearThrust * gripScale / (maxSpeed * maxSpeed);
+}
+
+// Where the axles sit relative to the centre of mass, and how far the front
+// wheels can be turned. The yaw model needs real distances: a force at the
+// front axle and the same force at the rear rotate the car opposite ways, and
+// which one wins is a matter of centimetres.
+struct VehicleAxleGeometry {
+    float frontDistance{1.4f};
+    float rearDistance{1.4f};
+    float maxSteerAngle{0.5f};
+};
+
+VehicleAxleGeometry AxleGeometry(const raceman::physics::VehicleConfig& config) {
+    VehicleAxleGeometry geometry;
+    float frontSum = 0.0f;
+    float rearSum = 0.0f;
+    int frontCount = 0;
+    int rearCount = 0;
+    float steerMax = 0.0f;
+    for (const raceman::physics::WheelConfig& wheel : config.wheels) {
+        if (wheel.mountPosition.y >= 0.0f) {
+            frontSum += wheel.mountPosition.y;
+            ++frontCount;
+            steerMax = (std::max)(steerMax, std::fabs(wheel.maxSteerAngle));
+        } else {
+            rearSum += -wheel.mountPosition.y;
+            ++rearCount;
+        }
+    }
+    if (frontCount > 0) {
+        geometry.frontDistance = (std::max)(0.2f, frontSum / static_cast<float>(frontCount));
+    }
+    if (rearCount > 0) {
+        geometry.rearDistance = (std::max)(0.2f, rearSum / static_cast<float>(rearCount));
+    }
+    if (steerMax > 0.01f) {
+        geometry.maxSteerAngle = steerMax;
+    }
+    return geometry;
 }
 
 void ApplyArcadeDrivetrain(float& speed,
@@ -569,13 +608,79 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
         runtimeVehicle.arcadeSpinAmount += (spinTarget - runtimeVehicle.arcadeSpinAmount) * spinAlpha;
         runtimeVehicle.arcadeOversteerAmount = oversteerAmount;
 
-        const float steeringTorque = -input.steering *
-            (std::max)(0.0f, yawDynamics.steeringYawResponse) *
-            speedForSteer *
-            highSpeedSteerScale *
-            gripSteerScale *
-            (1.0f - understeerAmount * 0.75f) *
-            directionSign;
+        // -----------------------------------------------------------------
+        // Where rotation comes from.
+        //
+        // The kinematic path below turns steering input straight into yaw
+        // torque. It is responsive and completely unphysical: the car rotates
+        // because it was asked to, so a slide can be steered out of with any
+        // amount of lock in the right direction and never with too much.
+        //
+        // The physical path builds the same torque out of the two axles. Each
+        // makes a lateral force set by its own slip angle - the angle between
+        // where it points and where it is actually travelling - and that force
+        // at its distance from the centre of mass is a yaw moment. Nothing
+        // about a slide is scripted after that:
+        //
+        //   - the rear steps out when its force saturates, which the friction
+        //     circle above already decides from throttle, brake and load;
+        //   - countersteering works because winding lock off cuts the front
+        //     slip angle and eventually reverses the front force;
+        //   - too little lock will not arrest the rotation, and too much
+        //     reverses the force hard enough to throw the car the other way.
+        // -----------------------------------------------------------------
+        float steeringTorque = 0.0f;
+        if (yawDynamics.physicalYaw) {
+            const VehicleAxleGeometry axles = AxleGeometry(runtimeVehicle.config);
+            const float wheelbase = (std::max)(0.5f, axles.frontDistance + axles.rearDistance);
+            const float yawRateRad = glm::radians(runtimeVehicle.arcadeYawRate);
+
+            // Below this the slip-angle arithmetic divides by nearly nothing and
+            // the model stops meaning anything; the kinematic term takes over.
+            const float referenceSpeed = (std::max)(2.0f, std::fabs(forwardVelocity));
+            // Angles are measured the way the chassis basis already is: positive
+            // is to the right, which is the direction a positive yaw rate turns
+            // and the direction sideVelocity is read in. Positive steering input
+            // turns left in this codebase, so the wheel angle flips sign here.
+            const float steerAngle = -input.steering * axles.maxSteerAngle * highSpeedSteerScale;
+
+            // What each axle is actually doing, including what the car's own
+            // rotation adds at that end of it: ahead of the centre of mass the
+            // yaw term adds to the sideways velocity, behind it subtracts.
+            const float frontTravelAngle =
+                std::atan2(sideVelocity + yawRateRad * axles.frontDistance, referenceSpeed);
+            const float rearTravelAngle =
+                std::atan2(sideVelocity - yawRateRad * axles.rearDistance, referenceSpeed);
+            const float frontSlipAngle = steerAngle - frontTravelAngle;
+            const float rearSlipAngle = -rearTravelAngle;
+
+            // Force rises with slip angle up to the peak and then stops: past
+            // it the tyre is sliding, and sliding harder buys nothing. The
+            // ceiling is the axle capacity the friction circle already worked
+            // out, so weight transfer and throttle reach the yaw model here.
+            const float peakSlipAngle = (std::max)(glm::radians(2.0f), glm::radians(slipLimit));
+            const float frontForce =
+                (std::clamp)(frontSlipAngle / peakSlipAngle, -1.0f, 1.0f) * frontGripCapacity;
+            const float rearForce =
+                (std::clamp)(rearSlipAngle / peakSlipAngle, -1.0f, 1.0f) * rearGripCapacity;
+
+            // A rightward force at the front turns the car right; the same force
+            // at the rear turns it left. Positive moment is therefore already a
+            // positive yaw rate and needs no sign flip.
+            const float yawMoment = (frontForce * axles.frontDistance - rearForce * axles.rearDistance) / wheelbase;
+            steeringTorque = yawMoment *
+                (std::max)(0.0f, yawDynamics.steeringYawResponse) *
+                gripSteerScale *
+                directionSign;
+        } else {
+            steeringTorque = -input.steering *
+                (std::max)(0.0f, yawDynamics.steeringYawResponse) *
+                speedForSteer *
+                highSpeedSteerScale *
+                gripSteerScale *
+                (1.0f - understeerAmount * 0.75f) *
+                directionSign;
+        }
         const float slipSign = runtimeVehicle.arcadeVelocitySlipAngle > 0.0f ? 1.0f : (runtimeVehicle.arcadeVelocitySlipAngle < 0.0f ? -1.0f : 0.0f);
         const float rearSlipBoost = 1.0f +
             input.handbrake * (std::max)(0.0f, yawDynamics.handbrakeRearSlipBoost) +
@@ -617,11 +722,37 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
         const float yawDragTorque = -runtimeVehicle.arcadeYawRate *
             ((std::max)(0.0f, tireDynamics.yawDrag) * yawDampingScale +
              understeerAmount * (std::max)(0.0f, tireDynamics.frontSlipYawDamping));
-        const float yawTorque = steeringTorque + slipYawTorque + sideSlipYawTorque + frontPushTorque +
-            brakeInstabilityTorque + loadMemoryTorque + counterSteerTorque + yawDragTorque;
+        // With the tyres deciding, every scripted rotation term is already
+        // accounted for by an axle force and adding them would be counting the
+        // same physics twice. The countersteer assist in particular has to go:
+        // catching the car is the whole skill being modelled, and a torque that
+        // does it for free is the reason it felt like nothing.
+        const float yawTorque = yawDynamics.physicalYaw
+            ? steeringTorque + yawDragTorque
+            : steeringTorque + slipYawTorque + sideSlipYawTorque + frontPushTorque +
+                  brakeInstabilityTorque + loadMemoryTorque + counterSteerTorque + yawDragTorque;
         runtimeVehicle.arcadeYawTorque = yawTorque;
         const float yawAcceleration = yawTorque / (std::max)(0.1f, tireDynamics.yawInertiaScale);
         runtimeVehicle.arcadeYawRate += yawAcceleration * deltaTime;
+
+        // Parking speeds. The tyres are rolling rather than slipping down here,
+        // so yaw is pure geometry - the classic v*tan(steer)/wheelbase - and the
+        // slip-angle model has nothing to work with. Blend to it as speed falls
+        // so the car still turns into a pit box.
+        if (yawDynamics.physicalYaw) {
+            const VehicleAxleGeometry axles = AxleGeometry(runtimeVehicle.config);
+            const float wheelbase = (std::max)(0.5f, axles.frontDistance + axles.rearDistance);
+            const float blendSpeed = (std::max)(1.0f, minYawSpeed * 1.5f);
+            const float kinematicBlend = 1.0f - (std::clamp)(absSpeed / blendSpeed, 0.0f, 1.0f);
+            if (kinematicBlend > 0.0f) {
+                const float steerAngle = input.steering * axles.maxSteerAngle;
+                const float kinematicYawRate =
+                    -glm::degrees(forwardVelocity * std::tan(steerAngle) / wheelbase) * directionSign;
+                runtimeVehicle.arcadeYawRate +=
+                    (kinematicYawRate - runtimeVehicle.arcadeYawRate) * kinematicBlend * (std::clamp)(deltaTime * 8.0f, 0.0f, 1.0f);
+            }
+        }
+
         runtimeVehicle.arcadeYawRate = (std::clamp)(runtimeVehicle.arcadeYawRate, -maxYawRate, maxYawRate);
         runtimeVehicle.arcadeChassisWorld.rotationEuler.y += runtimeVehicle.arcadeYawRate * deltaTime;
 

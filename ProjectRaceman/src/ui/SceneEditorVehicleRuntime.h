@@ -41,6 +41,12 @@ struct RuntimeVehicleWheelContact {
     // Metres per second the contact patch is actually sliding over the ground.
     // The physical source for how hard a tyre marks, smokes and sings.
     float slipVelocity{0.0f};
+    // The same slide split into its two axes. They are different events with
+    // different sounds: lateral scrub is a tyre singing at the limit,
+    // longitudinal slide is a lock-up graunch or a wheelspin chirp. Collapsing
+    // them into slipVelocity alone makes all three sound identical.
+    float lateralSlideMps{0.0f};
+    float longitudinalSlideMps{0.0f};
     // Demand over capacity on the friction circle. 1.0 is exactly the limit,
     // below it the tyre is gripping, above it it is sliding.
     float gripUtilisation{0.0f};

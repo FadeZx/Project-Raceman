@@ -570,6 +570,42 @@ void MenuController::Render(Renderer& renderer,
                         ImGui::EndDisabled();
                     }
 
+                    if (ImGui::CollapsingHeader("Tyre Smoke")) {
+                        graphicsChanged |= ImGui::Checkbox("Enabled##TyreSmoke", &settings.profile.tyreSmoke);
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Smoke from sliding tyres, emitted from the same per-wheel slip\n"
+                                              "the skid marks are drawn from - a locked wheel marks and smokes\n"
+                                              "from one number, so the two always agree.");
+                        }
+                        ImGui::BeginDisabled(!settings.profile.tyreSmoke);
+                        {
+                            graphicsChanged |= ImGui::SliderFloat("Slip Threshold##TyreSmoke", &settings.profile.tyreSmokeSlipThreshold, 0.02f, 1.0f, "%.2f");
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("How hard a tyre must slide before it smokes, on the same\n"
+                                                  "0-1 scrub scale the marks use. Set above the mark\n"
+                                                  "threshold: rubber goes down well before it gets hot\n"
+                                                  "enough to make visible smoke.");
+                            }
+                            graphicsChanged |= ImGui::SliderFloat("Opacity##TyreSmoke", &settings.profile.tyreSmokeOpacity, 0.0f, 1.0f, "%.2f");
+                            graphicsChanged |= ImGui::SliderFloat("Lifetime##TyreSmoke", &settings.profile.tyreSmokeLifetime, 0.2f, 6.0f, "%.2f s");
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("How long a puff lives. Longer leaves a bigger hanging cloud\n"
+                                                  "but costs proportionally more live particles.");
+                            }
+                            graphicsChanged |= ImGui::SliderFloat("Spawn Rate##TyreSmoke", &settings.profile.tyreSmokeSpawnRate, 5.0f, 200.0f, "%.0f /s");
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("Puffs per second per wheel at full slip. Density, not speed.");
+                            }
+                            graphicsChanged |= ImGui::SliderInt("Max Particles##TyreSmoke", &settings.profile.tyreSmokeMaxParticles, 64, 4000);
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("Hard cap across every wheel of every car. All puffs draw in\n"
+                                                  "one instanced call, so this is a fill-rate knob rather\n"
+                                                  "than a draw-call one.");
+                            }
+                        }
+                        ImGui::EndDisabled();
+                    }
+
                     if (ImGui::CollapsingHeader("Skid Marks")) {
                         // Label must differ from the enclosing CollapsingHeader:
                         // ImGui hashes the visible label into the widget ID, so a

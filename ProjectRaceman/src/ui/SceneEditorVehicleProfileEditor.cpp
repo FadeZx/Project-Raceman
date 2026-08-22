@@ -341,10 +341,9 @@ void SceneEditor::RenderVehicleConfigEditorWindow() {
                 applyDragFloatEdit("Low Speed Input Boost", "##vehicleProfileArcadeLowSpeedInputBoost", arcadeHandling.lowSpeedSteerInputBoost, 0.01f, 0.0f, 1.0f);
                 ImGui::TableNextColumn();
                 applyDragFloatEdit("High Speed Steer Cut", "##vehicleProfileArcadeHighSpeedSteerCut", arcadeHandling.highSpeedSteerCut, 0.01f, 0.0f, 0.95f);
-                ImGui::TableNextColumn();
-                applyDragFloatEdit("Idle RPM", "##vehicleProfileArcadeIdleRpm", arcadeHandling.idleRPM, 10.0f, 0.0f, 20000.0f);
-                ImGui::TableNextColumn();
-                applyDragFloatEdit("Redline RPM", "##vehicleProfileArcadeRedlineRpm", arcadeHandling.redlineRPM, 10.0f, 100.0f, 30000.0f);
+                // Rev range lives on the engine and is edited there. It used to
+                // be duplicated into this card, where the two copies drifted apart
+                // and the runtime silently preferred this one.
                 ImGui::TableNextColumn();
                 applyCheckboxEdit("Engine Driven Acceleration##vehicleProfileArcadeEngineDrivenAcceleration", arcadeHandling.engineDrivenAcceleration);
                 ImGui::TableNextColumn();

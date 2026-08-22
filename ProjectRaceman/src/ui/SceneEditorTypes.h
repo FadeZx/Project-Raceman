@@ -554,9 +554,6 @@ struct VehicleSoundComponent {
     // Gear-shift and start/stop one-shots. Not engine sound at all, so they
     // belong here rather than inside an engine profile.
     std::vector<VehicleSoundTriggerEntry> triggerSounds;
-    // Set once shared data has been lifted off the profile, so the runtime knows
-    // whether to fall back to the profile's copy for scenes authored earlier.
-    bool overridesProfileAudio{false};
 };
 
 // -------------------------------------------------------------------------

@@ -19,9 +19,6 @@ float ClampAudio01(float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
 void SceneEditor::ClearVehicleSoundRuntime() {
     if (audioManager_) {
         for (auto& inst : runtimeVehicleSounds_) {
-            for (auto& layer : inst.layers) {
-                audioManager_->StopVoice(layer.voice);
-            }
             audioManager_->StopVoice(inst.synthVoice);
             inst.synth.reset();
             audioManager_->StopVoice(inst.tyreVoice);
@@ -61,7 +58,6 @@ void SceneEditor::RebuildVehicleSoundRuntime() {
         if (!obj.hasVehicle || !obj.vehicle.enabled) continue;
 
         const std::string absPath = ProjectAssetPathToAbsolute(obj.vehicleSound.profilePath).string();
-        const bool isSynthProfile = IsEngineSoundAssetPath(obj.vehicleSound.profilePath);
 
         RuntimeVehicleSoundInstance inst;
         inst.objectId        = obj.id;
@@ -69,127 +65,54 @@ void SceneEditor::RebuildVehicleSoundRuntime() {
         inst.lastGear        = 0;
         inst.lastThrottleHigh = false;
         inst.lastLateralSpeed = 0.0f;
-        inst.usesSynth       = isSynthProfile;
 
         const glm::vec3 pos = GetObjectWorldPosition(i);
 
-        // ---- procedural path -------------------------------------------------
-        if (isSynthProfile) {
-            inst.engineProfile = EngineSoundProfileLoader::loadFromFile(absPath);
-            inst.profile.name = inst.engineProfile.name;
+        inst.engineProfile = EngineSoundProfileLoader::loadFromFile(absPath);
+        inst.profile.name = inst.engineProfile.name;
 
-            // 3D settings and triggers live on the component now. Scenes authored
-            // before that still carry them inside the profile, so fall back
-            // rather than going silent on old data.
-            if (obj.vehicleSound.overridesProfileAudio) {
-                inst.profile.triggerSounds = obj.vehicleSound.triggerSounds;
-                inst.profile.spatialBlend  = obj.vehicleSound.spatialBlend;
-                inst.profile.minDistance   = obj.vehicleSound.minDistance;
-                inst.profile.maxDistance   = obj.vehicleSound.maxDistance;
-            } else {
-                inst.profile.triggerSounds = inst.engineProfile.triggerSounds;
-                inst.profile.spatialBlend  = inst.engineProfile.spatialBlend;
-                inst.profile.minDistance   = inst.engineProfile.minDistance;
-                inst.profile.maxDistance   = inst.engineProfile.maxDistance;
+        // Emission and triggers have exactly one home: the component. There is
+        // no fallback to a profile copy any more, because two homes for one
+        // value is how they drifted apart.
+        inst.profile.triggerSounds = obj.vehicleSound.triggerSounds;
+        inst.profile.spatialBlend  = obj.vehicleSound.spatialBlend;
+        inst.profile.minDistance   = obj.vehicleSound.minDistance;
+        inst.profile.maxDistance   = obj.vehicleSound.maxDistance;
+
+        // The rev range comes from the vehicle, not from the sound profile.
+        const physics::EngineConfig* engineConfig = nullptr;
+        for (const auto& v : runtimeVehicles_) {
+            if (v.objectId == obj.id) { engineConfig = &v.config.engine; break; }
+        }
+        const float idleRpm    = (std::max)(0.0f, engineConfig ? engineConfig->idleRPM : 900.0f);
+        const float redlineRpm = (std::max)(idleRpm + 1.0f, engineConfig ? engineConfig->redlineRPM : 7000.0f);
+
+        inst.synth = std::make_shared<EngineSynth>();
+        inst.synth->SetProfile(EngineSynthBaked::Bake(inst.engineProfile, idleRpm, redlineRpm,
+                                                      kEngineSynthSampleRate));
+        inst.synthVoice = (obj.vehicleSound.spatialBlend > 0.0f)
+            ? audioManager_->CreateSynthVoice3D(inst.synth, pos)
+            : audioManager_->CreateSynthVoice2D(inst.synth);
+
+        if (inst.synthVoice != nullptr) {
+            audioManager_->SetVoiceAttenuation(inst.synthVoice, obj.vehicleSound.minDistance,
+                                               obj.vehicleSound.maxDistance,
+                                               obj.vehicleSound.spatialBlend);
+            if (console_ != nullptr) {
+                char summary[256];
+                std::snprintf(summary, sizeof(summary),
+                              "Engine synth '%s': %d cylinders, rev range %.0f-%.0f rpm (from vehicle), minDistance=%.1f",
+                              inst.engineProfile.name.c_str(),
+                              static_cast<int>(inst.engineProfile.cylinders.size()),
+                              idleRpm, redlineRpm, obj.vehicleSound.minDistance);
+                console_->AddLog(summary);
             }
-            // The synth reads its own copy of these, so keep them in step.
-            inst.engineProfile.spatialBlend = inst.profile.spatialBlend;
-            inst.engineProfile.minDistance  = inst.profile.minDistance;
-            inst.engineProfile.maxDistance  = inst.profile.maxDistance;
-
-            const physics::VehicleArcadeHandlingConfig* handling = nullptr;
-            for (const auto& v : runtimeVehicles_) {
-                if (v.objectId == obj.id) { handling = &v.config.arcadeHandling; break; }
-            }
-            const float idleRpm    = handling ? (std::max)(0.0f, handling->idleRPM) : 900.0f;
-            const float redlineRpm = handling ? (std::max)(idleRpm + 1.0f, handling->redlineRPM) : 7000.0f;
-
-            inst.synth = std::make_shared<EngineSynth>();
-            inst.synth->SetProfile(EngineSynthBaked::Bake(inst.engineProfile, idleRpm, redlineRpm,
-                                                          kEngineSynthSampleRate));
-            inst.synthVoice = (inst.engineProfile.spatialBlend > 0.0f)
-                ? audioManager_->CreateSynthVoice3D(inst.synth, pos)
-                : audioManager_->CreateSynthVoice2D(inst.synth);
-
-            if (inst.synthVoice != nullptr) {
-                audioManager_->SetVoiceAttenuation(inst.synthVoice, inst.engineProfile.minDistance,
-                                                   inst.engineProfile.maxDistance,
-                                                   inst.engineProfile.spatialBlend);
-                if (console_ != nullptr) {
-                    char summary[256];
-                    std::snprintf(summary, sizeof(summary),
-                                  "Engine synth '%s': %d cylinders, rev range %.0f-%.0f rpm, minDistance=%.1f",
-                                  inst.engineProfile.name.c_str(),
-                                  static_cast<int>(inst.engineProfile.cylinders.size()),
-                                  idleRpm, redlineRpm, inst.engineProfile.minDistance);
-                    console_->AddLog(summary);
-                }
-            } else if (console_ != nullptr) {
-                console_->AddError("Failed to create engine synth voice for " + obj.name);
-                inst.synth.reset();
-            }
-
-            CreateVehicleTyreVoice(inst, obj, pos);
-            runtimeVehicleSounds_.push_back(std::move(inst));
-            continue;
+        } else if (console_ != nullptr) {
+            console_->AddError("Failed to create engine synth voice for " + obj.name);
+            inst.synth.reset();
         }
 
-        // ---- legacy sample path ----------------------------------------------
-        VehicleSoundProfile profile = VehicleSoundProfileLoader::loadFromFile(absPath);
-        if (obj.vehicleSound.overridesProfileAudio) {
-            profile.triggerSounds = obj.vehicleSound.triggerSounds;
-            profile.spatialBlend  = obj.vehicleSound.spatialBlend;
-            profile.minDistance   = obj.vehicleSound.minDistance;
-            profile.maxDistance   = obj.vehicleSound.maxDistance;
-        }
-        inst.profile = profile;
-
-        // Start all engine layers looping but paused/silent.
-        for (const auto& layer : profile.engineLayers) {
-            RuntimeVehicleSoundLayerState ls;
-            ls.smoothVolume = 0.0f;
-            ls.smoothPitch  = layer.pitchAtRpmMin;
-            if (!layer.clipPath.empty()) {
-                const std::string lPath = ProjectAssetPathToAbsolute(layer.clipPath).string();
-                ls.voice = (profile.spatialBlend > 0.0f)
-                    ? audioManager_->Play3D(lPath, pos, /*loop=*/true)
-                    : audioManager_->Play2D(lPath, /*loop=*/true);
-                if (ls.voice) {
-                    audioManager_->SetVoiceVolume(ls.voice, 0.0f);
-                    audioManager_->SetVoicePitch(ls.voice, ls.smoothPitch);
-                    audioManager_->SetVoiceAttenuation(ls.voice, profile.minDistance,
-                                                       profile.maxDistance, profile.spatialBlend);
-                } else if (console_ != nullptr) {
-                    // Previously silent: a layer whose clip is missing just left a
-                    // null handle, so a profile could lose most of its engine sound
-                    // with nothing reported anywhere.
-                    console_->AddError("Vehicle sound layer failed to load: " + layer.clipPath
-                                       + "  (resolved to " + lPath + ")");
-                }
-            }
-            inst.layers.push_back(std::move(ls));
-        }
-
-        if (console_ != nullptr) {
-            int loaded = 0;
-            for (const auto& ls : inst.layers) {
-                if (ls.voice != nullptr) ++loaded;
-            }
-            char summary[256];
-            std::snprintf(summary, sizeof(summary),
-                          "Vehicle sound '%s': %d/%d engine layers loaded, minDistance=%.2f maxDistance=%.1f",
-                          profile.name.c_str(), loaded,
-                          static_cast<int>(inst.layers.size()),
-                          profile.minDistance, profile.maxDistance);
-            console_->AddLog(summary);
-            if (loaded > 0 && profile.minDistance < 2.0f) {
-                // Inverse attenuation falls off as minDistance/distance, so a
-                // sub-2m minDistance puts a chase camera tens of dB down and the
-                // car reads as silent however loud the clip is.
-                console_->AddWarning("Vehicle sound minDistance is very small; the engine will be "
-                                     "near-inaudible from a chase camera. Try 5-15 m.");
-            }
-        }
+        CreateVehicleTyreVoice(inst, obj, pos);
         runtimeVehicleSounds_.push_back(std::move(inst));
     }
 
@@ -248,6 +171,10 @@ void SceneEditor::UpdateVehicleTyreSound(RuntimeVehicleSoundInstance& inst,
 
     TyreSynthParams params;
     params.speedMps = std::fabs(vehicle.arcadeSpeed);
+    // Reference speed comes from the vehicle, not the tyre profile: "full
+    // rolling noise" means at this car's top speed, so one tyre asset behaves
+    // correctly on a GT3 car and on a road car without being re-authored.
+    params.speedReferenceMps = (std::max)(1.0f, vehicle.config.arcadeHandling.maxForwardSpeed);
 
     const int wheelCount = (std::min)(static_cast<int>(vehicle.arcadeWheelContacts.size()),
                                       TyreSynthParams::kMaxWheels);
@@ -273,7 +200,14 @@ void SceneEditor::UpdateVehicleTyreSound(RuntimeVehicleSoundInstance& inst,
         out.grounded = contact.grounded;
         out.load = (std::clamp)(contact.normalForce / averageForce * 0.5f, 0.0f, 1.0f);
 
-        out.slip = (std::clamp)(contact.slipAmount, 0.0f, 1.0f);
+        // Raw metres per second, split by axis, plus the sim's own verdict on
+        // what kind of slip this is. Handing the synth a single pre-normalised
+        // 0..1 threw all three apart: a lock-up, a slide and a wheelspin came
+        // out as the same squeal at the same pitch.
+        out.lateralSlideMps = (std::max)(0.0f, contact.lateralSlideMps);
+        out.longitudinalSlideMps = (std::max)(0.0f, contact.longitudinalSlideMps);
+        out.locked = contact.locked;
+        out.spinning = contact.spinning;
 
         const int surface = (std::clamp)(static_cast<int>(contact.surfaceType), 0,
                                          kTrackSurfaceTypeCount - 1);
@@ -312,7 +246,7 @@ void SceneEditor::ApplyEngineSoundEditsToRuntime() {
     const std::string edited = NormalizeSlashes(inspectedEngineSoundPath_);
 
     for (auto& inst : runtimeVehicleSounds_) {
-        if (!inst.usesSynth || !inst.synth) {
+        if (!inst.synth) {
             continue;
         }
         const int idx = FindObjectIndexById(inst.objectId);
@@ -320,12 +254,13 @@ void SceneEditor::ApplyEngineSoundEditsToRuntime() {
             continue;
         }
 
-        const physics::VehicleArcadeHandlingConfig* handling = nullptr;
+        // The rev range comes from the vehicle, not from the sound profile.
+        const physics::EngineConfig* engineConfig = nullptr;
         for (const auto& v : runtimeVehicles_) {
-            if (v.objectId == inst.objectId) { handling = &v.config.arcadeHandling; break; }
+            if (v.objectId == inst.objectId) { engineConfig = &v.config.engine; break; }
         }
-        const float idleRpm    = handling ? (std::max)(0.0f, handling->idleRPM) : 900.0f;
-        const float redlineRpm = handling ? (std::max)(idleRpm + 1.0f, handling->redlineRPM) : 7000.0f;
+        const float idleRpm    = (std::max)(0.0f, engineConfig ? engineConfig->idleRPM : 900.0f);
+        const float redlineRpm = (std::max)(idleRpm + 1.0f, engineConfig ? engineConfig->redlineRPM : 7000.0f);
 
         inst.engineProfile = inspectedEngineSound_;
         // Bake happens here on the game thread; the audio thread only ever swaps
@@ -333,9 +268,9 @@ void SceneEditor::ApplyEngineSoundEditsToRuntime() {
         inst.synth->SetProfile(EngineSynthBaked::Bake(inst.engineProfile, idleRpm, redlineRpm,
                                                       kEngineSynthSampleRate));
         if (inst.synthVoice != nullptr) {
-            audioManager_->SetVoiceAttenuation(inst.synthVoice, inst.engineProfile.minDistance,
-                                               inst.engineProfile.maxDistance,
-                                               inst.engineProfile.spatialBlend);
+            audioManager_->SetVoiceAttenuation(inst.synthVoice, inst.profile.minDistance,
+                                               inst.profile.maxDistance,
+                                               inst.profile.spatialBlend);
         }
     }
 }
@@ -367,16 +302,13 @@ void SceneEditor::UpdateVehicleSoundRuntime(float deltaTime) {
         const int vIdx = FindObjectIndexById(inst.vehicleObjectId);
         const glm::vec3 vehiclePos = (vIdx >= 0) ? GetObjectWorldPosition(vIdx) : glm::vec3(0.0f);
         if (vIdx >= 0 && inst.profile.spatialBlend > 0.0f) {
-            for (auto& ls : inst.layers) {
-                if (ls.voice) audioManager_->SetVoicePosition(ls.voice, vehiclePos);
-            }
             if (inst.synthVoice) audioManager_->SetVoicePosition(inst.synthVoice, vehiclePos);
         }
 
         // Doppler. The vehicle's own velocity vector comes from its forward axis
         // and signed speed; a passing car is one of the most recognisable sounds
         // there is, and it needs both ends of the equation.
-        if (inst.usesSynth && inst.synthVoice != nullptr && vIdx >= 0) {
+        if (inst.synthVoice != nullptr && vIdx >= 0) {
             const glm::mat4 vehicleMatrix = GetObjectWorldMatrix(vIdx);
             const glm::vec3 forward =
                 glm::normalize(glm::vec3(vehicleMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
@@ -386,13 +318,13 @@ void SceneEditor::UpdateVehicleSoundRuntime(float deltaTime) {
         }
 
         // ---- procedural engine ------------------------------------------------
-        if (inst.usesSynth && inst.synth) {
+        if (inst.synth) {
             const physics::VehicleArcadeHandlingConfig& handling = rv->config.arcadeHandling;
 
             EngineSynthParams params;
             params.rpm         = rpm;
-            params.idleRpm     = (std::max)(0.0f, handling.idleRPM);
-            params.redlineRpm  = (std::max)(params.idleRpm + 1.0f, handling.redlineRPM);
+            params.idleRpm     = (std::max)(0.0f, rv->config.engine.idleRPM);
+            params.redlineRpm  = (std::max)(params.idleRpm + 1.0f, rv->config.engine.redlineRPM);
             params.load        = engine.load;
             params.throttle    = engine.throttle;
             params.boost       = engine.boost;
@@ -509,27 +441,6 @@ void SceneEditor::UpdateVehicleSoundRuntime(float deltaTime) {
         }
 
         // Update each engine layer (legacy sample path only)
-        for (std::size_t li = 0; !inst.usesSynth && li < inst.layers.size()
-                                 && li < inst.profile.engineLayers.size(); ++li) {
-            const VehicleSoundEngineLayer& def = inst.profile.engineLayers[li];
-            RuntimeVehicleSoundLayerState& ls  = inst.layers[li];
-            if (!ls.voice) continue;
-
-            const float range = def.rpmMax - def.rpmMin;
-            const float t     = (range > 0.0f) ? ClampAudio01((rpm - def.rpmMin) / range) : 0.0f;
-
-            const float targetPitch  = LerpAudio(def.pitchAtRpmMin, def.pitchAtRpmMax, t);
-            float       targetVolume = LerpAudio(def.volumeAtRpmMin, def.volumeAtRpmMax, t);
-            targetVolume += throttle * def.volumeThrottleScale;
-            targetVolume  = ClampAudio01(targetVolume) * inst.profile.masterVolume;
-
-            ls.smoothPitch  = LerpAudio(ls.smoothPitch,  targetPitch,  smoothRate);
-            ls.smoothVolume = LerpAudio(ls.smoothVolume, targetVolume, smoothRate);
-
-            audioManager_->SetVoicePitch(ls.voice, ls.smoothPitch);
-            audioManager_->SetVoiceVolume(ls.voice, ls.smoothVolume);
-        }
-
         // ---- shift triggers, drained from the fixed-step event queue ----------
         // Polling arcadeGear here used to collapse two shifts in one rendered
         // frame into one trigger, and the guard against gear 0 meant the launch
@@ -556,7 +467,7 @@ void SceneEditor::UpdateVehicleSoundRuntime(float deltaTime) {
                     break;
                 }
             }
-            if (inst.usesSynth && inst.synth) {
+            if (inst.synth) {
                 EngineSynthEvent event;
                 event.kind = EngineSynthEventKind::ShiftCut;
                 event.strength = 1.0f;
@@ -568,21 +479,8 @@ void SceneEditor::UpdateVehicleSoundRuntime(float deltaTime) {
         const int curGear = rv->arcadeGear;
         const bool throttleHigh = throttle > 0.7f;
 
-        // Sample-based backfire only applies to legacy profiles; the synth makes
-        // its own through the exhaust.
-        if (!inst.usesSynth && inst.lastThrottleHigh && !throttleHigh && rpm > 0.0f) {
-            for (const auto& trig : inst.profile.triggerSounds) {
-                if (trig.trigger == VehicleSoundTrigger::Backfire &&
-                    rpm >= trig.minRpmForBackfire && !trig.clipPath.empty()) {
-                    const std::string p = ProjectAssetPathToAbsolute(trig.clipPath).string();
-                    audioManager_->PlayOneShot2D(p, trig.volume);
-                    break;
-                }
-            }
-        }
-
         // Blow-off on a throttle lift with boost up.
-        if (inst.usesSynth && inst.synth && inst.engineProfile.turbo.enabled &&
+        if (inst.synth && inst.engineProfile.turbo.enabled &&
             inst.lastThrottleHigh && !throttleHigh && engine.boost > 0.25f) {
             EngineSynthEvent event;
             event.kind = EngineSynthEventKind::BlowOff;

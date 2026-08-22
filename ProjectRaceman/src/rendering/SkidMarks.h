@@ -57,6 +57,29 @@ struct SkidMarkSettings {
     SkidMarkDecalTemplate decal;
 };
 
+// One tyre's state for this frame, as the mark system needs to see it.
+//
+// Passed as a struct rather than a parameter list because what a mark should
+// look like depends on several things at once: how hard the tyre is sliding,
+// which direction it is sliding in, and what it is sliding on. A tyre locked
+// under braking lays a narrow black line; the same tyre sideways in a drift
+// lays a wide smear; on grass it lays almost nothing at all.
+struct SkidMarkWheelState {
+    // 0..1 normalised contact patch scrub. Already zero while the tyre grips.
+    float slipAmount{0.0f};
+    // Signed longitudinal slip: negative locked, positive spinning. Both lay a
+    // narrow concentrated line, which is why the magnitude is what matters.
+    float slipRatio{0.0f};
+    // Degrees of this wheel's own slip angle. Sideways scrub smears wide.
+    float lateralSlipAngle{0.0f};
+    // How readily this surface takes rubber. 1 is tarmac, 0 leaves no mark.
+    float rubberGain{1.0f};
+    // Loose surfaces throw pale dust instead of laying dark rubber, so the
+    // mark's colour is pulled toward this by `dustiness`.
+    glm::vec3 dustColor{1.0f, 1.0f, 1.0f};
+    float dustiness{0.0f};
+};
+
 // Lays projected decals along a tyre's contact patch while it is sliding.
 //
 // Owns nothing GPU-side: it accumulates transforms and hands them to the decal
@@ -69,14 +92,15 @@ public:
     // used for fading; emission is purely distance driven.
     void BeginFrame(float deltaSeconds);
 
-    // One call per grounded wheel per frame. `slip` is the tyre's slip magnitude
-    // in the same units as SkidMarkSettings::slipThreshold.
+    // One call per grounded wheel per frame. `wheel.slipAmount` is compared
+    // against SkidMarkSettings::slipThreshold; the rest of the state shapes what
+    // the mark looks like once it is being laid.
     void TrackWheel(const std::string& vehicleId,
                     int wheelIndex,
                     bool grounded,
                     const glm::vec3& contactPosition,
                     const glm::vec3& contactNormal,
-                    float slip,
+                    const SkidMarkWheelState& wheel,
                     const SkidMarkSettings& settings);
 
     // Submits every live mark as a decal. Marks outside `frustumPlanes` are
@@ -104,6 +128,11 @@ private:
         // instead of restarting inside each one.
         glm::vec2 uvTiling{1.0f, 1.0f};
         glm::vec2 uvOffset{0.0f, 0.0f};
+        // Baked at emission: the surface the tyre was on when it laid this
+        // segment, not the one the car happens to be on now. Driving off a kerb
+        // must not recolour the rubber already behind you.
+        glm::vec3 dustColor{1.0f, 1.0f, 1.0f};
+        float dustiness{0.0f};
     };
 
     struct WheelTrail {
@@ -123,6 +152,8 @@ private:
                   const glm::vec3& to,
                   const glm::vec3& normal,
                   float strength,
+                  float widthScale,
+                  const SkidMarkWheelState& wheel,
                   float distanceAtFrom,
                   const SkidMarkSettings& settings);
 };

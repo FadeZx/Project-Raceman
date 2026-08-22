@@ -265,8 +265,8 @@ void UpdateVehicleEngineState(RuntimeVehicleInstance& runtimeVehicle,
     raceman::physics::VehicleEngineTuning tuning;
     // Idle and redline come from arcadeHandling because that is what the sim
     // actually uses; engine.idleRPM/redlineRPM are authored but dead.
-    tuning.idleRpm    = (std::max)(0.0f, handling.idleRPM);
-    tuning.redlineRpm = (std::max)(tuning.idleRpm + 1.0f, handling.redlineRPM);
+    tuning.idleRpm    = (std::max)(0.0f, runtimeVehicle.config.engine.idleRPM);
+    tuning.redlineRpm = (std::max)(tuning.idleRpm + 1.0f, runtimeVehicle.config.engine.redlineRPM);
     tuning.inertia    = (std::max)(0.02f, runtimeVehicle.config.engine.inertia);
 
     raceman::physics::VehicleEngineInput input;
@@ -282,6 +282,65 @@ void UpdateVehicleEngineState(RuntimeVehicleInstance& runtimeVehicle,
     input.deltaTime             = deltaTime;
 
     runtimeVehicle.engineState.Update(tuning, input);
+}
+
+// Dry tarmac makes white rubber smoke. Loose surfaces throw dust instead, which
+// is browner, thicker and hangs differently - but it comes off the same slip,
+// so it is the same system with a different tint.
+float SmokeGainForSurface(TrackSurfaceType surface) {
+    switch (surface) {
+        case TrackSurfaceType::Dirt:  return 1.00f;   // dust, and plenty of it
+        case TrackSurfaceType::Grass: return 0.70f;
+        case TrackSurfaceType::Curb:  return 0.75f;
+        case TrackSurfaceType::Wall:  return 0.0f;
+        default:                      return 1.0f;
+    }
+}
+
+glm::vec3 SmokeTintForSurface(TrackSurfaceType surface) {
+    switch (surface) {
+        case TrackSurfaceType::Dirt:  return glm::vec3(1.05f, 0.88f, 0.66f);
+        case TrackSurfaceType::Grass: return glm::vec3(0.88f, 0.95f, 0.78f);
+        default:                      return glm::vec3(1.0f);
+    }
+}
+
+// How each surface responds to a sliding tyre. Tarmac takes rubber and goes
+// black; loose surfaces throw pale dust and keep almost none of it; a wall is
+// not something you leave a skid mark on at all.
+SkidMarkWheelState MakeSkidMarkWheelState(const RuntimeVehicleWheelContact& contact) {
+    SkidMarkWheelState wheel;
+    wheel.slipAmount = contact.slipAmount;
+    wheel.slipRatio = contact.slipRatio;
+    wheel.lateralSlipAngle = contact.lateralSlipAngle;
+
+    switch (contact.surfaceType) {
+        case TrackSurfaceType::Dirt:
+            wheel.rubberGain = 0.55f;
+            wheel.dustColor = glm::vec3(0.66f, 0.55f, 0.40f);
+            wheel.dustiness = 0.85f;
+            break;
+        case TrackSurfaceType::Grass:
+            // Torn grass shows for a moment and is gone. Barely a mark.
+            wheel.rubberGain = 0.30f;
+            wheel.dustColor = glm::vec3(0.52f, 0.58f, 0.38f);
+            wheel.dustiness = 0.90f;
+            break;
+        case TrackSurfaceType::Curb:
+            // Painted concrete takes rubber, just less of it than tarmac.
+            wheel.rubberGain = 0.70f;
+            wheel.dustColor = glm::vec3(0.55f, 0.52f, 0.50f);
+            wheel.dustiness = 0.25f;
+            break;
+        case TrackSurfaceType::Wall:
+            wheel.rubberGain = 0.0f;
+            break;
+        case TrackSurfaceType::Asphalt:
+        case TrackSurfaceType::Custom:
+        default:
+            break;
+    }
+    return wheel;
 }
 
 } // namespace
@@ -308,6 +367,10 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
     // this is the only place time enters the system.
     const SkidMarkSettings skidSettings = SkidMarkSettingsFromProfile(graphicsProfile_);
     skidMarks_.BeginFrame(deltaTime);
+    // Smoke ages, drifts and expands here for the same reason, and before any
+    // emission below so a puff born this step is not also aged by it.
+    const TyreSmokeSettings smokeSettings = TyreSmokeSettingsFromProfile(graphicsProfile_);
+    tyreSmoke_.BeginFrame(deltaTime, smokeSettings);
 
     for (RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
         if (runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
@@ -343,8 +406,8 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         float& lateralSpeed = runtimeVehicle.arcadeLateralSpeed;
         const raceman::physics::VehicleArcadeHandlingConfig& arcadeHandling = runtimeVehicle.config.arcadeHandling;
         const float maxForwardSpeed = (std::max)(1.0f, arcadeHandling.maxForwardSpeed);
-        const float idleRPM = (std::max)(0.0f, arcadeHandling.idleRPM);
-        const float redlineRPM = (std::max)(idleRPM + 1.0f, arcadeHandling.redlineRPM);
+        const float idleRPM = (std::max)(0.0f, runtimeVehicle.config.engine.idleRPM);
+        const float redlineRPM = (std::max)(idleRPM + 1.0f, runtimeVehicle.config.engine.redlineRPM);
         const float previousSpeed = speed;
         const float previousThrottleInput = runtimeVehicle.arcadeThrottle;
         const float absSpeedBeforeDrive = std::fabs(speed);
@@ -450,9 +513,19 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
                 // fast straight line marks nothing and a locked wheel at walking
                 // pace marks faintly - both of which a threshold on slip angle
                 // got backwards.
+                const SkidMarkWheelState markState = MakeSkidMarkWheelState(contact);
                 skidMarks_.TrackWheel(runtimeVehicle.objectId, static_cast<int>(wheelIndex),
                                       contact.grounded, contact.contactPosition, contact.normal,
-                                      contact.slipAmount, skidSettings);
+                                      markState, skidSettings);
+                // Smoke off the same slip, thrown along the direction the tyre
+                // is actually sliding rather than dropped where the car is.
+                tyreSmoke_.EmitFromWheel(runtimeVehicle.objectId, static_cast<int>(wheelIndex),
+                                         contact.grounded, contact.contactPosition, contact.normal,
+                                         runtimeVehicle.arcadePlanarVelocity,
+                                         contact.slipAmount,
+                                         SmokeGainForSurface(contact.surfaceType),
+                                         SmokeTintForSurface(contact.surfaceType),
+                                         deltaTime, smokeSettings);
                 wheelState.normalForce = contact.normalForce;
                 wheelState.slipAngle = contact.slipAngle;
                 wheelState.tractionScale = contact.tractionScale;

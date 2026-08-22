@@ -235,6 +235,8 @@ void UpdateArcadeWheelSlip(RuntimeVehicleInstance& runtimeVehicle,
             std::sqrt(longitudinalSlide * longitudinalSlide + lateralSlide * lateralSlide);
 
         contact.slipVelocity = contact.grounded ? slipVelocity : 0.0f;
+        contact.lateralSlideMps = contact.grounded ? lateralSlide : 0.0f;
+        contact.longitudinalSlideMps = contact.grounded ? longitudinalSlide : 0.0f;
         contact.gripUtilisation = utilisation;
         contact.slipAmount = (std::clamp)(contact.slipVelocity / kFullSlideSpeed, 0.0f, 1.0f);
         contact.locked = contact.grounded && lockFraction > 0.55f && std::fabs(longitudinalSpeed) > 1.0f;

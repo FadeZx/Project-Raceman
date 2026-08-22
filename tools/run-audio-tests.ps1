@@ -1,4 +1,5 @@
-# Builds and runs the standalone audio/engine behaviour tests.
+# Builds and runs the standalone behaviour tests: audio, engine and the
+# vehicle setup preset tables.
 #
 # These deliberately do not go through the .vcxproj: the units under test are
 # pure (no OpenGL, no audio device, no ImGui), so compiling them directly keeps
@@ -47,6 +48,13 @@ $suites = @(
         Includes = @((Join-Path $srcRoot "audio"), (Join-Path $srcRoot "physics"))
         # Renders listenable WAVs next to the test binaries.
         Args     = @($outDir)
+    },
+    @{
+        Name     = "vehicle_setup_presets"
+        Source   = Join-Path $testRoot "test_vehicle_setup_presets.cpp"
+        Deps     = @(Join-Path $srcRoot "physics\VehicleConfig.cpp")
+        Includes = @(Join-Path $srcRoot "physics")
+        Args     = @()
     },
     @{
         Name     = "tyre_synth"

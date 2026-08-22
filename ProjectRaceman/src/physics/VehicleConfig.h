@@ -109,8 +109,11 @@ struct VehicleArcadeHandlingConfig
     float lowSpeedSteerFloor{0.52f};
     float lowSpeedSteerInputBoost{0.24f};
     float highSpeedSteerCut{0.58f};
-    float idleRPM{900.0f};
-    float redlineRPM{6000.0f};
+
+    // idleRPM and redlineRPM used to live here as well as on EngineConfig, and
+    // in most configs the two disagreed - the runtime used these while the
+    // editor displayed the others. EngineConfig is the single home now: an
+    // engine owns its own rev range, and everything else reads it from there.
 
     // When false the car accelerates at a flat rate in every gear and
     // coasts down at a flat rate, so the gearbox is decoration and top
@@ -180,6 +183,23 @@ struct VehicleYawDynamicsConfig
     float spinYawBoost{1.8f};
     float spinRecovery{4.0f};
     float sideSlipToYaw{0.35f};
+
+    // How the car decides to rotate.
+    //
+    // Off, steering commands yaw directly: the steering input is turned
+    // into a yaw torque, and the torque from a sliding rear axle takes its
+    // sign from that same input. Rotation is therefore whatever the driver
+    // asks for, countersteering is a free sign flip rather than a force,
+    // and a slide can neither be underdriven nor overdriven.
+    //
+    // On, rotation is what the tyres do to the car. Each axle makes a
+    // lateral force from its own slip angle - the difference between where
+    // it points and where it is actually travelling - and that force acting
+    // at its distance from the centre of mass is the yaw moment. Catching a
+    // slide then means putting the front axle at the slip angle that makes
+    // the force that stops the rotation, which can be missed in either
+    // direction.
+    bool physicalYaw{false};
 };
 
 struct VehicleBrakeAssistConfig

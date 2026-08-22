@@ -20,6 +20,13 @@ constexpr float kEdgeSoftnessAcross = 0.09f;
 // Volume thickness along the projection axis. Deep enough to survive a bumpy
 // surface and suspension travel, shallow enough not to catch a kerb face.
 constexpr float kVolumeThickness = 0.25f;
+// Slip angle at which a mark is a full sideways smear rather than a line.
+constexpr float kFullSmearAngle = 25.0f;
+// Width multipliers for the two ends of that range. A locked wheel lays
+// slightly narrower than the tyre (the contact patch concentrates), a full
+// drift drags noticeably wider.
+constexpr float kLineWidthScale = 0.85f;
+constexpr float kSmearWidthScale = 1.50f;
 
 } // namespace
 
@@ -34,6 +41,8 @@ void SkidMarkSystem::PushMark(const glm::vec3& from,
                               const glm::vec3& to,
                               const glm::vec3& normal,
                               float strength,
+                              float widthScale,
+                              const SkidMarkWheelState& wheel,
                               float distanceAtFrom,
                               const SkidMarkSettings& settings) {
     const glm::vec3 delta = to - from;
@@ -59,7 +68,8 @@ void SkidMarkSystem::PushMark(const glm::vec3& from,
     const SkidMarkDecalTemplate& tpl = settings.decal;
     // The prefab's scale authors the volume; the profile sliders are the
     // fallback for a project that has not set one up.
-    const float width = (std::max)(tpl.width > 0.0f ? tpl.width : settings.width, 0.01f);
+    const float width =
+        (std::max)((tpl.width > 0.0f ? tpl.width : settings.width) * widthScale, 0.01f);
     const float thickness = (std::max)(tpl.thickness > 0.0f ? tpl.thickness : kVolumeThickness, 0.01f);
     const float span = length * kSegmentOverlap;
 
@@ -73,6 +83,8 @@ void SkidMarkSystem::PushMark(const glm::vec3& from,
     mark.transform[2] = glm::vec4(alignedForward * span, 0.0f);
     mark.transform[3] = glm::vec4((from + to) * 0.5f, 1.0f);
     mark.strength = (std::clamp)(strength, 0.0f, 1.0f);
+    mark.dustColor = wheel.dustColor;
+    mark.dustiness = (std::clamp)(wheel.dustiness, 0.0f, 1.0f);
     mark.age = 0.0f;
     mark.center = glm::vec3(mark.transform[3]);
     mark.radius = 0.5f * std::sqrt(width * width + thickness * thickness + span * span);
@@ -117,9 +129,14 @@ void SkidMarkSystem::TrackWheel(const std::string& vehicleId,
                                 bool grounded,
                                 const glm::vec3& contactPosition,
                                 const glm::vec3& contactNormal,
-                                float slip,
+                                const SkidMarkWheelState& wheel,
                                 const SkidMarkSettings& settings) {
     if (!settings.enabled) return;
+
+    // A surface that does not take rubber never starts a trail. Sliding across
+    // a wall collider should not paint the wall.
+    const float rubberGain = (std::clamp)(wheel.rubberGain, 0.0f, 1.0f);
+    const float slip = wheel.slipAmount;
 
     const std::string key = vehicleId + "#" + std::to_string(wheelIndex);
     WheelTrail& trail = trails_[key];
@@ -131,7 +148,7 @@ void SkidMarkSystem::TrackWheel(const std::string& vehicleId,
         return;
     }
 
-    const bool sliding = slip >= settings.slipThreshold;
+    const bool sliding = rubberGain > 0.01f && slip >= settings.slipThreshold;
     if (!sliding) {
         // Keep following the wheel while it grips, so the next mark starts where
         // the slide actually began rather than where the last one ended. The
@@ -158,9 +175,29 @@ void SkidMarkSystem::TrackWheel(const std::string& vehicleId,
     // Strength ramps from the threshold up to roughly twice it, so a gentle slide
     // marks faintly and a full lock-up marks black.
     const float over = (slip - settings.slipThreshold) / (std::max)(settings.slipThreshold, 0.01f);
-    const float strength = (std::clamp)(over, 0.15f, 1.0f);
+    float strength = (std::clamp)(over, 0.15f, 1.0f);
 
-    PushMark(trail.lastEmitPosition, contactPosition, contactNormal, strength, trail.distance, settings);
+    // Which way the tyre is sliding decides what the mark looks like. A locked
+    // or spinning wheel scrubs along its own centreline and lays a narrow,
+    // concentrated line; a tyre carrying a big slip angle drags its whole
+    // width sideways and smears. Splitting them is what stops a drift and a
+    // lock-up leaving the same stripe.
+    const float longitudinal = (std::clamp)(std::fabs(wheel.slipRatio), 0.0f, 1.0f);
+    const float lateral = (std::clamp)(std::fabs(wheel.lateralSlipAngle) / kFullSmearAngle, 0.0f, 1.0f);
+    const float driftFraction = (longitudinal + lateral) > 0.001f
+        ? lateral / (longitudinal + lateral)
+        : 0.0f;
+    // Scaled by the lateral magnitude as well as its share, or every pure
+    // sideways slide would smear identically wide however gentle it was: the
+    // fraction alone saturates at 1 the moment the slip ratio is zero.
+    const float smear = driftFraction * lateral;
+    const float widthScale = kLineWidthScale + (kSmearWidthScale - kLineWidthScale) * smear;
+    // Spread over more width means less rubber per unit area, so a smear reads
+    // lighter than a line laid at the same slip.
+    strength *= (1.0f - 0.20f * smear) * rubberGain;
+
+    PushMark(trail.lastEmitPosition, contactPosition, contactNormal, strength, widthScale,
+             wheel, trail.distance, settings);
     trail.lastEmitPosition = contactPosition;
     trail.distance += travelled;
 }
@@ -197,6 +234,14 @@ void SkidMarkSystem::Submit(Renderer& renderer,
         decal.transform = mark.transform;
         decal.textureId = textureId;
         decal.color = tpl.valid ? tpl.color : glm::vec4(settings.color, 1.0f);
+        // Loose surfaces scuff pale dust rather than laying dark rubber. Pulling
+        // the colour toward the dust tint keeps one code path for both instead
+        // of a second particle-ish system for dirt.
+        if (mark.dustiness > 0.001f) {
+            decal.color = glm::vec4(
+                glm::mix(glm::vec3(decal.color), mark.dustColor, mark.dustiness),
+                decal.color.a);
+        }
         decal.opacity = (std::clamp)(settings.opacity * (tpl.valid ? tpl.opacity : 1.0f) *
                                      mark.strength * fade, 0.0f, 1.0f);
         // Tighter than the decal default: a skid mark that climbs a kerb face

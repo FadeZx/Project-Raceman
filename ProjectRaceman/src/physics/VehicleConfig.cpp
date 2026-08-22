@@ -430,14 +430,8 @@ VehicleArcadeHandlingConfig readArcadeHandling(const json::Value &value)
     {
         arcadeHandling.highSpeedSteerCut = static_cast<float>(it->second.as_number());
     }
-    if (auto it = obj.find("idleRPM"); it != obj.end())
-    {
-        arcadeHandling.idleRPM = static_cast<float>(it->second.as_number());
-    }
-    if (auto it = obj.find("redlineRPM"); it != obj.end())
-    {
-        arcadeHandling.redlineRPM = static_cast<float>(it->second.as_number());
-    }
+    // idleRPM / redlineRPM used to be duplicated here. They are migrated into
+    // EngineConfig by the caller, which can see both objects.
     if (auto it = obj.find("engineDrivenAcceleration"); it != obj.end())
     {
         arcadeHandling.engineDrivenAcceleration = it->second.as_bool();
@@ -682,6 +676,10 @@ VehicleYawDynamicsConfig readYawDynamics(const json::Value &value)
     {
         yawDynamics.sideSlipToYaw = static_cast<float>(it->second.as_number());
     }
+    if (auto it = obj.find("physicalYaw"); it != obj.end())
+    {
+        yawDynamics.physicalYaw = it->second.as_bool();
+    }
     return yawDynamics;
 }
 
@@ -913,6 +911,21 @@ VehicleConfig readVehicle(const json::Value &value)
     if (auto it = obj.find("arcadeHandling"); it != obj.end())
     {
         config.arcadeHandling = readArcadeHandling(it->second);
+
+        // Legacy rev range. Older configs carried idleRPM/redlineRPM here
+        // and the runtime read them from here, so dropping them outright
+        // would quietly change how an existing car drives. Migrate them
+        // into EngineConfig instead. The engine block is parsed after this
+        // one, so a file that states its own rev range still wins.
+        const auto &arcadeObj = it->second.as_object();
+        if (auto legacy = arcadeObj.find("idleRPM"); legacy != arcadeObj.end())
+        {
+            config.engine.idleRPM = static_cast<float>(legacy->second.as_number());
+        }
+        if (auto legacy = arcadeObj.find("redlineRPM"); legacy != arcadeObj.end())
+        {
+            config.engine.redlineRPM = static_cast<float>(legacy->second.as_number());
+        }
     }
     if (auto it = obj.find("tireDynamics"); it != obj.end())
     {
@@ -945,6 +958,23 @@ VehicleConfig readVehicle(const json::Value &value)
     if (auto it = obj.find("engine"); it != obj.end())
     {
         config.engine = readEngine(it->second);
+    }
+
+    // Legacy migration: the rev range used to exist on BOTH arcadeHandling and
+    // engine, and in most configs the two disagreed. The runtime read the
+    // arcadeHandling pair, so those values win here - migrating to the engine
+    // block must not silently change how an existing car drives.
+    if (auto it = obj.find("arcadeHandling"); it != obj.end() && it->second.is_object())
+    {
+        const auto &arcade = it->second.as_object();
+        if (auto legacy = arcade.find("idleRPM"); legacy != arcade.end() && legacy->second.is_number())
+        {
+            config.engine.idleRPM = static_cast<float>(legacy->second.as_number());
+        }
+        if (auto legacy = arcade.find("redlineRPM"); legacy != arcade.end() && legacy->second.is_number())
+        {
+            config.engine.redlineRPM = static_cast<float>(legacy->second.as_number());
+        }
     }
     if (auto it = obj.find("transmission"); it != obj.end())
     {
@@ -1106,8 +1136,8 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
     stream << "    \"lowSpeedSteerFloor\": " << config.arcadeHandling.lowSpeedSteerFloor << ",\n";
     stream << "    \"lowSpeedSteerInputBoost\": " << config.arcadeHandling.lowSpeedSteerInputBoost << ",\n";
     stream << "    \"highSpeedSteerCut\": " << config.arcadeHandling.highSpeedSteerCut << ",\n";
-    stream << "    \"idleRPM\": " << config.arcadeHandling.idleRPM << ",\n";
-    stream << "    \"redlineRPM\": " << config.arcadeHandling.redlineRPM << ",\n";
+    // The rev range is written once, in the engine block. Emitting it here as
+    // well is what let the two drift apart in the first place.
     stream << "    \"engineDrivenAcceleration\": " << (config.arcadeHandling.engineDrivenAcceleration ? "true" : "false") << "\n";
     stream << "  },\n";
     stream << "  \"tireDynamics\": {\n";
@@ -1169,7 +1199,8 @@ bool VehicleConfigLoader::saveToFile(const std::string &path, const VehicleConfi
     stream << "    \"spinSlipAngle\": " << config.yawDynamics.spinSlipAngle << ",\n";
     stream << "    \"spinYawBoost\": " << config.yawDynamics.spinYawBoost << ",\n";
     stream << "    \"spinRecovery\": " << config.yawDynamics.spinRecovery << ",\n";
-    stream << "    \"sideSlipToYaw\": " << config.yawDynamics.sideSlipToYaw << "\n";
+    stream << "    \"sideSlipToYaw\": " << config.yawDynamics.sideSlipToYaw << ",\n";
+    stream << "    \"physicalYaw\": " << (config.yawDynamics.physicalYaw ? "true" : "false") << "\n";
     stream << "  },\n";
     stream << "  \"brakes\": {\n";
     stream << "    \"frontBias\": " << config.brakes.frontBias << ",\n";
@@ -1509,6 +1540,7 @@ void applyVehicleSetupPresets(VehicleConfig &config)
         config.yawDynamics.maxYawRate = (std::min)(config.yawDynamics.maxYawRate, 145.0f);
         config.yawDynamics.spinSlipAngle = (std::max)(config.yawDynamics.spinSlipAngle, 42.0f);
         config.yawDynamics.spinRecovery = (std::max)(config.yawDynamics.spinRecovery, 4.2f);
+        config.yawDynamics.physicalYaw = false;
 
         // Flat pull in every gear: hold the throttle and go, and the box
         // picks the gear for you.
@@ -1531,6 +1563,7 @@ void applyVehicleSetupPresets(VehicleConfig &config)
 
         config.yawDynamics.maxYawRate = (std::max)(config.yawDynamics.maxYawRate, 170.0f);
         config.yawDynamics.spinRecovery = (std::min)(config.yawDynamics.spinRecovery, 2.2f + assist * 3.6f);
+        config.yawDynamics.physicalYaw = false;
 
         config.arcadeHandling.engineDrivenAcceleration = false;
     }
@@ -1553,7 +1586,13 @@ void applyVehicleSetupPresets(VehicleConfig &config)
         // walks itself back onto its velocity vector.
         config.tireDynamics.lateralRelaxationRate = (std::max)(config.tireDynamics.lateralRelaxationRate, 3.1f);
         config.tireDynamics.gripRecoveryRate = (std::min)(config.tireDynamics.gripRecoveryRate, 0.9f);
-        config.tireDynamics.velocityAlignmentRate = (std::min)(config.tireDynamics.velocityAlignmentRate, 0.55f);
+        // Crushing this was how the old model made slides persist, and it cost
+        // the car its normal cornering: the velocity lagged the heading so far
+        // that a GT car sat at seven degrees of slip just going round a corner
+        // on full grip. With the tyres deciding rotation, a slide persists
+        // because the rear axle is saturated, so the path is allowed to follow
+        // the nose again when it is not.
+        config.tireDynamics.velocityAlignmentRate = (std::min)(config.tireDynamics.velocityAlignmentRate, 1.25f);
         config.tireDynamics.maxSideSlipSpeedScale = (std::max)(config.tireDynamics.maxSideSlipSpeedScale, 0.30f);
 
         // Weight transfer costs the rear axle real grip: lift, brake or feed
@@ -1581,6 +1620,10 @@ void applyVehicleSetupPresets(VehicleConfig &config)
         config.yawDynamics.spinSlipAngle = (std::min)(config.yawDynamics.spinSlipAngle, 26.0f);
         config.yawDynamics.spinYawBoost = (std::max)(config.yawDynamics.spinYawBoost, 1.70f);
         config.yawDynamics.spinRecovery = (std::min)(config.yawDynamics.spinRecovery, 1.10f + assist * 3.6f);
+
+        // Rotation comes from the tyres, so a slide has to be caught with
+        // the right amount of lock rather than any lock at all.
+        config.yawDynamics.physicalYaw = true;
 
         // The gearbox stops being decoration: come out of a corner off the
         // torque band and the engine will not pull you out of it, and the

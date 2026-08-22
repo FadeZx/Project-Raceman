@@ -1109,9 +1109,8 @@ void SceneEditor::HandleConsoleCommand(const std::string& command) {
             }
 
             std::snprintf(line, sizeof(line),
-                          "  '%s' [%s]: rpm=%.0f load=%.2f throttle=%.2f gear=%d boost=%.2f%s%s | distance %.1f m",
+                          "  '%s': rpm=%.0f load=%.2f throttle=%.2f gear=%d boost=%.2f%s%s | distance %.1f m",
                           inst.profile.name.c_str(),
-                          inst.usesSynth ? "synth" : "samples",
                           rv ? rv->engineState.rpm : 0.0f,
                           rv ? rv->engineState.load : 0.0f,
                           rv ? rv->engineState.throttle : 0.0f,
@@ -1122,7 +1121,7 @@ void SceneEditor::HandleConsoleCommand(const std::string& command) {
                           distance);
             console_->AddLog(line);
 
-            if (inst.usesSynth) {
+            {
                 std::snprintf(line, sizeof(line),
                               "    synth voice=%s cylinders=%d peak=%.3f frames=%lld",
                               inst.synthVoice ? "ok" : "NULL",
@@ -1130,19 +1129,12 @@ void SceneEditor::HandleConsoleCommand(const std::string& command) {
                               inst.synth ? inst.synth->GetLastPeak() : 0.0f,
                               inst.synth ? inst.synth->GetFramesRendered() : 0LL);
                 console_->AddLog(line);
-                continue;
             }
 
-            for (std::size_t li = 0; li < inst.layers.size(); ++li) {
-                const auto& ls = inst.layers[li];
-                const std::string& clip = (li < inst.profile.engineLayers.size())
-                    ? inst.profile.engineLayers[li].clipPath : std::string();
-                std::snprintf(line, sizeof(line),
-                              "    layer %d %-38s voice=%s vol=%.3f pitch=%.2f",
-                              static_cast<int>(li), clip.c_str(),
-                              ls.voice ? "ok " : "NULL", ls.smoothVolume, ls.smoothPitch);
-                console_->AddLog(line);
-            }
+            std::snprintf(line, sizeof(line), "    tyre  voice=%s peak=%.3f",
+                          inst.tyreVoice ? "ok" : "none",
+                          inst.tyreSynth ? inst.tyreSynth->GetLastPeak() : 0.0f);
+            console_->AddLog(line);
         }
         return;
     }

@@ -13,7 +13,14 @@ namespace raceman {
 struct TyreWheelParams {
     bool  grounded{false};
     float load{0.0f};       // 0..1, normalised wheel load
-    float slip{0.0f};       // 0..1, how far past the grip limit this tyre is
+    // Slide velocities in m/s, taken straight from the sim and split by axis.
+    // These are the raw quantity, not a pre-normalised 0..1: the synth needs the
+    // real speed to tell a car-park lock-up from a 200 km/h slide, and that
+    // distinction is lost the moment it is clamped on the game thread.
+    float lateralSlideMps{0.0f};       // scrub - the tyre singing
+    float longitudinalSlideMps{0.0f};  // lock-up or wheelspin
+    bool  locked{false};    // brakes beat grip: the wheel has stopped turning
+    bool  spinning{false};  // drive torque beat grip
     float surfaceBlend{0.0f};   // 0..1 across surfaceA -> surfaceB
     int   surfaceA{0};      // TrackSurfaceType index
     int   surfaceB{0};
@@ -24,6 +31,9 @@ struct TyreSynthParams {
     static constexpr int kMaxWheels = 4;
 
     float speedMps{0.0f};
+    // Pulled from the vehicle's maxForwardSpeed rather than duplicated in the
+    // tyre profile. Negative means "use the profile's own value".
+    float speedReferenceMps{-1.0f};
     TyreWheelParams wheels[kMaxWheels]{};
     int wheelCount{0};
 
@@ -63,8 +73,14 @@ private:
     struct WheelState {
         Resonator rollBand{};
         Resonator squealBand{};
+        // Lock-up gets its own band because it is a wide, low graunch while the
+        // squeal is a narrow, high sing - one filter cannot be both, and a
+        // locked wheel is still scrubbing sideways, so they coexist.
+        Resonator skidBand{};
         float rollHighpass{0.0f};
         float squealEnvelope{0.0f};
+        float skidEnvelope{0.0f};
+        float judderPhase{0.0f};
         float grainPhase{0.0f};
         float rumblePhase{0.0f};
         float impactEnvelope{0.0f};

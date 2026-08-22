@@ -284,6 +284,15 @@ struct GraphicsProfile {
     // Runtime rubber laid by sliding tyres, emitted as decals. maxSkidMarks is a
     // genuine performance knob - every mark is its own draw call until the
     // renderer gains instancing - so it is the one field the quality presets set.
+    // Tyre smoke, emitted from the same per-wheel slip the marks are drawn
+    // from (see TyreSmokeSystem).
+    bool tyreSmoke{true};
+    float tyreSmokeSlipThreshold{0.40f};
+    float tyreSmokeOpacity{0.34f};
+    float tyreSmokeLifetime{1.7f};
+    float tyreSmokeSpawnRate{55.0f};
+    int tyreSmokeMaxParticles{900};
+
     bool skidMarks{true};
     float skidMarkSlipThreshold{0.25f};
     float skidMarkSpacing{0.35f};
@@ -424,6 +433,16 @@ enum class DecalBlendMode {
     AlphaBlend
 };
 
+// One camera-facing puff of tyre smoke, in world space.
+struct SmokeParticleDrawCommand {
+    glm::vec3 position{0.0f};
+    float radius{0.5f};
+    glm::vec4 color{1.0f};
+    // Each puff spins slowly and starts at its own angle, so a stream of them
+    // does not read as one shape stamped repeatedly.
+    float rotation{0.0f};
+};
+
 struct DecalDrawCommand {
     // Full box volume in world space; the transform's scale is the box size.
     // Projection runs along the volume's local -Y.
@@ -521,6 +540,9 @@ public:
     void SubmitLight(const LightDrawCommand& cmd);
     void SubmitReflectionProbe(const ReflectionProbeDrawCommand& cmd);
     void SubmitDecal(const DecalDrawCommand& cmd);
+    // One camera-facing puff of tyre smoke. Accumulated like decals and drawn
+    // in a single instanced pass, so a full plume costs one draw call.
+    void SubmitSmokeParticle(const SmokeParticleDrawCommand& cmd);
     void SubmitWeatherShelter(const WeatherShelterDrawCommand& cmd);
     void SubmitLine(const DebugLineCommand& cmd);
     void Flush();
@@ -674,6 +696,7 @@ private:
     // other translucent geometry. This is what gives correct occlusion and
     // real parallax with camera translation, not just rotation.
     void RenderRainParticles(const ViewportTarget& target);
+    void RenderSmokeParticles(const ViewportTarget& target);
     void DestroyViewportTarget(ViewportTarget& target);
     ViewportTarget& GetViewportTarget(ViewportRenderTarget target);
     const ViewportTarget& GetViewportTarget(ViewportRenderTarget target) const;
@@ -711,6 +734,7 @@ private:
     std::vector<LightDrawCommand> lightDrawList_;
     std::vector<ReflectionProbeDrawCommand> reflectionProbeDrawList_;
     std::vector<DecalDrawCommand> decalDrawList_;
+    std::vector<SmokeParticleDrawCommand> smokeDrawList_;
     std::vector<WeatherShelterDrawCommand> weatherShelterDrawList_;
     std::unordered_map<std::string, unsigned int> reflectionProbeCubemapCache_;
     struct RealtimeReflectionProbeState {
@@ -779,8 +803,16 @@ private:
     std::unique_ptr<Shader> motionBlurShader_;
     std::unique_ptr<Shader> weatherShader_;
     std::unique_ptr<Shader> rainParticleShader_;
+    std::unique_ptr<Shader> smokeParticleShader_;
     unsigned int rainQuadVao_{0};
     unsigned int rainQuadVbo_{0};
+    // Smoke shares the quad-corner idea with rain but needs a second, dynamic
+    // buffer: rain derives every drop from its instance id, smoke has to be
+    // told where each puff actually is.
+    unsigned int smokeQuadVao_{0};
+    unsigned int smokeQuadVbo_{0};
+    unsigned int smokeInstanceVbo_{0};
+    std::size_t smokeInstanceCapacity_{0};
     std::unique_ptr<Shader> depthOfFieldShader_;
     std::unique_ptr<Shader> taaShader_;
     std::unique_ptr<Shader> luminanceHistogramShader_;

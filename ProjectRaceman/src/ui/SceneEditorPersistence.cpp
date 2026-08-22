@@ -26,15 +26,13 @@ void WriteMeshLodSettings(std::ostream& out, const MeshFilterComponent& filter, 
     out << "]";
 }
 
-// Shared by the scene and prefab readers. Absent fields keep their defaults,
-// and `overridesProfileAudio` stays false for scenes authored before the 3D
-// settings and triggers moved onto the component, so the runtime knows to fall
-// back to the profile's copy for those.
+// Shared by the scene and prefab readers. Absent fields keep their defaults.
+// The component is the only home for emission and trigger data - there is no
+// profile fallback, so nothing here can be shadowed by an asset.
 void ReadVehicleSoundComponent(const raceman::physics::json::Object& component,
                                VehicleSoundComponent& vehicleSound) {
     ReadBool(component, "enabled", vehicleSound.enabled);
     ReadString(component, "profilePath", vehicleSound.profilePath);
-    ReadBool(component, "overridesProfileAudio", vehicleSound.overridesProfileAudio);
     if (auto it = component.find("spatialBlend"); it != component.end() && it->second.is_number()) {
         vehicleSound.spatialBlend = static_cast<float>(it->second.as_number());
     }
@@ -1171,7 +1169,6 @@ void WriteSceneObjectComponentBody(std::ostream& out, const SceneObject& o, Scen
         out << "          \"spatialBlend\": " << o.vehicleSound.spatialBlend << ",\n";
         out << "          \"minDistance\": " << o.vehicleSound.minDistance << ",\n";
         out << "          \"maxDistance\": " << o.vehicleSound.maxDistance << ",\n";
-        out << "          \"overridesProfileAudio\": " << (o.vehicleSound.overridesProfileAudio ? "true" : "false") << ",\n";
         out << "          \"triggerSounds\": [\n";
         for (std::size_t ti = 0; ti < o.vehicleSound.triggerSounds.size(); ++ti) {
             const VehicleSoundTriggerEntry& trig = o.vehicleSound.triggerSounds[ti];
@@ -3653,6 +3650,12 @@ void SceneEditor::LoadProject() {
                     if (auto it = graphics.find("weatherAutoWetness"); it != graphics.end() && it->second.is_bool()) graphicsProfile_.weatherAutoWetness = it->second.as_bool();
                     if (auto it = graphics.find("weatherWetRate"); it != graphics.end() && it->second.is_number()) graphicsProfile_.weatherWetRate = (std::clamp)(static_cast<float>(it->second.as_number()), 0.001f, 4.0f);
                     if (auto it = graphics.find("weatherDryRate"); it != graphics.end() && it->second.is_number()) graphicsProfile_.weatherDryRate = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0005f, 4.0f);
+                    if (auto it = graphics.find("tyreSmoke"); it != graphics.end() && it->second.is_bool()) graphicsProfile_.tyreSmoke = it->second.as_bool();
+                    if (auto it = graphics.find("tyreSmokeSlipThreshold"); it != graphics.end() && it->second.is_number()) graphicsProfile_.tyreSmokeSlipThreshold = (std::clamp)(static_cast<float>(it->second.as_number()), 0.02f, 1.0f);
+                    if (auto it = graphics.find("tyreSmokeOpacity"); it != graphics.end() && it->second.is_number()) graphicsProfile_.tyreSmokeOpacity = (std::clamp)(static_cast<float>(it->second.as_number()), 0.0f, 1.0f);
+                    if (auto it = graphics.find("tyreSmokeLifetime"); it != graphics.end() && it->second.is_number()) graphicsProfile_.tyreSmokeLifetime = (std::clamp)(static_cast<float>(it->second.as_number()), 0.1f, 12.0f);
+                    if (auto it = graphics.find("tyreSmokeSpawnRate"); it != graphics.end() && it->second.is_number()) graphicsProfile_.tyreSmokeSpawnRate = (std::clamp)(static_cast<float>(it->second.as_number()), 1.0f, 400.0f);
+                    if (auto it = graphics.find("tyreSmokeMaxParticles"); it != graphics.end() && it->second.is_number()) graphicsProfile_.tyreSmokeMaxParticles = (std::clamp)(static_cast<int>(it->second.as_number()), 16, 8000);
                     if (auto it = graphics.find("skidMarks"); it != graphics.end() && it->second.is_bool()) graphicsProfile_.skidMarks = it->second.as_bool();
                     if (auto it = graphics.find("skidMarkSlipThreshold"); it != graphics.end() && it->second.is_number()) graphicsProfile_.skidMarkSlipThreshold = (std::clamp)(static_cast<float>(it->second.as_number()), 0.02f, 4.0f);
                     if (auto it = graphics.find("skidMarkSpacing"); it != graphics.end() && it->second.is_number()) graphicsProfile_.skidMarkSpacing = (std::clamp)(static_cast<float>(it->second.as_number()), 0.02f, 8.0f);
@@ -4086,6 +4089,12 @@ void SceneEditor::SaveProject() {
         out << "    \"weatherAutoWetness\": " << (graphicsProfile_.weatherAutoWetness ? "true" : "false") << ",\n";
         out << "    \"weatherWetRate\": " << graphicsProfile_.weatherWetRate << ",\n";
         out << "    \"weatherDryRate\": " << graphicsProfile_.weatherDryRate << ",\n";
+        out << "    \"tyreSmoke\": " << (graphicsProfile_.tyreSmoke ? "true" : "false") << ",\n";
+        out << "    \"tyreSmokeSlipThreshold\": " << graphicsProfile_.tyreSmokeSlipThreshold << ",\n";
+        out << "    \"tyreSmokeOpacity\": " << graphicsProfile_.tyreSmokeOpacity << ",\n";
+        out << "    \"tyreSmokeLifetime\": " << graphicsProfile_.tyreSmokeLifetime << ",\n";
+        out << "    \"tyreSmokeSpawnRate\": " << graphicsProfile_.tyreSmokeSpawnRate << ",\n";
+        out << "    \"tyreSmokeMaxParticles\": " << graphicsProfile_.tyreSmokeMaxParticles << ",\n";
         out << "    \"skidMarks\": " << (graphicsProfile_.skidMarks ? "true" : "false") << ",\n";
         out << "    \"skidMarkSlipThreshold\": " << graphicsProfile_.skidMarkSlipThreshold << ",\n";
         out << "    \"skidMarkSpacing\": " << graphicsProfile_.skidMarkSpacing << ",\n";

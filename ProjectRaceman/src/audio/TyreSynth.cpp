@@ -22,6 +22,7 @@ TyreSynth::TyreSynth() {
     for (auto& wheel : wheels_) {
         wheel.rollBand.Reset();
         wheel.squealBand.Reset();
+        wheel.skidBand.Reset();
     }
 }
 
@@ -76,7 +77,10 @@ void TyreSynth::Render(float* output, int frameCount, int sampleRate) {
     const int surfaceCount = static_cast<int>(p.surfaces.size());
 
     const float speed = (std::max)(0.0f, params.speedMps);
-    const float speedNorm = Clamp01(speed / (std::max)(1.0f, p.rollSpeedRefMps));
+    // The vehicle's own top speed wins when supplied.
+    const float speedRef = (params.speedReferenceMps > 0.0f) ? params.speedReferenceMps
+                                                             : p.rollSpeedRefMps;
+    const float speedNorm = Clamp01(speed / (std::max)(1.0f, speedRef));
     const float wheelCount = static_cast<float>((std::max)(1, params.wheelCount));
 
     // Per-wheel, per-block coefficients.
@@ -87,6 +91,8 @@ void TyreSynth::Render(float* output, int frameCount, int sampleRate) {
         float rumbleGain{0.0f}, rumbleRate{0.0f};
         float squealF{0.0f}, squealQ{0.2f}, squealTarget{0.0f};
         float squealAlpha{0.0f};
+        float skidF{0.0f}, skidQ{1.0f}, skidTarget{0.0f};
+        float skidAlpha{0.0f}, judderRate{0.0f}, judderDepth{0.0f};
         float impact{0.0f};
     };
     WheelBlock blocks[TyreSynthParams::kMaxWheels]{};
@@ -96,7 +102,14 @@ void TyreSynth::Render(float* output, int frameCount, int sampleRate) {
         WheelBlock& blk = blocks[w];
         blk.impact = wheel.impact;
         if (!wheel.grounded) {
-            // Airborne wheels still get their impact envelope on landing.
+            // Airborne wheels still get their impact envelope on landing, and
+            // still need release rates or their tails would hang forever.
+            blk.squealAlpha = 1.0f - std::exp(-1.0f / (sr * (std::max)(0.005f, p.squealReleaseSeconds)));
+            blk.skidAlpha = 1.0f - std::exp(-1.0f / (sr * (std::max)(0.005f, p.lockReleaseSeconds)));
+            blk.squealF = 2.0f * std::sin(3.14159265f * (std::clamp)(p.squealBaseHz, 40.0f, nyquist * 0.9f) / sr);
+            blk.squealQ = 1.0f / (std::max)(0.5f, p.squealResonance);
+            blk.skidF = 2.0f * std::sin(3.14159265f * (std::clamp)(p.lockCentreHz, 40.0f, nyquist * 0.9f) / sr);
+            blk.skidQ = 1.0f / (std::max)(0.5f, 6.0f - 5.5f * Clamp01(p.lockBandwidth));
             continue;
         }
         blk.active = true;
@@ -132,20 +145,76 @@ void TyreSynth::Render(float* output, int frameCount, int sampleRate) {
         blk.rumbleGain = mix(sa.rumbleGain, sb.rumbleGain) * speedNorm / wheelCount;
         blk.rumbleRate = (std::min)(0.45f, mix(sa.rumbleHz, sb.rumbleHz) * speedNorm * 2.0f / sr);
 
-        // Squeal. Slip is continuous, so the tyre sings progressively instead
-        // of a sample firing at a threshold.
+        // --- what kind of slip is this? -----------------------------------
+        // Normalise against a speed-scaled reference, not a fixed m/s. A tyre
+        // behaves by slip RATIO: 3 m/s of scrub is a lurid slide at 20 km/h and
+        // barely a twitch at 250 km/h. The old fixed divisor pegged every
+        // corner at full slip above walking pace, which is exactly why the
+        // squeal did not track what the car was doing.
+        const float slipRef = (std::max)(0.5f, (std::max)(p.slipReferenceMps,
+                                                          speed * p.slipReferenceFraction));
+        const float lateralNorm = Clamp01(wheel.lateralSlideMps / slipRef);
+        const float longNorm    = Clamp01(wheel.longitudinalSlideMps / slipRef);
+
+        // Load term, centred so an evenly balanced car sits at unity rather
+        // than at half volume.
+        const float slipLoadTerm = (std::clamp)(0.40f + 1.20f * load, 0.30f, 1.70f);
+
+        // --- scrub squeal ---------------------------------------------------
+        // Lateral scrub is the singing. A spinning wheel adds to it; a LOCKED
+        // one does not - a locked tyre has stopped turning and graunches
+        // instead, which is handled below.
         const float slipSpan = (std::max)(0.01f, p.squealSlipFull - p.squealSlipThreshold);
-        const float slipAmount = Clamp01((wheel.slip - p.squealSlipThreshold) / slipSpan);
-        const float squealHz = (std::clamp)(p.squealBaseHz + p.squealRiseHz * slipAmount,
-                                            40.0f, nyquist * 0.9f);
+        const float driveNorm = wheel.spinning ? longNorm : 0.0f;
+        const float scrubRaw = (std::max)(lateralNorm, driveNorm * 0.85f);
+        const float scrub = Clamp01((scrubRaw - p.squealSlipThreshold) / slipSpan);
+
+        // Wheelspin sings higher than a scrub and genuinely climbs, because the
+        // contact patch speed is climbing with the wheel. Lateral scrub sits at
+        // tread-block resonance and only drifts.
+        const float spinBlend = (driveNorm > lateralNorm) ? Clamp01(driveNorm) : 0.0f;
+        float squealHz = p.squealBaseHz + p.squealRiseHz * scrub;
+        squealHz += spinBlend * ((p.spinBaseHz - p.squealBaseHz)
+                                 + p.spinRiseHz * longNorm - p.squealRiseHz * scrub);
+        // A loaded tyre has a longer contact patch and sings lower.
+        squealHz *= 1.0f - p.squealLoadPitchInfluence * (load - 0.5f);
+        squealHz = (std::clamp)(squealHz, 40.0f, nyquist * 0.9f);
+
         blk.squealF = 2.0f * std::sin(3.14159265f * squealHz / sr);
         blk.squealQ = 1.0f / (std::max)(0.5f, p.squealResonance);
-        blk.squealTarget = slipAmount * mix(sa.squealGain, sb.squealGain) * load / wheelCount;
+        const float voiceGain = mix(sa.squealGain, sb.squealGain)
+                              * (1.0f + spinBlend * (p.spinGain - 1.0f));
+        blk.squealTarget = scrub * voiceGain * slipLoadTerm / wheelCount;
 
         const float tau = (blk.squealTarget > wheels_[w].squealEnvelope)
             ? (std::max)(0.005f, p.squealAttackSeconds)
             : (std::max)(0.005f, p.squealReleaseSeconds);
-        blk.squealAlpha = 1.0f - std::exp(-static_cast<float>(frameCount) / (sr * tau));
+        blk.squealAlpha = 1.0f - std::exp(-1.0f / (sr * tau));
+
+        // --- lock-up --------------------------------------------------------
+        // A locked wheel is at maximum slip by definition, so its level cannot
+        // come from slip - it comes from how fast the car is still travelling.
+        // Pitch deliberately stays put: a lock-up that sweeps upward with slip
+        // is the single most synthetic-sounding mistake in tyre audio.
+        const float speedTerm = Clamp01(speed / (std::max)(1.0f, p.lockFullSpeedMps));
+        const float lockHz = (std::clamp)(p.lockCentreHz, 40.0f, nyquist * 0.9f);
+        // Filter coefficients are computed whether or not the wheel is locked,
+        // so the release tail rings out of a real filter instead of collapsing.
+        blk.skidF = 2.0f * std::sin(3.14159265f * lockHz / sr);
+        // Wide band: this is a roar, not a tone. Bandwidth 0 -> Q 6, 1 -> Q 0.5.
+        blk.skidQ = 1.0f / (std::max)(0.5f, 6.0f - 5.5f * Clamp01(p.lockBandwidth));
+        // Stick-slip judder, faster the quicker the car is moving. Without it a
+        // lock-up is just filtered noise.
+        blk.judderRate = (std::min)(0.45f, p.lockJudderHz * (0.35f + 0.65f * speedTerm) / sr);
+        blk.judderDepth = Clamp01(p.lockJudderDepth);
+        if (wheel.locked) {
+            blk.skidTarget = speedTerm * mix(sa.lockGain, sb.lockGain)
+                           * p.lockGain * slipLoadTerm / wheelCount;
+        }
+        const float lockTau = (blk.skidTarget > wheels_[w].skidEnvelope)
+            ? (std::max)(0.005f, p.lockAttackSeconds)
+            : (std::max)(0.005f, p.lockReleaseSeconds);
+        blk.skidAlpha = 1.0f - std::exp(-1.0f / (sr * lockTau));
     }
 
     // Impacts are edge-triggered on the game thread; latch them here.
@@ -192,14 +261,31 @@ void TyreSynth::Render(float* output, int frameCount, int sampleRate) {
                     mixed += saw * saw * saw * blk.rumbleGain;
                 }
 
-                // --- slip squeal ---
-                state.squealEnvelope += (blk.squealTarget - state.squealEnvelope) * blk.squealAlpha;
-                if (state.squealEnvelope > 1.0e-4f) {
-                    const float sing = state.squealBand.Process(NextNoise(), blk.squealF, blk.squealQ);
-                    mixed += sing * state.squealEnvelope * p.squealMasterGain;
-                }
-            } else {
-                state.squealEnvelope *= 0.995f;
+            }
+
+            // Slip voices run whether or not the wheel is grounded: an airborne
+            // wheel simply targets zero and releases at the authored rate, so a
+            // tyre lifting over a kerb rings out instead of being cut off. The
+            // old branch silenced it with a per-sample 0.995 - a ~4 ms chop.
+
+            // --- scrub squeal / wheelspin ---
+            state.squealEnvelope += (blk.squealTarget - state.squealEnvelope) * blk.squealAlpha;
+            if (state.squealEnvelope > 1.0e-4f) {
+                const float sing = state.squealBand.Process(NextNoise(), blk.squealF, blk.squealQ);
+                mixed += sing * state.squealEnvelope * p.squealMasterGain;
+            }
+
+            // --- lock-up graunch ---
+            state.skidEnvelope += (blk.skidTarget - state.skidEnvelope) * blk.skidAlpha;
+            if (state.skidEnvelope > 1.0e-4f) {
+                state.judderPhase += blk.judderRate;
+                if (state.judderPhase >= 1.0f) state.judderPhase -= 1.0f;
+                // Stick-slip: rubber grabs and tears rather than sliding
+                // smoothly, so the level shudders instead of holding flat.
+                const float judder = 1.0f - blk.judderDepth
+                                   * (0.5f - 0.5f * std::cos(kTwoPi * state.judderPhase));
+                const float graunch = state.skidBand.Process(NextNoise(), blk.skidF, blk.skidQ);
+                mixed += graunch * state.skidEnvelope * judder * p.squealMasterGain;
             }
 
             // --- kerb strikes and landings ---

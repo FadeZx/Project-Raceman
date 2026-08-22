@@ -243,13 +243,9 @@ struct EngineSoundProfile {
     EnginePerspectiveSettings perspective;
     EngineMixSettings        mix;
 
-    float spatialBlend{1.0f};
-    float minDistance{3.0f};
-    float maxDistance{80.0f};
-
-    // Discrete sample-based events kept from the old system. Backfire is now
-    // synthesised through the exhaust waveguide and is no longer a trigger.
-    std::vector<VehicleSoundTriggerEntry> triggerSounds;
+    // Emission (spatial blend, min/max distance) and trigger clips are NOT
+    // here. They describe how a particular car emits, so they live on the
+    // VehicleSound component. A profile describes only how the engine sounds.
 };
 
 // -------------------------------------------------------------------------

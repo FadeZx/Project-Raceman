@@ -5697,6 +5697,17 @@ SkidMarkDecalTemplate SceneEditor::ResolveSkidMarkDecalTemplate(const std::strin
     return result;
 }
 
+TyreSmokeSettings SceneEditor::TyreSmokeSettingsFromProfile(const GraphicsProfile& profile) {
+    TyreSmokeSettings settings;
+    settings.enabled = profile.tyreSmoke;
+    settings.slipThreshold = profile.tyreSmokeSlipThreshold;
+    settings.opacity = profile.tyreSmokeOpacity;
+    settings.lifetime = profile.tyreSmokeLifetime;
+    settings.spawnRate = profile.tyreSmokeSpawnRate;
+    settings.maxParticles = profile.tyreSmokeMaxParticles;
+    return settings;
+}
+
 SkidMarkSettings SceneEditor::SkidMarkSettingsFromProfile(const GraphicsProfile& profile) {
     SkidMarkSettings settings;
     settings.enabled = profile.skidMarks;
@@ -5946,6 +5957,12 @@ void SceneEditor::SubmitDraws(Renderer& renderer, bool editorInteraction) {
         skidMarks_.Submit(renderer, skidSettings, skidTexture,
                           enableFrustumCulling_ ? frustumPlanes : nullptr);
     }
+
+    // Tyre smoke. Same culling planes; a plume behind the car is the common
+    // case and it is pure overdraw when it is off screen.
+    tyreSmoke_.Submit(renderer,
+                      TyreSmokeSettingsFromProfile(renderer.GetSettings().profile),
+                      enableFrustumCulling_ ? frustumPlanes : nullptr);
 
     for (int i = 0; i < static_cast<int>(objects_.size()); ++i) {
         auto& o = objects_[i];

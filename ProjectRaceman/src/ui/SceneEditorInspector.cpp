@@ -3619,36 +3619,7 @@ void SceneEditor::RenderInspectorPanel() {
                 // --- emission: a property of this vehicle, not of the engine ---
                 ImGui::Spacing();
                 ImGui::SeparatorText("Emission");
-                if (!obj.vehicleSound.overridesProfileAudio) {
-                    ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.28f, 1.0f),
-                                       "Still using the profile's copy of these settings.");
-                    if (ImGui::Button("Move onto this component##VS")) {
-                        PushUndoState();
-                        // Lift whatever the profile currently supplies so nothing
-                        // changes audibly; from here the component is the truth.
-                        const std::string absolute = ProjectAssetPathToAbsolute(currentProfile).string();
-                        if (IsEngineSoundAssetPath(currentProfile)) {
-                            const EngineSoundProfile loaded = EngineSoundProfileLoader::loadFromFile(absolute);
-                            obj.vehicleSound.spatialBlend  = loaded.spatialBlend;
-                            obj.vehicleSound.minDistance   = loaded.minDistance;
-                            obj.vehicleSound.maxDistance   = loaded.maxDistance;
-                            obj.vehicleSound.triggerSounds = loaded.triggerSounds;
-                        } else {
-                            const VehicleSoundProfile loaded = VehicleSoundProfileLoader::loadFromFile(absolute);
-                            obj.vehicleSound.spatialBlend  = loaded.spatialBlend;
-                            obj.vehicleSound.minDistance   = loaded.minDistance;
-                            obj.vehicleSound.maxDistance   = loaded.maxDistance;
-                            obj.vehicleSound.triggerSounds = loaded.triggerSounds;
-                        }
-                        obj.vehicleSound.overridesProfileAudio = true;
-                        if (onDirty_) onDirty_();
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Copies the 3D settings and trigger clips out of the profile\n"
-                                          "onto this vehicle. The profile then only describes how the\n"
-                                          "engine sounds, which is all it should ever have described.");
-                    }
-                } else {
+                {
                     auto vsDrag = [&](const char* label, float* value, float speed, float lo, float hi,
                                       const char* fmt) {
                         if (ImGui::DragFloat(label, value, speed, lo, hi, fmt)) {
