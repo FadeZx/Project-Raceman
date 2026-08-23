@@ -309,7 +309,11 @@ void ApplyArcadeVehicleGrounding(RuntimeVehicleInstance& runtimeVehicle,
                 contact.wheelCenterPosition = mountWorld + glm::vec3(0.0f, -(sample.restLength + sample.radius), 0.0f);
                 contact.contactPosition = contact.wheelCenterPosition - glm::vec3(0.0f, sample.radius, 0.0f);
             }
-            contact.angularVelocity = speed / (std::max)(0.05f, sample.radius);
+            // angularVelocity is not touched here: UpdateArcadeWheelSlip owns it
+            // as real per-wheel state integrated from torque, and reads back
+            // whatever it left last frame as the starting point for this one.
+            // Resetting it to a no-slip assumption here, right before that read,
+            // erased a locked or spinning wheel's memory every single tick.
         }
     } else {
         runtimeVehicle.arcadeVerticalVelocity = 0.0f;
@@ -334,7 +338,10 @@ void ApplyArcadeVehicleGrounding(RuntimeVehicleInstance& runtimeVehicle,
             contact.normalForce = 0.0f;
             contact.wheelCenterPosition = mountWorld + glm::vec3(0.0f, -(restLength + radius), 0.0f);
             contact.contactPosition = contact.wheelCenterPosition - glm::vec3(0.0f, radius, 0.0f);
-            contact.angularVelocity = speed / radius;
+            // Same reasoning as the grounded branch above: leave angularVelocity
+            // for UpdateArcadeWheelSlip to carry forward, so a wheel that was
+            // locked or spinning when the car left the ground stays that way
+            // in the air instead of snapping to a fictional no-slip roll.
         }
     }
 }

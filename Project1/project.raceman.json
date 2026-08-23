@@ -123,12 +123,12 @@
     "skidMarkDecalPrefab": "assets/Prefabs/Tire_Decals.prefab.json"
   },
   "skybox": [
-    "D:/Project-Raceman/Project1/assets/skybox/noon/posx.jpg",
-    "D:/Project-Raceman/Project1/assets/skybox/noon/negx.jpg",
-    "D:/Project-Raceman/Project1/assets/skybox/noon/posy.jpg",
-    "D:/Project-Raceman/Project1/assets/skybox/noon/negy.jpg",
-    "D:/Project-Raceman/Project1/assets/skybox/noon/posz.jpg",
-    "D:/Project-Raceman/Project1/assets/skybox/noon/negz.jpg"
+    "assets/skybox/sunset/px.jpg",
+    "assets/skybox/sunset/nx.jpg",
+    "assets/skybox/sunset/py.jpg",
+    "assets/skybox/sunset/ny.jpg",
+    "assets/skybox/sunset/pz.jpg",
+    "assets/skybox/sunset/nz.jpg"
   ],
   "editorState": {
     "selectedProjectDirectory": "assets/car/mercedes-benz-amg-gt3-red-bull",
@@ -136,7 +136,15 @@
     "selectedInputDevicePage": 0,
     "selectedWheelSettingsProfileIndex": 0,
     "projectInputTestActive": true,
-    "projectInputTestDeviceIndex": 3
+    "projectInputTestDeviceIndex": 3,
+    "inputUiProfileSectionOpen": false,
+    "inputUiActionBindingsSectionOpen": false,
+    "inputUiDevicesSectionOpen": false,
+    "inputUiWheelCalibrationSectionOpen": false,
+    "inputUiWheelDetectedDevicesOpen": true,
+    "inputUiWheelSteeringOpen": true,
+    "inputUiWheelPedalsOpen": true,
+    "inputUiWheelForceFeedbackOpen": true
   },
   "tags": [
     "Untagged",
@@ -990,7 +998,7 @@
             "negativeKey": -1,
             "positiveKey": -1,
             "axis": -1,
-            "button": 5,
+            "button": 2,
             "invert": false,
             "deadzone": 0.1,
             "calibrationMin": -1,
@@ -1006,7 +1014,7 @@
             "negativeKey": -1,
             "positiveKey": -1,
             "axis": -1,
-            "button": 4,
+            "button": 0,
             "invert": false,
             "deadzone": 0.1,
             "calibrationMin": -1,
@@ -1338,6 +1346,22 @@
             "action": "clutch",
             "deviceType": "Keyboard",
             "source": "Key",
+            "key": -1,
+            "negativeKey": -1,
+            "positiveKey": -1,
+            "axis": -1,
+            "button": -1,
+            "invert": false,
+            "deadzone": 0.1,
+            "calibrationMin": -1,
+            "calibrationCenter": 0,
+            "calibrationMax": 1,
+            "responseExponent": 1
+          },
+          {
+            "action": "clutch",
+            "deviceType": "Gamepad",
+            "source": "Axis",
             "key": -1,
             "negativeKey": -1,
             "positiveKey": -1,

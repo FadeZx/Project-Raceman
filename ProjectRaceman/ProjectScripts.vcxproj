@@ -32,6 +32,7 @@
     <ClInclude Include="src\scripting\ObjectScript.h" />
     <ClInclude Include="src\scripting\ScriptRegistry.h" />
     <ClInclude Include="..\Project1\assets\scripts\CameraOrbit.h" />
+    <ClInclude Include="..\Project1\assets\scripts\CameraOrbitGamepad.h" />
     <ClInclude Include="..\Project1\assets\scripts\CharacterControllerTest.h" />
     <ClInclude Include="..\Project1\assets\scripts\TestPlayerMovement.h" />
     <ClInclude Include="..\Project1\assets\scripts\VirtualCameraSwitcher.h" />
@@ -39,6 +40,7 @@
   <ItemGroup>
     <ClCompile Include="src\scripting\ScriptDllRegistry.cpp" />
     <ClCompile Include="..\Project1\assets\scripts\CameraOrbit.cpp" />
+    <ClCompile Include="..\Project1\assets\scripts\CameraOrbitGamepad.cpp" />
     <ClCompile Include="..\Project1\assets\scripts\CharacterControllerTest.cpp" />
     <ClCompile Include="..\Project1\assets\scripts\TestPlayerMovement.cpp" />
     <ClCompile Include="..\Project1\assets\scripts\VirtualCameraSwitcher.cpp" />

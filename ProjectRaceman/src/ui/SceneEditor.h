@@ -521,6 +521,18 @@ private:
     int selectedWheelSettingsProfileIndex_{0};
     bool projectInputTestActive_{false};
     int projectInputTestDeviceIndex_{0};
+    std::string expandedInputActionDetails_{};
+    std::string listeningInputActionKey_{};
+    // Persisted open/closed state for the Input settings panel's collapsible
+    // sections, so the layout a user leaves behind survives project reload.
+    bool inputUiProfileSectionOpen_{true};
+    bool inputUiActionBindingsSectionOpen_{true};
+    bool inputUiDevicesSectionOpen_{true};
+    bool inputUiWheelCalibrationSectionOpen_{false};
+    bool inputUiWheelDetectedDevicesOpen_{true};
+    bool inputUiWheelSteeringOpen_{true};
+    bool inputUiWheelPedalsOpen_{true};
+    bool inputUiWheelForceFeedbackOpen_{true};
 
     // shared primitives
     std::unordered_map<std::string, PrimitiveMesh> builtInPrimitiveMeshes_;

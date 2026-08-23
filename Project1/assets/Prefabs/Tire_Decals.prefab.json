@@ -20,7 +20,7 @@
         {
           "type": "Decal",
           "enabled": true,
-          "texturePath": "D:/Project-Raceman/Project1/assets/track_models/suzuka-circuit-2001-layout/textures/tyres_add1_313.png",
+          "texturePath": "assets/track_models/suzuka-circuit-2001-layout/textures/suzukibananini_313_albedo.png",
           "color": [0, 0, 0, 1],
           "opacity": 1,
           "angleFadeDegrees": 85,

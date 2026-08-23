@@ -3675,7 +3675,8 @@ void SceneEditor::LoadProject() {
                     const auto& arr = skyboxIt->second.as_array();
                     for (std::size_t fi = 0; fi < 6 && fi < arr.size(); ++fi) {
                         if (arr[fi].is_string()) {
-                            skyboxFaces_[fi] = arr[fi].as_string();
+                            const std::string faceIn = arr[fi].as_string();
+                            skyboxFaces_[fi] = faceIn.empty() ? faceIn : ResolveEditorPath(faceIn).string();
                         }
                     }
                 }
@@ -3710,6 +3711,14 @@ void SceneEditor::LoadProject() {
                     if (auto it = editorState.find("projectInputTestDeviceIndex"); it != editorState.end() && it->second.is_number()) {
                         projectInputTestDeviceIndex_ = (std::clamp)(static_cast<int>(it->second.as_number()), 0, 3);
                     }
+                    ReadBool(editorState, "inputUiProfileSectionOpen", inputUiProfileSectionOpen_);
+                    ReadBool(editorState, "inputUiActionBindingsSectionOpen", inputUiActionBindingsSectionOpen_);
+                    ReadBool(editorState, "inputUiDevicesSectionOpen", inputUiDevicesSectionOpen_);
+                    ReadBool(editorState, "inputUiWheelCalibrationSectionOpen", inputUiWheelCalibrationSectionOpen_);
+                    ReadBool(editorState, "inputUiWheelDetectedDevicesOpen", inputUiWheelDetectedDevicesOpen_);
+                    ReadBool(editorState, "inputUiWheelSteeringOpen", inputUiWheelSteeringOpen_);
+                    ReadBool(editorState, "inputUiWheelPedalsOpen", inputUiWheelPedalsOpen_);
+                    ReadBool(editorState, "inputUiWheelForceFeedbackOpen", inputUiWheelForceFeedbackOpen_);
                 }
 
                 auto physicsIt = object.find("physics");
@@ -4108,7 +4117,14 @@ void SceneEditor::SaveProject() {
         out << "  },\n";
         out << "  \"skybox\": [\n";
         for (std::size_t fi = 0; fi < skyboxFaces_.size(); ++fi) {
-            out << "    \"" << JsonEscape(NormalizeSlashes(skyboxFaces_[fi])) << "\"" << (fi + 1 < skyboxFaces_.size() ? ",\n" : "\n");
+            std::string faceOut = skyboxFaces_[fi];
+            if (!faceOut.empty()) {
+                const fs::path facePath(NormalizeSlashes(faceOut));
+                if (facePath.is_absolute() && IsUnderPath(facePath, FindAssetsRoot())) {
+                    faceOut = ToProjectAssetPath(facePath, FindAssetsRoot());
+                }
+            }
+            out << "    \"" << JsonEscape(NormalizeSlashes(faceOut)) << "\"" << (fi + 1 < skyboxFaces_.size() ? ",\n" : "\n");
         }
         out << "  ],\n";
         out << "  \"editorState\": {\n";
@@ -4117,7 +4133,15 @@ void SceneEditor::SaveProject() {
         out << "    \"selectedInputDevicePage\": " << selectedInputDevicePage_ << ",\n";
         out << "    \"selectedWheelSettingsProfileIndex\": " << selectedWheelSettingsProfileIndex_ << ",\n";
         out << "    \"projectInputTestActive\": " << (projectInputTestActive_ ? "true" : "false") << ",\n";
-        out << "    \"projectInputTestDeviceIndex\": " << projectInputTestDeviceIndex_ << "\n";
+        out << "    \"projectInputTestDeviceIndex\": " << projectInputTestDeviceIndex_ << ",\n";
+        out << "    \"inputUiProfileSectionOpen\": " << (inputUiProfileSectionOpen_ ? "true" : "false") << ",\n";
+        out << "    \"inputUiActionBindingsSectionOpen\": " << (inputUiActionBindingsSectionOpen_ ? "true" : "false") << ",\n";
+        out << "    \"inputUiDevicesSectionOpen\": " << (inputUiDevicesSectionOpen_ ? "true" : "false") << ",\n";
+        out << "    \"inputUiWheelCalibrationSectionOpen\": " << (inputUiWheelCalibrationSectionOpen_ ? "true" : "false") << ",\n";
+        out << "    \"inputUiWheelDetectedDevicesOpen\": " << (inputUiWheelDetectedDevicesOpen_ ? "true" : "false") << ",\n";
+        out << "    \"inputUiWheelSteeringOpen\": " << (inputUiWheelSteeringOpen_ ? "true" : "false") << ",\n";
+        out << "    \"inputUiWheelPedalsOpen\": " << (inputUiWheelPedalsOpen_ ? "true" : "false") << ",\n";
+        out << "    \"inputUiWheelForceFeedbackOpen\": " << (inputUiWheelForceFeedbackOpen_ ? "true" : "false") << "\n";
         out << "  },\n";
         out << "  \"tags\": [\n";
         for (std::size_t tagIndex = 0; tagIndex < projectTags_.size(); ++tagIndex) {

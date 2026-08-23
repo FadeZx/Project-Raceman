@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "../../../Project1/assets/scripts/CameraOrbit.h"
+#include "../../../Project1/assets/scripts/CameraOrbitGamepad.h"
 #include "../../../Project1/assets/scripts/CharacterControllerTest.h"
 #include "../../../Project1/assets/scripts/TestPlayerMovement.h"
 #include "../../../Project1/assets/scripts/VirtualCameraSwitcher.h"
@@ -12,6 +13,10 @@ namespace {
 
 std::unique_ptr<IObjectScript> CreateCameraOrbit() {
     return std::make_unique<scripts::CameraOrbit>();
+}
+
+std::unique_ptr<IObjectScript> CreateCameraOrbitGamepad() {
+    return std::make_unique<scripts::CameraOrbitGamepad>();
 }
 
 std::unique_ptr<IObjectScript> CreateCharacterControllerTest() {
@@ -33,6 +38,7 @@ struct ScriptExportEntry {
 
 const ScriptExportEntry kScripts[] = {
     {"CameraOrbit", "assets/scripts/CameraOrbit.cpp"},
+    {"CameraOrbitGamepad", "assets/scripts/CameraOrbitGamepad.cpp"},
     {"CharacterControllerTest", "assets/scripts/CharacterControllerTest.cpp"},
     {"TestPlayerMovement", "assets/scripts/TestPlayerMovement.cpp"},
     {"VirtualCameraSwitcher", "assets/scripts/VirtualCameraSwitcher.cpp"},
@@ -61,6 +67,7 @@ extern "C" __declspec(dllexport) const char* RacemanGetScriptPath(int index) {
 extern "C" __declspec(dllexport) raceman::IObjectScript* RacemanCreateScriptByName(const char* name) {
     if (name == nullptr) return nullptr;
     if (std::strcmp(name, "CameraOrbit") == 0) return new scripts::CameraOrbit();
+    if (std::strcmp(name, "CameraOrbitGamepad") == 0) return new scripts::CameraOrbitGamepad();
     if (std::strcmp(name, "CharacterControllerTest") == 0) return new scripts::CharacterControllerTest();
     if (std::strcmp(name, "TestPlayerMovement") == 0) return new scripts::TestPlayerMovement();
     if (std::strcmp(name, "VirtualCameraSwitcher") == 0) return new scripts::VirtualCameraSwitcher();
@@ -70,6 +77,7 @@ extern "C" __declspec(dllexport) raceman::IObjectScript* RacemanCreateScriptByNa
 extern "C" __declspec(dllexport) void RacemanRegisterScripts(std::vector<raceman::ScriptDescriptor>& scripts) {
     scripts.clear();
     scripts.push_back({"CameraOrbit", "assets/scripts/CameraOrbit.cpp", &CreateCameraOrbit});
+    scripts.push_back({"CameraOrbitGamepad", "assets/scripts/CameraOrbitGamepad.cpp", &CreateCameraOrbitGamepad});
     scripts.push_back({"CharacterControllerTest", "assets/scripts/CharacterControllerTest.cpp", &CreateCharacterControllerTest});
     scripts.push_back({"TestPlayerMovement", "assets/scripts/TestPlayerMovement.cpp", &CreateTestPlayerMovement});
     scripts.push_back({"VirtualCameraSwitcher", "assets/scripts/VirtualCameraSwitcher.cpp", &CreateVirtualCameraSwitcher});

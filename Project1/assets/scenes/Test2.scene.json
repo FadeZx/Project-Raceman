@@ -149,6 +149,53 @@
                 "value": true
                 }
               ]
+            },
+            {
+              "enabled": true,
+              "scriptName": "CameraOrbitGamepad",
+              "scriptPath": "assets/scripts/CameraOrbitGamepad.cpp",
+              "fields": [
+                {
+                  "name": "targetPosition",
+                  "type": "Vec3",
+                "value": [0, 0, 0]
+                },
+                {
+                  "name": "stickYawSpeed",
+                  "type": "Float",
+                "value": 140
+                },
+                {
+                  "name": "stickPitchSpeed",
+                  "type": "Float",
+                "value": 110
+                },
+                {
+                  "name": "mouseSensitivity",
+                  "type": "Float",
+                "value": 0.18
+                },
+                {
+                  "name": "minPitch",
+                  "type": "Float",
+                "value": -20
+                },
+                {
+                  "name": "maxPitch",
+                  "type": "Float",
+                "value": 75
+                },
+                {
+                  "name": "invertY",
+                  "type": "Bool",
+                "value": false
+                },
+                {
+                  "name": "allowMouse",
+                  "type": "Bool",
+                "value": true
+                }
+              ]
             }
           ]
         },
@@ -6319,7 +6366,7 @@
           "triggerSounds": [
             {"clipPath": "assets/audio/ShiftUpSound.wav", "trigger": "gearUp", "volume": 0.34, "minRpmForBackfire": 4000, "minLateralSpeedForSqueal": 4},
             {"clipPath": "assets/audio/ShiftDownSound.wav", "trigger": "gearDown", "volume": 0.36, "minRpmForBackfire": 4000, "minLateralSpeedForSqueal": 4},
-            {"clipPath": "assets/audio/TireSound.wav", "trigger": "tireSqueal", "volume": 0.5, "minRpmForBackfire": 4000, "minLateralSpeedForSqueal": 4}
+            {"clipPath": "assets/audio/TireSound.wav", "trigger": "tireSqueal", "volume": 0.44, "minRpmForBackfire": 4000, "minLateralSpeedForSqueal": 4}
           ]
         }
       ]
@@ -6509,7 +6556,7 @@
           "assetId": "assets/car/formula 1/F1_chasis.fbx#0",
           "meshIndex": 0,
           "importedMaterialName": "Mat",
-          "diffuseTexturePath": "Substance SpecGloss/Right ones/formula1_DefaultMaterial_Diffuse.png",
+          "diffuseTexturePath": "",
           "pivotOffset": [-0.683868, 53.4748, -0.00106049],
           "lodEnabled": false,
           "lodBias": 1,
@@ -7660,7 +7707,7 @@
           "mode": "TriangleMesh"
 ,
           "surface": {
-            "type": "Asphalt"
+            "type": "Wall"
           }
         }
       ]
@@ -18421,7 +18468,7 @@
           "mode": "TriangleMesh"
 ,
           "surface": {
-            "type": "Asphalt"
+            "type": "Grass"
           }
         }
       ]
@@ -22990,7 +23037,7 @@
         {
           "type": "Decal",
           "enabled": true,
-          "texturePath": "D:/Project-Raceman/Project1/assets/track_models/suzuka-circuit-2001-layout/textures/tyres_add1_313.png",
+          "texturePath": "assets/track_models/suzuka-circuit-2001-layout/textures/suzukibananini_313_albedo.png",
           "color": [0, 0, 0, 1],
           "opacity": 1,
           "angleFadeDegrees": 85,
@@ -23002,6 +23049,6 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_18", "gameobject_16", "gameobject_1635", "gameobject_7", "gameobject_8", "gameobject_11", "gameobject_15"],
-  "inspectorComponentsClosed": ["mesh_393|Collider", "light_8|MeshRenderer", "gameobject_64|Vehicle", "gameobject_11|Vehicle", "camera_1|Cinemachine", "gameobject_64|MeshRenderer", "mesh_21|MeshFilter", "mesh_146|MeshFilter"]
+  "hierarchyClosed": ["gameobject_18", "gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_11", "gameobject_8", "gameobject_15", "gameobject_64"],
+  "inspectorComponentsClosed": ["light_8|MeshRenderer", "mesh_393|Collider", "gameobject_11|Vehicle", "gameobject_64|Vehicle", "camera_1|Cinemachine", "mesh_21|MeshFilter", "gameobject_64|MeshRenderer", "mesh_146|MeshFilter"]
 }

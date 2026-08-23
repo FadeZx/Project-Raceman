@@ -668,9 +668,17 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
             // at the rear turns it left. Positive moment is therefore already a
             // positive yaw rate and needs no sign flip.
             const float yawMoment = (frontForce * axles.frontDistance - rearForce * axles.rearDistance) / wheelbase;
+            // No gripSteerScale here: frontGripCapacity/rearGripCapacity already
+            // carry every grip loss this car has (friction circle brake/drive
+            // use, throttle/lift-off/handbrake weight transfer). gripSteerScale
+            // is the *same* persistent-slip signal applied a second time on top
+            // of forces that already collapsed from it - and since yawDragTorque
+            // below is not grip-scaled at all, that double dip crushes the tyre
+            // torque faster than drag, so a slide snapped straight on its own
+            // instead of needing to be caught. The rotation this car gets is
+            // exactly what the two axle forces earn, once.
             steeringTorque = yawMoment *
                 (std::max)(0.0f, yawDynamics.steeringYawResponse) *
-                gripSteerScale *
                 directionSign;
         } else {
             steeringTorque = -input.steering *

@@ -28,6 +28,10 @@ constexpr float kMinReferenceSpeed = 1.5f;
 // nothing. Scaling spin off road speed alone would make exactly that case, the
 // most obvious rubber-laying event there is, the quietest one.
 constexpr float kSpinSurfaceSpeed = 6.0f;
+// Tyre surface speed has to genuinely outrun the ground by this much before
+// it reads as wheelspin - small numeric noise in the integrated slip should
+// not flicker the effect on and off.
+constexpr float kWheelspinExcessSpeed = 2.0f;
 // Tyre relaxation length. Slip does not appear the instant load does; the
 // carcass has to wind up first, and this is what stops effects strobing on a
 // kerb or on a single-frame input spike.
@@ -93,9 +97,18 @@ void UpdateArcadeWheelSlip(RuntimeVehicleInstance& runtimeVehicle,
         std::fabs(runtimeVehicle.arcadeSpeed),
         (std::max)(1.0f, handling.maxForwardSpeed),
         runtimeVehicle.autoShiftCooldown);
+    // The same longitudinal-grip cut ApplyArcadeDrivetrain already applied to
+    // the throttle this frame (config.tireGrip.longitudinalGrip, surface grip,
+    // and the friction-circle tractionScale). Without it this model is asking
+    // for more force than the drivetrain ever actually sent to the road, so it
+    // reports wheelspin the car itself isn't having.
+    const float driveGripScale = config.tireGrip.enabled
+        ? runtimeVehicle.arcadeSurfaceGrip * (std::max)(0.0f, config.tireGrip.longitudinalGrip) *
+              runtimeVehicle.arcadeTractionScale
+        : 1.0f;
     const float driveForceTotal =
         (std::clamp)(runtimeVehicle.arcadeThrottle, 0.0f, 1.0f) *
-        (std::max)(0.0f, handling.acceleration) * mass * driveTorqueScale;
+        (std::max)(0.0f, handling.acceleration) * mass * driveTorqueScale * driveGripScale;
     const float brakePedal = (std::clamp)(runtimeVehicle.arcadeRawBrake, 0.0f, 1.0f) *
                              (std::clamp)(runtimeVehicle.arcadeAbsBrakeScale, 0.0f, 1.0f);
     const float handbrakePedal = (std::clamp)(input.handbrake, 0.0f, 1.0f);
@@ -174,50 +187,72 @@ void UpdateArcadeWheelSlip(RuntimeVehicleInstance& runtimeVehicle,
         const float longitudinalCapacity =
             std::sqrt((std::max)(0.0f, 1.0f - clampedLateral * clampedLateral));
 
-        // --- 5. resolve the wheel's rotation ---------------------------------
-        // The braking side blends rolling speed down to a dead stop, the
-        // driving side pushes it above rolling. Both are exact at the ends, so
-        // a locked wheel really is stopped rather than nearly stopped.
-        float targetSlipRatio = 0.0f;
-        float lockFraction = 0.0f;
-        if (longitudinalDemand < 0.0f) {
-            const float over = -longitudinalDemand - longitudinalCapacity;
-            targetSlipRatio = over <= 0.0f
-                ? longitudinalDemand * kPeakSlipRatio
-                : -(kPeakSlipRatio + over * 0.85f);
-            targetSlipRatio = (std::max)(targetSlipRatio, -1.0f);
-            lockFraction = (std::clamp)(-targetSlipRatio, 0.0f, 1.0f);
-        } else {
-            const float over = longitudinalDemand - longitudinalCapacity;
-            targetSlipRatio = over <= 0.0f
-                ? longitudinalDemand * kPeakSlipRatio
-                : kPeakSlipRatio + over * 0.85f;
-            // A spinning wheel tops out: past this the surface speed is silly
-            // and the visual rotation reads as a glitch rather than a burnout.
-            targetSlipRatio = (std::min)(targetSlipRatio, 1.5f);
+        // --- 5. this wheel's own spin, genuinely simulated -------------------
+        // angularVelocity is real per-wheel state carried over from the last
+        // tick. Slip is measured from it, a tyre force is computed from that
+        // measured slip, and the force is fed back as a torque that changes
+        // next tick's angularVelocity - a real feedback loop, not a slip
+        // value chosen to match how hard a pedal is pressed.
+        const float alpha = SlipSmoothingAlpha(longitudinalSpeed, deltaTime);
+        contact.lateralSlipAngle += (lateralSlipAngle - contact.lateralSlipAngle) * alpha;
+
+        const float previousWheelSurfaceSpeed = contact.angularVelocity * radius;
+        // referenceSpeed is already floored to kMinReferenceSpeed, so dividing
+        // by it is always safe - including standing still, where a burnout
+        // still reads as a large ratio without the result being in raw m/s
+        // instead of a normalized slip ratio. That unit mismatch used to
+        // saturate the tyre force every frame for any wheel with the slightest
+        // residual spin at a standstill, kicking it back and forth instead of
+        // letting it settle.
+        const float unclampedSlipRatio = contact.grounded
+            ? (previousWheelSurfaceSpeed - longitudinalSpeed) / referenceSpeed
+            : 0.0f;
+        const float rawSlipRatio = (std::clamp)(unclampedSlipRatio, -3.0f, 3.0f);
+        // Tyre relaxation: the carcass has to wind up before the slip it is
+        // carrying catches up with the slip the contact patch is measuring.
+        contact.slipRatio += (rawSlipRatio - contact.slipRatio) * alpha;
+
+        // Linear brush-tyre force from that relaxed, measured slip, capped by
+        // whatever the friction circle has left after lateral demand takes
+        // its share.
+        const float maxLongitudinalForce = gripForce * longitudinalCapacity;
+        float longitudinalTireForce = contact.grounded
+            ? (std::clamp)(contact.slipRatio * tire.longitudinalStiffness,
+                           -maxLongitudinalForce, maxLongitudinalForce)
+            : 0.0f;
+        if (contact.grounded && std::fabs(longitudinalSpeed) > 0.05f) {
+            longitudinalTireForce -= travelSign * normalForce * 0.015f;
         }
-        if (!contact.grounded) {
-            // Nothing to slip against. A wheel in the air just keeps turning at
-            // whatever the drivetrain and the brakes leave it doing.
-            targetSlipRatio = (wheel.driven && driveForceTotal > 0.0f) ? 0.6f : 0.0f;
-            lockFraction = brakePedal > 0.5f ? 1.0f : 0.0f;
-            if (lockFraction > 0.0f) {
-                targetSlipRatio = -1.0f;
+
+        // Drive torque spins the wheel up; the tyre force above is the
+        // ground pushing back, exactly as much as the tyre can actually
+        // find. The brake is metal on a disc, not rubber on the road, so it
+        // acts on the wheel's own torque balance directly rather than
+        // through the slip curve.
+        const float wheelInertia = (std::max)(0.05f, wheel.inertia);
+        const float driveTorque = driveForce * radius;
+        const float reactionTorque = longitudinalTireForce * radius;
+        float angularVelocity =
+            contact.angularVelocity + ((driveTorque - reactionTorque) / wheelInertia) * deltaTime;
+
+        if (brakeTorque > 0.0f) {
+            // Capped so the caliper can bring the wheel to exactly zero and
+            // hold it there - a real lock-up - instead of overshooting into
+            // reverse spin and buzzing back and forth every frame.
+            const float brakeAngularDelta = (brakeTorque / wheelInertia) * deltaTime;
+            if (std::fabs(angularVelocity) <= brakeAngularDelta) {
+                angularVelocity = 0.0f;
+            } else {
+                angularVelocity -= (angularVelocity > 0.0f ? 1.0f : -1.0f) * brakeAngularDelta;
             }
         }
 
-        const float alpha = SlipSmoothingAlpha(longitudinalSpeed, deltaTime);
-        contact.slipRatio += (targetSlipRatio - contact.slipRatio) * alpha;
-        contact.lateralSlipAngle += (lateralSlipAngle - contact.lateralSlipAngle) * alpha;
+        // Safety bound, not a behaviour driver: stops an extended jump with
+        // the throttle pinned from spinning the wheel up forever with
+        // nothing to react against.
+        const float maxAngularSpeed = (referenceSpeed + kSpinSurfaceSpeed * 4.0f) / radius;
+        angularVelocity = (std::clamp)(angularVelocity, -maxAngularSpeed, maxAngularSpeed);
 
-        const float rollingAngular = longitudinalSpeed / radius;
-        float angularVelocity = rollingAngular;
-        if (contact.slipRatio < 0.0f) {
-            angularVelocity = rollingAngular * (std::clamp)(1.0f + contact.slipRatio, 0.0f, 1.0f);
-        } else {
-            const float spinReference = referenceSpeed + kSpinSurfaceSpeed;
-            angularVelocity = rollingAngular + contact.slipRatio * spinReference * travelSign / radius;
-        }
         contact.angularVelocity = angularVelocity;
         contact.rotationAngle += angularVelocity * deltaTime;
 
@@ -239,8 +274,15 @@ void UpdateArcadeWheelSlip(RuntimeVehicleInstance& runtimeVehicle,
         contact.longitudinalSlideMps = contact.grounded ? longitudinalSlide : 0.0f;
         contact.gripUtilisation = utilisation;
         contact.slipAmount = (std::clamp)(contact.slipVelocity / kFullSlideSpeed, 0.0f, 1.0f);
-        contact.locked = contact.grounded && lockFraction > 0.55f && std::fabs(longitudinalSpeed) > 1.0f;
-        contact.spinning = contact.grounded && contact.slipRatio > kPeakSlipRatio * 2.0f;
+        // Locked: the wheel's real spin has actually been arrested while the
+        // car is still moving over it - not a threshold on brake pedal
+        // pressure.
+        contact.locked = contact.grounded && std::fabs(angularVelocity * radius) < 1.0f &&
+                         std::fabs(longitudinalSpeed) > 1.0f;
+        // Spinning: the tyre surface is genuinely outrunning the ground -
+        // drive torque beat the grip that was actually there to resist it.
+        contact.spinning = contact.grounded &&
+                           (angularVelocity * radius - longitudinalSpeed) > kWheelspinExcessSpeed;
 
         // Keep the older per-wheel fields meaningful for anything still reading
         // them, but sourced from this wheel rather than from the chassis.

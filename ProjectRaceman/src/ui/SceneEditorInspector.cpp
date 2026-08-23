@@ -3189,10 +3189,20 @@ void SceneEditor::RenderInspectorPanel() {
                     if (onDirty_) onDirty_();
                 }
                 if (ImGui::Button("Browse##DecalTexture")) {
-                    const std::string selected = OpenTextureFileDialogWin32(std::string());
+                    const fs::path currentDecalTexture = obj.decal.texturePath.empty()
+                        ? fs::path()
+                        : ProjectAssetPathToAbsolute(obj.decal.texturePath);
+                    const fs::path initialDecalDirectory = currentDecalTexture.empty()
+                        ? FindAssetsRoot()
+                        : currentDecalTexture.parent_path();
+                    const std::string selected = OpenTextureFileDialogWin32(initialDecalDirectory.string());
                     if (!selected.empty()) {
                         PushUndoState();
-                        obj.decal.texturePath = NormalizeSlashes(selected);
+                        const fs::path selectedAbsolute = fs::path(selected).lexically_normal();
+                        const fs::path assetsRoot = FindAssetsRoot();
+                        obj.decal.texturePath = IsUnderPath(selectedAbsolute, assetsRoot)
+                            ? ToProjectAssetPath(selectedAbsolute, assetsRoot)
+                            : NormalizeSlashes(selectedAbsolute.string());
                         if (onDirty_) onDirty_();
                     }
                 }
