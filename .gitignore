@@ -57,3 +57,6 @@ ProjectRaceman/config/imgui.ini
 ProjectRaceman/config/menu.json
 
 *.pdb
+
+# Claude Code local/agent state
+.claude/
