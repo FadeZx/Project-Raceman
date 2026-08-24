@@ -33,6 +33,7 @@ void ReadVehicleSoundComponent(const raceman::physics::json::Object& component,
                                VehicleSoundComponent& vehicleSound) {
     ReadBool(component, "enabled", vehicleSound.enabled);
     ReadString(component, "profilePath", vehicleSound.profilePath);
+    ReadString(component, "tyreProfilePath", vehicleSound.tyreProfilePath);
     if (auto it = component.find("spatialBlend"); it != component.end() && it->second.is_number()) {
         vehicleSound.spatialBlend = static_cast<float>(it->second.as_number());
     }

@@ -226,25 +226,30 @@ void UpdateArcadeWheelSlip(RuntimeVehicleInstance& runtimeVehicle,
 
         // Drive torque spins the wheel up; the tyre force above is the
         // ground pushing back, exactly as much as the tyre can actually
-        // find. The brake is metal on a disc, not rubber on the road, so it
-        // acts on the wheel's own torque balance directly rather than
-        // through the slip curve.
+        // find. The caliper is metal on a disc - it does not care about
+        // grip - but the wheel it is clamping is still only connected to the
+        // road through that same tyre force, so brake torque has to fight
+        // the same reactionTorque drive does. A caliper that can out-torque
+        // the tyre locks the wheel; one that can't just decelerates it in
+        // step with the car, which is what "threshold braking" is.
         const float wheelInertia = (std::max)(0.05f, wheel.inertia);
         const float driveTorque = driveForce * radius;
         const float reactionTorque = longitudinalTireForce * radius;
+        const float brakeSpinDirection = contact.angularVelocity != 0.0f
+            ? (contact.angularVelocity > 0.0f ? 1.0f : -1.0f)
+            : travelSign;
+        const float netWheelTorque =
+            driveTorque - reactionTorque - brakeTorque * brakeSpinDirection;
         float angularVelocity =
-            contact.angularVelocity + ((driveTorque - reactionTorque) / wheelInertia) * deltaTime;
+            contact.angularVelocity + (netWheelTorque / wheelInertia) * deltaTime;
 
-        if (brakeTorque > 0.0f) {
-            // Capped so the caliper can bring the wheel to exactly zero and
-            // hold it there - a real lock-up - instead of overshooting into
-            // reverse spin and buzzing back and forth every frame.
-            const float brakeAngularDelta = (brakeTorque / wheelInertia) * deltaTime;
-            if (std::fabs(angularVelocity) <= brakeAngularDelta) {
-                angularVelocity = 0.0f;
-            } else {
-                angularVelocity -= (angularVelocity > 0.0f ? 1.0f : -1.0f) * brakeAngularDelta;
-            }
+        if (brakeTorque > 0.0f &&
+            ((contact.angularVelocity >= 0.0f && angularVelocity < 0.0f) ||
+             (contact.angularVelocity <= 0.0f && angularVelocity > 0.0f))) {
+            // A real lock stops the wheel; it does not fling it into reverse
+            // spin and buzz back and forth every frame once brake torque has
+            // out-fought the tyre.
+            angularVelocity = 0.0f;
         }
 
         // Safety bound, not a behaviour driver: stops an extended jump with

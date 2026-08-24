@@ -417,8 +417,18 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
         const float longitudinalCapacity = (std::max)(0.05f, effectiveSurfaceGrip * downforceGripScale);
         const float frontBrakeUse = controls.brake * brakeFrontShare * kBrakeCircleGain / longitudinalCapacity;
         const float rearBrakeUse = controls.brake * brakeRearShare * kBrakeCircleGain / longitudinalCapacity;
+        // driveTorqueScale is a gear/RPM torque multiplier against a reference
+        // gear (up to 2.5x in a short one) - a throttle-authority number, not
+        // a fraction of grip. Left unscaled here it read a hard 1st-gear pull
+        // as spending 150-250% of the rear tyre's longitudinal budget, which
+        // zeroed cornering grip even at a light throttle blip. tireGrip's
+        // authored longitudinalGrip is what actually converts that torque
+        // authority into a fraction of the tyre's budget - the same term
+        // driveGripScale and AeroDragCoefficient already gate real drive force
+        // by, so this now asks for the same thing they deliver.
         const float rearDriveUse =
-            controls.throttle * driveTorqueScale * rearDrivenRatio * kDriveCircleGain / longitudinalCapacity;
+            controls.throttle * driveTorqueScale * (std::max)(0.0f, tireGrip.longitudinalGrip) *
+            rearDrivenRatio * kDriveCircleGain / longitudinalCapacity;
 
         const float frontUse = (std::clamp)(frontBrakeUse, 0.0f, 1.0f);
         const float rearUse = (std::clamp)((std::max)(rearBrakeUse, rearDriveUse), 0.0f, 1.0f);
