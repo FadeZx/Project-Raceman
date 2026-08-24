@@ -125,6 +125,10 @@ struct ColliderSurfaceConfig {
     TrackSurfaceType type{TrackSurfaceType::Asphalt};
     float gripMultiplier{1.0f};
     float rollingDrag{0.08f};
+    // Force feedback road texture: how strongly this surface buzzes through
+    // the wheel, and the relative pitch of that buzz (lower = coarser/rattly).
+    float ffbRoadAmplitude{0.22f};
+    float ffbRoadFrequencyScale{1.0f};
 };
 
 using TrackSurfaceSettings = std::array<ColliderSurfaceConfig, kTrackSurfaceTypeCount>;

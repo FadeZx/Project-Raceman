@@ -513,6 +513,10 @@ private:
     PhysicsLayerNames physicsLayerNames_{};
     PhysicsLayerCollisionMatrix physicsLayerCollisionMatrix_{};
     TrackSurfaceSettings trackSurfaceSettings_{};
+    // Sticky: stays on whatever device last showed real input, so idle frames
+    // (nobody touching keyboard, gamepad or wheel) do not flip force feedback
+    // off just because the wheel happens to be sitting at rest.
+    bool wheelIsPreferredInputSource_{true};
     std::vector<std::string> projectTags_{"Untagged"};
     std::vector<InputProfile> inputProfiles_{};
     std::vector<WheelSettingsProfile> wheelSettingsProfiles_{};

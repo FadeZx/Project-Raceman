@@ -3772,6 +3772,12 @@ void SceneEditor::LoadProject() {
                             if (auto dragIt = surfaceObject.find("rollingDrag"); dragIt != surfaceObject.end() && dragIt->second.is_number()) {
                                 surface.rollingDrag = (std::max)(0.0f, static_cast<float>(dragIt->second.as_number()));
                             }
+                            if (auto ampIt = surfaceObject.find("ffbRoadAmplitude"); ampIt != surfaceObject.end() && ampIt->second.is_number()) {
+                                surface.ffbRoadAmplitude = (std::max)(0.0f, static_cast<float>(ampIt->second.as_number()));
+                            }
+                            if (auto freqIt = surfaceObject.find("ffbRoadFrequencyScale"); freqIt != surfaceObject.end() && freqIt->second.is_number()) {
+                                surface.ffbRoadFrequencyScale = (std::max)(0.01f, static_cast<float>(freqIt->second.as_number()));
+                            }
                         }
                     } else {
                         shouldSaveProject = true;
@@ -4176,7 +4182,9 @@ void SceneEditor::SaveProject() {
             out << "      {\n";
             out << "        \"type\": \"" << TrackSurfaceTypeLabel(surface.type) << "\",\n";
             out << "        \"gripMultiplier\": " << surface.gripMultiplier << ",\n";
-            out << "        \"rollingDrag\": " << surface.rollingDrag << "\n";
+            out << "        \"rollingDrag\": " << surface.rollingDrag << ",\n";
+            out << "        \"ffbRoadAmplitude\": " << surface.ffbRoadAmplitude << ",\n";
+            out << "        \"ffbRoadFrequencyScale\": " << surface.ffbRoadFrequencyScale << "\n";
             out << "      }" << (surfaceIndex + 1 < kTrackSurfaceTypeCount ? ",\n" : "\n");
         }
         out << "    ]\n";

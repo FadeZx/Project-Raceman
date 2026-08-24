@@ -313,6 +313,57 @@ float InputManager::GetAxisForProfile(std::string_view profileId,
     return resolvedValue;
 }
 
+bool InputManager::IsDeviceCategoryActiveForProfile(std::string_view profileId,
+                                                    bool matchWheel,
+                                                    InputDevicePreference preferredDevice,
+                                                    std::string_view preferredSpecificDeviceId) const {
+    const InputProfile* profile = FindProfile(profileId);
+    if (profile == nullptr && profileId != GetDefaultVehicleProfileId()) {
+        profile = FindProfile(GetDefaultVehicleProfileId());
+    }
+    if (profile == nullptr) {
+        return false;
+    }
+
+    // Deliberately excludes the shift/neutral/reverse buttons: those are rare
+    // taps, and treating them as "driving input" would flicker force feedback
+    // off for a single frame every gear change.
+    static constexpr std::string_view kDrivingActions[] = {"steer", "throttle", "brake", "handbrake"};
+    constexpr float kActiveThreshold = 0.08f;
+
+    for (const InputBinding& binding : profile->bindings) {
+        const bool isDrivingAction = std::find(std::begin(kDrivingActions), std::end(kDrivingActions), binding.action)
+            != std::end(kDrivingActions);
+        if (!isDrivingAction) {
+            continue;
+        }
+        if ((binding.deviceType == InputDeviceType::Wheel) != matchWheel) {
+            continue;
+        }
+
+        const ResolvedDeviceSelection selection = SelectDeviceForBinding(binding, preferredDevice, preferredSpecificDeviceId);
+        if (!selection.useKeyboard && selection.device == nullptr) {
+            continue;
+        }
+        if (std::abs(ResolveAxisFromBinding(binding, selection.device, binding.action)) > kActiveThreshold) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool InputManager::IsNonWheelDeviceDrivingProfile(std::string_view profileId,
+                                                  InputDevicePreference preferredDevice,
+                                                  std::string_view preferredSpecificDeviceId) const {
+    return IsDeviceCategoryActiveForProfile(profileId, false, preferredDevice, preferredSpecificDeviceId);
+}
+
+bool InputManager::IsWheelDeviceDrivingProfile(std::string_view profileId,
+                                               InputDevicePreference preferredDevice,
+                                               std::string_view preferredSpecificDeviceId) const {
+    return IsDeviceCategoryActiveForProfile(profileId, true, preferredDevice, preferredSpecificDeviceId);
+}
+
 bool InputManager::IsActionDownForProfile(std::string_view profileId,
                                           std::string_view action,
                                           InputDevicePreference preferredDevice,

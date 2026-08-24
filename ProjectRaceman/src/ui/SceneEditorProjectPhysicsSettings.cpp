@@ -52,10 +52,12 @@ void SceneEditor::RenderProjectPhysicsSettings() {
     ImGui::TextDisabled("Assign each object's physics layer in the Inspector. This matrix controls which layers collide.");
     ImGui::Spacing();
     ImGui::SeparatorText("Track Surface Layers");
-    if (ImGui::BeginTable("ProjectTrackSurfaceSettings", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+    if (ImGui::BeginTable("ProjectTrackSurfaceSettings", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Surface");
         ImGui::TableSetupColumn("Grip");
         ImGui::TableSetupColumn("Rolling Drag");
+        ImGui::TableSetupColumn("Road FFB Amplitude");
+        ImGui::TableSetupColumn("Road FFB Frequency");
         ImGui::TableHeadersRow();
 
         for (int surfaceIndex = 0; surfaceIndex < kTrackSurfaceTypeCount; ++surfaceIndex) {
@@ -82,6 +84,26 @@ void SceneEditor::RenderProjectPhysicsSettings() {
             float rollingDrag = surface.rollingDrag;
             if (ImGui::DragFloat("##rollingDrag", &rollingDrag, 0.01f, 0.0f, 20.0f, "%.2f")) {
                 surface.rollingDrag = (std::max)(0.0f, rollingDrag);
+                projectSettingsChanged = true;
+            }
+            ImGui::PopID();
+
+            ImGui::TableSetColumnIndex(3);
+            ImGui::PushID(("projectTrackSurfaceFfbAmplitude_" + std::to_string(surfaceIndex)).c_str());
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            float ffbAmplitude = surface.ffbRoadAmplitude;
+            if (ImGui::DragFloat("##ffbAmplitude", &ffbAmplitude, 0.01f, 0.0f, 2.0f, "%.2f")) {
+                surface.ffbRoadAmplitude = (std::max)(0.0f, ffbAmplitude);
+                projectSettingsChanged = true;
+            }
+            ImGui::PopID();
+
+            ImGui::TableSetColumnIndex(4);
+            ImGui::PushID(("projectTrackSurfaceFfbFrequency_" + std::to_string(surfaceIndex)).c_str());
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            float ffbFrequency = surface.ffbRoadFrequencyScale;
+            if (ImGui::DragFloat("##ffbFrequency", &ffbFrequency, 0.01f, 0.05f, 3.0f, "%.2f")) {
+                surface.ffbRoadFrequencyScale = (std::max)(0.01f, ffbFrequency);
                 projectSettingsChanged = true;
             }
             ImGui::PopID();

@@ -69,6 +69,7 @@ void ClearVehicleForceFeedback(InputManager* inputManager);
 // wheel should render this frame.
 WheelForceFeedbackState BuildWheelForceFeedbackSample(const ArcadeVehicleTelemetry& telemetry,
                                                       const raceman::physics::VehicleConfig& config,
+                                                      const TrackSurfaceSettings& surfaceSettings,
                                                       WheelForceFeedbackRuntimeState& runtimeState,
                                                       float deltaTime);
 

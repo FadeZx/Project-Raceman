@@ -78,7 +78,7 @@
     "handbrakeDeceleration": 26.0,
     "fallbackSteerDegreesPerSecond": 100.0,
     "lowSpeedSteerSpeed": 1.1,
-    "lowSpeedSteerFloor": 0.6,
+    "lowSpeedSteerFloor": 0.15,
     "lowSpeedSteerInputBoost": 0.28,
     "highSpeedSteerCut": 0.42,
     "idleRPM": 1150.0,

@@ -356,7 +356,30 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         return;
     }
 
-    const bool wheelFfbAllowed = inputManager_ != nullptr && ShouldRouteInputToGame();
+    const bool routeInputForFfb = inputManager_ != nullptr && ShouldRouteInputToGame();
+    if (routeInputForFfb) {
+        // Hand FFB back and forth between the wheel and keyboard/gamepad based
+        // on whichever one the player is actually touching; hold the last
+        // state while nothing is moving so a wheel resting at centre does not
+        // read as "not in use".
+        for (const RuntimeVehicleInstance& runtimeVehicle : runtimeVehicles_) {
+            if (runtimeVehicle.objectIndex < 0 || runtimeVehicle.objectIndex >= static_cast<int>(objects_.size())) {
+                continue;
+            }
+            const SceneObject& vehicleObject = objects_[runtimeVehicle.objectIndex];
+            const std::string profileId = vehicleObject.vehicle.inputProfileId.empty()
+                ? std::string("default_vehicle")
+                : vehicleObject.vehicle.inputProfileId;
+            if (inputManager_->IsNonWheelDeviceDrivingProfile(profileId,
+                    vehicleObject.vehicle.preferredInputDevice, vehicleObject.vehicle.preferredInputDeviceId)) {
+                wheelIsPreferredInputSource_ = false;
+            } else if (inputManager_->IsWheelDeviceDrivingProfile(profileId,
+                    vehicleObject.vehicle.preferredInputDevice, vehicleObject.vehicle.preferredInputDeviceId)) {
+                wheelIsPreferredInputSource_ = true;
+            }
+        }
+    }
+    const bool wheelFfbAllowed = routeInputForFfb && wheelIsPreferredInputSource_;
     if (inputManager_ != nullptr) {
         inputManager_->SetWheelForceFeedbackActive(wheelFfbAllowed);
     }
@@ -545,7 +568,7 @@ void SceneEditor::UpdateVehiclePhysics(float deltaTime) {
         }
 
         const WheelForceFeedbackState ffbSample = BuildWheelForceFeedbackSample(
-            telemetry, runtimeVehicle.config, runtimeVehicle.forceFeedbackState, deltaTime);
+            telemetry, runtimeVehicle.config, trackSurfaceSettings_, runtimeVehicle.forceFeedbackState, deltaTime);
         // The wheel can only render one car, so the vehicle generating the most
         // steering load wins - in practice the one the player is driving.
         if (std::fabs(ffbSample.steeringTorque) >= std::fabs(strongestSample.steeringTorque)) {

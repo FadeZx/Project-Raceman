@@ -133,6 +133,28 @@ BOOL CALLBACK EnumEffectsCallback(const DIEFFECTINFO* info, VOID* context) {
     return DIENUM_CONTINUE;
 }
 
+// Logitech's RPM/shift indicator LEDs are set through a raw DirectInput
+// Escape call, not through the DirectInput force-feedback effect API. This
+// mirrors Logitech's own "SDK-independent" sample (LogiIndependant.cpp) so no
+// LGS/G HUB runtime DLL needs to be shipped - only Logitech wheels answer
+// this escape command, so it is a no-op (and harmless) on any other wheel.
+constexpr DWORD kLogitechLedsEscapeCommand = 0;
+constexpr DWORD kLogitechLedsVersion = 0x00000001;
+
+#pragma pack(push, 1)
+struct LogitechLedsRpmData {
+    FLOAT currentRPM;
+    FLOAT rpmFirstLedTurnsOn;
+    FLOAT rpmRedLine;
+};
+
+struct LogitechWheelLedsData {
+    DWORD size;
+    DWORD versionNbr;
+    LogitechLedsRpmData rpmData;
+};
+#pragma pack(pop)
+
 LONG ToDirectInputForce(float normalized) {
     const float clamped = (std::clamp)(normalized, -1.0f, 1.0f);
     return static_cast<LONG>(clamped * static_cast<float>(DI_FFNOMINALMAX));
@@ -189,6 +211,8 @@ struct WheelForceFeedbackController::Impl {
     LONG lastFrictionCoefficient{0};
     LONG lastSpringCoefficient{0};
     LONG lastSpringCenter{0};
+    float lastLedEngineRpm{-1.0f};
+    float lastLedRedlineRpm{-1.0f};
 
     ~Impl() {
         ReleaseDevice();
@@ -226,13 +250,60 @@ struct WheelForceFeedbackController::Impl {
         lastFrictionCoefficient = 0;
         lastSpringCoefficient = 0;
         lastSpringCenter = 0;
+        lastLedEngineRpm = -1.0f;
+        lastLedRedlineRpm = -1.0f;
         smoothedTorque = 0.0f;
+    }
+
+    // Non-Logitech wheels simply ignore this escape command, so it is safe to
+    // call unconditionally rather than gating it on device manufacturer.
+    void UpdateShiftLeds() {
+        if (device == nullptr) {
+            return;
+        }
+
+        const float redlineRpm = (std::max)(1.0f, state.redlineRPM);
+        const float currentRpm = (std::max)(0.0f, state.engineRPM);
+        if (currentRpm == lastLedEngineRpm && redlineRpm == lastLedRedlineRpm) {
+            return;
+        }
+        lastLedEngineRpm = currentRpm;
+        lastLedRedlineRpm = redlineRpm;
+
+        LogitechWheelLedsData leds{};
+        leds.size = sizeof(LogitechWheelLedsData);
+        leds.versionNbr = kLogitechLedsVersion;
+        leds.rpmData.currentRPM = currentRpm;
+        // First LED lights at 85% of redline, matching the common shift-light
+        // convention on Logitech wheels.
+        leds.rpmData.rpmFirstLedTurnsOn = redlineRpm * 0.85f;
+        leds.rpmData.rpmRedLine = redlineRpm;
+
+        DIEFFESCAPE escape{};
+        escape.dwSize = sizeof(DIEFFESCAPE);
+        escape.dwCommand = kLogitechLedsEscapeCommand;
+        escape.lpvInBuffer = &leds;
+        escape.cbInBuffer = sizeof(leds);
+        device->Escape(&escape);
     }
 
     void ReleaseDevice() {
         ReleaseEffects();
 
         if (device != nullptr) {
+            LogitechWheelLedsData ledsOff{};
+            ledsOff.size = sizeof(LogitechWheelLedsData);
+            ledsOff.versionNbr = kLogitechLedsVersion;
+            ledsOff.rpmData.currentRPM = 0.0f;
+            ledsOff.rpmData.rpmFirstLedTurnsOn = 1.0f;
+            ledsOff.rpmData.rpmRedLine = 1.0f;
+            DIEFFESCAPE ledsOffEscape{};
+            ledsOffEscape.dwSize = sizeof(DIEFFESCAPE);
+            ledsOffEscape.dwCommand = kLogitechLedsEscapeCommand;
+            ledsOffEscape.lpvInBuffer = &ledsOff;
+            ledsOffEscape.cbInBuffer = sizeof(ledsOff);
+            device->Escape(&ledsOffEscape);
+
             device->SendForceFeedbackCommand(DISFFC_STOPALL);
             device->SendForceFeedbackCommand(DISFFC_SETACTUATORSOFF);
             device->SendForceFeedbackCommand(DISFFC_RESET);
@@ -608,6 +679,9 @@ struct WheelForceFeedbackController::Impl {
         const bool enabled = hasActiveProfile && p.forceFeedbackEnabled;
 
         UpdateConstantForce(deltaSeconds);
+        // The RPM LEDs are an instrument-cluster readout, not a force effect,
+        // so they update regardless of whether force feedback itself is on.
+        UpdateShiftLeds();
 
         // Each texture source carries its own gain so the presets can, for
         // example, keep kerb rattle strong while damping road noise.

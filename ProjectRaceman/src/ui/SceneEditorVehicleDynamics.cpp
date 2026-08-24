@@ -479,7 +479,12 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
 
     const float absSpeed = std::fabs(speed);
     const float steerAbs = std::fabs(input.steering);
-    const float driveIntentForSteer = (std::max)(throttleAmount, brakeAmount);
+    // Brake pressure used to count toward this the same as throttle, so
+    // braking to a stop - or just holding the brake at a stop - while
+    // steering granted the same low-speed pivot authority as actually
+    // driving. A stopped car creeping into a turn is drive intent; a
+    // stopped car being held still by the brake is the opposite of that.
+    const float driveIntentForSteer = throttleAmount;
     const float lowSpeedSteerFloor = steerAbs > 0.001f && (absSpeed > 0.10f || driveIntentForSteer > 0.05f)
         ? (lowSpeedSteerFloorConfig + (std::clamp)(driveIntentForSteer, 0.0f, 1.0f) * lowSpeedSteerInputBoost)
         : 0.0f;
@@ -687,8 +692,20 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
             // torque faster than drag, so a slide snapped straight on its own
             // instead of needing to be caught. The rotation this car gets is
             // exactly what the two axle forces earn, once.
+            // referenceSpeed is floored to 2 m/s purely so the atan2 above
+            // never divides by nothing - it does not mean the car is really
+            // doing 2 m/s. Left unscaled, that floor let a parked car with
+            // the wheel held over compute a front slip angle from steer
+            // angle alone and clamp straight to full axle force, spinning
+            // the chassis on the spot with the brake off, the throttle off,
+            // and the speedo reading zero. The car's actual speed against
+            // that same floor ramps torque in from nothing as it starts
+            // rolling instead of switching it on at a threshold.
+            const float physicalYawSpeedRamp =
+                (std::clamp)(std::fabs(forwardVelocity) / referenceSpeed, 0.0f, 1.0f);
             steeringTorque = yawMoment *
                 (std::max)(0.0f, yawDynamics.steeringYawResponse) *
+                physicalYawSpeedRamp *
                 directionSign;
         } else {
             steeringTorque = -input.steering *

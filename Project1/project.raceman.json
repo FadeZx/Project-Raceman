@@ -191,32 +191,44 @@
       {
         "type": "Asphalt",
         "gripMultiplier": 1,
-        "rollingDrag": 0.08
+        "rollingDrag": 0.08,
+        "ffbRoadAmplitude": 0.22,
+        "ffbRoadFrequencyScale": 1
       },
       {
         "type": "Dirt",
         "gripMultiplier": 0.73,
-        "rollingDrag": 1.08
+        "rollingDrag": 1.08,
+        "ffbRoadAmplitude": 1,
+        "ffbRoadFrequencyScale": 0.55
       },
       {
         "type": "Grass",
         "gripMultiplier": 0.68,
-        "rollingDrag": 1.25
+        "rollingDrag": 1.25,
+        "ffbRoadAmplitude": 0.75,
+        "ffbRoadFrequencyScale": 0.4
       },
       {
         "type": "Curb",
         "gripMultiplier": 0.82,
-        "rollingDrag": 0.18
+        "rollingDrag": 0.18,
+        "ffbRoadAmplitude": 1,
+        "ffbRoadFrequencyScale": 0.3
       },
       {
         "type": "Wall",
         "gripMultiplier": 0.05,
-        "rollingDrag": 2.5
+        "rollingDrag": 2.5,
+        "ffbRoadAmplitude": 0.2,
+        "ffbRoadFrequencyScale": 1
       },
       {
         "type": "Custom",
         "gripMultiplier": 1,
-        "rollingDrag": 0.08
+        "rollingDrag": 0.08,
+        "ffbRoadAmplitude": 0.22,
+        "ffbRoadFrequencyScale": 1
       }
     ]
   },

@@ -211,26 +211,38 @@ inline ColliderSurfaceConfig MakeDefaultTrackSurfaceConfig(TrackSurfaceType type
     case TrackSurfaceType::Asphalt:
         surface.gripMultiplier = 1.0f;
         surface.rollingDrag = 0.08f;
+        surface.ffbRoadAmplitude = 0.22f;
+        surface.ffbRoadFrequencyScale = 1.0f;
         break;
     case TrackSurfaceType::Dirt:
         surface.gripMultiplier = 0.58f;
         surface.rollingDrag = 0.65f;
+        surface.ffbRoadAmplitude = 1.0f;
+        surface.ffbRoadFrequencyScale = 0.55f;
         break;
     case TrackSurfaceType::Grass:
         surface.gripMultiplier = 0.36f;
         surface.rollingDrag = 1.25f;
+        surface.ffbRoadAmplitude = 0.75f;
+        surface.ffbRoadFrequencyScale = 0.4f;
         break;
     case TrackSurfaceType::Curb:
         surface.gripMultiplier = 0.82f;
         surface.rollingDrag = 0.18f;
+        surface.ffbRoadAmplitude = 1.0f;
+        surface.ffbRoadFrequencyScale = 0.3f;
         break;
     case TrackSurfaceType::Wall:
         surface.gripMultiplier = 0.05f;
         surface.rollingDrag = 2.50f;
+        surface.ffbRoadAmplitude = 0.2f;
+        surface.ffbRoadFrequencyScale = 1.0f;
         break;
     case TrackSurfaceType::Custom:
         surface.gripMultiplier = 1.0f;
         surface.rollingDrag = 0.08f;
+        surface.ffbRoadAmplitude = 0.22f;
+        surface.ffbRoadFrequencyScale = 1.0f;
         break;
     }
     return surface;

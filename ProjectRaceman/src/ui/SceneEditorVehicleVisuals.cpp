@@ -108,6 +108,15 @@ void UpdateVehicleVisuals(std::vector<SceneObject>& objects,
                     runtimeVehicle.arcadeWheelContacts[wheelIndex];
                 renderSpin = spinContact.previousRotationAngle +
                     (spinContact.rotationAngle - spinContact.previousRotationAngle) * renderAlpha;
+                // UpdateArcadeWheelSlip works out this wheel's own steer angle
+                // every tick (0 for the rears); it never reached the mesh
+                // before, so the front wheels rolled straight no matter what
+                // the wheel was pointed at. That angle is built from raw
+                // steering input (positive = left) with no sign flip, but a
+                // positive Y-euler here turns the mesh right, the same flip
+                // ApplyArcadeDrivetrain's physical-yaw path already documents
+                // - so it has to be subtracted, not added.
+                wheelWorldTransform.rotationEuler.y -= glm::degrees(spinContact.steerAngle);
             }
             wheelWorldTransform.rotationEuler.x += glm::degrees(renderSpin);
             wheelWorldTransform.scale = glm::vec3(1.0f);

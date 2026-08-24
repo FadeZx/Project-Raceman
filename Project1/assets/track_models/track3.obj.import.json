@@ -1,0 +1,1663 @@
+{
+  "version": 1,
+  "pivotMode": 0,
+  "importMaterials": true,
+  "materialLocation": 0,
+  "materialRemapNaming": 0,
+  "materialRemapSearch": 0,
+  "materials": [
+    {
+      "meshIndex": 0,
+      "meshName": "180Turn.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "180Turn.002",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "180Turn.003",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "1Bpneu.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "1Bpneu.002",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "1Bpneu.003",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "1Wpneu.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "30Turn.004",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "3pneu.002",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "3pneu.003",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "90Turn.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "90Turn.002",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "90Turn.003",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "90Turn.004",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "arrowsLeft.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "arrowsLeft.002",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "arrowsLeft.003",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "arrowsLeft.004",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "arrowsLeft.005",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "arrowsLeft.006",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "arrowsLeft.007",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "arrowsLeft.008",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "arrowsLeft.009",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "arrowsLeft.010",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "arrowsLeft.011",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "arrowsLeft.012",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "arrowsLeft.013",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "arrowsLeft.014",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "arrowsLeft.015",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "arrowsLeft.016",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "arrowsLeft.017",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "arrowsLeft.018",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "arrowsLeft.019",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "arrowsLeft.020",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "arrowsLeft.021",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "arrowsLeft.022",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "arrowsLeft.023",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "arrowsLeft.024",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "arrowsLeft.025",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "arrowsLeft.026",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "arrowsLeft.027",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "arrowsLeft.028",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "arrowsLeft.029",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "arrowsLeft.030",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "arrowsLeft.031",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "arrowsLeft.032",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "arrowsLeft.033",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "arrowsLeft.034",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "arrowsLeft.035",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "arrowsLeft.036",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "arrowsLeft.037",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "arrowsLeft.038",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "arrowsLeft.039",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "arrowsLeft.040",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "arrowsLeft.041",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "arrowsLeft.042",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "arrowsLeft.043",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "arrowsLeft.044",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "arrowsLeft.045",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "arrowsLeft.046",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 60,
+      "meshName": "arrowsLeft.047",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 61,
+      "meshName": "arrowsLeft.048",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 62,
+      "meshName": "arrowsLeft.049",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 63,
+      "meshName": "arrowsLeft.050",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 64,
+      "meshName": "arrowsLeft.051",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 65,
+      "meshName": "arrowsLeft.052",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 66,
+      "meshName": "arrowsLeft.053",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 67,
+      "meshName": "arrowsLeft.054",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 68,
+      "meshName": "arrowsLeft.055",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 69,
+      "meshName": "arrowsLeft.056",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 70,
+      "meshName": "arrowsLeft.057",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 71,
+      "meshName": "arrowsLeft.058",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 72,
+      "meshName": "arrowsLeft.059",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 73,
+      "meshName": "arrowsLeft.060",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 74,
+      "meshName": "arrowsLeft.061",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 75,
+      "meshName": "arrowsLeft.062",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 76,
+      "meshName": "arrowsLeft.063",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 77,
+      "meshName": "arrowsLeft.064",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 78,
+      "meshName": "arrowsLeft.065",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 79,
+      "meshName": "arrowsLeft.066",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 80,
+      "meshName": "arrowsLeft.067",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 81,
+      "meshName": "arrowsLeft.068",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 82,
+      "meshName": "barriersBigEnd.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 83,
+      "meshName": "barriersBigMiddle.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 84,
+      "meshName": "barriersBigStart.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 85,
+      "meshName": "barriersSmall.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 86,
+      "meshName": "barriersSmall.002",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 87,
+      "meshName": "barriersSmall.003",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 88,
+      "meshName": "barriersSmall.004",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 89,
+      "meshName": "barriersSmall.005",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 90,
+      "meshName": "barriersSmall.006",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 91,
+      "meshName": "barriersSmall.007",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 92,
+      "meshName": "barriersSmall.008",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 93,
+      "meshName": "barriersSmall.009",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 94,
+      "meshName": "bridge.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 95,
+      "meshName": "bridgeBarriers.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 96,
+      "meshName": "cone.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 97,
+      "meshName": "cone.002",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 98,
+      "meshName": "cone.003",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 99,
+      "meshName": "cone.004",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 100,
+      "meshName": "cone.005",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 101,
+      "meshName": "cone.006",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 102,
+      "meshName": "cone.007",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 103,
+      "meshName": "cone.008",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 104,
+      "meshName": "cone.009",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 105,
+      "meshName": "cone.010",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 106,
+      "meshName": "cone.011",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 107,
+      "meshName": "cone.012",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 108,
+      "meshName": "cone.013",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 109,
+      "meshName": "cone.014",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 110,
+      "meshName": "finish.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 111,
+      "meshName": "FinishStart.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 112,
+      "meshName": "Plane",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 113,
+      "meshName": "pneuWall.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 114,
+      "meshName": "pneuWall.002",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 115,
+      "meshName": "pneuWall.003",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 116,
+      "meshName": "start.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 117,
+      "meshName": "startLights.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 118,
+      "meshName": "straight.001",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 119,
+      "meshName": "straight.002",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 120,
+      "meshName": "straight.003",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 121,
+      "meshName": "straight.004",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 122,
+      "meshName": "straight.005",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 123,
+      "meshName": "straight.006",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 124,
+      "meshName": "straight.007",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 125,
+      "meshName": "straight.008",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    },
+    {
+      "meshIndex": 126,
+      "meshName": "straight.009",
+      "importedMaterialName": "Material.004",
+      "materialId": "track3_material004"
+    }
+  ],
+  "collisions": [
+    {
+      "meshIndex": 0,
+      "meshName": "180Turn.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 1,
+      "meshName": "180Turn.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 2,
+      "meshName": "180Turn.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 3,
+      "meshName": "1Bpneu.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 4,
+      "meshName": "1Bpneu.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 5,
+      "meshName": "1Bpneu.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 6,
+      "meshName": "1Wpneu.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 7,
+      "meshName": "30Turn.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 8,
+      "meshName": "3pneu.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 9,
+      "meshName": "3pneu.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 10,
+      "meshName": "90Turn.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 11,
+      "meshName": "90Turn.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 12,
+      "meshName": "90Turn.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 13,
+      "meshName": "90Turn.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 14,
+      "meshName": "arrowsLeft.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 15,
+      "meshName": "arrowsLeft.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 16,
+      "meshName": "arrowsLeft.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 17,
+      "meshName": "arrowsLeft.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 18,
+      "meshName": "arrowsLeft.005",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 19,
+      "meshName": "arrowsLeft.006",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 20,
+      "meshName": "arrowsLeft.007",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 21,
+      "meshName": "arrowsLeft.008",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 22,
+      "meshName": "arrowsLeft.009",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 23,
+      "meshName": "arrowsLeft.010",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 24,
+      "meshName": "arrowsLeft.011",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 25,
+      "meshName": "arrowsLeft.012",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 26,
+      "meshName": "arrowsLeft.013",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 27,
+      "meshName": "arrowsLeft.014",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 28,
+      "meshName": "arrowsLeft.015",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 29,
+      "meshName": "arrowsLeft.016",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 30,
+      "meshName": "arrowsLeft.017",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 31,
+      "meshName": "arrowsLeft.018",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 32,
+      "meshName": "arrowsLeft.019",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 33,
+      "meshName": "arrowsLeft.020",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 34,
+      "meshName": "arrowsLeft.021",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 35,
+      "meshName": "arrowsLeft.022",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 36,
+      "meshName": "arrowsLeft.023",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 37,
+      "meshName": "arrowsLeft.024",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 38,
+      "meshName": "arrowsLeft.025",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 39,
+      "meshName": "arrowsLeft.026",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 40,
+      "meshName": "arrowsLeft.027",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 41,
+      "meshName": "arrowsLeft.028",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 42,
+      "meshName": "arrowsLeft.029",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 43,
+      "meshName": "arrowsLeft.030",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 44,
+      "meshName": "arrowsLeft.031",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 45,
+      "meshName": "arrowsLeft.032",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 46,
+      "meshName": "arrowsLeft.033",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 47,
+      "meshName": "arrowsLeft.034",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 48,
+      "meshName": "arrowsLeft.035",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 49,
+      "meshName": "arrowsLeft.036",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 50,
+      "meshName": "arrowsLeft.037",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 51,
+      "meshName": "arrowsLeft.038",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 52,
+      "meshName": "arrowsLeft.039",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 53,
+      "meshName": "arrowsLeft.040",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 54,
+      "meshName": "arrowsLeft.041",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 55,
+      "meshName": "arrowsLeft.042",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 56,
+      "meshName": "arrowsLeft.043",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 57,
+      "meshName": "arrowsLeft.044",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 58,
+      "meshName": "arrowsLeft.045",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 59,
+      "meshName": "arrowsLeft.046",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 60,
+      "meshName": "arrowsLeft.047",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 61,
+      "meshName": "arrowsLeft.048",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 62,
+      "meshName": "arrowsLeft.049",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 63,
+      "meshName": "arrowsLeft.050",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 64,
+      "meshName": "arrowsLeft.051",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 65,
+      "meshName": "arrowsLeft.052",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 66,
+      "meshName": "arrowsLeft.053",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 67,
+      "meshName": "arrowsLeft.054",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 68,
+      "meshName": "arrowsLeft.055",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 69,
+      "meshName": "arrowsLeft.056",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 70,
+      "meshName": "arrowsLeft.057",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 71,
+      "meshName": "arrowsLeft.058",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 72,
+      "meshName": "arrowsLeft.059",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 73,
+      "meshName": "arrowsLeft.060",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 74,
+      "meshName": "arrowsLeft.061",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 75,
+      "meshName": "arrowsLeft.062",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 76,
+      "meshName": "arrowsLeft.063",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 77,
+      "meshName": "arrowsLeft.064",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 78,
+      "meshName": "arrowsLeft.065",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 79,
+      "meshName": "arrowsLeft.066",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 80,
+      "meshName": "arrowsLeft.067",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 81,
+      "meshName": "arrowsLeft.068",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 82,
+      "meshName": "barriersBigEnd.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 83,
+      "meshName": "barriersBigMiddle.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 84,
+      "meshName": "barriersBigStart.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 85,
+      "meshName": "barriersSmall.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 86,
+      "meshName": "barriersSmall.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 87,
+      "meshName": "barriersSmall.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 88,
+      "meshName": "barriersSmall.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 89,
+      "meshName": "barriersSmall.005",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 90,
+      "meshName": "barriersSmall.006",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 91,
+      "meshName": "barriersSmall.007",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 92,
+      "meshName": "barriersSmall.008",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 93,
+      "meshName": "barriersSmall.009",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 94,
+      "meshName": "bridge.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 95,
+      "meshName": "bridgeBarriers.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 96,
+      "meshName": "cone.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 97,
+      "meshName": "cone.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 98,
+      "meshName": "cone.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 99,
+      "meshName": "cone.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 100,
+      "meshName": "cone.005",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 101,
+      "meshName": "cone.006",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 102,
+      "meshName": "cone.007",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 103,
+      "meshName": "cone.008",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 104,
+      "meshName": "cone.009",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 105,
+      "meshName": "cone.010",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 106,
+      "meshName": "cone.011",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 107,
+      "meshName": "cone.012",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 108,
+      "meshName": "cone.013",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 109,
+      "meshName": "cone.014",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 110,
+      "meshName": "finish.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 111,
+      "meshName": "FinishStart.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 112,
+      "meshName": "Plane",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 113,
+      "meshName": "pneuWall.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 114,
+      "meshName": "pneuWall.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 115,
+      "meshName": "pneuWall.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 116,
+      "meshName": "start.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 117,
+      "meshName": "startLights.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 118,
+      "meshName": "straight.001",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 119,
+      "meshName": "straight.002",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 120,
+      "meshName": "straight.003",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 121,
+      "meshName": "straight.004",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 122,
+      "meshName": "straight.005",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 123,
+      "meshName": "straight.006",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 124,
+      "meshName": "straight.007",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 125,
+      "meshName": "straight.008",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    },
+    {
+      "meshIndex": 126,
+      "meshName": "straight.009",
+      "mode": 0,
+      "buildQuality": 2,
+      "autoBake": false
+    }
+  ]
+}

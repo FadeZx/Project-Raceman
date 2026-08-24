@@ -23049,6 +23049,6 @@
       ]
     }
   ],
-  "hierarchyClosed": ["gameobject_10", "gameobject_1", "gameobject_18", "gameobject_1635", "gameobject_7", "gameobject_8", "gameobject_11", "gameobject_15", "gameobject_64"],
-  "inspectorComponentsClosed": ["mesh_393|Collider", "light_8|MeshRenderer", "gameobject_64|Vehicle", "gameobject_11|Vehicle", "camera_1|Cinemachine", "gameobject_64|MeshRenderer", "mesh_21|MeshFilter", "mesh_146|MeshFilter"]
+  "hierarchyClosed": ["gameobject_18", "gameobject_1", "gameobject_10", "gameobject_7", "gameobject_1635", "gameobject_11", "gameobject_8", "gameobject_15", "gameobject_64", "gameobject_145", "gameobject_19", "gameobject_589"],
+  "inspectorComponentsClosed": ["light_8|MeshRenderer", "mesh_393|Collider", "gameobject_11|Vehicle", "gameobject_64|Vehicle", "camera_1|Cinemachine", "mesh_21|MeshFilter", "gameobject_64|MeshRenderer", "mesh_146|MeshFilter"]
 }

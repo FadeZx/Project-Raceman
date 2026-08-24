@@ -167,6 +167,10 @@ struct WheelForceFeedbackState {
     // One-shot impact spike (kerbs, collisions) with its direction.
     float impact{0.0f};
     float impactDirection{0.0f};
+    // Engine RPM and redline, used to drive the wheel's built-in RPM/shift
+    // LEDs independently of the force feedback effects above.
+    float engineRPM{0.0f};
+    float redlineRPM{0.0f};
 };
 
 class WheelForceFeedbackController;
@@ -223,6 +227,17 @@ public:
     float GetWheelSteeringPosition() const;
     void SetWheelForceFeedbackActive(bool active);
     bool IsWheelForceFeedbackActive() const { return wheelForceFeedbackActive_; }
+    // True if the keyboard or a gamepad is actively driving steer/throttle/
+    // brake/handbrake for this profile this frame - used to hand force
+    // feedback off while the player is not touching the wheel.
+    bool IsNonWheelDeviceDrivingProfile(std::string_view profileId,
+                                        InputDevicePreference preferredDevice = InputDevicePreference::Any,
+                                        std::string_view preferredSpecificDeviceId = {}) const;
+    // True if the wheel itself is actively being moved (steer/throttle/
+    // brake/handbrake beyond a small threshold) this frame.
+    bool IsWheelDeviceDrivingProfile(std::string_view profileId,
+                                     InputDevicePreference preferredDevice = InputDevicePreference::Any,
+                                     std::string_view preferredSpecificDeviceId = {}) const;
     void SetWheelForceFeedbackState(const WheelForceFeedbackState& state);
     void SetWheelForceFeedbackState(float steeringTorque, float damper, float vibration);
     // Plays a short test pulse so users can confirm force feedback is alive.
@@ -283,6 +298,10 @@ private:
     ResolvedDeviceSelection SelectDeviceForBinding(const InputBinding& binding,
                                                    InputDevicePreference preferredDevice,
                                                    std::string_view preferredSpecificDeviceId) const;
+    bool IsDeviceCategoryActiveForProfile(std::string_view profileId,
+                                          bool matchWheel,
+                                          InputDevicePreference preferredDevice,
+                                          std::string_view preferredSpecificDeviceId) const;
     static std::string MakeJoystickRuntimeId(int joystickId, const char* name);
     static InputDeviceType InferJoystickType(bool isGamepad, const char* name);
     static float ApplyAxisTuning(float rawValue, const InputBinding& binding);

@@ -1,5 +1,6 @@
 #include "SceneEditorVehicleTelemetry.h"
 
+#include "SceneEditorInternal.h"
 #include "../input/InputManager.h"
 
 #include <algorithm>
@@ -11,27 +12,16 @@ namespace {
 
 // Relative texture amplitude and coarseness of each surface. Asphalt is a
 // faint high frequency hum, dirt is loud and coarse, kerbs are handled
-// separately as impacts.
+// separately as impacts. Values are project-editable (Project Settings ->
+// Physics -> Track Surface Layers) rather than fixed here.
 struct SurfaceTexture {
     float amplitude;
     float frequencyScale;
 };
 
-SurfaceTexture TextureForSurface(TrackSurfaceType surface) {
-    switch (surface) {
-    case TrackSurfaceType::Dirt:
-        return {1.0f, 0.55f};
-    case TrackSurfaceType::Grass:
-        return {0.75f, 0.4f};
-    case TrackSurfaceType::Curb:
-        return {1.0f, 0.3f};
-    case TrackSurfaceType::Wall:
-        return {0.2f, 1.0f};
-    case TrackSurfaceType::Asphalt:
-    case TrackSurfaceType::Custom:
-    default:
-        return {0.22f, 1.0f};
-    }
+SurfaceTexture TextureForSurface(TrackSurfaceType surface, const TrackSurfaceSettings& surfaceSettings) {
+    const ColliderSurfaceConfig& config = scene_editor_internal::GetTrackSurfaceSettings(surfaceSettings, surface);
+    return {config.ffbRoadAmplitude, (std::max)(0.01f, config.ffbRoadFrequencyScale)};
 }
 
 float MoveTowards(float current, float target, float maxDelta) {
@@ -71,6 +61,7 @@ void ClearVehicleForceFeedback(InputManager* inputManager) {
 
 WheelForceFeedbackState BuildWheelForceFeedbackSample(const ArcadeVehicleTelemetry& telemetry,
                                                       const raceman::physics::VehicleConfig& config,
+                                                      const TrackSurfaceSettings& surfaceSettings,
                                                       WheelForceFeedbackRuntimeState& runtimeState,
                                                       float deltaTime) {
     WheelForceFeedbackState sample;
@@ -110,7 +101,7 @@ WheelForceFeedbackState BuildWheelForceFeedbackSample(const ArcadeVehicleTelemet
             steeredWheelCount += 1.0f;
             anyFrontGrounded = anyFrontGrounded || wheel.grounded;
 
-            const SurfaceTexture texture = TextureForSurface(wheel.surfaceType);
+            const SurfaceTexture texture = TextureForSurface(wheel.surfaceType, surfaceSettings);
             if (wheel.grounded) {
                 textureAmplitude = (std::max)(textureAmplitude, texture.amplitude);
                 textureFrequencyScale = (std::min)(textureFrequencyScale, texture.frequencyScale);
@@ -248,6 +239,8 @@ WheelForceFeedbackState BuildWheelForceFeedbackSample(const ArcadeVehicleTelemet
     // Two firing events per revolution keeps the rumble in a range wheels can
     // actually reproduce.
     sample.rumbleFrequencyHz = (std::clamp)(telemetry.engineRPM / 60.0f * 2.0f, 8.0f, 120.0f);
+    sample.engineRPM = telemetry.engineRPM;
+    sample.redlineRPM = redline;
 
     // --- Conditions -------------------------------------------------------
     // Damping is heaviest at a standstill (where it stops the wheel oscillating

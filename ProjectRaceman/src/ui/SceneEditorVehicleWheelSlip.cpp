@@ -238,10 +238,30 @@ void UpdateArcadeWheelSlip(RuntimeVehicleInstance& runtimeVehicle,
         const float brakeSpinDirection = contact.angularVelocity != 0.0f
             ? (contact.angularVelocity > 0.0f ? 1.0f : -1.0f)
             : travelSign;
-        const float netWheelTorque =
-            driveTorque - reactionTorque - brakeTorque * brakeSpinDirection;
+
+        // The reaction term is the tyre resisting slip - on its own it should
+        // only pull the wheel back toward matching ground speed, never past
+        // it. At low reference speed the discrete step could otherwise
+        // overshoot zero slip and hand the next frame an equally large slip
+        // of the opposite sign, ringing for several visible cycles instead of
+        // settling - exactly what a wheel with a little leftover road speed
+        // after a hard stop was doing, on all four corners regardless of
+        // drive or brake. Drive and brake are real, sustained torques and are
+        // still allowed to carry the wheel away from ground speed - that is
+        // genuine spin or lock - so only the reaction contribution is capped.
+        const float groundAngularVelocity = longitudinalSpeed / radius;
+        float reactionDelta = (-reactionTorque / wheelInertia) * deltaTime;
+        const float afterReaction = contact.angularVelocity + reactionDelta;
+        const bool reactionOvershoots =
+            (contact.angularVelocity - groundAngularVelocity >= 0.0f && afterReaction - groundAngularVelocity < 0.0f) ||
+            (contact.angularVelocity - groundAngularVelocity <= 0.0f && afterReaction - groundAngularVelocity > 0.0f);
+        if (reactionOvershoots) {
+            reactionDelta = groundAngularVelocity - contact.angularVelocity;
+        }
+
+        const float driveBrakeTorque = driveTorque - brakeTorque * brakeSpinDirection;
         float angularVelocity =
-            contact.angularVelocity + (netWheelTorque / wheelInertia) * deltaTime;
+            contact.angularVelocity + reactionDelta + (driveBrakeTorque / wheelInertia) * deltaTime;
 
         if (brakeTorque > 0.0f &&
             ((contact.angularVelocity >= 0.0f && angularVelocity < 0.0f) ||
@@ -250,6 +270,23 @@ void UpdateArcadeWheelSlip(RuntimeVehicleInstance& runtimeVehicle,
             // spin and buzz back and forth every frame once brake torque has
             // out-fought the tyre.
             angularVelocity = 0.0f;
+        }
+
+        // Nothing is actually asking this wheel for anything and the car is
+        // parked: snap straight to ground speed instead of waiting out the
+        // slip relaxation filter. That filter is deliberately slow (it is
+        // what stops a kerb strobing the effect on and off), which otherwise
+        // left a wheel that had merely rolled to a stop still reading a
+        // stale spin for a second or more after the car was actually still -
+        // and the harder it had been spun up before stopping, the longer
+        // that tail lasted, since the old version only did this once the
+        // wheel's own residual was already small. A free, undriven,
+        // unbraked wheel does not keep quietly spinning once the car under
+        // it is stopped, however hard it was spinning a moment ago.
+        if (contact.grounded && driveTorque == 0.0f && brakeTorque <= 0.0f &&
+            std::fabs(longitudinalSpeed) < 0.05f) {
+            angularVelocity = 0.0f;
+            contact.slipRatio = 0.0f;
         }
 
         // Safety bound, not a behaviour driver: stops an extended jump with
