@@ -53,7 +53,6 @@ void UpdateArcadeWheelSlip(RuntimeVehicleInstance& runtimeVehicle,
                            const VehicleControlAmounts& controls,
                            const VehicleDriveRatios& driveRatios,
                            float deltaTime) {
-    (void)controls;
     const raceman::physics::VehicleConfig& config = runtimeVehicle.config;
     const std::size_t wheelCount =
         (std::min)(config.wheels.size(), runtimeVehicle.arcadeWheelContacts.size());
@@ -106,14 +105,21 @@ void UpdateArcadeWheelSlip(RuntimeVehicleInstance& runtimeVehicle,
         ? runtimeVehicle.arcadeSurfaceGrip * (std::max)(0.0f, config.tireGrip.longitudinalGrip) *
               runtimeVehicle.arcadeTractionScale
         : 1.0f;
+    // controls/input carry this frame's throttle, brake and steering; the
+    // runtimeVehicle.arcade* copies of the same numbers are not written until
+    // after this call, so reading those here was always one frame stale. That
+    // let a wheel keep "seeing" last frame's throttle or lock for an extra
+    // step every single frame - on a released throttle it meant the drive
+    // force never actually reached zero the frame the pedal did.
     const float driveForceTotal =
-        (std::clamp)(runtimeVehicle.arcadeThrottle, 0.0f, 1.0f) *
+        (std::clamp)(controls.throttle, 0.0f, 1.0f) *
         (std::max)(0.0f, handling.acceleration) * mass * driveTorqueScale * driveGripScale;
-    const float brakePedal = (std::clamp)(runtimeVehicle.arcadeRawBrake, 0.0f, 1.0f) *
-                             (std::clamp)(runtimeVehicle.arcadeAbsBrakeScale, 0.0f, 1.0f);
+    // controls.brake already carries maxBrakeForce and this frame's ABS scale
+    // (see ApplyVehicleDriverAids), so it needs no further scaling here.
+    const float brakePedal = (std::clamp)(controls.brake, 0.0f, 1.0f);
     const float handbrakePedal = (std::clamp)(input.handbrake, 0.0f, 1.0f);
     const float brakeFrontBias = (std::clamp)(config.brakes.frontBias, 0.0f, 1.0f);
-    const float steeringInput = (std::clamp)(runtimeVehicle.arcadeSteering, -1.0f, 1.0f);
+    const float steeringInput = (std::clamp)(input.steering, -1.0f, 1.0f);
 
     for (std::size_t wheelIndex = 0; wheelIndex < wheelCount; ++wheelIndex) {
         const raceman::physics::WheelConfig& wheel = config.wheels[wheelIndex];

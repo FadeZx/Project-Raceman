@@ -454,11 +454,13 @@ void SceneEditor::UpdateVehicleSoundRuntime(float deltaTime) {
                     want = VehicleSoundTrigger::GearUp;
                     break;
                 case physics::EngineShiftKind::Down:
-                    want = VehicleSoundTrigger::GearDown;
-                    break;
                 case physics::EngineShiftKind::ToNeutral:
                 case physics::EngineShiftKind::ToReverse:
-                    continue; // no clip for these
+                    // No dedicated clip type for these; the down-shift clunk
+                    // is the closest thing authored and reads fine for any
+                    // lever movement, so reuse it rather than play nothing.
+                    want = VehicleSoundTrigger::GearDown;
+                    break;
             }
             for (const auto& trig : inst.profile.triggerSounds) {
                 if (trig.trigger == want && !trig.clipPath.empty()) {

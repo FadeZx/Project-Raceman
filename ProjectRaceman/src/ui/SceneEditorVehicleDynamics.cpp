@@ -233,7 +233,19 @@ void ApplyArcadeDrivetrain(float& speed,
             speed -= controls.brake * (std::max)(0.0f, handling.reverseAcceleration) * driveGripScale * driveTorqueScale * deltaTime;
         }
     } else {
-        speed = MoveTowards(speed, 0.0f, (std::max)(0.0f, coastDeceleration) * deltaTime);
+        // Idle creep: reached only when manualGearbox is false (see the
+        // top-level branch above), so this is always an automatic. Its
+        // torque converter keeps pulling at idle, so off both pedals the car
+        // eases to a slow crawl instead of sitting dead until the throttle
+        // is pressed - same as any road car in Drive. A manual sequential
+        // has no converter and stays put, which that branch already gives it.
+        constexpr float kIdleCreepSpeed = 1.0f;   // ~3.6 km/h
+        constexpr float kIdleCreepAccel = 1.5f;
+        if (speed < kIdleCreepSpeed) {
+            speed = (std::min)(kIdleCreepSpeed, speed + kIdleCreepAccel * deltaTime);
+        } else {
+            speed = MoveTowards(speed, 0.0f, (std::max)(0.0f, coastDeceleration) * deltaTime);
+        }
     }
 
     if (input.handbrake > 0.0f) {
@@ -708,13 +720,17 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
                 physicalYawSpeedRamp *
                 directionSign;
         } else {
+            // No directionSign here: the slip-based yaw terms below (frontPushTorque,
+            // slipYawTorque, etc.) key off input.steering directly and never flip for
+            // reverse, so flipping only this term made steering fight itself and feel
+            // random when backing up. Steering right now curves the car the same way
+            // whether driving forward or in reverse.
             steeringTorque = -input.steering *
                 (std::max)(0.0f, yawDynamics.steeringYawResponse) *
                 speedForSteer *
                 highSpeedSteerScale *
                 gripSteerScale *
-                (1.0f - understeerAmount * 0.75f) *
-                directionSign;
+                (1.0f - understeerAmount * 0.75f);
         }
         const float slipSign = runtimeVehicle.arcadeVelocitySlipAngle > 0.0f ? 1.0f : (runtimeVehicle.arcadeVelocitySlipAngle < 0.0f ? -1.0f : 0.0f);
         const float rearSlipBoost = 1.0f +
@@ -798,7 +814,7 @@ void ApplyArcadeVehicleDynamics(RuntimeVehicleInstance& runtimeVehicle,
         }
     } else {
         runtimeVehicle.arcadeChassisWorld.rotationEuler.y -=
-            input.steering * fallbackSteerDegreesPerSecond * speedForSteer * highSpeedSteerScale * gripSteerScale * directionSign * deltaTime;
+            input.steering * fallbackSteerDegreesPerSecond * speedForSteer * highSpeedSteerScale * gripSteerScale * deltaTime;
         // A chassis impact injects spin even when the profile's yaw dynamics are off,
         // so let it play out and decay rather than hard-zeroing it here.
         if (std::fabs(runtimeVehicle.arcadeYawRate) > 0.01f) {
